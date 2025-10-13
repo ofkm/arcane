@@ -249,8 +249,8 @@
 			</Tabs.Content>
 
 			<Tabs.Content value="compose" class="h-full">
-				<div class="grid h-full grid-cols-1 gap-4 lg:grid-cols-5" style="grid-template-rows: 1fr;">
-					<div class="h-full lg:col-span-3">
+				<div class="grid h-full grid-cols-1 gap-4 lg:grid-cols-5 lg:items-stretch" style="grid-template-rows: 1fr;">
+					<div class="flex h-full flex-col lg:col-span-3">
 						<CodePanel
 							bind:open={composeOpen}
 							title={m.compose_compose_file_title()}
@@ -261,7 +261,7 @@
 						/>
 					</div>
 
-					<div class="h-full lg:col-span-2">
+					<div class="flex h-full flex-col lg:col-span-2">
 						<CodePanel
 							bind:open={envOpen}
 							title={m.compose_env_title()}

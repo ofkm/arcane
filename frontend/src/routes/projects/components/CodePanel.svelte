@@ -22,17 +22,17 @@
 	} = $props();
 </script>
 
-<Card.Root>
-	<Card.Header icon={FileTextIcon} class="items-center">
+<Card.Root class="flex flex-col lg:h-full">
+	<Card.Header icon={FileTextIcon} class="flex-shrink-0 items-center">
 		<Card.Title>
 			<h2>
 				{title}
 			</h2>
 		</Card.Title>
 	</Card.Header>
-	<Card.Content class="p-0">
-		<div class="min-h-[500px] w-full overflow-hidden [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
-			<CodeEditor bind:value {language} {placeholder} height="full" class="rounded-t-none rounded-b-xl" />
+	<Card.Content class="min-h-[500px] flex-grow p-0 lg:h-full">
+		<div class="h-full [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
+			<CodeEditor bind:value {language} {placeholder} />
 			{#if error}
 				<p class="text-destructive mt-2 text-xs">{error}</p>
 			{/if}

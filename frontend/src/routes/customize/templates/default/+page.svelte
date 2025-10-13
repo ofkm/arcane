@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { Label } from '$lib/components/ui/label';
+	import * as Card from '$lib/components/ui/card';
 	import { toast } from 'svelte-sonner';
 	import CodeEditor from '$lib/components/code-editor/editor.svelte';
 	import { createForm } from '$lib/utils/form.utils';
@@ -12,6 +12,8 @@
 	import { ResourcePageLayout, type ActionButton } from '$lib/layouts';
 	import { goto } from '$app/navigation';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import CodeIcon from '@lucide/svelte/icons/code';
+	import FileTextIcon from '@lucide/svelte/icons/file-text';
 
 	let { data } = $props();
 
@@ -90,52 +92,52 @@
 
 	<ResourcePageLayout title={m.customize_defaults_title()} subtitle={m.customize_defaults_description()} {actionButtons}>
 		{#snippet mainContent()}
-			<div class="space-y-6">
-				<form class="space-y-6">
-					<div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-						<div class="lg:col-span-2">
-							<div class="space-y-2">
-								<Label for="compose" class="text-sm font-medium">
-									{m.customize_compose_template_label()}
-								</Label>
-								<div
-									class="border-input focus-within:border-primary focus-within:ring-ring relative rounded-md border bg-transparent transition-colors focus-within:ring-2 focus-within:ring-offset-2"
-									class:border-destructive={$inputs.composeContent.error}
-								>
-									<div class="min-h-[500px] w-full overflow-hidden">
-										<CodeEditor bind:value={$inputs.composeContent.value} language="yaml" height="full" />
-									</div>
-								</div>
-								{#if $inputs.composeContent.error}
-									<p class="text-destructive text-xs">
-										{$inputs.composeContent.error}
-									</p>
-								{/if}
-							</div>
+			<div class="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-stretch">
+				<Card.Root class="flex min-w-0 flex-col lg:col-span-3">
+					<Card.Header icon={CodeIcon} class="flex-shrink-0">
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>
+								<h2>{m.customize_compose_template_label()}</h2>
+							</Card.Title>
+							<Card.Description>{m.templates_service_definitions()}</Card.Description>
 						</div>
+					</Card.Header>
+					<Card.Content class="min-h-[500px] flex-grow p-0 lg:h-full">
+						<div class="h-full rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
+							<CodeEditor bind:value={$inputs.composeContent.value} language="yaml" />
+						</div>
+					</Card.Content>
+					{#if $inputs.composeContent.error}
+						<Card.Footer class="pt-0">
+							<p class="text-destructive text-xs">
+								{$inputs.composeContent.error}
+							</p>
+						</Card.Footer>
+					{/if}
+				</Card.Root>
 
-						<div class="lg:col-span-1">
-							<div class="space-y-2">
-								<Label for="env" class="text-sm font-medium">
-									{m.customize_env_template_label()}
-								</Label>
-								<div
-									class="border-input focus-within:border-primary focus-within:ring-ring relative rounded-md border bg-transparent transition-colors focus-within:ring-2 focus-within:ring-offset-2"
-									class:border-destructive={$inputs.envContent.error}
-								>
-									<div class="min-h-[500px] w-full overflow-hidden">
-										<CodeEditor bind:value={$inputs.envContent.value} language="env" height="full" />
-									</div>
-								</div>
-								{#if $inputs.envContent.error}
-									<p class="text-destructive text-xs">
-										{$inputs.envContent.error}
-									</p>
-								{/if}
-							</div>
+				<Card.Root class="flex min-w-0 flex-col lg:col-span-2">
+					<Card.Header icon={FileTextIcon} class="flex-shrink-0">
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>
+								<h2>{m.customize_env_template_label()}</h2>
+							</Card.Title>
+							<Card.Description>{m.templates_default_config_values()}</Card.Description>
 						</div>
-					</div>
-				</form>
+					</Card.Header>
+					<Card.Content class="min-h-[500px] flex-grow p-0 lg:h-full">
+						<div class="h-full rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
+							<CodeEditor bind:value={$inputs.envContent.value} language="env" />
+						</div>
+					</Card.Content>
+					{#if $inputs.envContent.error}
+						<Card.Footer class="pt-0">
+							<p class="text-destructive text-xs">
+								{$inputs.envContent.error}
+							</p>
+						</Card.Footer>
+					{/if}
+				</Card.Root>
 			</div>
 		{/snippet}
 	</ResourcePageLayout>

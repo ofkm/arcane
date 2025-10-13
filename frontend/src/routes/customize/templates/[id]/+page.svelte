@@ -232,7 +232,7 @@
 
 	<div class="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
 		<Card.Root class="flex min-w-0 flex-col lg:col-span-1 xl:col-span-2">
-			<Card.Header icon={CodeIcon}>
+			<Card.Header icon={CodeIcon} class="flex-shrink-0">
 				<div class="flex flex-col space-y-1.5">
 					<Card.Title>
 						<h2>{m.common_docker_compose()}</h2>
@@ -240,14 +240,16 @@
 					<Card.Description>{m.templates_service_definitions()}</Card.Description>
 				</div>
 			</Card.Header>
-			<Card.Content class="h-full w-full p-0 [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
-				<CodeEditor bind:value={compose} language="yaml" class="rounded-t-none rounded-b-xl border-t-0" height="100%" />
+			<Card.Content class="min-h-[500px] flex-grow p-0 lg:h-full">
+				<div class="h-full rounded-t-none rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
+					<CodeEditor bind:value={compose} language="yaml" />
+				</div>
 			</Card.Content>
 		</Card.Root>
 
-		<div class="min-w-0 space-y-6 lg:col-span-1">
+		<div class="flex min-w-0 flex-col gap-6 lg:col-span-1">
 			{#if services.length > 0}
-				<Card.Root class="min-w-0">
+				<Card.Root class="min-w-0 flex-shrink-0">
 					<Card.Header icon={BoxIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>
@@ -272,7 +274,7 @@
 			{/if}
 
 			{#if env && envVars.length > 0}
-				<Card.Root class="min-w-0">
+				<Card.Root class="min-w-0 flex-shrink-0">
 					<Card.Header icon={FileTextIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>
@@ -299,8 +301,8 @@
 			{/if}
 
 			{#if env && envVars.length > 0}
-				<Card.Root class="min-w-0">
-					<Card.Header icon={FileTextIcon}>
+				<Card.Root class="flex min-w-0 flex-grow flex-col lg:h-full">
+					<Card.Header icon={FileTextIcon} class="flex-shrink-0">
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>
 								<h2>{m.environment_file()}</h2>
@@ -308,8 +310,10 @@
 							<Card.Description>{m.templates_raw_env_config()}</Card.Description>
 						</div>
 					</Card.Header>
-					<Card.Content class="w-full overflow-auto p-0 [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
-						<CodeEditor bind:value={env} language="env" class="rounded-t-none rounded-b-xl border-t-0" height="100%" />
+					<Card.Content class="h-[500px] flex-grow p-0 lg:h-full">
+						<div class="h-full rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
+							<CodeEditor bind:value={env} language="env" />
+						</div>
 					</Card.Content>
 				</Card.Root>
 			{/if}
