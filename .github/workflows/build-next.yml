@@ -67,7 +67,7 @@ jobs:
         run: pnpm --filter arcane-frontend build
 
       - name: Build binaries
-        run: bash scripts/development/build-binaries.sh --docker
+        run: bash scripts/github/build-binaries.sh --docker
 
       - name: Build and push container image
         id: build-push-image

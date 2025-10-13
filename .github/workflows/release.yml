@@ -47,10 +47,10 @@ jobs:
           cache-dependency-path: backend/go.sum
 
       - name: Build manager binaries
-        run: bash scripts/development/build-binaries.sh
+        run: bash scripts/github/build-binaries.sh
 
       - name: Build agent binaries
-        run: bash scripts/development/build-binaries.sh --agent
+        run: bash scripts/github/build-binaries.sh --agent
 
       - name: Binary attestation
         uses: actions/attest-build-provenance@v3
