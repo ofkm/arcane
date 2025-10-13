@@ -28,11 +28,13 @@ export type NavigationItem = {
 export const navigationItems: Record<string, NavigationItem[]> = {
 	managementItems: [
 		{ title: m.dashboard_title(), url: '/dashboard', icon: HouseIcon },
+		{ title: m.projects_title(), url: '/projects', icon: FileStackIcon }
+	],
+	resourcesItems: [
 		{ title: m.containers_title(), url: '/containers', icon: ContainerIcon },
-		{ title: m.projects_title(), url: '/projects', icon: FileStackIcon },
 		{ title: m.images_title(), url: '/images', icon: ImageIcon },
-		{ title: m.networks_title(), url: '/networks', icon: NetworkIcon },
-		{ title: m.volumes_title(), url: '/volumes', icon: HardDriveIcon }
+		{ title: m.volumes_title(), url: '/volumes', icon: HardDriveIcon },
+		{ title: m.networks_title(), url: '/networks', icon: NetworkIcon }
 	],
 	customizationItems: [
 		{
@@ -40,9 +42,9 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 			url: '/customize',
 			icon: PaletteIcon,
 			items: [
+				{ title: m.variables_title(), url: '/customize/variables', icon: FileTextIcon },
 				{ title: m.templates_title(), url: '/customize/templates', icon: LayoutTemplateIcon },
-				{ title: m.registries_title(), url: '/customize/registries', icon: LockKeyholeIcon },
-				{ title: m.variables_title(), url: '/customize/variables', icon: FileTextIcon }
+				{ title: m.registries_title(), url: '/customize/registries', icon: LockKeyholeIcon }
 			]
 		}
 	],
@@ -76,9 +78,9 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 
 export const defaultMobilePinnedItems: NavigationItem[] = [
 	navigationItems.managementItems[0],
-	navigationItems.managementItems[1],
-	navigationItems.managementItems[3],
-	navigationItems.managementItems[5]
+	navigationItems.resourcesItems[0],
+	navigationItems.resourcesItems[1],
+	navigationItems.resourcesItems[2],
 ];
 
 export type MobileNavigationSettings = {
@@ -93,6 +95,7 @@ export function getAvailableMobileNavItems(): NavigationItem[] {
 	const flatItems: NavigationItem[] = [];
 
 	flatItems.push(...navigationItems.managementItems);
+	flatItems.push(...navigationItems.resourcesItems);
 	// Flatten customization children so individual pages can be pinned/selected
 	for (const item of navigationItems.customizationItems) {
 		if (item.items && item.items.length > 0) {

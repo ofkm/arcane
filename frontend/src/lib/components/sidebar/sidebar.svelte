@@ -58,6 +58,7 @@
 	</Sidebar.Header>
 	<Sidebar.Content>
 		<SidebarItemGroup label={m.sidebar_management()} items={navigationItems.managementItems} />
+		<SidebarItemGroup label={m.sidebar_resources()} items={navigationItems.resourcesItems} />
 		<SidebarItemGroup label={m.sidebar_customization()} items={navigationItems.customizationItems} />
 		{#if isAdmin}
 			<SidebarItemGroup label={m.sidebar_environments()} items={navigationItems.environmentItems} />

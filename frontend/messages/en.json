@@ -988,7 +988,7 @@
 	"registry_quay_url": "quay.io",
 
 	"_comment_customize_variables": "=== CUSTOMIZATION - VARIABLES ===",
-	"variables_title": "Global Variables",
+	"variables_title": "Variables",
 	"variables_subtitle": "Manage global environment variables that are available to all projects",
 	"variables_about_title": "About Global Environment Variables",
 	"variables_about_description": "These variables are stored in .env.global at the root of your projects directory and are available to all Docker Compose projects.",
@@ -1064,6 +1064,7 @@
 	"docker_info_images_label": "Images",
 
 	"_comment_sidebar": "=== SIDEBAR ===",
+	"sidebar_resources": "Resources",
 	"sidebar_environment_label": "Environment",
 	"sidebar_select_environment": "Select Environment",
 	"sidebar_no_environments": "No environments available",
