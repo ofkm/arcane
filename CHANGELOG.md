@@ -1,3 +1,25 @@
+## v1.5.2
+
+### Bug fixes
+
+* remove custom timestamps and rely soley on dockers log timestamps([c69e00a](https://github.com/ofkm/arcane/commit/c69e00a30f9b546a3b095faef010bff746197e5d) by @kmendell)
+* container metrics not respecting the cpu limit / count([f9840de](https://github.com/ofkm/arcane/commit/f9840de4f06cf5a844731af804b6b19d82bf0c8a) by @kmendell)
+* registry credentials not reliably being passed to remote environments([31cfd54](https://github.com/ofkm/arcane/commit/31cfd540dbd7130876685f56055a361e9a7f1d68) by @kmendell)
+* revert development compose deploy limits ([#697](https://github.com/ofkm/arcane/pull/697) by @cabaucom376)
+* update registry template url to new domain([1ee3f1c](https://github.com/ofkm/arcane/commit/1ee3f1c7634b68dbb40969b30945659f18a71962) by @kmendell)
+
+### Performance Improvements
+
+* use service-worker and better caching headers to better manage cache problems after updates([3200b39](https://github.com/ofkm/arcane/commit/3200b395bcef1c7f9fee3954c8b327fbb3d023a9) by @kmendell)
+
+### Other
+
+* fix go import check([fd2a50b](https://github.com/ofkm/arcane/commit/fd2a50b49b4801f6fe682b3e878d64f2a87579fb) by @kmendell)
+
+
+
+**Full Changelog**: https://github.com/ofkm/arcane/compare/v1.5.1...v1.5.2
+
 ## v1.5.1
 
 ### Bug fixes
