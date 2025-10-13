@@ -314,7 +314,7 @@
 						{m.common_action_creating()}
 					{:else}
 						<NetworkIcon class="mr-2 size-4" />
-						{m.networks_create_button()}
+						{m.common_create_button({ resource: m.resource_network_cap() })}
 					{/if}
 				</Button>
 			</Sheet.Footer>

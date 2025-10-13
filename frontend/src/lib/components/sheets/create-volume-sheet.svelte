@@ -169,7 +169,7 @@
 						{m.common_action_creating()}
 					{:else}
 						<HardDriveIcon class="mr-2 size-4" />
-						{m.volumes_create_button()}
+						{m.common_create_button({ resource: m.resource_volume_cap() })}
 					{/if}
 				</Button>
 			</Sheet.Footer>

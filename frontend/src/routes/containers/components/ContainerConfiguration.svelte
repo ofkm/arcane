@@ -78,7 +78,7 @@
 							{m.common_labels()}
 						</h2>
 					</Card.Title>
-					<Card.Description>{m.common_labels_description()}</Card.Description>
+					<Card.Description>{m.common_labels_description({ resource: m.resource_container() })}</Card.Description>
 				</div>
 			</Card.Header>
 			<Card.Content class="p-4">

@@ -93,7 +93,7 @@
 		{
 			id: 'create',
 			action: 'create',
-			label: m.common_create_button({ resource: m.resource_volume() }),
+			label: m.common_create_button({ resource: m.resource_volume_cap() }),
 			onclick: () => (isCreateDialogOpen = true),
 			loading: isLoading.creating,
 			disabled: isLoading.creating

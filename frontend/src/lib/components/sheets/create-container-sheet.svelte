@@ -773,7 +773,7 @@
 											{m.common_action_creating()}
 										{:else}
 											<ContainerIcon class="mr-2 size-4" />
-											{m.containers_create_button()}
+											{m.common_create_button({ resource: m.resource_container_cap() })}
 										{/if}
 									</Button>
 								</div>

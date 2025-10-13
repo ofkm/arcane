@@ -40,7 +40,7 @@
 		</div>
 		<Button onclick={onAddRegistry}>
 			<PlusIcon class="mr-2 size-4" />
-			{m.registries_add_button()}
+			{m.common_add_button({ resource: m.resource_registry_cap() })}
 		</Button>
 	</div>
 

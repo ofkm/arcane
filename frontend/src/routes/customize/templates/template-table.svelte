@@ -50,8 +50,8 @@
 
 	async function handleDeleteTemplate(id: string, name: string) {
 		openConfirmDialog({
-			title: m.templates_delete_confirm_title(),
-			message: m.templates_delete_confirm_message({ name }),
+			title: m.common_delete_title({ resource: m.resource_template() }),
+			message: m.common_delete_confirm({ resource: `${m.resource_template()} "${name}"` }),
 			confirm: {
 				label: m.templates_delete_template(),
 				destructive: true,
@@ -61,10 +61,10 @@
 					const result = await tryCatch(templateService.deleteTemplate(id));
 					handleApiResultWithCallbacks({
 						result,
-						message: m.templates_delete_failed(),
+						message: m.common_delete_failed({ resource: `${m.resource_template()} "${name}"` }),
 						setLoadingState: (value) => (isLoading.deleting = value),
 						onSuccess: async () => {
-							toast.success(m.templates_delete_success());
+							toast.success(m.common_delete_success({ resource: `${m.resource_template()} "${name}"` }));
 							templates = await templateService.getTemplates(requestOptions);
 						}
 					});

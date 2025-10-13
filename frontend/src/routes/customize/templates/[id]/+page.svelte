@@ -64,8 +64,8 @@
 		if (isDeleting || !canDelete) return;
 
 		openConfirmDialog({
-			title: m.templates_delete_confirm_title(),
-			message: m.templates_delete_confirm_message({ name: template.name }),
+			title: m.common_delete_title({ resource: m.resource_template() }),
+			message: m.common_delete_confirm({ resource: `${m.resource_template()} "${template.name}"` }),
 			confirm: {
 				label: m.templates_delete_template(),
 				destructive: true,
@@ -73,11 +73,15 @@
 					isDeleting = true;
 					try {
 						await templateService.deleteTemplate(template.id);
-						toast.success(m.templates_delete_success());
+						toast.success(m.common_delete_success({ resource: `${m.resource_template()} "${template.name}"` }));
 						await goto('/customize/templates');
 					} catch (error) {
 						console.error('Error deleting template:', error);
-						toast.error(error instanceof Error ? error.message : m.templates_delete_failed());
+						toast.error(
+							error instanceof Error
+								? error.message
+								: m.common_delete_failed({ resource: `${m.resource_template()} "${template.name}"` })
+						);
 						isDeleting = false;
 					}
 				}

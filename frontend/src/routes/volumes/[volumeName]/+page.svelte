@@ -113,8 +113,8 @@
 			<Card.Root>
 				<Card.Header icon={InfoIcon}>
 					<div class="flex flex-col space-y-1.5">
-						<Card.Title>{m.volumes_details_title()}</Card.Title>
-						<Card.Description>{m.volumes_details_description()}</Card.Description>
+						<Card.Title>{m.common_details_title({ resource: m.resource_volume_cap() })}</Card.Title>
+						<Card.Description>{m.common_details_description({ resource: m.resource_volume() })}</Card.Description>
 					</div>
 				</Card.Header>
 				<Card.Content class="p-4">

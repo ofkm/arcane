@@ -97,7 +97,7 @@
 			<div class="flex flex-col">
 				<div class="flex items-center gap-3">
 					<h1 class="text-2xl font-bold tracking-tight">
-						{network?.name ?? m.networks_details_title()}
+						{network?.name ?? m.common_details_title({ resource: m.resource_network_cap() })}
 					</h1>
 
 					<div class="hidden sm:block">
@@ -145,8 +145,8 @@
 			<Card.Root>
 				<Card.Header icon={InfoIcon}>
 					<div class="flex flex-col space-y-1.5">
-						<Card.Title>{m.networks_details_title()}</Card.Title>
-						<Card.Description>{m.networks_details_description()}</Card.Description>
+						<Card.Title>{m.common_details_title({ resource: m.resource_network_cap() })}</Card.Title>
+						<Card.Description>{m.common_details_description({ resource: m.resource_network() })}</Card.Description>
 					</div>
 				</Card.Header>
 				<Card.Content class="p-4">

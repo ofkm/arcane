@@ -90,7 +90,7 @@
 		{
 			id: 'create',
 			action: 'create',
-			label: m.containers_create_button(),
+			label: m.common_create_button({ resource: m.resource_container_cap() }),
 			onclick: () => (isCreateDialogOpen = true),
 			loading: isLoading.create,
 			disabled: isLoading.create

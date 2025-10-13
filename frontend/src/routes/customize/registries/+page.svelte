@@ -80,7 +80,7 @@
 		{
 			id: 'create',
 			action: 'create',
-			label: m.registries_add_button(),
+			label: m.common_add_button({ resource: m.resource_registry_cap() }),
 			onclick: openCreateRegistryDialog
 		},
 		{

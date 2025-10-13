@@ -103,7 +103,7 @@
 		{
 			id: 'create',
 			action: 'create' as const,
-			label: m.environments_add_button(),
+			label: m.common_add_button({ resource: m.resource_environment_cap() }),
 			onclick: () => (showEnvironmentSheet = true)
 		},
 		{

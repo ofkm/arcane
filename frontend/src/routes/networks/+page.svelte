@@ -89,7 +89,7 @@
 		{
 			id: 'create',
 			action: 'create',
-			label: m.networks_create_button(),
+			label: m.common_create_button({ resource: m.resource_network_cap() }),
 			onclick: () => (isCreateDialogOpen = true)
 		},
 		{

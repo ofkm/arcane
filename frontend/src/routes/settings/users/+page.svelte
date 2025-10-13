@@ -106,7 +106,7 @@
 		{
 			id: 'create',
 			action: 'create',
-			label: m.users_create_button(),
+			label: m.common_create_button({ resource: m.resource_user_cap() }),
 			onclick: openCreateDialog,
 			loading: isLoading.creating,
 			disabled: isLoading.creating

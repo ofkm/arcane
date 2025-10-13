@@ -76,10 +76,10 @@
 		<div class="flex flex-col space-y-1.5">
 			<Card.Title>
 				<h2>
-					{m.containers_details_title()}
+					{m.common_details_title({ resource: m.resource_container_cap() })}
 				</h2>
 			</Card.Title>
-			<Card.Description>{m.containers_details_description()}</Card.Description>
+			<Card.Description>{m.common_details_description({ resource: m.resource_container() })}</Card.Description>
 		</div>
 	</Card.Header>
 	<Card.Content class="p-4">
