@@ -130,7 +130,7 @@
 				});
 			}
 		} catch (error) {
-			toast.error(m.action_failed());
+			toast.error(m.common_action_failed());
 		}
 	}
 
@@ -242,7 +242,7 @@
 						{:else}
 							<PlayIcon class="size-4" />
 						{/if}
-						{m.action_up()}
+						{m.common_up()}
 					</DropdownMenu.Item>
 				{:else}
 					<DropdownMenu.Item
@@ -263,7 +263,7 @@
 						{:else}
 							<StopCircleIcon class="size-4" />
 						{/if}
-						{m.action_down()}
+						{m.common_down()}
 					</DropdownMenu.Item>
 				{/if}
 

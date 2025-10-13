@@ -85,7 +85,7 @@ export const actionConfigs: Record<Action, ActionConfig> = {
 		loadingLabel: m.common_action_starting()
 	},
 	deploy: {
-		defaultLabel: m.action_up(),
+		defaultLabel: m.common_up(),
 		IconComponent: PlayIcon,
 		tone: 'outline-primary',
 		loadingLabel: m.common_action_deploying()
@@ -115,7 +115,7 @@ export const actionConfigs: Record<Action, ActionConfig> = {
 		loadingLabel: m.common_action_pulling()
 	},
 	redeploy: {
-		defaultLabel: m.action_redeploy(),
+		defaultLabel: m.common_redeploy(),
 		IconComponent: RefreshCcwDotIcon,
 		tone: 'outline-primary',
 		loadingLabel: m.common_action_redeploying()
@@ -124,33 +124,33 @@ export const actionConfigs: Record<Action, ActionConfig> = {
 		defaultLabel: m.common_inspect(),
 		IconComponent: ScanSearchIcon,
 		tone: 'outline-primary',
-		loadingLabel: m.action_inspecting()
+		loadingLabel: m.common_action_inspecting()
 	},
 	edit: { defaultLabel: m.common_edit(), IconComponent: EditIcon, tone: 'outline-primary', loadingLabel: m.common_saving() },
 	confirm: {
 		defaultLabel: m.common_confirm(),
 		IconComponent: CheckIcon,
 		tone: 'outline-primary',
-		loadingLabel: m.action_confirming()
+		loadingLabel: m.common_action_confirming()
 	},
 	save: { defaultLabel: m.common_save(), IconComponent: SaveIcon, tone: 'outline-primary', loadingLabel: m.common_saving() },
 	create: {
 		defaultLabel: m.common_create(),
 		IconComponent: PlusCircleIcon,
 		tone: 'outline-primary',
-		loadingLabel: m.common_creating()
+		loadingLabel: m.common_action_creating()
 	},
 	template: {
-		defaultLabel: m.action_use_template(),
+		defaultLabel: m.common_use_template(),
 		IconComponent: LayoutTemplateIcon,
 		tone: 'outline-primary',
-		loadingLabel: m.common_creating()
+		loadingLabel: m.common_action_creating()
 	},
 	logs: {
 		defaultLabel: m.common_logs(),
 		IconComponent: FileTextIcon,
 		tone: 'ghost',
-		loadingLabel: m.action_fetching_logs ? m.action_fetching_logs() : m.common_processing()
+		loadingLabel: m.common_action_fetching_logs()
 	},
-	cancel: { defaultLabel: m.common_cancel(), IconComponent: XIcon, tone: 'ghost', loadingLabel: m.action_cancelling() }
+	cancel: { defaultLabel: m.common_cancel(), IconComponent: XIcon, tone: 'ghost', loadingLabel: m.common_action_cancelling() }
 };

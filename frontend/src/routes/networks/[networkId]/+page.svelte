@@ -135,7 +135,7 @@
 	{#if errorMessage}
 		<Alert.Root variant="destructive">
 			<CircleAlertIcon class="mr-2 size-4" />
-			<Alert.Title>{m.action_failed()}</Alert.Title>
+			<Alert.Title>{m.common_action_failed()}</Alert.Title>
 			<Alert.Description>{errorMessage}</Alert.Description>
 		</Alert.Root>
 	{/if}
