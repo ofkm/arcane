@@ -130,7 +130,7 @@
 	bind:this={navElement}
 	class={cn(
 		'mobile-nav-base mobile-nav-docked',
-		'fixed bottom-0 left-0 right-0 z-50 gap-2',
+		'fixed right-0 bottom-0 left-0 z-50 gap-2',
 		'bg-background/95 border-border/50 border-t backdrop-blur-sm',
 		'shadow-lg',
 		'select-none', // Prevent text selection but allow touch

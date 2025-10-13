@@ -46,11 +46,11 @@
 </script>
 
 <Card.Root
-	class={`bg-card/80 ring-border/40 supports-[backdrop-filter]:bg-card/60 group relative flex flex-col gap-6 overflow-hidden rounded-xl border py-3 shadow-sm ring-1 ring-inset backdrop-blur
-        before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:p-[1px] before:content-['']
+	class={`bg-card/80 ring-border/40 supports-[backdrop-filter]:bg-card/60 group relative flex flex-col gap-6 overflow-hidden rounded-xl border py-3 shadow-sm ring-1 backdrop-blur ring-inset
+        before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:[mask-composite:exclude] before:p-[1px]
+        before:content-['']
         before:[-webkit-mask-composite:xor]
         before:[-webkit-mask:linear-gradient(#000_0_0)_content-box,linear-gradient(#000_0_0)]
-        before:[mask-composite:exclude]
         before:[mask:linear-gradient(#000_0_0)_content-box,linear-gradient(#000_0_0)]
         ${frameGradientClass} ${className ?? ''}`}
 >

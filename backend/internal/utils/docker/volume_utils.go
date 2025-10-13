@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 )
@@ -74,4 +76,27 @@ func SetVolumeUsageCacheTTL(ttl time.Duration) {
 	volumeUsageCacheMutex.Lock()
 	defer volumeUsageCacheMutex.Unlock()
 	volumeUsageCacheTTL = ttl
+}
+
+func GetContainersUsingVolume(ctx context.Context, dockerClient *client.Client, volumeName string) ([]string, error) {
+	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list containers: %w", err)
+	}
+
+	containerIDs := make([]string, 0)
+	for _, c := range containers {
+		for _, m := range c.Mounts {
+			if m.Type == mount.TypeVolume && m.Name == volumeName {
+				containerIDs = append(containerIDs, c.ID)
+				break
+			}
+		}
+	}
+
+	slog.DebugContext(ctx, "found containers using volume",
+		slog.String("volume", volumeName),
+		slog.Int("container_count", len(containerIDs)))
+
+	return containerIDs, nil
 }

@@ -162,7 +162,7 @@ func (h *ContainerHandler) GetLogsWS(c *gin.Context) {
 	follow := c.DefaultQuery("follow", "true") == "true"
 	tail := c.DefaultQuery("tail", "100")
 	since := c.Query("since")
-	timestamps := c.DefaultQuery("timestamps", "false") == "true"
+	timestamps := c.DefaultQuery("timestamps", "true") == "true"
 	format := c.DefaultQuery("format", "text")
 	batched := c.DefaultQuery("batched", "false") == "true"
 

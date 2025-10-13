@@ -25,7 +25,7 @@
 	data-slot="sidebar-pin-button"
 	variant="ghost"
 	size="icon"
-	class={cn('size-7 text-muted-foreground hover:text-foreground', className)}
+	class={cn('text-muted-foreground hover:text-foreground size-7', className)}
 	type="button"
 	disabled={sidebar.isTablet}
 	title={isPinned ? 'Unpin sidebar' : 'Pin sidebar'}

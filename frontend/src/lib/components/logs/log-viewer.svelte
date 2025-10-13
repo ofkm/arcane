@@ -38,7 +38,7 @@
 		type = 'container',
 		maxLines = 1000,
 		autoScroll = $bindable(true),
-		showTimestamps = true,
+		showTimestamps = false,
 		height = '400px',
 		tailLines = 100,
 		onClear,
@@ -148,9 +148,7 @@
 			type === 'project'
 				? `/api/environments/${envId}/projects/${projectId}/logs/ws`
 				: `/api/environments/${envId}/containers/${containerId}/logs/ws`;
-		return buildWebSocketEndpoint(
-			`${basePath}?follow=true&tail=${tailLines}&timestamps=${showTimestamps}&format=json&batched=true`
-		);
+		return buildWebSocketEndpoint(`${basePath}?follow=true&tail=${tailLines}&timestamps=true&format=json&batched=true`);
 	}
 
 	export async function startLogStream() {
@@ -298,11 +296,6 @@
 		return logs.length;
 	}
 
-	function formatTimestamp(timestamp: string): string {
-		const date = new Date(timestamp);
-		return date.toLocaleTimeString();
-	}
-
 	function getLevelClass(level: LogEntry['level']): string {
 		switch (level) {
 			case 'stderr':
@@ -413,11 +406,6 @@
 						<span class="shrink-0 {getLevelClass(log.level)}">
 							{log.level.toUpperCase()}
 						</span>
-						{#if showTimestamps && log.timestamp}
-							<span class="ml-auto shrink-0 text-gray-500">
-								{formatTimestamp(log.timestamp)}
-							</span>
-						{/if}
 					</div>
 					<div class="whitespace-pre-wrap break-words text-sm text-gray-300">
 						{log.message}
@@ -434,11 +422,6 @@
 							title={log.service}
 						>
 							{log.service}
-						</span>
-					{/if}
-					{#if showTimestamps && log.timestamp}
-						<span class="mr-3 min-w-fit shrink-0 text-xs text-gray-500">
-							{formatTimestamp(log.timestamp)}
 						</span>
 					{/if}
 					<span class="mr-2 shrink-0 text-xs {getLevelClass(log.level)} min-w-fit">

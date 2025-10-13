@@ -7,12 +7,12 @@ import (
 )
 
 var (
-	isoDockerTs   = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?\s+`)
-	slashDockerTs = regexp.MustCompile(`^\d{4}/\d{2}/\d{2}\s+\d{2}:\d{2}:\d{2}\s+`)
+	// Docker's RFC3339 timestamp when timestamps=true
+	dockerTimestamp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\s+`)
 )
 
 // NormalizeContainerLine parses a raw container log line into level + cleaned message.
-// It also attempts to extract a leading timestamp (returned as an RFC3339Nano string).
+// It extracts Docker's timestamp if present (when timestamps=true in Docker API).
 func NormalizeContainerLine(raw string) (level string, msg string, timestamp string) {
 	line := StripANSI(strings.TrimRight(raw, "\r\n"))
 
@@ -29,29 +29,21 @@ func NormalizeContainerLine(raw string) (level string, msg string, timestamp str
 		line = strings.TrimPrefix(line, "stdout:")
 	}
 
-	// Strip and parse docker timestamps
-	if match := isoDockerTs.FindString(line); match != "" {
+	// Extract and strip Docker's RFC3339 timestamp (when timestamps=true)
+	timestamp = ""
+	if match := dockerTimestamp.FindString(line); match != "" {
 		trimmed := strings.TrimSpace(match)
-		// try multiple ISO layouts
-		var parsed time.Time
-		var err error
-		parsed, err = time.Parse(time.RFC3339Nano, trimmed)
-		if err != nil {
-			parsed, err = time.Parse(time.RFC3339, trimmed)
-		}
-		if err == nil {
+		if parsed, err := time.Parse(time.RFC3339Nano, trimmed); err == nil {
 			timestamp = parsed.UTC().Format(time.RFC3339Nano)
-		}
-		line = strings.TrimPrefix(line, match)
-	} else if match := slashDockerTs.FindString(line); match != "" {
-		trimmed := strings.TrimSpace(match)
-		parsed, err := time.Parse("2006/01/02 15:04:05", trimmed)
-		if err == nil {
+		} else if parsed, err := time.Parse(time.RFC3339, trimmed); err == nil {
 			timestamp = parsed.UTC().Format(time.RFC3339Nano)
 		}
 		line = strings.TrimPrefix(line, match)
 	}
 
+	// Return the message as-is (including any application-level timestamps)
+	// The frontend will display Docker's timestamp, and applications can
+	// include their own timestamps in the message if they want
 	return level, strings.TrimSpace(line), timestamp
 }
 

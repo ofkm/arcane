@@ -94,7 +94,7 @@
 					<Popover.Content class="w-80">
 						<div class="space-y-4">
 							<div class="space-y-2">
-								<h4 class="text-sm font-medium leading-none">{m.disk_usage_settings()}</h4>
+								<h4 class="text-sm leading-none font-medium">{m.disk_usage_settings()}</h4>
 								<p class="text-muted-foreground text-sm">{m.disk_usage_settings_description()}</p>
 							</div>
 							<div class="space-y-2">
@@ -153,7 +153,7 @@
 							<div class="bg-muted h-3 w-12 animate-pulse rounded"></div>
 							<div class="bg-muted h-4 w-16 animate-pulse rounded"></div>
 						{:else}
-							<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
 								{m.dashboard_meter_disk_used()}
 							</div>
 							<div class="text-foreground text-sm font-semibold">
@@ -167,7 +167,7 @@
 							<div class="bg-muted h-3 w-12 animate-pulse rounded"></div>
 							<div class="bg-muted h-4 w-16 animate-pulse rounded"></div>
 						{:else}
-							<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+							<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
 								{m.dashboard_meter_disk_free()}
 							</div>
 							<div class="text-foreground text-sm font-semibold">

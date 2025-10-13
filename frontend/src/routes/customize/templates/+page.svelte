@@ -181,7 +181,7 @@
 						<Alert.Description class="space-y-2">
 							<p>{m.templates_community_registry_description()}</p>
 							<div class="flex w-full max-w-[475px] flex-col gap-2">
-								<Snippet text="https://templates.arcane.ofkm.dev/registry.json" />
+								<Snippet text="https://registry.getarcane.app/registry.json" />
 							</div>
 						</Alert.Description>
 					</Alert.Root>

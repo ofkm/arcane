@@ -38,7 +38,7 @@
 </script>
 
 <div class="grid gap-2">
-	<Label for={id} class="text-sm font-medium leading-none">
+	<Label for={id} class="text-sm leading-none font-medium">
 		{label}{#if required}<span class="text-destructive ml-0.5">*</span>{/if}
 	</Label>
 

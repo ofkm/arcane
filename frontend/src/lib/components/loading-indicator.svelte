@@ -49,7 +49,7 @@
 
 			<span class="bar absolute inset-y-0 w-1/3"></span>
 
-			<span class="peg absolute right-0 top-0 h-full w-3"></span>
+			<span class="peg absolute top-0 right-0 h-full w-3"></span>
 
 			<span class="sr-only">{m.common_loading()}</span>
 		</div>

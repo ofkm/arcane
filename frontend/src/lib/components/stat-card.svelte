@@ -31,7 +31,7 @@
 	)}
 >
 	<div class="flex-1 space-y-1">
-		<p class="text-muted-foreground text-xs font-medium uppercase tracking-wide">{title}</p>
+		<p class="text-muted-foreground text-xs font-medium tracking-wide uppercase">{title}</p>
 		<p class="text-xl font-bold tabular-nums">{value}</p>
 		{#if subtitle}
 			<p class="text-muted-foreground text-xs">{subtitle}</p>

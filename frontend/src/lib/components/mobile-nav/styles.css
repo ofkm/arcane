@@ -48,7 +48,9 @@
 @media (hover: hover) and (pointer: fine) {
 	.mobile-nav-floating:hover {
 		/* Subtle visual hint that scrolling up will open menu without moving the bar */
-		box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+		box-shadow:
+			0 4px 20px rgba(0, 0, 0, 0.08),
+			0 1px 4px rgba(0, 0, 0, 0.04);
 		backdrop-filter: blur(24px);
 		border-color: var(--muted);
 	}
@@ -64,13 +66,13 @@
 	.mobile-nav-base {
 		transition: none;
 	}
-	
+
 	/* Disable scale and complex animations for reduced motion */
 	.mobile-nav-base :global(button) {
 		transition: none;
 		transform: none !important;
 	}
-	
+
 	.mobile-nav-base :global(button:hover),
 	.mobile-nav-base :global(button:focus-visible),
 	.mobile-nav-base :global(button:active) {

@@ -23,6 +23,7 @@
 	let isOpen = $state(false);
 
 	const locales: Record<string, string> = {
+		de: 'Deutsch',
 		en: 'English',
 		eo: 'Esperanto',
 		es: 'Español',
@@ -58,7 +59,7 @@
 			<Select.Trigger {id} class="bg-background/50 border-border/30 text-foreground h-9 w-32 text-sm font-medium">
 				<span class="truncate">{locales[currentLocale]}</span>
 			</Select.Trigger>
-			<Select.Content class="max-w-[280px] min-w-[160px]">
+			<Select.Content class="min-w-[160px] max-w-[280px]">
 				{#each Object.entries(locales) as [value, label]}
 					<Select.Item class="text-sm" {value}>{label}</Select.Item>
 				{/each}
@@ -67,7 +68,7 @@
 	{:else}
 		<div class="px-3 py-2">
 			<div class="grid gap-2">
-				<Label for={id} class="text-sm leading-none font-medium">
+				<Label for={id} class="text-sm font-medium leading-none">
 					{m.language()}
 				</Label>
 				<Select.Root

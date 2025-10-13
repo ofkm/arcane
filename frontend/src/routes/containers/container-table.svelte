@@ -303,7 +303,7 @@
 						<NetworkIcon class="size-3.5 text-sky-500" />
 					</div>
 					<div class="min-w-0 flex-1">
-						<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+						<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
 							{m.ports()}
 						</div>
 						<div class="mt-1">

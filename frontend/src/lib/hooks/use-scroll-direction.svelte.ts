@@ -11,32 +11,32 @@ export class ScrollDirectionDetector {
 
 	constructor(threshold = 10) {
 		this.scrollThreshold = threshold;
-		
+
 		onMount(() => {
 			this.lastScrollY = window.scrollY;
-			
+
 			const handleScroll = this.throttle(() => {
 				const currentScrollY = window.scrollY;
 				const scrollDiff = currentScrollY - this.lastScrollY;
-				
+
 				// Only update direction if scroll difference exceeds threshold
 				if (Math.abs(scrollDiff) > this.scrollThreshold) {
 					const newDirection = scrollDiff > 0 ? 'down' : 'up';
-					
+
 					// Only update if direction actually changed to avoid unnecessary re-renders
 					if (this.scrollDirection !== newDirection) {
 						this.scrollDirection = newDirection;
 					}
 					this.lastScrollY = currentScrollY;
 				}
-				
+
 				this.isScrolling = true;
-				
+
 				// Clear existing timeout
 				if (this.scrollTimeout) {
 					clearTimeout(this.scrollTimeout);
 				}
-				
+
 				// Set idle state after scrolling stops
 				this.scrollTimeout = window.setTimeout(() => {
 					if (this.scrollDirection !== 'idle') {
@@ -45,9 +45,9 @@ export class ScrollDirectionDetector {
 					this.isScrolling = false;
 				}, 150);
 			}, 16); // ~60fps throttling
-			
+
 			window.addEventListener('scroll', handleScroll, { passive: true });
-			
+
 			return () => {
 				window.removeEventListener('scroll', handleScroll);
 				if (this.scrollTimeout) {
@@ -75,7 +75,7 @@ export class ScrollDirectionDetector {
 			if (!inThrottle) {
 				func.apply(this, args);
 				inThrottle = true;
-				setTimeout(() => inThrottle = false, limit);
+				setTimeout(() => (inThrottle = false), limit);
 			}
 		}) as T;
 	}

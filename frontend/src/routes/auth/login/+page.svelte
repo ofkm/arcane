@@ -218,8 +218,8 @@
 	</div>
 </div>
 
-<div class="fixed bottom-0 left-0 right-0 p-4">
-	<div class="text-muted-foreground text-balance text-center text-xs">
+<div class="fixed right-0 bottom-0 left-0 p-4">
+	<div class="text-muted-foreground text-center text-xs text-balance">
 		<div class="flex items-center justify-center gap-4">
 			<a
 				href="https://github.com/ofkm/arcane"

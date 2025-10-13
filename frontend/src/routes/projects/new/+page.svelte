@@ -290,7 +290,7 @@
 							type="button"
 							variant="ghost"
 							size="sm"
-							class="h-auto w-full justify-start whitespace-normal break-all p-2 text-left font-mono text-xs"
+							class="h-auto w-full justify-start p-2 text-left font-mono text-xs break-all whitespace-normal"
 							onclick={() => useExample(command)}
 						>
 							<CopyIcon class="mr-2 size-3 shrink-0" />

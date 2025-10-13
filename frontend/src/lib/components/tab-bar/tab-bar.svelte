@@ -13,12 +13,12 @@
 	let { items, onValueChange, class: className }: Props = $props();
 </script>
 
-<Tabs.List class={cn('flex overflow-x-auto scrollbar-hide justify-start gap-4 w-full', className)}>
+<Tabs.List class={cn('scrollbar-hide flex w-full justify-start gap-4 overflow-x-auto', className)}>
 	{#each items as item}
 		{@const IconComponent = item.icon}
 		<Tabs.Trigger
 			value={item.value}
-			class={cn('gap-2 flex-shrink-0 whitespace-nowrap', item.class)}
+			class={cn('flex-shrink-0 gap-2 whitespace-nowrap', item.class)}
 			disabled={item.disabled}
 			onclick={() => onValueChange(item.value)}
 		>
@@ -42,7 +42,7 @@
 		-ms-overflow-style: none; /* IE and Edge */
 		scrollbar-width: none; /* Firefox */
 	}
-	
+
 	:global(.scrollbar-hide::-webkit-scrollbar) {
 		display: none; /* Chrome, Safari and Opera */
 	}
