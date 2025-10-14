@@ -129,7 +129,7 @@
 	{#if enabled}
 		<div class="border-primary/20 space-y-4 border-l-2 pl-4">
 			<div class="space-y-2">
-				<Label>{m.update_schedule_timezone_label()}</Label>
+				<Label>{m.common_timezone()}</Label>
 				<Select.Root type="single" bind:value={timezone} onValueChange={(v) => v && updateGlobalTimezone(v)}>
 					<Select.Trigger>
 						{commonTimezones.find((tz) => tz.value === timezone)?.label || timezone}
@@ -160,7 +160,7 @@
 					<Card.Root class="border-border/50">
 						<Card.Content class="space-y-4 py-6">
 							<div class="space-y-2.5">
-								<Label class="text-sm font-medium">{m.update_schedule_days_label()}</Label>
+								<Label class="text-sm font-medium">{m.common_days()}</Label>
 								<div class="flex flex-wrap gap-2">
 									{#each allDays as day}
 										{@const isSelected = window.days.includes(day)}
@@ -180,7 +180,7 @@
 
 							<div class="grid grid-cols-2 gap-4">
 								<div class="space-y-2">
-									<Label class="text-sm font-medium">{m.update_schedule_start_time_label()}</Label>
+									<Label class="text-sm font-medium">{m.common_start_time()}</Label>
 									<Input
 										type="time"
 										value={window.startTime}
@@ -189,7 +189,7 @@
 									/>
 								</div>
 								<div class="space-y-2">
-									<Label class="text-sm font-medium">{m.update_schedule_end_time_label()}</Label>
+									<Label class="text-sm font-medium">{m.common_end_time()}</Label>
 									<Input
 										type="time"
 										value={window.endTime}

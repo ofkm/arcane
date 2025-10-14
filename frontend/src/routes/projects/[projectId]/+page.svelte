@@ -85,7 +85,7 @@
 	const tabItems = $derived<TabItem[]>([
 		{
 			value: 'services',
-			label: m.compose_nav_services(),
+			label: m.common_services(),
 			icon: LayersIcon,
 			badge: project?.serviceCount
 		},
@@ -96,7 +96,7 @@
 		},
 		{
 			value: 'logs',
-			label: m.compose_nav_logs(),
+			label: m.common_logs(),
 			icon: LogsIcon,
 			disabled: project?.status !== 'running'
 		},
