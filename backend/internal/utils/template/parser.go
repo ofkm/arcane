@@ -31,14 +31,19 @@ func ParseEnvContent(content string) []dto.EnvVariable {
 		}
 
 		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
+		value := ""
+		if len(parts) == 2 {
+			value = strings.TrimSpace(parts[1])
+		}
 
-		// Strip surrounding quotes
+		// Strip surrounding quotes and handle escapes
 		if len(value) >= 2 {
-			if (strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`)) ||
-				(strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`)) {
+			if strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`) {
 				value = value[1 : len(value)-1]
 				value = strings.ReplaceAll(value, `\"`, `"`)
+			} else if strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`) {
+				value = value[1 : len(value)-1]
+				value = strings.ReplaceAll(value, `\'`, `'`)
 			}
 		}
 
