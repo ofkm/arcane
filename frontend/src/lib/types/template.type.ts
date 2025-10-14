@@ -21,7 +21,7 @@ export interface Template {
 	metadata?: {
 		version?: string;
 		author?: string;
-		tags?: string | string[];
+		tags?: string[];
 		remoteUrl?: string;
 		envUrl?: string;
 		documentationUrl?: string;
@@ -29,6 +29,19 @@ export interface Template {
 	};
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface EnvVariable {
+	key: string;
+	value: string;
+}
+
+export interface TemplateContentData {
+	template: Template;
+	content: string;
+	envContent: string;
+	services: string[];
+	envVariables: EnvVariable[];
 }
 
 export interface RemoteTemplate {

@@ -151,48 +151,18 @@ func (h *TemplateHandler) GetTemplateContent(c *gin.Context) {
 		return
 	}
 
-	template, err := h.templateService.GetTemplate(c.Request.Context(), id)
+	contentData, err := h.templateService.GetTemplateContentWithParsedData(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Template not found"},
-		})
-		return
-	}
-
-	var outTemplate dto.ComposeTemplateDto
-	if mapErr := dto.MapStruct(template, &outTemplate); mapErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Failed to map template: " + mapErr.Error()},
+			"data":    gin.H{"error": "Failed to get template content: " + err.Error()},
 		})
 		return
-	}
-
-	var composeContent, envContent string
-	if template.IsRemote {
-		composeContent, envContent, err = h.templateService.FetchTemplateContent(c.Request.Context(), template)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"data":    gin.H{"error": "Failed to fetch template content: " + err.Error()},
-			})
-			return
-		}
-	} else {
-		composeContent = template.Content
-		if template.EnvContent != nil {
-			envContent = *template.EnvContent
-		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": gin.H{
-			"content":    composeContent,
-			"envContent": envContent,
-			"template":   outTemplate,
-		},
+		"data":    contentData,
 	})
 }
 

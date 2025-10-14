@@ -14,7 +14,6 @@
 	import DownloadIcon from '@lucide/svelte/icons/download';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import { goto, invalidateAll } from '$app/navigation';
-	import { parseComposeServices, parseEnvVariables, getServicesPreview } from '$lib/utils/compose-parser';
 	import { m } from '$lib/paraglide/messages.js';
 	import { templateService } from '$lib/services/template-service';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
@@ -22,12 +21,11 @@
 
 	let { data } = $props();
 
-	let template = $derived(data.template);
-	let compose = $state(data.compose);
-	let env = $state(data.env);
-	let services = $derived(parseComposeServices(compose));
-	let envVars = $derived(parseEnvVariables(env));
-	let servicesPreview = $derived(getServicesPreview(services));
+	let template = $derived(data.templateData.template);
+	let compose = $state(data.templateData.content);
+	let env = $state(data.templateData.envContent);
+	let services = $derived(data.templateData.services);
+	let envVars = $derived(data.templateData.envVariables);
 
 	let isDownloading = $state(false);
 	let isDeleting = $state(false);
@@ -98,9 +96,9 @@
 		</Button>
 
 		<div>
-			<h1 class="text-xl font-bold break-words sm:text-2xl">{template.name}</h1>
+			<h1 class="break-words text-xl font-bold sm:text-2xl">{template.name}</h1>
 			{#if template.description}
-				<p class="text-muted-foreground mt-1.5 text-sm break-words sm:text-base">{template.description}</p>
+				<p class="text-muted-foreground mt-1.5 break-words text-sm sm:text-base">{template.description}</p>
 			{/if}
 		</div>
 
@@ -116,47 +114,12 @@
 					{m.templates_local()}
 				</Badge>
 			{/if}
-			{#if template.metadata?.tags}
-				{@const parseTags = (tags: any): string[] => {
-					if (!tags) return [];
-
-					if (Array.isArray(tags)) {
-						return tags.map((t) => String(t).trim()).filter(Boolean);
-					}
-
-					if (typeof tags === 'string') {
-						const trimmed = tags.trim();
-
-						if (trimmed.startsWith('[')) {
-							try {
-								const parsed = JSON.parse(trimmed);
-								if (Array.isArray(parsed)) {
-									return parsed
-										.map((t) =>
-											String(t)
-												.trim()
-												.replace(/^["']|["']$/g, '')
-										)
-										.filter(Boolean);
-								}
-							} catch {}
-						}
-
-						return trimmed
-							.split(',')
-							.map((t) => t.trim().replace(/^["'\[\]]+|["'\[\]]+$/g, ''))
-							.filter(Boolean);
-					}
-
-					return [];
-				}}
-				{@const tagsArray = parseTags(template.metadata.tags)}
-				{#each tagsArray as tag}
+			{#if template.metadata?.tags && template.metadata.tags.length > 0}
+				{#each template.metadata.tags as tag}
 					<Badge variant="outline">{tag}</Badge>
 				{/each}
 			{/if}
 		</div>
-
 		<div class="flex flex-col gap-2 sm:flex-row">
 			<Button onclick={() => goto(`/projects/new?templateId=${template.id}`)} class="w-full gap-2 sm:w-auto">
 				<FolderIcon class="size-4" />
@@ -205,12 +168,9 @@
 					<BoxIcon class="size-6 text-blue-500" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{m.compose_services()}</div>
-					<div class="mt-1 flex flex-wrap items-baseline gap-2">
+					<div class="text-muted-foreground text-xs font-semibold uppercase tracking-wide">{m.compose_services()}</div>
+					<div class="mt-1">
 						<div class="text-2xl font-bold">{services.length}</div>
-						{#if servicesPreview}
-							<div class="text-muted-foreground truncate text-sm">{servicesPreview}</div>
-						{/if}
 					</div>
 				</div>
 			</Card.Content>
@@ -222,9 +182,7 @@
 					<FileTextIcon class="size-6 text-purple-500" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-						{m.common_environment_variables()}
-					</div>
+					<div class="text-muted-foreground text-xs font-semibold uppercase tracking-wide">{m.environment_variables()}</div>
 					<div class="mt-1 flex flex-wrap items-baseline gap-2">
 						<div class="text-2xl font-bold">{envVars.length}</div>
 						{#if envVars.length > 0}
@@ -247,8 +205,8 @@
 				</div>
 			</Card.Header>
 			<Card.Content class="min-h-[500px] flex-grow p-0 lg:h-full">
-				<div class="h-full rounded-t-none rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
-					<CodeEditor bind:value={compose} language="yaml" />
+				<div class="h-full rounded-b-xl rounded-t-none [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
+					<CodeEditor bind:value={compose} language="yaml" readOnly={true} />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -293,9 +251,9 @@
 						{#each envVars as envVar}
 							<Card.Root variant="subtle" class="min-w-0">
 								<Card.Content class="flex min-w-0 flex-col gap-2 p-3">
-									<div class="text-muted-foreground truncate text-xs font-semibold tracking-wide uppercase">{envVar.key}</div>
+									<div class="text-muted-foreground truncate text-xs font-semibold uppercase tracking-wide">{envVar.key}</div>
 									{#if envVar.value}
-										<div class="text-foreground min-w-0 font-mono text-sm break-words select-all">{envVar.value}</div>
+										<div class="text-foreground min-w-0 select-all break-words font-mono text-sm">{envVar.value}</div>
 									{:else}
 										<div class="text-muted-foreground text-xs italic">{m.common_no_default_value()}</div>
 									{/if}
@@ -318,7 +276,7 @@
 					</Card.Header>
 					<Card.Content class="h-[500px] flex-grow p-0 lg:h-full">
 						<div class="h-full rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
-							<CodeEditor bind:value={env} language="env" />
+							<CodeEditor bind:value={env} language="env" readOnly={true} />
 						</div>
 					</Card.Content>
 				</Card.Root>
