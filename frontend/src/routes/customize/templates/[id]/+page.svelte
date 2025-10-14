@@ -182,7 +182,9 @@
 					<FileTextIcon class="size-6 text-purple-500" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<div class="text-muted-foreground text-xs font-semibold uppercase tracking-wide">{m.environment_variables()}</div>
+					<div class="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+						{m.common_environment_variables()}
+					</div>
 					<div class="mt-1 flex flex-wrap items-baseline gap-2">
 						<div class="text-2xl font-bold">{envVars.length}</div>
 						{#if envVars.length > 0}

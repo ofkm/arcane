@@ -255,7 +255,7 @@
 					</div>
 					<div class="min-w-0 flex-1">
 						<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
-							{m.templates_tags()}
+							{m.common_tags()}
 						</div>
 						<div class="mt-1 flex flex-wrap gap-1">
 							{#each item.metadata.tags.slice(0, 3) as tag}
