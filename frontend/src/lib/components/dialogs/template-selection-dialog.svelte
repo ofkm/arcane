@@ -108,7 +108,7 @@
 				envContent: details.envContent
 			});
 			open = false;
-			toast.success(m.templates_loaded_success({ name: template.name }));
+			toast.success(m.common_create_success({ resource: `${m.resource_template()} "${template.name}"` }));
 		} catch (error) {
 			console.error('Error loading template:', error);
 			toast.error(error instanceof Error ? error.message : m.templates_load_failed());
@@ -126,14 +126,14 @@
 		try {
 			const result = await templateService.download(template.id);
 			if (result) {
-				toast.success(m.templates_downloaded_success({ name: template.name }));
+				toast.success(m.common_download_success({ resource: `${m.resource_template()} "${template.name}"` }));
 				onDownloadSuccess?.();
 			} else {
-				toast.error(m.templates_download_failed());
+				toast.error(m.common_download_failed({ resource: m.resource_template() }));
 			}
 		} catch (error) {
 			console.error('Error downloading template:', error);
-			toast.error(error instanceof Error ? error.message : m.templates_download_failed());
+			toast.error(error instanceof Error ? error.message : m.common_download_failed({ resource: m.resource_template() }));
 		} finally {
 			loadingStates.delete(loadingKey);
 		}

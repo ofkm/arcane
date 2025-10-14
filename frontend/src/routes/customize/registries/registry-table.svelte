@@ -66,7 +66,7 @@
 						const result = await tryCatch(containerRegistryService.deleteRegistry(id));
 						if (result.error) {
 							failureCount++;
-							toast.error(m.registries_delete_failed({ url: reg?.url ?? m.common_unknown() }));
+							toast.error(m.common_delete_failed({ resource: `${m.resource_registry()} "${reg?.url ?? m.common_unknown()}"` }));
 						} else {
 							successCount++;
 						}
@@ -88,8 +88,8 @@
 	async function handleDeleteOne(id: string, url: string) {
 		const safeUrl = url ?? m.common_unknown();
 		openConfirmDialog({
-			title: m.common_remove_title({ resource: m.resource_registry() }),
-			message: m.registries_remove_message({ url: safeUrl }),
+			title: m.common_remove_title({ resource: `${m.resource_registry()} "${safeUrl}"` }),
+			message: m.common_remove_confirm({ resource: `${m.resource_registry()} "${safeUrl}"` }),
 			confirm: {
 				label: m.common_remove(),
 				destructive: true,
@@ -99,7 +99,7 @@
 					const result = await tryCatch(containerRegistryService.deleteRegistry(id));
 					handleApiResultWithCallbacks({
 						result,
-						message: m.registries_delete_failed({ url: safeUrl }),
+						message: m.common_delete_failed({ resource: `${m.resource_registry()} "${safeUrl}"` }),
 						setLoadingState: () => {},
 						onSuccess: async () => {
 							toast.success(m.common_delete_success({ resource: `${m.resource_registry()} "${safeUrl}"` }));

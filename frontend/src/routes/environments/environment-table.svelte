@@ -81,8 +81,8 @@
 
 	async function handleDeleteOne(id: string, hostname: string) {
 		openConfirmDialog({
-			title: m.common_delete_title({ resource: m.resource_environment() }),
-			message: m.environments_delete_message({ name: hostname }),
+			title: m.common_delete_title({ resource: `${m.resource_environment()} "${hostname}"` }),
+			message: m.common_delete_confirm({ resource: `${m.resource_environment()} "${hostname}"` }),
 			confirm: {
 				label: m.common_remove(),
 				destructive: true,
@@ -91,7 +91,7 @@
 					const result = await tryCatch(environmentManagementService.delete(id));
 					handleApiResultWithCallbacks({
 						result,
-						message: m.environments_delete_failed({ name: hostname }),
+						message: m.common_delete_failed({ resource: `${m.resource_environment()} "${hostname}"` }),
 						setLoadingState: () => {},
 						onSuccess: async () => {
 							toast.success(m.common_delete_success({ resource: `${m.resource_environment()} "${hostname}"` }));

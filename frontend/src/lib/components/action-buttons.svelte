@@ -269,7 +269,7 @@
 			// If popover was shown, finish/close it nicely
 			if (openedPopover) {
 				calculateOverallProgress();
-				if (hadError) throw new Error(pullError || m.images_pull_failed());
+				if (hadError) throw new Error(pullError || m.common_action_failed_with_type({ action: 'pull', type: m.resource_images() }));
 
 				if (pullProgress < 100) {
 					const allDone = Object.values(layerProgress).every(
@@ -404,7 +404,7 @@
 				resetPullState();
 			}, 2000);
 		} catch (error: any) {
-			const message = error?.message || m.images_pull_failed();
+			const message = error?.message || m.common_action_failed_with_type({ action: 'pull', type: m.resource_images() });
 			pullError = message;
 			pullStatusText = m.images_pull_failed_with_error({ error: message });
 			toast.error(message);

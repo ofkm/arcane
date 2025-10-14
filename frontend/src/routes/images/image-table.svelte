@@ -64,7 +64,7 @@
 						const result = await tryCatch(imageService.deleteImage(id));
 						handleApiResultWithCallbacks({
 							result,
-							message: m.images_remove_failed(),
+							message: m.common_delete_failed({ resource: m.resource_image() }),
 							setLoadingState: () => {},
 							onSuccess: () => {
 								successCount++;
@@ -76,13 +76,12 @@
 					isLoading.removing = false;
 
 					if (successCount > 0) {
-						const msg =
-							successCount === 1 ? m.images_remove_success_one() : m.images_remove_success_many({ count: successCount });
+						const msg = m.common_bulk_delete_success({ count: successCount, resource: m.resource_images() });
 						toast.success(msg);
 						images = await imageService.getImages(requestOptions);
 					}
 					if (failureCount > 0) {
-						const msg = failureCount === 1 ? m.images_remove_failed_one() : m.images_remove_failed_many({ count: failureCount });
+						const msg = m.common_bulk_delete_failed({ count: failureCount, resource: m.resource_images() });
 						toast.error(msg);
 					}
 
@@ -105,10 +104,10 @@
 					const result = await tryCatch(imageService.deleteImage(id));
 					handleApiResultWithCallbacks({
 						result,
-						message: m.images_remove_failed(),
+						message: m.common_delete_failed({ resource: m.resource_image() }),
 						setLoadingState: () => {},
 						onSuccess: async () => {
-							toast.success(m.images_remove_success());
+							toast.success(m.common_delete_success({ resource: m.resource_image() }));
 							images = await imageService.getImages(requestOptions);
 						}
 					});
@@ -129,10 +128,10 @@
 		const result = await tryCatch(imageService.pullImage(repoTag));
 		handleApiResultWithCallbacks({
 			result,
-			message: m.images_pull_failed(),
+			message: m.common_action_failed_with_type({ action: 'pull', type: m.resource_images() }),
 			setLoadingState: () => {},
 			onSuccess: async () => {
-				toast.success(m.images_pull_success({ repoTag }));
+				toast.success(m.common_download_success({ resource: m.resource_images() }));
 				images = await imageService.getImages(requestOptions);
 			}
 		});

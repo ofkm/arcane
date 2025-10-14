@@ -41,8 +41,8 @@
 		if (selectedIds.length === 0) return;
 
 		openConfirmDialog({
-			title: m.users_delete_selected_title({ count: selectedIds.length }),
-			message: m.users_delete_selected_message({ count: selectedIds.length }),
+			title: m.common_delete_selected_title({ count: selectedIds.length, resource: m.resource_users() }),
+			message: m.common_delete_confirm({ resource: m.resource_users() }),
 			confirm: {
 				label: m.common_delete(),
 				destructive: true,
@@ -55,7 +55,7 @@
 						const result = await tryCatch(userService.delete(userId));
 						handleApiResultWithCallbacks({
 							result,
-							message: m.users_delete_selected_item_failed({ id: userId }),
+							message: m.common_delete_failed({ resource: m.resource_user() }),
 							setLoadingState: () => {},
 							onSuccess: () => {
 								successCount++;
@@ -70,13 +70,13 @@
 					isLoading.removing = false;
 
 					if (successCount > 0) {
-						const msg = m.common_bulk_delete_success({ count: successCount, resource: m.users_title() });
+						const msg = m.common_bulk_delete_success({ count: successCount, resource: m.resource_users() });
 						toast.success(msg);
 						await onUsersChanged();
 					}
 
 					if (failureCount > 0) {
-						const msg = m.common_bulk_delete_failed({ count: failureCount, resource: m.users_title() });
+						const msg = m.common_bulk_delete_failed({ count: failureCount, resource: m.resource_users() });
 						toast.error(msg);
 					}
 
@@ -89,8 +89,8 @@
 	async function handleDeleteUser(userId: string, username: string) {
 		const safeName = username?.trim() || m.common_unknown();
 		openConfirmDialog({
-			title: m.users_delete_user_title({ username: safeName }),
-			message: m.users_delete_user_message({ username: safeName }),
+			title: m.common_delete_title({ resource: `${m.resource_user()} "${safeName}"` }),
+			message: m.common_delete_confirm({ resource: `${m.resource_user()} "${safeName}"` }),
 			confirm: {
 				label: m.common_delete(),
 				destructive: true,
@@ -98,10 +98,10 @@
 					isLoading.removing = true;
 					handleApiResultWithCallbacks({
 						result: await tryCatch(userService.delete(userId)),
-						message: m.users_delete_user_failed({ username: safeName }),
+						message: m.common_delete_failed({ resource: `${m.resource_user()} "${safeName}"` }),
 						setLoadingState: (value) => (isLoading.removing = value),
 						onSuccess: async () => {
-							toast.success(m.users_delete_user_success({ username: safeName }));
+							toast.success(m.common_delete_success({ resource: `${m.resource_user()} "${safeName}"` }));
 							await onUsersChanged();
 						}
 					});

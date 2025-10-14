@@ -79,10 +79,10 @@
 		const result = await tryCatch(templateService.download(id));
 		handleApiResultWithCallbacks({
 			result,
-			message: m.templates_download_failed(),
+			message: m.common_download_failed({ resource: m.resource_template() }),
 			setLoadingState: (value) => (isLoading.downloading = value),
 			onSuccess: async () => {
-				toast.success(m.templates_downloaded_success({ name }));
+				toast.success(m.common_download_success({ resource: `${m.resource_template()} "${name}"` }));
 				templates = await templateService.getTemplates(requestOptions);
 			}
 		});

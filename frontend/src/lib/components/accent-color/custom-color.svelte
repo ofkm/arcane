@@ -67,7 +67,7 @@
 			</div>
 
 			<Dialog.Footer class="mt-6">
-				<Button variant="secondary" onclick={() => onOpenChange(false)}>{m.cancel()}</Button>
+				<Button variant="secondary" onclick={() => onOpenChange(false)}>{m.common_cancel()}</Button>
 				<Button type="submit" disabled={!customColorInput || !isValidColor(customColorInput)}>{m.apply()}</Button>
 			</Dialog.Footer>
 		</form>

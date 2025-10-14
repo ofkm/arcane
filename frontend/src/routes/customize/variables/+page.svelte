@@ -266,7 +266,7 @@
 																<InputGroup.Button
 																	{...props}
 																	variant="ghost"
-																	aria-label={m.duplicate()}
+																	aria-label={m.common_duplicate()}
 																	size="icon-xs"
 																	onclick={() => duplicateEnvVar(actualIndex)}
 																	disabled={isLoading}
@@ -276,7 +276,7 @@
 															{/snippet}
 														</Tooltip.Trigger>
 														<Tooltip.Content>
-															<p>{m.duplicate()}</p>
+															<p>{m.common_duplicate()}</p>
 														</Tooltip.Content>
 													</Tooltip.Root>
 													<Tooltip.Root>

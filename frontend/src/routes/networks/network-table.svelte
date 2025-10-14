@@ -45,8 +45,8 @@
 			return;
 		}
 		openConfirmDialog({
-			title: m.common_delete_title({ resource: m.resource_network() }),
-			message: m.networks_delete_confirm_message({ name: safeName }),
+			title: m.common_delete_title({ resource: `${m.resource_network()} "${safeName}"` }),
+			message: m.common_delete_confirm({ resource: `${m.resource_network()} "${safeName}"` }),
 			confirm: {
 				label: m.common_delete(),
 				destructive: true,
@@ -76,8 +76,8 @@
 		}
 
 		openConfirmDialog({
-			title: m.networks_delete_selected_title({ count: ids.length }),
-			message: m.networks_delete_selected_message({ count: ids.length }),
+			title: m.common_delete_selected_title({ count: ids.length, resource: m.resource_networks() }),
+			message: m.common_delete_confirm({ resource: m.resource_networks() }),
 			confirm: {
 				label: m.common_delete(),
 				destructive: true,

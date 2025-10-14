@@ -291,7 +291,7 @@
 											{#if config.Gateway}
 												<div class="flex flex-col sm:flex-row sm:items-center">
 													<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
-														>{m.networks_ipam_gateway_label()}:</span
+														>{m.common_gateway()}:</span
 													>
 													<code
 														class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"

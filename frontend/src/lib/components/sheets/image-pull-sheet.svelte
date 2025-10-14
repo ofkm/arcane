@@ -180,8 +180,8 @@
 				throw new Error(pullError);
 			}
 
-			pullStatusText = m.images_pull_success({ repoTag: fullImageName });
-			toast.success(m.images_pull_success({ repoTag: fullImageName }));
+			pullStatusText = m.common_download_success({ resource: m.resource_images() });
+			toast.success(m.common_download_success({ resource: m.resource_images() }));
 			onPullFinished(true, fullImageName);
 
 			// Reset form and close sheet
