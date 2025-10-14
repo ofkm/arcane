@@ -9,14 +9,16 @@
 	import PlusIcon from '@lucide/svelte/icons/plus';
 	import TrashIcon from '@lucide/svelte/icons/trash-2';
 	import type { UpdateScheduleWindow } from '$lib/types/settings.type';
+	import { cn } from '$lib/utils';
 
 	interface Props {
+		enabled?: boolean;
 		windows: UpdateScheduleWindow[];
 		timezone: string;
-		onUpdate: (windows: UpdateScheduleWindow[], timezone: string) => void;
+		onUpdate: (enabled: boolean, windows: UpdateScheduleWindow[], timezone: string) => void;
 	}
 
-	let { windows = $bindable([]), timezone = $bindable('UTC'), onUpdate }: Props = $props();
+	let { enabled = $bindable(false), windows = $bindable([]), timezone = $bindable('UTC'), onUpdate }: Props = $props();
 
 	const allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
@@ -51,12 +53,12 @@
 			timezone: timezone
 		};
 		windows = [...windows, newWindow];
-		onUpdate(windows, timezone);
+		onUpdate(enabled, windows, timezone);
 	}
 
 	function removeWindow(index: number) {
 		windows = windows.filter((_, i) => i !== index);
-		onUpdate(windows, timezone);
+		onUpdate(enabled, windows, timezone);
 	}
 
 	function toggleDay(windowIndex: number, day: string) {
@@ -67,91 +69,149 @@
 			window.days = [...window.days, day];
 		}
 		windows = [...windows];
-		onUpdate(windows, timezone);
+		onUpdate(enabled, windows, timezone);
 	}
 
 	function updateTime(windowIndex: number, field: 'startTime' | 'endTime', value: string) {
 		windows[windowIndex][field] = value;
 		windows = [...windows];
-		onUpdate(windows, timezone);
+		onUpdate(enabled, windows, timezone);
 	}
 
 	function updateGlobalTimezone(newTimezone: string) {
 		timezone = newTimezone;
 		windows = windows.map((w) => ({ ...w, timezone: newTimezone }));
-		onUpdate(windows, timezone);
+		onUpdate(enabled, windows, timezone);
+	}
+
+	function updateEnabled(value: boolean) {
+		enabled = value;
+		onUpdate(enabled, windows, timezone);
 	}
 </script>
 
 <div class="space-y-4">
+	<!-- Mode Selection -->
 	<div class="space-y-2">
-		<Label>{m.update_schedule_timezone_label()}</Label>
-		<Select.Root type="single" bind:value={timezone} onValueChange={(v) => v && updateGlobalTimezone(v)}>
-			<Select.Trigger>
-				{commonTimezones.find((tz) => tz.value === timezone)?.label || timezone}
-			</Select.Trigger>
-			<Select.Content>
-				{#each commonTimezones as tz}
-					<Select.Item value={tz.value}>{tz.label}</Select.Item>
-				{/each}
-			</Select.Content>
-		</Select.Root>
-		<p class="text-muted-foreground text-sm">{m.update_schedule_timezone_description()}</p>
-	</div>
-
-	<div class="space-y-3">
-		<div class="flex items-center justify-between">
-			<Label>{m.update_schedule_windows_label()}</Label>
-			<Button size="sm" variant="outline" onclick={addWindow}>
-				<PlusIcon class="mr-2 size-4" />
-				{m.update_schedule_add_window()}
-			</Button>
+		<Label>{m.update_schedule_mode_label()}</Label>
+		<div class="grid gap-2">
+			<label
+				class={cn(
+					'hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-all',
+					!enabled && 'bg-primary/5 border-primary shadow-sm'
+				)}
+			>
+				<input type="radio" checked={!enabled} onchange={() => updateEnabled(false)} class="accent-primary mt-1" />
+				<div class="flex-1">
+					<div class="font-medium">{m.update_schedule_mode_immediate()}</div>
+					<div class="text-muted-foreground text-sm">
+						{m.update_schedule_mode_immediate_description()}
+					</div>
+				</div>
+			</label>
+			<label
+				class={cn(
+					'hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-all',
+					enabled && 'bg-primary/5 border-primary shadow-sm'
+				)}
+			>
+				<input type="radio" checked={enabled} onchange={() => updateEnabled(true)} class="accent-primary mt-1" />
+				<div class="flex-1">
+					<div class="font-medium">{m.update_schedule_mode_scheduled()}</div>
+					<div class="text-muted-foreground text-sm">
+						{m.update_schedule_mode_scheduled_description()}
+					</div>
+				</div>
+			</label>
 		</div>
-
-		{#if windows.length === 0}
-			<p class="text-muted-foreground text-sm">{m.update_schedule_no_windows()}</p>
-		{/if}
-
-		{#each windows as window, index}
-			<Card.Root>
-				<Card.Content class="space-y-4 pt-6">
-					<div class="space-y-2">
-						<Label>{m.update_schedule_days_label()}</Label>
-						<div class="flex flex-wrap gap-2">
-							{#each allDays as day}
-								<label
-									class="hover:bg-accent flex cursor-pointer items-center space-x-2 rounded border px-3 py-2 text-sm transition-colors"
-									class:bg-primary={window.days.includes(day)}
-									class:text-primary-foreground={window.days.includes(day)}
-								>
-									<Checkbox checked={window.days.includes(day)} onCheckedChange={() => toggleDay(index, day)} class="hidden" />
-									<span>{dayLabels[day]}</span>
-								</label>
-							{/each}
-						</div>
-					</div>
-
-					<div class="grid grid-cols-2 gap-4">
-						<div class="space-y-2">
-							<Label>{m.update_schedule_start_time_label()}</Label>
-							<Input
-								type="time"
-								value={window.startTime}
-								oninput={(e) => updateTime(index, 'startTime', e.currentTarget.value)}
-							/>
-						</div>
-						<div class="space-y-2">
-							<Label>{m.update_schedule_end_time_label()}</Label>
-							<Input type="time" value={window.endTime} oninput={(e) => updateTime(index, 'endTime', e.currentTarget.value)} />
-						</div>
-					</div>
-
-					<Button size="sm" variant="destructive" onclick={() => removeWindow(index)} class="w-full">
-						<TrashIcon class="mr-2 size-4" />
-						{m.update_schedule_remove_window()}
-					</Button>
-				</Card.Content>
-			</Card.Root>
-		{/each}
 	</div>
+
+	{#if enabled}
+		<div class="border-primary/20 space-y-4 border-l-2 pl-4">
+			<div class="space-y-2">
+				<Label>{m.update_schedule_timezone_label()}</Label>
+				<Select.Root type="single" bind:value={timezone} onValueChange={(v) => v && updateGlobalTimezone(v)}>
+					<Select.Trigger>
+						{commonTimezones.find((tz) => tz.value === timezone)?.label || timezone}
+					</Select.Trigger>
+					<Select.Content>
+						{#each commonTimezones as tz}
+							<Select.Item value={tz.value}>{tz.label}</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+				<p class="text-muted-foreground text-sm">{m.update_schedule_timezone_description()}</p>
+			</div>
+
+			<div class="space-y-3">
+				<div class="flex items-center justify-between">
+					<Label>{m.update_schedule_windows_label()}</Label>
+					<Button size="sm" variant="outline" onclick={addWindow}>
+						<PlusIcon class="mr-2 size-4" />
+						{m.update_schedule_add_window()}
+					</Button>
+				</div>
+
+				{#if windows.length === 0}
+					<p class="text-muted-foreground text-sm">{m.update_schedule_no_windows()}</p>
+				{/if}
+
+				{#each windows as window, index}
+					<Card.Root class="border-border/50">
+						<Card.Content class="space-y-4 py-6">
+							<div class="space-y-2.5">
+								<Label class="text-sm font-medium">{m.update_schedule_days_label()}</Label>
+								<div class="flex flex-wrap gap-2">
+									{#each allDays as day}
+										{@const isSelected = window.days.includes(day)}
+										<button
+											type="button"
+											onclick={() => toggleDay(index, day)}
+											class={cn(
+												'hover:bg-accent flex cursor-pointer items-center rounded-md border px-3.5 py-2 text-sm font-medium transition-all',
+												isSelected && 'bg-primary text-primary-foreground border-primary/50 shadow-sm'
+											)}
+										>
+											<span>{dayLabels[day]}</span>
+										</button>
+									{/each}
+								</div>
+							</div>
+
+							<div class="grid grid-cols-2 gap-4">
+								<div class="space-y-2">
+									<Label class="text-sm font-medium">{m.update_schedule_start_time_label()}</Label>
+									<Input
+										type="time"
+										value={window.startTime}
+										oninput={(e) => updateTime(index, 'startTime', e.currentTarget.value)}
+										class="font-mono"
+									/>
+								</div>
+								<div class="space-y-2">
+									<Label class="text-sm font-medium">{m.update_schedule_end_time_label()}</Label>
+									<Input
+										type="time"
+										value={window.endTime}
+										oninput={(e) => updateTime(index, 'endTime', e.currentTarget.value)}
+										class="font-mono"
+									/>
+								</div>
+							</div>
+
+							<Button
+								size="sm"
+								variant="outline"
+								onclick={() => removeWindow(index)}
+								class="text-muted-foreground hover:text-destructive hover:border-destructive/50 w-full transition-colors"
+							>
+								<TrashIcon class="mr-2 size-4" />
+								{m.update_schedule_remove_window()}
+							</Button>
+						</Card.Content>
+					</Card.Root>
+				{/each}
+			</div>
+		</div>
+	{/if}
 </div>

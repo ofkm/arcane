@@ -17,7 +17,6 @@
 	import { settingsService } from '$lib/services/settings-service.js';
 	import UpdateScheduleEditor from '$lib/components/schedule/update-schedule-editor.svelte';
 	import ClockIcon from '@lucide/svelte/icons/clock';
-	import { Label } from '$lib/components/ui/label';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings);
@@ -67,9 +66,9 @@
 	});
 
 	// Update schedule state
-	let scheduleWindows = $state<UpdateScheduleWindow[]>([]);
-	let scheduleTimezone = $state<string>('UTC');
-	let scheduleMode = $state<'immediate' | 'scheduled'>('immediate');
+	let scheduleEnabled = $derived<boolean>(false);
+	let scheduleWindows = $derived<UpdateScheduleWindow[]>([]);
+	let scheduleTimezone = $derived<string>('UTC');
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
@@ -79,7 +78,8 @@
 		}
 	});
 
-	function handleScheduleUpdate(windows: UpdateScheduleWindow[], timezone: string) {
+	function handleScheduleUpdate(enabled: boolean, windows: UpdateScheduleWindow[], timezone: string) {
+		scheduleEnabled = enabled;
 		scheduleWindows = windows;
 		scheduleTimezone = timezone;
 	}
@@ -93,9 +93,9 @@
 			// Add schedule data to settings
 			const settingsToUpdate = {
 				...data,
-				updateScheduleEnabled: scheduleMode === 'scheduled',
+				updateScheduleEnabled: scheduleEnabled,
 				updateScheduleWindows: {
-					enabled: scheduleMode === 'scheduled',
+					enabled: scheduleEnabled,
 					windows: scheduleWindows
 				} as UpdateScheduleConfig,
 				updateScheduleTimezone: scheduleTimezone
@@ -209,49 +209,12 @@
 					<Card.Description>{m.update_schedule_description()}</Card.Description>
 				</Card.Header>
 				<Card.Content class="px-6">
-					<div class="space-y-4">
-						<div class="space-y-2">
-							<Label>{m.update_schedule_mode_label()}</Label>
-							<div class="grid gap-2">
-								<label
-									class="hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-colors"
-									class:bg-accent={scheduleMode === 'immediate'}
-									class:border-primary={scheduleMode === 'immediate'}
-								>
-									<input type="radio" name="scheduleMode" value="immediate" bind:group={scheduleMode} class="mt-1" />
-									<div class="flex-1">
-										<div class="font-medium">{m.update_schedule_mode_immediate()}</div>
-										<div class="text-muted-foreground text-sm">
-											{m.update_schedule_mode_immediate_description()}
-										</div>
-									</div>
-								</label>
-								<label
-									class="hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-colors"
-									class:bg-accent={scheduleMode === 'scheduled'}
-									class:border-primary={scheduleMode === 'scheduled'}
-								>
-									<input type="radio" name="scheduleMode" value="scheduled" bind:group={scheduleMode} class="mt-1" />
-									<div class="flex-1">
-										<div class="font-medium">{m.update_schedule_mode_scheduled()}</div>
-										<div class="text-muted-foreground text-sm">
-											{m.update_schedule_mode_scheduled_description()}
-										</div>
-									</div>
-								</label>
-							</div>
-						</div>
-
-						{#if scheduleMode === 'scheduled'}
-							<div class="border-primary/20 border-l-2 pl-4">
-								<UpdateScheduleEditor
-									bind:windows={scheduleWindows}
-									bind:timezone={scheduleTimezone}
-									onUpdate={handleScheduleUpdate}
-								/>
-							</div>
-						{/if}
-					</div>
+					<UpdateScheduleEditor
+						bind:enabled={scheduleEnabled}
+						bind:windows={scheduleWindows}
+						bind:timezone={scheduleTimezone}
+						onUpdate={handleScheduleUpdate}
+					/>
 				</Card.Content>
 			</Card.Root>
 		{/if}

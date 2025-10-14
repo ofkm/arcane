@@ -239,7 +239,8 @@
 		}
 	}
 
-	function handleScheduleUpdate(windows: UpdateScheduleWindow[], timezone: string) {
+	function handleScheduleUpdate(enabled: boolean, windows: UpdateScheduleWindow[], timezone: string) {
+		localScheduleEnabled = enabled;
 		localScheduleWindows = windows;
 		localScheduleTimezone = timezone;
 	}
@@ -327,48 +328,12 @@
 					onEnableOverride={() => enableOverride('schedule')}
 				>
 					{#snippet children()}
-						<div class="space-y-3">
-							<!-- Mode Selection -->
-							<div class="space-y-2">
-								<Label>{m.update_schedule_mode_label()}</Label>
-								<div class="grid gap-2">
-									<label
-										class="hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-3 transition-colors"
-										class:bg-accent={!localScheduleEnabled}
-										class:border-primary={!localScheduleEnabled}
-									>
-										<input type="radio" bind:group={localScheduleEnabled} value={false} disabled={isLoading} class="mt-1" />
-										<div class="flex-1">
-											<div class="text-sm font-medium">{m.update_schedule_mode_immediate()}</div>
-											<div class="text-muted-foreground text-xs">
-												{m.update_schedule_mode_immediate_description()}
-											</div>
-										</div>
-									</label>
-									<label
-										class="hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-3 transition-colors"
-										class:bg-accent={localScheduleEnabled}
-										class:border-primary={localScheduleEnabled}
-									>
-										<input type="radio" bind:group={localScheduleEnabled} value={true} disabled={isLoading} class="mt-1" />
-										<div class="flex-1">
-											<div class="text-sm font-medium">{m.update_schedule_mode_scheduled()}</div>
-											<div class="text-muted-foreground text-xs">
-												{m.update_schedule_mode_scheduled_description()}
-											</div>
-										</div>
-									</label>
-								</div>
-							</div>
-
-							{#if localScheduleEnabled}
-								<UpdateScheduleEditor
-									bind:windows={localScheduleWindows}
-									bind:timezone={localScheduleTimezone}
-									onUpdate={handleScheduleUpdate}
-								/>
-							{/if}
-						</div>
+						<UpdateScheduleEditor
+							bind:enabled={localScheduleEnabled}
+							bind:windows={localScheduleWindows}
+							bind:timezone={localScheduleTimezone}
+							onUpdate={handleScheduleUpdate}
+						/>
 					{/snippet}
 				</SettingsSection>
 			{/if}
