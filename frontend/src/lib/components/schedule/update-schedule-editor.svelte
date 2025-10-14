@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Select from '$lib/components/ui/select';
@@ -23,13 +22,13 @@
 	const allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 	const dayLabels: Record<string, string> = {
-		monday: 'Monday',
-		tuesday: 'Tuesday',
-		wednesday: 'Wednesday',
-		thursday: 'Thursday',
-		friday: 'Friday',
-		saturday: 'Saturday',
-		sunday: 'Sunday'
+		monday: m.day_monday(),
+		tuesday: m.day_tuesday(),
+		wednesday: m.day_wednesday(),
+		thursday: m.day_thursday(),
+		friday: m.day_friday(),
+		saturday: m.day_saturday(),
+		sunday: m.day_sunday()
 	};
 
 	const commonTimezones = [
@@ -91,7 +90,6 @@
 </script>
 
 <div class="space-y-4">
-	<!-- Mode Selection -->
 	<div class="space-y-2">
 		<Label>{m.update_schedule_mode_label()}</Label>
 		<div class="grid gap-2">
