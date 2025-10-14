@@ -1,13 +1,11 @@
 import { templateService } from '$lib/services/template-service';
 import { error } from '@sveltejs/kit';
-import type { Template } from '$lib/types/template.type';
+import type { Template, TemplateContentData } from '$lib/types/template.type';
 
 export const load = async ({
 	params
 }): Promise<{
-	template: Template;
-	compose: string;
-	env: string;
+	templateData: TemplateContentData;
 	allTemplates: Template[];
 }> => {
 	try {
@@ -17,9 +15,7 @@ export const load = async ({
 		]);
 
 		return {
-			template: templateData.template,
-			compose: templateData.content,
-			env: templateData.envContent,
+			templateData,
 			allTemplates
 		};
 	} catch (err) {

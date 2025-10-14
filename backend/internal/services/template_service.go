@@ -16,12 +16,15 @@ import (
 	"sync"
 	"time"
 
+	composeloader "github.com/compose-spec/compose-go/v2/loader"
+	composetypes "github.com/compose-spec/compose-go/v2/types"
 	"github.com/google/uuid"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	appfs "github.com/ofkm/arcane-backend/internal/utils/fs"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
+	"github.com/ofkm/arcane-backend/internal/utils/template"
 	"gorm.io/gorm"
 )
 
@@ -170,8 +173,8 @@ func (s *TemplateService) GetAllTemplatesPaginated(ctx context.Context, params p
 			func(t dto.ComposeTemplateDto) (string, error) { return t.Name, nil },
 			func(t dto.ComposeTemplateDto) (string, error) { return t.Description, nil },
 			func(t dto.ComposeTemplateDto) (string, error) {
-				if t.Metadata != nil && t.Metadata.Tags != nil {
-					return *t.Metadata.Tags, nil
+				if t.Metadata != nil && len(t.Metadata.Tags) > 0 {
+					return strings.Join(t.Metadata.Tags, " "), nil
 				}
 				return "", nil
 			},
@@ -618,13 +621,6 @@ func (s *TemplateService) fetchRegistryManifest(ctx context.Context, url string)
 }
 
 func (s *TemplateService) convertRemoteToLocal(remote dto.RemoteTemplate, registry *models.TemplateRegistry) models.ComposeTemplate {
-	tagsJSON := ""
-	if len(remote.Tags) > 0 {
-		if data, err := json.Marshal(remote.Tags); err == nil {
-			tagsJSON = string(data)
-		}
-	}
-
 	publicID := makeRemoteID(registry.ID, remote.ID)
 
 	return models.ComposeTemplate{
@@ -640,7 +636,7 @@ func (s *TemplateService) convertRemoteToLocal(remote dto.RemoteTemplate, regist
 		Metadata: &models.ComposeTemplateMetadata{
 			Version:          &remote.Version,
 			Author:           &remote.Author,
-			Tags:             &tagsJSON,
+			Tags:             remote.Tags,
 			RemoteURL:        &remote.ComposeURL,
 			EnvURL:           &remote.EnvURL,
 			DocumentationURL: &remote.DocumentationURL,
@@ -982,4 +978,89 @@ func (s *TemplateService) UpdateGlobalVariables(ctx context.Context, vars []dto.
 		"count", len(sortedVars))
 
 	return nil
+}
+
+// ParseComposeServices extracts service names from a compose file content using compose-go
+func (s *TemplateService) ParseComposeServices(ctx context.Context, composeContent string) []string {
+	if composeContent == "" {
+		return []string{}
+	}
+
+	// Create a temp directory with dummy .env file to satisfy env_file references
+	tmpDir, err := os.MkdirTemp("", "arcane-compose-parse-*")
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to create temp dir for compose parsing", "error", err)
+		return []string{}
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create a dummy .env file to prevent env file errors
+	envPath := filepath.Join(tmpDir, ".env")
+	if err := os.WriteFile(envPath, []byte(""), 0600); err != nil {
+		slog.WarnContext(ctx, "Failed to create dummy env file", "error", err)
+	}
+
+	// Parse using compose-go
+	configDetails := composetypes.ConfigDetails{
+		ConfigFiles: []composetypes.ConfigFile{
+			{
+				Content: []byte(composeContent),
+			},
+		},
+		WorkingDir:  tmpDir,
+		Environment: composetypes.Mapping{},
+	}
+
+	project, err := composeloader.LoadWithContext(ctx, configDetails, composeloader.WithSkipValidation)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to parse compose services", "error", err)
+		return []string{}
+	}
+
+	serviceNames := make([]string, 0, len(project.Services))
+	for _, service := range project.Services {
+		serviceNames = append(serviceNames, service.Name)
+	}
+
+	return serviceNames
+}
+
+// GetTemplateContentWithParsedData returns template content along with parsed metadata
+func (s *TemplateService) GetTemplateContentWithParsedData(ctx context.Context, id string) (*dto.ComposeTemplateContentDto, error) {
+	tmpl, err := s.GetTemplate(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	var outTemplate dto.ComposeTemplateDto
+	if mapErr := dto.MapStruct(tmpl, &outTemplate); mapErr != nil {
+		return nil, fmt.Errorf("failed to map template: %w", mapErr)
+	}
+
+	var composeContent, envContent string
+	if tmpl.IsRemote {
+		composeContent, envContent, err = s.FetchTemplateContent(ctx, tmpl)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch template content: %w", err)
+		}
+	} else {
+		composeContent = tmpl.Content
+		if tmpl.EnvContent != nil {
+			envContent = *tmpl.EnvContent
+		}
+	}
+
+	// Parse services from compose content using compose-go library
+	services := s.ParseComposeServices(ctx, composeContent)
+
+	// Parse environment variables
+	envVars := template.ParseEnvContent(envContent)
+
+	return &dto.ComposeTemplateContentDto{
+		Template:     outTemplate,
+		Content:      composeContent,
+		EnvContent:   envContent,
+		Services:     services,
+		EnvVariables: envVars,
+	}, nil
 }

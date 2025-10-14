@@ -1,5 +1,5 @@
 import BaseAPIService from './api-service';
-import type { TemplateRegistry, Template, RemoteRegistry } from '$lib/types/template.type';
+import type { TemplateRegistry, Template, RemoteRegistry, TemplateContentData } from '$lib/types/template.type';
 import type { Variable } from '$lib/types/variable.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import { transformPaginationParams } from '$lib/utils/params.util';
@@ -16,19 +16,10 @@ export default class TemplateService extends BaseAPIService {
 		return response.data?.data ?? [];
 	}
 
-	async getTemplateContent(id: string): Promise<{
-		content: string;
-		envContent: string;
-		template: Template;
-	}> {
+	async getTemplateContent(id: string): Promise<TemplateContentData> {
 		const encodedId = encodeURIComponent(id);
 		const response = await this.api.get(`/templates/${encodedId}/content`);
-		const data = response.data?.data ?? {};
-		return {
-			content: data.content,
-			envContent: data.envContent,
-			template: data.template
-		};
+		return response.data?.data;
 	}
 
 	async download(id: string): Promise<Template> {

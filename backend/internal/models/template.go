@@ -22,12 +22,12 @@ type ComposeTemplate struct {
 }
 
 type ComposeTemplateMetadata struct {
-	Version          *string `json:"version,omitempty"`
-	Author           *string `json:"author,omitempty"`
-	Tags             *string `json:"tags,omitempty"`
-	RemoteURL        *string `json:"remoteUrl,omitempty"`
-	EnvURL           *string `json:"envUrl,omitempty"`
-	DocumentationURL *string `json:"documentationUrl,omitempty"`
+	Version          *string  `json:"version,omitempty"`
+	Author           *string  `json:"author,omitempty"`
+	Tags             []string `json:"tags,omitempty" gorm:"serializer:json"`
+	RemoteURL        *string  `json:"remoteUrl,omitempty"`
+	EnvURL           *string  `json:"envUrl,omitempty"`
+	DocumentationURL *string  `json:"documentationUrl,omitempty"`
 }
 
 func (TemplateRegistry) TableName() string { return "template_registries" }
