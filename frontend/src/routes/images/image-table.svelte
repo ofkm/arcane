@@ -94,7 +94,7 @@
 
 	async function deleteImage(id: string) {
 		openConfirmDialog({
-			title: m.images_remove_title(),
+			title: m.common_remove_title({ resource: m.resource_image() }),
 			message: m.images_remove_message(),
 			confirm: {
 				label: m.common_remove(),
@@ -164,7 +164,7 @@
 			cell: StatusCell
 		},
 		{ accessorKey: 'created', title: m.common_created(), sortable: true, cell: CreatedCell },
-		{ accessorKey: 'size', title: m.images_size(), sortable: true, cell: SizeCell },
+		{ accessorKey: 'size', title: m.common_size(), sortable: true, cell: SizeCell },
 		{ accessorKey: 'repoTags', title: m.images_repository(), sortable: true, cell: RepoCell }
 	] satisfies ColumnSpec<ImageSummaryDto>[];
 
@@ -173,7 +173,7 @@
 		{ id: 'updates', label: m.images_updates(), defaultVisible: true },
 		{ id: 'inUse', label: m.common_in_use(), defaultVisible: true },
 		{ id: 'created', label: m.common_created(), defaultVisible: true },
-		{ id: 'size', label: m.images_size(), defaultVisible: true },
+		{ id: 'size', label: m.common_size(), defaultVisible: true },
 		{ id: 'repoTags', label: m.images_repository(), defaultVisible: true }
 	];
 
@@ -242,7 +242,7 @@
 		]}
 		fields={[
 			{
-				label: m.images_size(),
+				label: m.common_size(),
 				getValue: (item: ImageSummaryDto) => bytes.format(Number(item.size ?? 0)),
 				icon: HardDriveIcon,
 				iconVariant: 'blue' as const,
@@ -313,7 +313,7 @@
 				>
 					{#if isPullingInline[item.id]}
 						<Spinner class="size-4" />
-						{m.images_pulling()}
+						{m.common_action_pulling()}
 					{:else}
 						<DownloadIcon class="size-4" />
 						{m.images_pull()}

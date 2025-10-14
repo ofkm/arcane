@@ -58,7 +58,7 @@
 				</div>
 				<div>
 					<Sheet.Title class="text-xl font-semibold">
-						{isEditMode ? m.registries_edit_title() : m.registries_add_button()}
+						{isEditMode ? m.registries_edit_title() : m.common_add_button({ resource: m.resource_registry_cap() })}
 					</Sheet.Title>
 					<Sheet.Description class="text-muted-foreground mt-1 text-sm">
 						{isEditMode ? m.registries_edit_description() : m.registries_add_description()}
@@ -121,7 +121,7 @@
 					{#if isLoading}
 						<Spinner class="mr-2 size-4" />
 					{/if}
-					{isEditMode ? m.registries_save_changes() : m.registries_add_button()}
+					{isEditMode ? m.registries_save_changes() : m.common_add_button({ resource: m.resource_registry_cap() })}
 				</Button>
 			</Sheet.Footer>
 		</form>

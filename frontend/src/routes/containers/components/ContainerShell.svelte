@@ -85,7 +85,7 @@
 				<div class="flex items-center gap-2">
 					<Card.Title>
 						<h2>
-							{m.shell_title()}
+							{m.common_shell()}
 						</h2>
 					</Card.Title>
 					{#if isConnected}

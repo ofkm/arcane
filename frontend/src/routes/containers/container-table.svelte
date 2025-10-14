@@ -144,7 +144,7 @@
 		{ accessorKey: 'state', title: m.common_state(), sortable: true, cell: StateCell },
 		{ accessorKey: 'image', title: m.common_image(), sortable: true },
 		{ accessorKey: 'status', title: m.common_status() },
-		{ accessorKey: 'ports', title: m.ports(), cell: PortsCell },
+		{ accessorKey: 'ports', title: m.common_ports(), cell: PortsCell },
 		{ accessorKey: 'created', title: m.common_created(), sortable: true, cell: CreatedCell }
 	] satisfies ColumnSpec<ContainerSummaryDto>[];
 
@@ -153,7 +153,7 @@
 		{ id: 'state', label: m.common_state(), defaultVisible: true },
 		{ id: 'image', label: m.common_image(), defaultVisible: true },
 		{ id: 'status', label: m.common_status(), defaultVisible: true },
-		{ id: 'ports', label: m.ports(), defaultVisible: true },
+		{ id: 'ports', label: m.common_ports(), defaultVisible: true },
 		{ id: 'created', label: m.common_created(), defaultVisible: true }
 	];
 
@@ -304,7 +304,7 @@
 					</div>
 					<div class="min-w-0 flex-1">
 						<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-							{m.ports()}
+							{m.common_ports()}
 						</div>
 						<div class="mt-1">
 							<PortBadge ports={item.ports} {baseServerUrl} />

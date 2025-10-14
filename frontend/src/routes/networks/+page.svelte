@@ -33,7 +33,7 @@
 		let refreshingNetworkCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(networkService.getNetworks(requestOptions)),
-			message: m.networks_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.networks_title() }),
 			setLoadingState: (value) => {
 				refreshingNetworkList = value;
 				isLoading.refresh = refreshingNetworkCounts || refreshingNetworkList;
@@ -44,7 +44,7 @@
 		});
 		handleApiResultWithCallbacks({
 			result: await tryCatch(networkService.getNetworkUsageCounts()),
-			message: m.networks_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.networks_title() }),
 			setLoadingState: (value) => {
 				refreshingNetworkCounts = value;
 				isLoading.refresh = refreshingNetworkCounts || refreshingNetworkList;
@@ -60,10 +60,10 @@
 		const name = options.Name?.trim() || m.common_unknown();
 		handleApiResultWithCallbacks({
 			result: await tryCatch(networkService.createNetwork(options)),
-			message: m.networks_create_failed({ name }),
+			message: m.common_create_failed({ resource: `${m.resource_network()} "${name}"` }),
 			setLoadingState: (value) => (isLoading.create = value),
 			onSuccess: async () => {
-				toast.success(m.networks_created_success({ name }));
+				toast.success(m.common_create_success({ resource: `${m.resource_network()} "${name}"` }));
 				networks = await networkService.getNetworks(requestOptions);
 				isCreateDialogOpen = false;
 			}
@@ -89,7 +89,7 @@
 		{
 			id: 'create',
 			action: 'create',
-			label: m.networks_create_button(),
+			label: m.common_create_button({ resource: m.resource_network_cap() }),
 			onclick: () => (isCreateDialogOpen = true)
 		},
 		{

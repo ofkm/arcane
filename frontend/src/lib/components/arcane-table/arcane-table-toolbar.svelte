@@ -68,7 +68,7 @@
 
 			<div class="flex flex-wrap items-center gap-2 sm:gap-0 sm:space-x-2">
 				{#if typeColumn}
-					<DataTableFacetedFilter column={typeColumn} title={m.templates_type()} options={templateTypeFilters} />
+					<DataTableFacetedFilter column={typeColumn} title={m.common_type()} options={templateTypeFilters} />
 				{/if}
 				{#if usageColumn}
 					<DataTableFacetedFilter column={usageColumn} title={m.common_usage()} options={usageFilters} />
@@ -107,7 +107,7 @@
 		<ArcaneButton
 			action="remove"
 			size="sm"
-			customLabel={m.common_remove_selected({ count: selectedIds?.length ?? 0 })}
+			customLabel={m.common_remove_selected_count({ count: selectedIds?.length ?? 0 })}
 			onclick={() => onRemoveSelected?.(selectedIds!)}
 		/>
 	{/if}

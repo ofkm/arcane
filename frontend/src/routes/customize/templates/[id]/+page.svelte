@@ -62,8 +62,8 @@
 		if (isDeleting || !canDelete) return;
 
 		openConfirmDialog({
-			title: m.templates_delete_confirm_title(),
-			message: m.templates_delete_confirm_message({ name: template.name }),
+			title: m.common_delete_title({ resource: m.resource_template() }),
+			message: m.common_delete_confirm({ resource: `${m.resource_template()} "${template.name}"` }),
 			confirm: {
 				label: m.templates_delete_template(),
 				destructive: true,
@@ -71,11 +71,15 @@
 					isDeleting = true;
 					try {
 						await templateService.deleteTemplate(template.id);
-						toast.success(m.templates_delete_success());
+						toast.success(m.common_delete_success({ resource: `${m.resource_template()} "${template.name}"` }));
 						await goto('/customize/templates');
 					} catch (error) {
 						console.error('Error deleting template:', error);
-						toast.error(error instanceof Error ? error.message : m.templates_delete_failed());
+						toast.error(
+							error instanceof Error
+								? error.message
+								: m.common_delete_failed({ resource: `${m.resource_template()} "${template.name}"` })
+						);
 						isDeleting = false;
 					}
 				}
@@ -88,7 +92,7 @@
 	<div class="space-y-3 sm:space-y-4">
 		<Button variant="ghost" onclick={() => goto('/customize/templates')} class="w-fit gap-2">
 			<ArrowLeftIcon class="size-4" />
-			<span>{m.common_back_to_templates()}</span>
+			<span>{m.common_back_to({ resource: m.templates_title() })}</span>
 		</Button>
 
 		<div>
@@ -126,7 +130,7 @@
 				<Button variant="secondary" onclick={handleDownload} disabled={isDownloading} class="w-full gap-2 sm:w-auto">
 					{#if isDownloading}
 						<Spinner class="size-4" />
-						{m.templates_downloading()}
+						{m.common_action_downloading()}
 					{:else}
 						<DownloadIcon class="size-4" />
 						{m.templates_download()}
@@ -147,7 +151,7 @@
 				<Button variant="destructive" onclick={handleDelete} disabled={isDeleting} class="w-full gap-2 sm:w-auto">
 					{#if isDeleting}
 						<Spinner class="size-4" />
-						{m.templates_deleting()}
+						{m.common_action_deleting()}
 					{:else}
 						<Trash2Icon class="size-4" />
 						{m.templates_delete_template()}
@@ -238,7 +242,7 @@
 					<Card.Header icon={FileTextIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>
-								<h2>{m.environment_variables()}</h2>
+								<h2>{m.common_environment_variables()}</h2>
 							</Card.Title>
 							<Card.Description>{m.templates_default_config_values()}</Card.Description>
 						</div>

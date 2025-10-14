@@ -50,8 +50,8 @@
 
 	async function handleDeleteTemplate(id: string, name: string) {
 		openConfirmDialog({
-			title: m.templates_delete_confirm_title(),
-			message: m.templates_delete_confirm_message({ name }),
+			title: m.common_delete_title({ resource: m.resource_template() }),
+			message: m.common_delete_confirm({ resource: `${m.resource_template()} "${name}"` }),
 			confirm: {
 				label: m.templates_delete_template(),
 				destructive: true,
@@ -61,10 +61,10 @@
 					const result = await tryCatch(templateService.deleteTemplate(id));
 					handleApiResultWithCallbacks({
 						result,
-						message: m.templates_delete_failed(),
+						message: m.common_delete_failed({ resource: `${m.resource_template()} "${name}"` }),
 						setLoadingState: (value) => (isLoading.deleting = value),
 						onSuccess: async () => {
-							toast.success(m.templates_delete_success());
+							toast.success(m.common_delete_success({ resource: `${m.resource_template()} "${name}"` }));
 							templates = await templateService.getTemplates(requestOptions);
 						}
 					});
@@ -105,21 +105,21 @@
 		{
 			id: 'type',
 			accessorFn: (row) => row.isRemote,
-			title: m.templates_type(),
+			title: m.common_type(),
 			sortable: true,
 			cell: TypeCell
 		},
 		{
 			accessorKey: 'metadata',
-			title: m.templates_tags(),
+			title: m.common_tags(),
 			cell: TagsCell
 		}
 	] satisfies ColumnSpec<Template>[];
 
 	const mobileFields = [
 		{ id: 'description', label: m.common_description(), defaultVisible: true },
-		{ id: 'type', label: m.templates_type(), defaultVisible: true },
-		{ id: 'tags', label: m.templates_tags(), defaultVisible: true }
+		{ id: 'type', label: m.common_type(), defaultVisible: true },
+		{ id: 'tags', label: m.common_tags(), defaultVisible: true }
 	];
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});
@@ -286,7 +286,7 @@
 			<DropdownMenu.Group>
 				<DropdownMenu.Item onclick={() => goto(`/customize/templates/${item.id}`)} disabled={isAnyLoading}>
 					<ScanSearchIcon class="size-4" />
-					{m.templates_view_details()}
+					{m.common_view_details()}
 				</DropdownMenu.Item>
 
 				<DropdownMenu.Item onclick={() => goto(`/projects/new?templateId=${item.id}`)} disabled={isAnyLoading}>

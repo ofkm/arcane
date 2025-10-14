@@ -36,7 +36,7 @@
 		}
 
 		openConfirmDialog({
-			title: m.volumes_remove_title(),
+			title: m.common_remove_title({ resource: m.resource_volume() }),
 			message,
 			confirm: {
 				label: m.common_remove(),
@@ -99,7 +99,7 @@
 			<div class="flex gap-2 self-start">
 				<ArcaneButton
 					action="remove"
-					customLabel={m.volumes_remove_title()}
+					customLabel={m.common_remove_title({ resource: m.resource_volume_cap() })}
 					onclick={() => handleRemoveVolumeConfirm(volume.name)}
 					loading={isLoading.remove}
 					disabled={isLoading.remove}
@@ -113,8 +113,8 @@
 			<Card.Root>
 				<Card.Header icon={InfoIcon}>
 					<div class="flex flex-col space-y-1.5">
-						<Card.Title>{m.volumes_details_title()}</Card.Title>
-						<Card.Description>{m.volumes_details_description()}</Card.Description>
+						<Card.Title>{m.common_details_title({ resource: m.resource_volume_cap() })}</Card.Title>
+						<Card.Description>{m.common_details_description({ resource: m.resource_volume() })}</Card.Description>
 					</div>
 				</Card.Header>
 				<Card.Content class="p-4">
@@ -321,10 +321,15 @@
 			<div class="bg-muted/30 mb-4 rounded-full p-4">
 				<DatabaseIcon class="text-muted-foreground size-10 opacity-70" />
 			</div>
-			<h2 class="mb-2 text-xl font-medium">{m.volumes_not_found_title()}</h2>
-			<p class="text-muted-foreground mb-6">{m.volumes_not_found_description()}</p>
+			<h2 class="mb-2 text-xl font-medium">{m.common_not_found_title({ resource: m.volumes_title() })}</h2>
+			<p class="text-muted-foreground mb-6">{m.common_not_found_description({ resource: m.volumes_title().toLowerCase() })}</p>
 
-			<ArcaneButton action="cancel" customLabel={m.common_back_to_volumes()} onclick={() => goto('/volumes')} size="sm" />
+			<ArcaneButton
+				action="cancel"
+				customLabel={m.common_back_to({ resource: m.volumes_title() })}
+				onclick={() => goto('/volumes')}
+				size="sm"
+			/>
 		</div>
 	{/if}
 </div>

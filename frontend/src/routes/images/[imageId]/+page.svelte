@@ -50,7 +50,7 @@
 
 	async function handleImageRemove(id: string) {
 		openConfirmDialog({
-			title: m.images_remove_title(),
+			title: m.common_remove_title({ resource: m.resource_image() }),
 			message: m.images_remove_message(),
 			confirm: {
 				label: m.common_delete(),
@@ -108,8 +108,8 @@
 			<Card.Root>
 				<Card.Header icon={InfoIcon}>
 					<div class="flex flex-col space-y-1.5">
-						<Card.Title>{m.images_details_title()}</Card.Title>
-						<Card.Description>{m.images_details_description()}</Card.Description>
+						<Card.Title>{m.common_details_title({ resource: m.resource_image_cap() })}</Card.Title>
+						<Card.Description>{m.common_details_description({ resource: m.resource_image() })}</Card.Description>
 					</div>
 				</Card.Header>
 				<Card.Content class="p-4">
@@ -134,7 +134,7 @@
 								<HardDriveIcon class="size-5 text-blue-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-muted-foreground text-sm font-medium">{m.images_size()}</p>
+								<p class="text-muted-foreground text-sm font-medium">{m.common_size()}</p>
 								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
 									{imageSize()}
 								</p>
@@ -157,9 +157,9 @@
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10 p-2">
 								<CpuIcon class="size-5 text-orange-500" />
 							</div>
-							<div class="min-w-0 flex-1">
-								<p class="text-muted-foreground text-sm font-medium">{m.images_architecture()}</p>
-								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+						<div class="min-w-0 flex-1">
+							<p class="text-muted-foreground text-sm font-medium">{m.common_architecture()}</p>
+							<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
 									{architecture()}
 								</p>
 							</div>
@@ -229,7 +229,7 @@
 				<Card.Root>
 					<Card.Header icon={TagIcon}>
 						<div class="flex flex-col space-y-1.5">
-							<Card.Title>{m.images_tags_title()}</Card.Title>
+							<Card.Title>{m.common_tags()}</Card.Title>
 							<Card.Description>{m.images_tags_description()}</Card.Description>
 						</div>
 					</Card.Header>
@@ -247,7 +247,7 @@
 				<Card.Root>
 					<Card.Header icon={SettingsIcon}>
 						<div class="flex flex-col space-y-1.5">
-							<Card.Title>{m.images_env_vars_title()}</Card.Title>
+							<Card.Title>{m.common_environment_variables()}</Card.Title>
 							<Card.Description>{m.images_env_vars_description()}</Card.Description>
 						</div>
 					</Card.Header>
@@ -289,10 +289,10 @@
 		</div>
 	{:else}
 		<div class="py-12 text-center">
-			<p class="text-muted-foreground text-lg font-medium">{m.images_not_found_title()}</p>
+			<p class="text-muted-foreground text-lg font-medium">{m.common_not_found_title({ resource: m.images_title() })}</p>
 			<ArcaneButton
 				action="cancel"
-				customLabel={m.common_back_to_images()}
+				customLabel={m.common_back_to({ resource: m.images_title() })}
 				onclick={() => goto('/images')}
 				size="sm"
 				class="mt-4"

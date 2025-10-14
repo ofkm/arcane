@@ -89,7 +89,7 @@
 		},
 		{
 			value: 'compose',
-			label: m.compose_nav_config(),
+			label: m.common_configuration(),
 			icon: SettingsIcon
 		},
 		{
@@ -289,13 +289,13 @@
 			<div class="bg-muted/50 mb-6 inline-flex rounded-full p-6">
 				<FileStackIcon class="text-muted-foreground size-10" />
 			</div>
-			<h2 class="mb-3 text-2xl font-medium">{m.compose_not_found_title()}</h2>
+			<h2 class="mb-3 text-2xl font-medium">{m.common_not_found_title({ resource: m.project() })}</h2>
 			<p class="text-muted-foreground mb-8 max-w-md text-center">
-				{m.compose_not_found_description()}
+				{m.common_not_found_description({ resource: m.project().toLowerCase() })}
 			</p>
 			<Button variant="outline" href="/projects">
 				<ArrowLeftIcon class="mr-2 size-4" />
-				{m.compose_back_to_projects()}
+				{m.common_back_to({ resource: m.projects_title() })}
 			</Button>
 		</div>
 	</div>

@@ -78,69 +78,79 @@ export type ActionConfig = {
 };
 
 export const actionConfigs: Record<Action, ActionConfig> = {
-	start: { defaultLabel: m.common_start(), IconComponent: PlayIcon, tone: 'outline-primary', loadingLabel: m.action_starting() },
-	deploy: {
-		defaultLabel: m.action_up(),
+	start: {
+		defaultLabel: m.common_start(),
 		IconComponent: PlayIcon,
 		tone: 'outline-primary',
-		loadingLabel: m.action_deploying()
+		loadingLabel: m.common_action_starting()
+	},
+	deploy: {
+		defaultLabel: m.common_up(),
+		IconComponent: PlayIcon,
+		tone: 'outline-primary',
+		loadingLabel: m.common_action_deploying()
 	},
 	stop: {
 		defaultLabel: m.common_stop(),
 		IconComponent: CircleStopIcon,
 		tone: 'outline-destructive',
-		loadingLabel: m.action_stopping()
+		loadingLabel: m.common_action_stopping()
 	},
 	remove: {
 		defaultLabel: m.common_remove(),
 		IconComponent: Trash2Icon,
 		tone: 'outline-destructive',
-		loadingLabel: m.action_removing()
+		loadingLabel: m.common_action_removing()
 	},
 	restart: {
 		defaultLabel: m.common_restart(),
 		IconComponent: RotateCcwIcon,
 		tone: 'outline-primary',
-		loadingLabel: m.action_restarting()
+		loadingLabel: m.common_action_restarting()
 	},
-	pull: { defaultLabel: m.images_pull(), IconComponent: DownloadIcon, tone: 'outline-primary', loadingLabel: m.images_pulling() },
+	pull: {
+		defaultLabel: m.images_pull(),
+		IconComponent: DownloadIcon,
+		tone: 'outline-primary',
+		loadingLabel: m.common_action_pulling()
+	},
 	redeploy: {
-		defaultLabel: m.action_redeploy(),
+		defaultLabel: m.common_redeploy(),
 		IconComponent: RefreshCcwDotIcon,
 		tone: 'outline-primary',
-		loadingLabel: m.action_redeploying()
+		loadingLabel: m.common_action_redeploying()
 	},
 	inspect: {
 		defaultLabel: m.common_inspect(),
 		IconComponent: ScanSearchIcon,
 		tone: 'outline-primary',
-		loadingLabel: m.action_inspecting()
+		loadingLabel: m.common_action_inspecting()
 	},
 	edit: { defaultLabel: m.common_edit(), IconComponent: EditIcon, tone: 'outline-primary', loadingLabel: m.common_saving() },
 	confirm: {
 		defaultLabel: m.common_confirm(),
 		IconComponent: CheckIcon,
 		tone: 'outline-primary',
-		loadingLabel: m.action_confirming()
+		loadingLabel: m.common_action_confirming()
 	},
 	save: { defaultLabel: m.common_save(), IconComponent: SaveIcon, tone: 'outline-primary', loadingLabel: m.common_saving() },
 	create: {
 		defaultLabel: m.common_create(),
 		IconComponent: PlusCircleIcon,
 		tone: 'outline-primary',
-		loadingLabel: m.common_creating()
+		loadingLabel: m.common_action_creating()
 	},
 	template: {
-		defaultLabel: m.action_use_template(),
+		defaultLabel: m.common_use_template(),
 		IconComponent: LayoutTemplateIcon,
 		tone: 'outline-primary',
-		loadingLabel: m.common_creating()
+		loadingLabel: m.common_action_creating()
 	},
 	logs: {
 		defaultLabel: m.common_logs(),
 		IconComponent: FileTextIcon,
 		tone: 'ghost',
-		loadingLabel: m.action_fetching_logs ? m.action_fetching_logs() : m.common_processing()
+		loadingLabel: m.common_action_fetching_logs()
 	},
-	cancel: { defaultLabel: m.common_cancel(), IconComponent: XIcon, tone: 'ghost', loadingLabel: m.action_cancelling() }
+	cancel: { defaultLabel: m.common_cancel(), IconComponent: XIcon, tone: 'ghost', loadingLabel: m.common_action_cancelling() }
 };

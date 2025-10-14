@@ -40,7 +40,7 @@
 	async function handleSave() {
 		const validated = form.validate();
 		if (!validated) {
-			toast.error(m.customize_validation_error());
+			toast.error(m.templates_validation_error());
 			return;
 		}
 
@@ -48,10 +48,10 @@
 
 		handleApiResultWithCallbacks({
 			result: await tryCatch(templateService.saveDefaultTemplates(composeContent, envContent)),
-			message: m.customize_save_failed(),
+			message: m.templates_save_failed(),
 			setLoadingState: (value) => (saving = value),
 			onSuccess: async () => {
-				toast.success(m.customize_save_success());
+				toast.success(m.templates_save_success());
 				originalComposeContent = $inputs.composeContent.value;
 				originalEnvContent = $inputs.envContent.value;
 			}
@@ -61,7 +61,7 @@
 	async function handleReset() {
 		$inputs.composeContent.value = originalComposeContent;
 		$inputs.envContent.value = originalEnvContent;
-		toast.info(m.customize_reset_success());
+		toast.info(m.templates_reset_success());
 	}
 
 	const actionButtons = $derived<ActionButton[]>([
@@ -87,17 +87,17 @@
 <div class="space-y-4">
 	<Button variant="ghost" onclick={() => goto('/customize/templates')} class="w-fit gap-2">
 		<ArrowLeftIcon class="size-4" />
-		<span>{m.common_back_to_templates()}</span>
+		<span>{m.common_back_to({ resource: m.templates_title() })}</span>
 	</Button>
 
-	<ResourcePageLayout title={m.customize_defaults_title()} subtitle={m.customize_defaults_description()} {actionButtons}>
+	<ResourcePageLayout title={m.templates_defaults_title()} subtitle={m.templates_defaults_description()} {actionButtons}>
 		{#snippet mainContent()}
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-stretch">
 				<Card.Root class="flex min-w-0 flex-col lg:col-span-3">
 					<Card.Header icon={CodeIcon} class="flex-shrink-0">
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>
-								<h2>{m.customize_compose_template_label()}</h2>
+								<h2>{m.templates_compose_template_label()}</h2>
 							</Card.Title>
 							<Card.Description>{m.templates_service_definitions()}</Card.Description>
 						</div>
@@ -120,7 +120,7 @@
 					<Card.Header icon={FileTextIcon} class="flex-shrink-0">
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>
-								<h2>{m.customize_env_template_label()}</h2>
+								<h2>{m.templates_env_template_label()}</h2>
 							</Card.Title>
 							<Card.Description>{m.templates_default_config_values()}</Card.Description>
 						</div>
