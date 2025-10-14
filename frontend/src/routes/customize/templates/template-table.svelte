@@ -15,7 +15,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import type { Table as TableType } from '@tanstack/table-core';
+	import type { Table as TableType, Row } from '@tanstack/table-core';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import FlexRender from '$lib/components/ui/data-table/flex-render.svelte';
 	import { goto } from '$app/navigation';
@@ -153,7 +153,7 @@
 		return m.templates_local_templates();
 	}
 
-	const groupedTemplates = $derived(() => {
+	const groupedTemplates = $derived.by(() => {
 		if (!groupByRegistry) return null;
 
 		const groups = new Map<string, Template[]>();
@@ -163,9 +163,11 @@
 			if (!groups.has(registryName)) {
 				groups.set(registryName, []);
 			}
-			groups.get(registryName)!.push(template);
+			const group = groups.get(registryName);
+			if (group) {
+				group.push(template);
+			}
 		}
-
 		const sortedGroups = Array.from(groups.entries()).sort(([a], [b]) => {
 			if (a === m.templates_local_templates()) return -1;
 			if (b === m.templates_local_templates()) return 1;
@@ -222,7 +224,7 @@
 	item,
 	mobileFieldVisibility
 }: {
-	row: any;
+	row: Row<Template>;
 	item: Template;
 	mobileFieldVisibility: Record<string, boolean>;
 })}
@@ -342,7 +344,7 @@
 			mobileCard={TemplateMobileCardSnippet}
 			selectionDisabled
 			customViewOptions={CustomViewOptions}
-			customTableView={groupByRegistry && groupedTemplates() ? GroupedTableView : undefined}
+			customTableView={groupByRegistry && groupedTemplates ? GroupedTableView : undefined}
 		/>
 	</Card.Content>
 </Card.Root>
@@ -355,7 +357,7 @@
 
 {#snippet GroupedTableView({ table }: { table: TableType<Template> })}
 	<div class="space-y-4">
-		{#each groupedTemplates() ?? [] as [registryName, registryTemplates] (registryName)}
+		{#each groupedTemplates ?? [] as [registryName, registryTemplates] (registryName)}
 			{@const registryTemplateIds = new Set(registryTemplates.map((t) => t.id))}
 			{@const registryRows = table.getRowModel().rows.filter((row) => registryTemplateIds.has(row.original.id))}
 

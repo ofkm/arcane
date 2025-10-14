@@ -264,9 +264,7 @@
 						{/each}
 					</Card.Content>
 				</Card.Root>
-			{/if}
 
-			{#if env && envVars.length > 0}
 				<Card.Root class="flex min-w-0 flex-grow flex-col lg:h-full">
 					<Card.Header icon={FileTextIcon} class="flex-shrink-0">
 						<div class="flex flex-col space-y-1.5">
