@@ -3,11 +3,11 @@
 /* Base navigation styles */
 .mobile-nav-base {
 	pointer-events: auto;
-	/* Prevent browser's default touch gestures but allow custom ones */
-	touch-action: none;
+	/* Allow pan-y for page scrolling, but prevent zoom and other gestures */
+	touch-action: pan-y pinch-zoom;
 	-webkit-overflow-scrolling: touch;
 	overscroll-behavior: contain;
-	/* Isolate touch interactions similar to pointer device behavior */
+	/* Isolate touch interactions */
 	isolation: isolate;
 	/* Hardware acceleration for smooth animations */
 	will-change: transform, opacity;
@@ -16,6 +16,11 @@
 	/* Smooth subpixel rendering */
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+	/* Ensure it stays fixed to viewport, not page content */
+	position: fixed;
+	/* Prevent the nav from being affected by virtual keyboard */
+	transform: translate3d(0, 0, 0);
+	backface-visibility: hidden;
 }
 
 /* Floating navigation specific positioning */
@@ -23,6 +28,8 @@
 	/* Safe area handling for floating navigation */
 	/* Use safe area inset if it's greater than 1.5rem, otherwise use 1.5rem */
 	bottom: max(1.5rem, env(safe-area-inset-bottom));
+	/* Ensure proper stacking in viewport */
+	position: fixed;
 }
 
 /* Docked navigation specific positioning */
@@ -31,6 +38,10 @@
 	padding-bottom: env(safe-area-inset-bottom);
 	/* Ensure minimum padding even without safe area */
 	padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+	/* Keep it anchored to bottom */
+	bottom: 0;
+	/* Ensure proper stacking in viewport */
+	position: fixed;
 }
 
 /* Shared button/link styles */

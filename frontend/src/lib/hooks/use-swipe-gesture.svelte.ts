@@ -124,25 +124,9 @@ export class SwipeGestureDetector {
 				duration: deltaTime
 			};
 
-			// Stop momentum and prevent default for valid swipe gestures only if body isn't already locked
-			const shouldLockScrolling = document.body.style.overflow !== 'hidden';
-
-			if (shouldLockScrolling) {
-				document.body.style.overflow = 'hidden';
-				document.documentElement.style.overflow = 'hidden';
-			}
-
-			this.onSwipe(direction, details);
-
-			// Restore scrolling after gesture is processed, but only if we locked it
-			if (shouldLockScrolling) {
-				setTimeout(() => {
-					document.body.style.overflow = '';
-					document.documentElement.style.overflow = '';
-				}, 100);
-			}
-
-			// For interactive elements, only prevent default if this was clearly a swipe gesture
+			// Don't lock body scroll - let CSS handle scroll containment
+			// This prevents interference with main page scrolling
+			this.onSwipe(direction, details); // For interactive elements, only prevent default if this was clearly a swipe gesture
 			// This allows button clicks to still work for small movements
 			if (this.isInteractiveTouch) {
 				// Only prevent if the movement was significant enough to be a clear swipe
@@ -163,13 +147,7 @@ export class SwipeGestureDetector {
 		this.cleanupFn = () => {
 			element.removeEventListener('touchstart', handleTouchStart);
 			element.removeEventListener('touchend', handleTouchEnd);
-			// Only restore overflow if it was set to 'hidden' - don't override other styles
-			if (document.body.style.overflow === 'hidden') {
-				document.body.style.overflow = '';
-			}
-			if (document.documentElement.style.overflow === 'hidden') {
-				document.documentElement.style.overflow = '';
-			}
+			// No need to restore overflow styles since we don't set them
 		};
 	}
 }

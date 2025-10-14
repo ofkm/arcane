@@ -1,36 +1,38 @@
-import { onMount } from 'svelte';
+import { untrack } from 'svelte';
 
 export type ScrollDirection = 'up' | 'down' | 'idle';
 
 export class ScrollDirectionDetector {
-	private lastScrollY = $state(0);
-	private scrollDirection = $state<ScrollDirection>('idle');
-	private isScrolling = $state(false);
+	private _lastScrollY = $state(0);
+	private _scrollDirection = $state<ScrollDirection>('idle');
+	private _isScrolling = $state(false);
 	private scrollThreshold = 10; // Minimum pixels to trigger direction change
-	private scrollTimeout: number | null = null;
+	private scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+	private cleanupFn: (() => void) | null = null;
 
 	constructor(threshold = 10) {
 		this.scrollThreshold = threshold;
 
-		onMount(() => {
-			this.lastScrollY = window.scrollY;
+		// Initialize immediately, not in onMount
+		this._lastScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
 
-			const handleScroll = this.throttle(() => {
+		if (typeof window !== 'undefined') {
+			const handleScroll = () => {
 				const currentScrollY = window.scrollY;
-				const scrollDiff = currentScrollY - this.lastScrollY;
+				const scrollDiff = currentScrollY - untrack(() => this._lastScrollY);
 
 				// Only update direction if scroll difference exceeds threshold
 				if (Math.abs(scrollDiff) > this.scrollThreshold) {
-					const newDirection = scrollDiff > 0 ? 'down' : 'up';
+					const newDirection: ScrollDirection = scrollDiff > 0 ? 'down' : 'up';
 
 					// Only update if direction actually changed to avoid unnecessary re-renders
-					if (this.scrollDirection !== newDirection) {
-						this.scrollDirection = newDirection;
+					if (untrack(() => this._scrollDirection) !== newDirection) {
+						this._scrollDirection = newDirection;
 					}
-					this.lastScrollY = currentScrollY;
+					this._lastScrollY = currentScrollY;
 				}
 
-				this.isScrolling = true;
+				this._isScrolling = true;
 
 				// Clear existing timeout
 				if (this.scrollTimeout) {
@@ -38,45 +40,39 @@ export class ScrollDirectionDetector {
 				}
 
 				// Set idle state after scrolling stops
-				this.scrollTimeout = window.setTimeout(() => {
-					if (this.scrollDirection !== 'idle') {
-						this.scrollDirection = 'idle';
-					}
-					this.isScrolling = false;
+				this.scrollTimeout = setTimeout(() => {
+					this._scrollDirection = 'idle';
+					this._isScrolling = false;
 				}, 150);
-			}, 16); // ~60fps throttling
+			};
 
 			window.addEventListener('scroll', handleScroll, { passive: true });
 
-			return () => {
+			this.cleanupFn = () => {
 				window.removeEventListener('scroll', handleScroll);
 				if (this.scrollTimeout) {
 					clearTimeout(this.scrollTimeout);
 				}
 			};
-		});
+		}
+	}
+
+	cleanup() {
+		if (this.cleanupFn) {
+			this.cleanupFn();
+			this.cleanupFn = null;
+		}
 	}
 
 	get direction() {
-		return this.scrollDirection;
+		return this._scrollDirection;
 	}
 
 	get scrolling() {
-		return this.isScrolling;
+		return this._isScrolling;
 	}
 
 	get scrollY() {
-		return this.lastScrollY;
-	}
-
-	private throttle<T extends (...args: any[]) => void>(func: T, limit: number): T {
-		let inThrottle: boolean;
-		return ((...args: any[]) => {
-			if (!inThrottle) {
-				func.apply(this, args);
-				inThrottle = true;
-				setTimeout(() => (inThrottle = false), limit);
-			}
-		}) as T;
+		return this._lastScrollY;
 	}
 }

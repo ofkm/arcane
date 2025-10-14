@@ -12,11 +12,13 @@
 	let {
 		open = $bindable(false),
 		user = null,
-		versionInformation = null
+		versionInformation = null,
+		navigationMode = 'floating'
 	}: {
 		open: boolean;
 		user?: any;
 		versionInformation?: any;
+		navigationMode?: 'floating' | 'docked';
 	} = $props();
 
 	let menuElement: HTMLElement;
@@ -27,6 +29,7 @@
 		isDragging: boolean;
 		dragDistance: number;
 		startY: number;
+		startX: number;
 		currentY: number;
 		inputType: 'touch' | 'wheel' | 'none';
 		isAtScrollTop: boolean;
@@ -39,6 +42,7 @@
 		isDragging: false,
 		dragDistance: 0,
 		startY: 0,
+		startX: 0,
 		currentY: 0,
 		inputType: 'none',
 		isAtScrollTop: true,
@@ -102,6 +106,7 @@
 		interaction.isDragging = false;
 		interaction.dragDistance = 0;
 		interaction.startY = 0;
+		interaction.startX = 0;
 		interaction.currentY = 0;
 		interaction.inputType = 'none';
 		interaction.canDragToClose = false;
@@ -132,54 +137,88 @@
 
 		const touch = e.touches[0];
 		const target = e.target as HTMLElement;
+
+		// Don't interfere with interactive elements
+		if (target.closest('button, a, input, select, textarea, [role="button"]')) {
+			return;
+		}
+
 		const isOnHandle = target.closest('[data-drag-handle]');
 
 		// Check current scroll position in real-time
 		const currentScrollTop = menuElement.scrollTop;
 		const isAtScrollTop = currentScrollTop === 0;
 
-		// Initialize interaction state
+		// Initialize interaction state but don't start dragging yet
 		interaction.startY = touch.clientY;
+		interaction.startX = touch.clientX;
 		interaction.currentY = touch.clientY;
 		interaction.inputType = 'touch';
 		interaction.dragStartedFromHandle = !!isOnHandle;
 
-		// Determine if we can drag to close (handle always works, content only at scroll top)
+		// Determine if we CAN drag to close, but don't start yet
 		interaction.canDragToClose = !!isOnHandle || isAtScrollTop;
 
-		if (interaction.canDragToClose) {
-			interaction.isDragging = true;
-			provideFeedback('grab');
-		}
+		// Don't set isDragging yet - wait for touchmove to determine intent
+		interaction.isDragging = false;
+		interaction.dragDistance = 0;
 	}
 
 	function handleTouchMove(e: TouchEvent) {
-		if (!open || isClosing || !interaction.isDragging) return;
+		if (!open || isClosing) return;
+		if (interaction.inputType !== 'touch') return;
 
 		const touch = e.touches[0];
 		interaction.currentY = touch.clientY;
 
+		const deltaY = interaction.currentY - interaction.startY;
+		const deltaX = touch.clientX - interaction.startX;
+
+		// If moving more horizontally than vertically, it's probably a horizontal gesture, ignore
+		if (Math.abs(deltaX) > Math.abs(deltaY) && !interaction.isDragging) {
+			return;
+		}
+
 		// For handle-based drags, always allow
-		// For content-based drags, ensure we're still at scroll top
+		// For content-based drags, ensure we're still at scroll top AND moving down
 		let canContinueDrag = interaction.dragStartedFromHandle;
 
 		if (!interaction.dragStartedFromHandle) {
 			const currentScrollTop = menuElement.scrollTop;
 			const isAtScrollTop = currentScrollTop === 0;
-			canContinueDrag = isAtScrollTop;
+			// Only allow content drag if at top AND pulling down (not scrolling up)
+			canContinueDrag = isAtScrollTop && interaction.canDragToClose && deltaY > 0;
 		}
 
-		// Calculate drag distance using unified physics
-		const newDistance = calculateDragDistance(interaction.currentY);
+		// Only start dragging if moving downward past threshold and conditions allow
+		// Use larger threshold for content (15px) vs handle (5px)
+		const threshold = interaction.dragStartedFromHandle ? 5 : 15;
 
-		// Only update if dragging downward and we can continue the drag
-		if (newDistance > 0 && canContinueDrag) {
-			interaction.dragDistance = newDistance;
-			e.preventDefault();
-		} else if (interaction.currentY < interaction.startY || !canContinueDrag) {
-			// Reset if dragging upward or conditions no longer allow dragging
+		if (deltaY > threshold && canContinueDrag && !interaction.isDragging) {
+			// Now we can start dragging
+			interaction.isDragging = true;
+			provideFeedback('grab');
+		}
+
+		// Only process drag if we're actually dragging
+		if (interaction.isDragging && canContinueDrag) {
+			// Calculate drag distance using unified physics
+			const newDistance = calculateDragDistance(interaction.currentY);
+
+			// Only update if dragging downward
+			if (newDistance > 0) {
+				interaction.dragDistance = newDistance;
+				// Prevent default to stop the sheet from scrolling while dragging
+				e.preventDefault();
+			} else {
+				// If dragging upward, cancel the drag
+				resetInteractionState();
+			}
+		} else if (!canContinueDrag && interaction.isDragging) {
+			// Lost the conditions for dragging (e.g., scrolled down)
 			resetInteractionState();
 		}
+		// If not dragging, let the native scroll work (don't preventDefault)
 	}
 
 	function handleTouchEnd(e: TouchEvent) {
@@ -328,46 +367,59 @@
 		};
 	});
 
-	// Focus management and body scroll prevention for accessibility
+	// Proper body scroll locking that prevents background scroll but allows sheet scroll
 	$effect(() => {
-		if (open) {
-			// Prevent body scroll when menu is open but allow menu content to scroll
-			const originalOverflow = document.body.style.overflow;
-			const originalPosition = document.body.style.position;
-			const originalTop = document.body.style.top;
-			const originalWidth = document.body.style.width;
+		if (open && menuElement) {
+			// Store original styles
 			const scrollY = window.scrollY;
+			const bodyStyle = document.body.style;
+			const htmlStyle = document.documentElement.style;
 
-			// Properly lock the body while preserving menu scrollability
-			document.body.style.overflow = 'hidden';
-			document.body.style.position = 'fixed';
-			document.body.style.top = `-${scrollY}px`;
-			document.body.style.width = '100%';
-			document.body.style.left = '0';
-			document.body.style.right = '0';
+			const originalBodyOverflow = bodyStyle.overflow;
+			const originalBodyPosition = bodyStyle.position;
+			const originalBodyTop = bodyStyle.top;
+			const originalBodyWidth = bodyStyle.width;
+			const originalHtmlOverflow = htmlStyle.overflow;
 
-			// Ensure the menu element can scroll independently
-			if (menuElement) {
-				// Reset any overflow restrictions that might interfere
-				menuElement.style.overflowY = 'auto';
-				// Disable momentum scrolling to prevent glidy feeling when closing
-				(menuElement.style as any).webkitOverflowScrolling = 'auto';
-				menuElement.style.touchAction = 'pan-y'; // Allow vertical scrolling only
+			// Lock background scroll - iOS and desktop compatible
+			bodyStyle.overflow = 'hidden';
+			bodyStyle.position = 'fixed';
+			bodyStyle.top = `-${scrollY}px`;
+			bodyStyle.width = '100%';
+			bodyStyle.left = '0';
+			bodyStyle.right = '0';
+			htmlStyle.overflow = 'hidden';
 
-				// Focus the menu container itself for accessibility without highlighting specific elements
-				requestAnimationFrame(() => {
-					menuElement.focus();
+			// Wait for layout then setup sheet scrolling
+			import('svelte').then(({ tick }) => {
+				tick().then(() => {
+					if (!menuElement || !open) return;
+
+					// Ensure the menu element can scroll independently
+					menuElement.style.overflowY = 'auto';
+					menuElement.style.touchAction = 'pan-y';
+					(menuElement.style as any).webkitOverflowScrolling = 'touch';
+					// Force layout recalculation
+					void menuElement.offsetHeight;
+
+					// Focus for accessibility
+					requestAnimationFrame(() => {
+						if (menuElement && open) {
+							menuElement.focus();
+						}
+					});
 				});
-			}
+			});
 
 			return () => {
-				// Restore body scroll when menu closes
-				document.body.style.overflow = originalOverflow;
-				document.body.style.position = originalPosition;
-				document.body.style.top = originalTop;
-				document.body.style.width = originalWidth;
-				document.body.style.left = '';
-				document.body.style.right = '';
+				// Restore body scroll
+				bodyStyle.overflow = originalBodyOverflow;
+				bodyStyle.position = originalBodyPosition;
+				bodyStyle.top = originalBodyTop;
+				bodyStyle.width = '';
+				bodyStyle.left = '';
+				bodyStyle.right = '';
+				htmlStyle.overflow = originalHtmlOverflow;
 
 				// Restore scroll position
 				window.scrollTo(0, scrollY);
@@ -375,8 +427,8 @@
 				// Clean up menu styles
 				if (menuElement) {
 					menuElement.style.overflowY = '';
-					(menuElement.style as any).webkitOverflowScrolling = '';
 					menuElement.style.touchAction = '';
+					(menuElement.style as any).webkitOverflowScrolling = '';
 				}
 			};
 		}
@@ -405,7 +457,9 @@
 		)}
 		style={`
 			${interaction.isDragging && !isClosing ? `opacity: ${Math.max(0.1, 1 - interaction.dragDistance / 400)};` : ''}
-			touch-action: manipulation;
+			touch-action: none;
+			-webkit-user-select: none;
+			user-select: none;
 		`}
 		onclick={() => {
 			provideFeedback('close');
@@ -415,18 +469,6 @@
 			if (e.key === 'Escape') {
 				provideFeedback('close');
 				open = false;
-			}
-		}}
-		ontouchstart={(e) => {
-			// Only prevent if touch is outside menu area
-			if (!menuElement || !menuElement.contains(e.target as Node)) {
-				e.preventDefault();
-			}
-		}}
-		ontouchmove={(e) => {
-			// Only prevent if touch is outside menu area
-			if (!menuElement || !menuElement.contains(e.target as Node)) {
-				e.preventDefault();
 			}
 		}}
 		aria-hidden="true"
@@ -440,13 +482,14 @@
 	class={cn(
 		'bg-background/60 border-border/30 fixed inset-x-0 bottom-0 z-50 rounded-t-3xl border-t shadow-sm backdrop-blur-xl',
 		'transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
-		'max-h-[85vh] overflow-y-auto overscroll-contain',
+		'max-h-[85vh] overflow-y-auto',
 		open ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0',
 		interaction.isDragging && !isClosing ? 'transition-none' : ''
 	)}
 	style={`
 		touch-action: pan-y; 
 		-webkit-overflow-scrolling: touch;
+		overscroll-behavior: contain;
 		${
 			interaction.isDragging && !isClosing
 				? `transform: translateY(${interaction.dragDistance}px); opacity: ${Math.max(0.3, 1 - interaction.dragDistance / 300)};`
@@ -461,7 +504,7 @@
 	tabindex={open ? 0 : -1}
 >
 	<!-- Handle indicator -->
-	<div class="flex justify-center pt-4 pb-3" data-drag-handle>
+	<div class="flex justify-center pb-3 pt-4" data-drag-handle>
 		<div
 			class={cn(
 				'h-1.5 w-10 rounded-full transition-all duration-150',
@@ -473,7 +516,7 @@
 		></div>
 	</div>
 
-	<div class="px-6 pb-8">
+	<div class="px-6 pb-4">
 		<!-- User Profile Section -->
 		{#if memoizedUser}
 			<MobileUserCard user={memoizedUser} class="mb-6" />
@@ -483,7 +526,7 @@
 		<div class="space-y-8">
 			<!-- Management -->
 			<section>
-				<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+				<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 					{m.sidebar_management()}
 				</h4>
 				<div class="space-y-2">
@@ -508,7 +551,7 @@
 
 			<!-- Customization -->
 			<section>
-				<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+				<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 					{m.sidebar_customization()}
 				</h4>
 				<div class="space-y-2">
@@ -536,7 +579,7 @@
 				<!-- Environments -->
 				{#if navigationItems.environmentItems}
 					<section>
-						<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+						<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 							{m.sidebar_environments()}
 						</h4>
 						<div class="space-y-2">
@@ -563,7 +606,7 @@
 				<!-- Administration -->
 				{#if navigationItems.settingsItems}
 					<section>
-						<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+						<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 							{m.sidebar_administration()}
 						</h4>
 						<div class="space-y-2">
@@ -632,7 +675,7 @@
 
 		<!-- Version Information -->
 		{#if versionInformation}
-			<div class="border-border/30 mt-6 border-t pt-4">
+			<div class={cn('border-border/30 mt-6 border-t pt-4', navigationMode === 'docked' ? 'pb-24' : 'pb-6')}>
 				<div class="text-muted-foreground/60 text-center text-xs">
 					<p class="font-medium">Arcane v{versionInformation.currentVersion}</p>
 					{#if versionInformation.updateAvailable}
@@ -640,16 +683,24 @@
 					{/if}
 				</div>
 			</div>
+		{:else}
+			<!-- Add padding even if no version info to prevent content hiding behind nav -->
+			<div class="pb-20"></div>
 		{/if}
 	</div>
 </div>
 
 <style>
 	/* Ensure smooth scrolling and prevent overscroll issues */
-	@supports (overscroll-behavior: contain) {
-		div[data-testid='mobile-nav-sheet'] {
-			overscroll-behavior: contain;
-		}
+	div[data-testid='mobile-nav-sheet'] {
+		overscroll-behavior: contain;
+		/* Prevent white background showing through */
+		background-clip: padding-box;
+		/* Ensure smooth momentum scrolling on iOS */
+		-webkit-overflow-scrolling: touch;
+		/* Force GPU acceleration */
+		transform: translateZ(0);
+		will-change: transform, opacity;
 	}
 
 	/* Remove focus outline from dialog container since it's focused for accessibility */
@@ -661,16 +712,17 @@
 	@media (prefers-reduced-motion: reduce) {
 		div[data-testid='mobile-nav-sheet'] {
 			transition: none;
+			will-change: auto;
 		}
 
 		/* Instantly show/hide without animation */
 		div[data-testid='mobile-nav-sheet']:not([aria-hidden='true']) {
-			transform: translateY(0);
+			transform: translateY(0) translateZ(0);
 			opacity: 1;
 		}
 
 		div[data-testid='mobile-nav-sheet'][aria-hidden='true'] {
-			transform: translateY(100%);
+			transform: translateY(100%) translateZ(0);
 			opacity: 0;
 		}
 	}
