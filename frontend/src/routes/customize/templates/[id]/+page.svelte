@@ -44,7 +44,7 @@
 		isDownloading = true;
 		try {
 			const downloadedTemplate = await templateService.download(template.id);
-			toast.success(m.templates_downloaded_success({ name: template.name }));
+			toast.success(m.common_download_success({ resource: m.resource_template() }));
 			if (downloadedTemplate?.id) {
 				await goto(`/customize/templates/${downloadedTemplate.id}`, { replaceState: true });
 			} else {
@@ -52,7 +52,7 @@
 			}
 		} catch (error) {
 			console.error('Error downloading template:', error);
-			toast.error(error instanceof Error ? error.message : m.templates_download_failed());
+			toast.error(error instanceof Error ? error.message : m.common_download_failed({ resource: m.resource_template() }));
 		} finally {
 			isDownloading = false;
 		}
@@ -96,9 +96,9 @@
 		</Button>
 
 		<div>
-			<h1 class="break-words text-xl font-bold sm:text-2xl">{template.name}</h1>
+			<h1 class="text-xl font-bold break-words sm:text-2xl">{template.name}</h1>
 			{#if template.description}
-				<p class="text-muted-foreground mt-1.5 break-words text-sm sm:text-base">{template.description}</p>
+				<p class="text-muted-foreground mt-1.5 text-sm break-words sm:text-base">{template.description}</p>
 			{/if}
 		</div>
 
@@ -154,7 +154,7 @@
 						{m.common_action_deleting()}
 					{:else}
 						<Trash2Icon class="size-4" />
-						{m.templates_delete_template()}
+						{m.common_delete_title({ resource: m.resource_template() })}
 					{/if}
 				</Button>
 			{/if}
@@ -168,7 +168,7 @@
 					<BoxIcon class="size-6 text-blue-500" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<div class="text-muted-foreground text-xs font-semibold uppercase tracking-wide">{m.compose_services()}</div>
+					<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{m.compose_services()}</div>
 					<div class="mt-1">
 						<div class="text-2xl font-bold">{services.length}</div>
 					</div>
@@ -182,7 +182,7 @@
 					<FileTextIcon class="size-6 text-purple-500" />
 				</div>
 				<div class="min-w-0 flex-1">
-					<div class="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+					<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
 						{m.common_environment_variables()}
 					</div>
 					<div class="mt-1 flex flex-wrap items-baseline gap-2">
@@ -207,7 +207,7 @@
 				</div>
 			</Card.Header>
 			<Card.Content class="min-h-[500px] flex-grow p-0 lg:h-full">
-				<div class="h-full rounded-b-xl rounded-t-none [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
+				<div class="h-full rounded-t-none rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
 					<CodeEditor bind:value={compose} language="yaml" readOnly={true} />
 				</div>
 			</Card.Content>
@@ -253,9 +253,9 @@
 						{#each envVars as envVar}
 							<Card.Root variant="subtle" class="min-w-0">
 								<Card.Content class="flex min-w-0 flex-col gap-2 p-3">
-									<div class="text-muted-foreground truncate text-xs font-semibold uppercase tracking-wide">{envVar.key}</div>
+									<div class="text-muted-foreground truncate text-xs font-semibold tracking-wide uppercase">{envVar.key}</div>
 									{#if envVar.value}
-										<div class="text-foreground min-w-0 select-all break-words font-mono text-sm">{envVar.value}</div>
+										<div class="text-foreground min-w-0 font-mono text-sm break-words select-all">{envVar.value}</div>
 									{:else}
 										<div class="text-muted-foreground text-xs italic">{m.common_no_default_value()}</div>
 									{/if}
