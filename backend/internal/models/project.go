@@ -17,6 +17,7 @@ type Project struct {
 	DirName      *string       `json:"dir_name" gorm:"unique"`
 	Path         string        `json:"path" gorm:"not null"`
 	Status       ProjectStatus `json:"status" sortable:"true"`
+	StatusReason *string       `json:"status_reason"`
 	ServiceCount int           `json:"service_count" sortable:"true"`
 	RunningCount int           `json:"running_count" sortable:"true"`
 

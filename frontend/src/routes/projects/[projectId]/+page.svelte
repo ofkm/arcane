@@ -206,7 +206,12 @@
 					class="block sm:hidden"
 				/>
 				{#if project.status}
-					<StatusBadge variant={getStatusVariant(project.status)} text={capitalizeFirstLetter(project.status)} />
+					{@const showTooltip = project.status.toLowerCase() === 'unknown' && project.statusReason}
+					<StatusBadge
+						variant={getStatusVariant(project.status)}
+						text={capitalizeFirstLetter(project.status)}
+						tooltip={showTooltip ? project.statusReason : undefined}
+					/>
 				{/if}
 			</div>
 			{#if project.createdAt}

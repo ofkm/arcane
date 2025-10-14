@@ -278,14 +278,20 @@ func (s *ProjectService) upsertProjectForDir(ctx context.Context, dirName, dirPa
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		// Create a minimal project entry
+		reason := "Project discovered from filesystem, status pending Docker service query"
 		proj := &models.Project{
 			Name:         dirName,
 			DirName:      &dirName,
 			Path:         dirPath,
 			Status:       models.ProjectStatusUnknown,
+			StatusReason: &reason,
 			ServiceCount: 0,
 			RunningCount: 0,
 		}
+		slog.InfoContext(ctx, "Discovered new project with unknown status",
+			"project", dirName,
+			"path", dirPath,
+			"reason", reason)
 		if cerr := s.db.WithContext(ctx).Create(proj).Error; cerr != nil {
 			return fmt.Errorf("create project for %q failed: %w", dirPath, cerr)
 		}
@@ -817,23 +823,46 @@ func (s *ProjectService) ListProjects(ctx context.Context, params pagination.Que
 		displayServiceCount := project.ServiceCount
 		displayRunningCount := project.RunningCount
 		displayStatus := string(project.Status)
+		var statusReason *string
 
 		// Get live status from Docker
 		if services, serr := s.GetProjectServices(ctx, project.ID); serr == nil {
 			displayServiceCount = len(services)
 			_, displayRunningCount = s.getServiceCounts(services)
 			displayStatus = string(s.calculateProjectStatus(services))
-		} else if displayServiceCount == 0 {
+
+			// If status is unknown, set reason
+			if displayStatus == string(models.ProjectStatusUnknown) && len(services) == 0 {
+				reason := "No services found in project"
+				statusReason = &reason
+				slog.WarnContext(ctx, "Project has unknown status",
+					"project_id", project.ID,
+					"project_name", project.Name,
+					"reason", reason)
+			}
+		} else {
+			// Error getting services - set status to unknown with reason
+			displayStatus = string(models.ProjectStatusUnknown)
+			reason := fmt.Sprintf("Failed to load project services: %v", serr)
+			statusReason = &reason
+			slog.WarnContext(ctx, "Project has unknown status due to error",
+				"project_id", project.ID,
+				"project_name", project.Name,
+				"reason", reason,
+				"error", serr)
+
 			// Fallback: try to detect service count from compose file
-			if _, derr := projects.DetectComposeFile(project.Path); derr == nil {
-				// Get configured projects directory from settings
-				projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
-				projectsDirectory, pdErr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
-				if pdErr != nil {
-					projectsDirectory = "data/projects"
-				}
-				if proj, _, perr := projects.LoadComposeProjectFromDir(ctx, project.Path, project.Name, projectsDirectory); perr == nil {
-					displayServiceCount = len(proj.Services)
+			if displayServiceCount == 0 {
+				if _, derr := projects.DetectComposeFile(project.Path); derr == nil {
+					// Get configured projects directory from settings
+					projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
+					projectsDirectory, pdErr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
+					if pdErr != nil {
+						projectsDirectory = "data/projects"
+					}
+					if proj, _, perr := projects.LoadComposeProjectFromDir(ctx, project.Path, project.Name, projectsDirectory); perr == nil {
+						displayServiceCount = len(proj.Services)
+					}
 				}
 			}
 		}
@@ -844,6 +873,7 @@ func (s *ProjectService) ListProjects(ctx context.Context, params pagination.Que
 			DirName:      utils.DerefString(project.DirName),
 			Path:         project.Path,
 			Status:       displayStatus,
+			StatusReason: statusReason,
 			ServiceCount: displayServiceCount,
 			RunningCount: displayRunningCount,
 			CreatedAt:    project.CreatedAt.Format(time.RFC3339),

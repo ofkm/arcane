@@ -161,7 +161,12 @@
 
 {#snippet StatusCell({ item }: { item: Project })}
 	{@const stateVariant = getStatusVariant(item.status)}
-	<StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} />
+	{@const showTooltip = item.status.toLowerCase() === 'unknown' && item.statusReason}
+	<StatusBadge
+		variant={stateVariant}
+		text={capitalizeFirstLetter(item.status)}
+		tooltip={showTooltip ? item.statusReason : undefined}
+	/>
 {/snippet}
 
 {#snippet CreatedCell({ value }: { value: unknown })}
@@ -190,7 +195,8 @@
 				(mobileFieldVisibility.status ?? true)
 					? {
 							variant: getStatusVariant(item.status),
-							text: capitalizeFirstLetter(item.status)
+							text: capitalizeFirstLetter(item.status),
+							tooltip: item.status.toLowerCase() === 'unknown' && item.statusReason ? item.statusReason : undefined
 						}
 					: null
 		]}
