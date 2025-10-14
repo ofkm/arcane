@@ -52,8 +52,8 @@ func (h *ImageHandler) List(c *gin.Context) {
 
 	pagination.ApplyFilterResultsHeaders(&c.Writer, pagination.FilterResult[dto.ImageSummaryDto]{
 		Items:          images,
-		TotalCount:     int(paginationResp.TotalItems),
-		TotalAvailable: int(paginationResp.GrandTotalItems),
+		TotalCount:     paginationResp.TotalItems,
+		TotalAvailable: paginationResp.GrandTotalItems,
 	})
 
 	c.JSON(http.StatusOK, gin.H{

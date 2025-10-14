@@ -317,8 +317,8 @@ func (h *ContainerHandler) List(c *gin.Context) {
 
 	pagination.ApplyFilterResultsHeaders(&c.Writer, pagination.FilterResult[dto.ContainerSummaryDto]{
 		Items:          containers,
-		TotalCount:     int(paginationResp.TotalItems),
-		TotalAvailable: int(paginationResp.GrandTotalItems),
+		TotalCount:     paginationResp.TotalItems,
+		TotalAvailable: paginationResp.GrandTotalItems,
 	})
 
 	c.JSON(http.StatusOK, gin.H{

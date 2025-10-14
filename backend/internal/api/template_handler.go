@@ -63,8 +63,8 @@ func (h *TemplateHandler) GetAllTemplatesPaginated(c *gin.Context) {
 
 	pagination.ApplyFilterResultsHeaders(&c.Writer, pagination.FilterResult[dto.ComposeTemplateDto]{
 		Items:          templates,
-		TotalCount:     int(paginationResp.TotalItems),
-		TotalAvailable: int(paginationResp.GrandTotalItems),
+		TotalCount:     paginationResp.TotalItems,
+		TotalAvailable: paginationResp.GrandTotalItems,
 	})
 
 	c.JSON(http.StatusOK, gin.H{
