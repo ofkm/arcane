@@ -172,7 +172,7 @@
 						<Spinner class="mr-2 size-4" />
 					{/if}
 					<SubmitIcon class="mr-2 size-4" />
-					{isEditMode ? m.users_save_changes() : m.users_create_button()}
+					{isEditMode ? m.users_save_changes() : m.common_create_button({ resource: m.resource_user_cap() })}
 				</Button>
 			</Sheet.Footer>
 		</form>

@@ -54,7 +54,7 @@
 		}
 
 		openConfirmDialog({
-			title: m.networks_remove_title(),
+			title: m.common_remove_title({ resource: m.resource_network() }),
 			message: m.networks_remove_confirm_message({ name: network?.name ?? shortId }),
 			confirm: {
 				label: m.common_remove(),
@@ -97,11 +97,11 @@
 			<div class="flex flex-col">
 				<div class="flex items-center gap-3">
 					<h1 class="text-2xl font-bold tracking-tight">
-						{network?.name ?? m.networks_details_title()}
+						{network?.name ?? m.common_details_title({ resource: m.resource_network_cap() })}
 					</h1>
 
 					<div class="hidden sm:block">
-						<StatusBadge variant="gray" text={`${m.networks_id()}: ${shortId}`} />
+						<StatusBadge variant="gray" text={`${m.common_id()}: ${shortId}`} />
 					</div>
 				</div>
 
@@ -123,7 +123,7 @@
 			<div class="self-start">
 				<ArcaneButton
 					action="remove"
-					customLabel={m.networks_remove_title()}
+					customLabel={m.common_remove_title({ resource: m.resource_network_cap() })}
 					onclick={triggerRemove}
 					loading={isRemoving}
 					disabled={isRemoving || isPredefined}
@@ -135,7 +135,7 @@
 	{#if errorMessage}
 		<Alert.Root variant="destructive">
 			<CircleAlertIcon class="mr-2 size-4" />
-			<Alert.Title>{m.action_failed()}</Alert.Title>
+			<Alert.Title>{m.common_action_failed()}</Alert.Title>
 			<Alert.Description>{errorMessage}</Alert.Description>
 		</Alert.Root>
 	{/if}
@@ -145,8 +145,8 @@
 			<Card.Root>
 				<Card.Header icon={InfoIcon}>
 					<div class="flex flex-col space-y-1.5">
-						<Card.Title>{m.networks_details_title()}</Card.Title>
-						<Card.Description>{m.networks_details_description()}</Card.Description>
+						<Card.Title>{m.common_details_title({ resource: m.resource_network_cap() })}</Card.Title>
+						<Card.Description>{m.common_details_description({ resource: m.resource_network() })}</Card.Description>
 					</div>
 				</Card.Header>
 				<Card.Content class="p-4">
@@ -156,7 +156,7 @@
 								<HashIcon class="size-5 text-gray-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-muted-foreground text-sm font-medium">{m.networks_id()}</p>
+								<p class="text-muted-foreground text-sm font-medium">{m.common_id()}</p>
 								<p
 									class="mt-1 cursor-pointer font-mono text-xs font-semibold break-all select-all sm:text-sm"
 									title="Click to select"
@@ -171,7 +171,7 @@
 								<NetworkIcon class="size-5 text-blue-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-muted-foreground text-sm font-medium">{m.networks_name()}</p>
+								<p class="text-muted-foreground text-sm font-medium">{m.common_name()}</p>
 								<p class="mt-1 cursor-pointer text-sm font-semibold break-all select-all sm:text-base" title="Click to select">
 									{network.name}
 								</p>
@@ -183,7 +183,7 @@
 								<HardDriveIcon class="size-5 text-orange-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-muted-foreground text-sm font-medium">{m.networks_driver()}</p>
+								<p class="text-muted-foreground text-sm font-medium">{m.common_driver()}</p>
 								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
 									{network.driver}
 								</p>
@@ -195,7 +195,7 @@
 								<GlobeIcon class="size-5 text-purple-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-muted-foreground text-sm font-medium">{m.networks_scope()}</p>
+								<p class="text-muted-foreground text-sm font-medium">{m.common_scope()}</p>
 								<p class="mt-1 cursor-pointer text-sm font-semibold capitalize select-all sm:text-base" title="Click to select">
 									{network.scope}
 								</p>
@@ -207,7 +207,7 @@
 								<ClockIcon class="size-5 text-green-500" />
 							</div>
 							<div class="min-w-0 flex-1">
-								<p class="text-muted-foreground text-sm font-medium">{m.networks_created()}</p>
+								<p class="text-muted-foreground text-sm font-medium">{m.common_created()}</p>
 								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
 									{createdDate}
 								</p>
@@ -278,9 +278,7 @@
 										<div class="space-y-2">
 											{#if config.Subnet}
 												<div class="flex flex-col sm:flex-row sm:items-center">
-													<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
-														>{m.networks_ipam_subnet_label()}:</span
-													>
+													<span class="text-muted-foreground w-full text-sm font-medium sm:w-24">{m.common_subnet()}:</span>
 													<code
 														class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"
 														title="Click to select"
@@ -405,7 +403,7 @@
 				<Card.Root>
 					<Card.Header icon={TagIcon}>
 						<div class="flex flex-col space-y-1.5">
-							<Card.Title>{m.networks_labels_title()}</Card.Title>
+							<Card.Title>{m.common_labels()}</Card.Title>
 							<Card.Description>{m.networks_labels_description()}</Card.Description>
 						</div>
 					</Card.Header>
@@ -462,9 +460,14 @@
 			<div class="bg-muted/30 mb-4 rounded-full p-4">
 				<NetworkIcon class="text-muted-foreground size-10 opacity-70" />
 			</div>
-			<h2 class="mb-2 text-xl font-medium">{m.networks_not_found_title()}</h2>
-			<p class="text-muted-foreground mb-6">{m.networks_not_found_description()}</p>
-			<ArcaneButton action="cancel" customLabel={m.common_back_to_networks()} onclick={() => goto('/networks')} size="sm" />
+			<h2 class="mb-2 text-xl font-medium">{m.common_not_found_title({ resource: m.networks_title() })}</h2>
+			<p class="text-muted-foreground mb-6">{m.common_not_found_description({ resource: m.networks_title().toLowerCase() })}</p>
+			<ArcaneButton
+				action="cancel"
+				customLabel={m.common_back_to({ resource: m.networks_title() })}
+				onclick={() => goto('/networks')}
+				size="sm"
+			/>
 		</div>
 	{/if}
 </div>

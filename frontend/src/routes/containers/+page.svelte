@@ -49,7 +49,7 @@
 		let refreshingContainerCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(containerService.getContainers(requestOptions)),
-			message: m.containers_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.containers_title() }),
 			setLoadingState: (value) => {
 				refreshingContainerList = value;
 				isLoading.refreshing = refreshingContainerCounts || refreshingContainerList;
@@ -60,7 +60,7 @@
 		});
 		handleApiResultWithCallbacks({
 			result: await tryCatch(containerService.getContainerStatusCounts()),
-			message: m.containers_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.containers_title() }),
 			setLoadingState: (value) => {
 				refreshingContainerCounts = value;
 				isLoading.refreshing = refreshingContainerCounts || refreshingContainerList;
@@ -90,7 +90,7 @@
 		{
 			id: 'create',
 			action: 'create',
-			label: m.containers_create_button(),
+			label: m.common_create_button({ resource: m.resource_container_cap() }),
 			onclick: () => (isCreateDialogOpen = true),
 			loading: isLoading.create,
 			disabled: isLoading.create
@@ -115,13 +115,13 @@
 
 	const statCards: StatCardConfig[] = $derived([
 		{
-			title: m.containers_total(),
+			title: m.common_total(),
 			value: containerStatusCounts.totalContainers,
 			icon: BoxIcon,
 			class: 'border-l-primary border-l-4 transition-shadow hover:shadow-lg'
 		},
 		{
-			title: m.containers_running(),
+			title: m.common_running(),
 			value: containerStatusCounts.runningContainers,
 			icon: BoxIcon,
 			iconColor: 'text-green-500',
@@ -129,7 +129,7 @@
 			class: 'border-l-4 border-l-green-500'
 		},
 		{
-			title: m.containers_stopped(),
+			title: m.common_stopped(),
 			value: containerStatusCounts.stoppedContainers,
 			icon: BoxIcon,
 			iconColor: 'text-amber-500',
@@ -163,7 +163,7 @@
 					message: m.containers_create_failed(),
 					setLoadingState: (value) => (isLoading.create = value),
 					onSuccess: async () => {
-						toast.success(m.containers_create_success());
+						toast.success(m.common_create_success({ resource: m.resource_container() }));
 						containers = await containerService.getContainers(requestOptions);
 						isCreateDialogOpen = false;
 					}

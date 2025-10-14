@@ -8,8 +8,8 @@ import (
 
 type FilterResult[T any] struct {
 	Items          []T
-	TotalCount     int
-	TotalAvailable int
+	TotalCount     int64
+	TotalAvailable int64
 }
 
 type FilterAccessor[T any] struct {
@@ -35,8 +35,8 @@ func SearchOrderAndPaginate[T any](items []T, params QueryParams, searchConfig C
 
 	return FilterResult[T]{
 		Items:          items,
-		TotalCount:     totalCount,
-		TotalAvailable: totalAvailable,
+		TotalCount:     int64(totalCount),
+		TotalAvailable: int64(totalAvailable),
 	}
 }
 
@@ -74,6 +74,6 @@ func filterFn[T any](items []T, filters map[string]string, accessors []FilterAcc
 }
 
 func ApplyFilterResultsHeaders[T any](w *gin.ResponseWriter, result FilterResult[T]) {
-	(*w).Header().Set("X-Arcane-Total-Items", strconv.Itoa(result.TotalCount))
-	(*w).Header().Set("X-Arcane-Total-Available", strconv.Itoa(result.TotalAvailable))
+	(*w).Header().Set("X-Arcane-Total-Items", strconv.FormatInt(result.TotalCount, 10))
+	(*w).Header().Set("X-Arcane-Total-Available", strconv.FormatInt(result.TotalAvailable, 10))
 }

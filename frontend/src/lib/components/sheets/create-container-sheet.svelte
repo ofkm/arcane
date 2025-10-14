@@ -36,8 +36,8 @@
 	}: CreateContainerFormProps = $props();
 
 	const restartPolicies = [
-		{ value: 'no', label: m.restart_policy_no() },
-		{ value: 'always', label: m.restart_policy_always() },
+		{ value: 'no', label: m.common_no() },
+		{ value: 'always', label: m.common_always() },
 		{ value: 'unless-stopped', label: m.restart_policy_unless_stopped() },
 		{ value: 'on-failure', label: m.restart_policy_on_failure() }
 	];
@@ -299,9 +299,9 @@
 			<div class="flex-1">
 				<Tabs.Root value="basic" class="flex h-full flex-col">
 					<Tabs.List class="bg-muted/30 grid w-full shrink-0 grid-cols-6 border-b">
-						<Tabs.Trigger value="basic" class="py-3">{m.tabs_basic()}</Tabs.Trigger>
+						<Tabs.Trigger value="basic" class="py-3">{m.common_basic()}</Tabs.Trigger>
 						<Tabs.Trigger value="environment" class="py-3">{m.tabs_environment()}</Tabs.Trigger>
-						<Tabs.Trigger value="ports" class="py-3">{m.tabs_ports()}</Tabs.Trigger>
+						<Tabs.Trigger value="ports" class="py-3">{m.common_ports()}</Tabs.Trigger>
 						<Tabs.Trigger value="volumes" class="py-3">{m.tabs_volumes()}</Tabs.Trigger>
 						<Tabs.Trigger value="network" class="py-3">{m.tabs_network_security()}</Tabs.Trigger>
 						<Tabs.Trigger value="advanced" class="py-3">{m.tabs_advanced()}</Tabs.Trigger>
@@ -360,7 +360,7 @@
 									<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 										<div class="space-y-3">
 											<FormInput
-												label={m.container_working_directory_label()}
+												label={m.common_working_directory()}
 												type="text"
 												placeholder={m.container_working_directory_placeholder()}
 												description={m.container_working_directory_description()}
@@ -497,7 +497,7 @@
 									<div class="grid grid-cols-1 gap-8 xl:grid-cols-2">
 										<div class="space-y-6">
 											<div>
-												<h3 class="mb-4 text-lg font-semibold">{m.port_mappings_title()}</h3>
+												<h3 class="mb-4 text-lg font-semibold">{m.common_port_mappings()}</h3>
 												<div class="space-y-3">
 													{#each portMappings as mapping, index (index)}
 														<div class="flex items-center gap-3">
@@ -564,7 +564,7 @@
 												<h3 class="mb-4 text-lg font-semibold">{m.port_configuration_title()}</h3>
 												<div class="space-y-4">
 													<FormInput
-														label={m.exposed_ports_label()}
+														label={m.common_exposed_ports()}
 														type="text"
 														placeholder={m.exposed_ports_placeholder()}
 														description={m.exposed_ports_description()}
@@ -770,10 +770,10 @@
 									<Button type="submit" disabled={isLoading}>
 										{#if isLoading}
 											<Spinner class="mr-2 size-4" />
-											{m.containers_creating()}
+											{m.common_action_creating()}
 										{:else}
 											<ContainerIcon class="mr-2 size-4" />
-											{m.containers_create_button()}
+											{m.common_create_button({ resource: m.resource_container_cap() })}
 										{/if}
 									</Button>
 								</div>

@@ -47,7 +47,7 @@
 		let refreshingProjectCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(projectService.getProjects(projectRequestOptions)),
-			message: m.compose_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.projects_title() }),
 			setLoadingState: (v) => {
 				refreshingProjectList = v;
 				isLoading.refreshing = refreshingProjectCounts || refreshingProjectList;
@@ -58,7 +58,7 @@
 		});
 		handleApiResultWithCallbacks({
 			result: await tryCatch(projectService.getProjectStatusCounts()),
-			message: m.compose_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.projects_title() }),
 			setLoadingState: (v) => {
 				refreshingProjectCounts = v;
 				isLoading.refreshing = refreshingProjectCounts || refreshingProjectList;
@@ -118,14 +118,14 @@
 			class: 'border-l-4 border-l-amber-500'
 		},
 		{
-			title: m.compose_running(),
+			title: m.common_running(),
 			value: runningCompose,
 			icon: PlayCircleIcon,
 			iconColor: 'text-green-500',
 			class: 'border-l-4 border-l-green-500'
 		},
 		{
-			title: m.compose_stopped(),
+			title: m.common_stopped(),
 			value: stoppedCompose,
 			icon: StopCircleIcon,
 			iconColor: 'text-red-500',

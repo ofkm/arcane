@@ -33,7 +33,7 @@
 		{ accessorKey: 'repoTags', title: m.images_repository(), cell: NameCell },
 		{ accessorKey: 'inUse', title: m.common_status(), cell: StatusCell },
 		{ id: 'tag', title: m.images_tag(), cell: TagCell },
-		{ accessorKey: 'size', title: m.images_size(), cell: SizeCell }
+		{ accessorKey: 'size', title: m.common_size(), cell: SizeCell }
 	] satisfies ColumnSpec<ImageSummaryDto>[];
 </script>
 
@@ -90,7 +90,7 @@
 		]}
 		fields={[
 			{
-				label: m.images_size(),
+				label: m.common_size(),
 				getValue: (item: ImageSummaryDto) => bytes.format(item.size)
 			}
 		]}

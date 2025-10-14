@@ -4,9 +4,9 @@
 	import { DataTableFacetedFilter, DataTableViewOptions } from './index.js';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { Input } from '$lib/components/ui/input/index.js';
-	import { imageUpdateFilters, usageFilters, severityFilters } from './data.js';
+	import { imageUpdateFilters, usageFilters, severityFilters, templateTypeFilters } from './data.js';
 	import { debounced } from '$lib/utils/utils.js';
-	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
+	import { ArcaneButton } from '$lib/components/arcane-button';
 	import { m } from '$lib/paraglide/messages';
 	import type { Snippet } from 'svelte';
 
@@ -36,6 +36,7 @@
 	const severityColumn = $derived(
 		table.getAllColumns().some((col) => col.id === 'severity') ? table.getColumn('severity') : undefined
 	);
+	const typeColumn = $derived(table.getAllColumns().some((col) => col.id === 'type') ? table.getColumn('type') : undefined);
 
 	const debouncedSetGlobal = debounced((v: string) => table.setGlobalFilter(v), 300);
 	const hasSelection = $derived(!selectionDisabled && (selectedIds?.length ?? 0) > 0);
@@ -66,6 +67,9 @@
 			</div>
 
 			<div class="flex flex-wrap items-center gap-2 sm:gap-0 sm:space-x-2">
+				{#if typeColumn}
+					<DataTableFacetedFilter column={typeColumn} title={m.common_type()} options={templateTypeFilters} />
+				{/if}
 				{#if usageColumn}
 					<DataTableFacetedFilter column={usageColumn} title={m.common_usage()} options={usageFilters} />
 				{/if}
@@ -103,7 +107,7 @@
 		<ArcaneButton
 			action="remove"
 			size="sm"
-			customLabel={m.common_remove_selected({ count: selectedIds?.length ?? 0 })}
+			customLabel={m.common_remove_selected_count({ count: selectedIds?.length ?? 0 })}
 			onclick={() => onRemoveSelected?.(selectedIds!)}
 		/>
 	{/if}

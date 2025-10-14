@@ -34,7 +34,7 @@
 			events = await eventService.getEvents(requestOptions);
 		} catch (error) {
 			console.error('Failed to refresh events:', error);
-			toast.error(m.events_refresh_failed());
+			toast.error(m.common_refresh_failed({ resource: m.events_title() }));
 		} finally {
 			isLoading.refreshing = false;
 		}
@@ -71,13 +71,12 @@
 					isLoading.deleting = false;
 
 					if (successCount > 0) {
-						const msg =
-							successCount === 1 ? m.events_delete_success_one() : m.events_delete_success_many({ count: successCount });
+						const msg = m.common_bulk_delete_success({ count: successCount, resource: m.events_title() });
 						toast.success(msg);
 						await refreshEvents();
 					}
 					if (failureCount > 0) {
-						const msg = failureCount === 1 ? m.events_delete_failed_one() : m.events_delete_failed_many({ count: failureCount });
+						const msg = m.common_bulk_delete_failed({ count: failureCount, resource: m.events_title() });
 						toast.error(msg);
 					}
 

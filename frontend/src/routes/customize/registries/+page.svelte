@@ -30,7 +30,7 @@
 		isLoading.refresh = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(containerRegistryService.getRegistries(requestOptions)),
-			message: m.registries_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.registries_title() }),
 			setLoadingState: (value) => (isLoading.refresh = value),
 			onSuccess: async (newRegistries) => {
 				registries = newRegistries;
@@ -60,10 +60,10 @@
 		try {
 			if (isEditMode && registryToEdit?.id) {
 				await containerRegistryService.updateRegistry(registryToEdit.id, registry as ContainerRegistryUpdateDto);
-				toast.success(m.registries_update_success());
+				toast.success(m.common_update_success({ resource: m.resource_registry() }));
 			} else {
 				await containerRegistryService.createRegistry(registry as ContainerRegistryCreateDto);
-				toast.success(m.registries_create_success());
+				toast.success(m.common_create_success({ resource: m.resource_registry() }));
 			}
 
 			registries = await containerRegistryService.getRegistries(requestOptions);
@@ -80,7 +80,7 @@
 		{
 			id: 'create',
 			action: 'create',
-			label: m.registries_add_button(),
+			label: m.common_add_button({ resource: m.resource_registry_cap() }),
 			onclick: openCreateRegistryDialog
 		},
 		{

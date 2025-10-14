@@ -29,7 +29,7 @@
 
 	const formSchema = z.object({
 		volumeName: z.string().min(1, m.volume_name_required()),
-		volumeDriver: z.string().min(1, m.volume_driver_required()),
+		volumeDriver: z.string().min(1, m.common_driver_required()),
 		volumeOptText: z.string().optional().default(''),
 		volumeLabels: z.string().optional().default('')
 	});
@@ -166,10 +166,10 @@
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
 						<Spinner class="mr-2 size-4" />
-						{m.volumes_creating()}
+						{m.common_action_creating()}
 					{:else}
 						<HardDriveIcon class="mr-2 size-4" />
-						{m.volumes_create_button()}
+						{m.common_create_button({ resource: m.resource_volume_cap() })}
 					{/if}
 				</Button>
 			</Sheet.Footer>

@@ -36,10 +36,10 @@
 		const name = options.Name?.trim() || m.common_unknown();
 		handleApiResultWithCallbacks({
 			result: await tryCatch(volumeService.createVolume(options)),
-			message: m.volumes_create_failed({ name }),
+			message: m.common_create_failed({ resource: `${m.resource_volume()} "${name}"` }),
 			setLoadingState: (value) => (isLoading.creating = value),
 			onSuccess: async () => {
-				toast.success(m.volumes_created_success({ name }));
+				toast.success(m.common_create_success({ resource: `${m.resource_volume()} "${name}"` }));
 				volumes = await volumeService.getVolumes(requestOptions);
 				isCreateDialogOpen = false;
 			}
@@ -52,7 +52,7 @@
 		let refreshingVolumeCounts = true;
 		handleApiResultWithCallbacks({
 			result: await tryCatch(volumeService.getVolumes(requestOptions)),
-			message: m.volumes_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.volumes_title() }),
 			setLoadingState: (value) => {
 				refreshingVolumeList = value;
 				isLoading.refresh = refreshingVolumeCounts || refreshingVolumeList;
@@ -63,7 +63,7 @@
 		});
 		handleApiResultWithCallbacks({
 			result: await tryCatch(volumeService.getVolumeUsageCounts()),
-			message: m.volumes_refresh_failed(),
+			message: m.common_refresh_failed({ resource: m.volumes_title() }),
 			setLoadingState: (value) => {
 				refreshingVolumeCounts = value;
 				isLoading.refresh = refreshingVolumeCounts || refreshingVolumeList;
@@ -93,7 +93,7 @@
 		{
 			id: 'create',
 			action: 'create',
-			label: m.volumes_create_button(),
+			label: m.common_create_button({ resource: m.resource_volume_cap() }),
 			onclick: () => (isCreateDialogOpen = true),
 			loading: isLoading.creating,
 			disabled: isLoading.creating

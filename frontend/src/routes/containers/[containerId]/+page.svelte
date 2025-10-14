@@ -56,7 +56,7 @@
 	let statsStreamEnabled = $state(false);
 
 	const cleanContainerName = (name: string | undefined): string => {
-		if (!name) return m.containers_not_found_title();
+		if (!name) return m.common_not_found_title({ resource: m.containers_title() });
 		return name.replace(/^\/+/, '');
 	};
 
@@ -219,11 +219,11 @@
 	const showShell = $derived(!!container?.state?.running);
 
 	const tabItems = $derived<TabItem[]>([
-		{ value: 'overview', label: m.containers_nav_overview(), icon: HardDriveIcon },
+		{ value: 'overview', label: m.common_overview(), icon: HardDriveIcon },
 		...(showStats ? [{ value: 'stats', label: m.containers_nav_metrics(), icon: ActivityIcon }] : []),
 		{ value: 'logs', label: m.containers_nav_logs(), icon: FileTextIcon },
-		...(showShell ? [{ value: 'shell', label: m.shell(), icon: TerminalIcon }] : []),
-		...(showConfiguration ? [{ value: 'config', label: m.containers_nav_config(), icon: SettingsIcon }] : []),
+		...(showShell ? [{ value: 'shell', label: m.common_shell(), icon: TerminalIcon }] : []),
+		...(showConfiguration ? [{ value: 'config', label: m.common_configuration(), icon: SettingsIcon }] : []),
 		...(hasNetworks ? [{ value: 'network', label: m.containers_nav_networks(), icon: NetworkIcon }] : []),
 		...(hasMounts ? [{ value: 'storage', label: m.containers_nav_storage(), icon: DatabaseIcon }] : [])
 	]);
@@ -373,14 +373,14 @@
 			<div class="bg-muted/50 mb-6 inline-flex rounded-full p-6">
 				<CircleAlertIcon class="text-muted-foreground size-10" />
 			</div>
-			<h2 class="mb-3 text-2xl font-medium">{m.containers_not_found_title()}</h2>
+			<h2 class="mb-3 text-2xl font-medium">{m.common_not_found_title({ resource: m.container() })}</h2>
 			<p class="text-muted-foreground mb-8 max-w-md text-center">
-				{m.containers_not_found_description()}
+				{m.common_not_found_description({ resource: m.container().toLowerCase() })}
 			</p>
 			<div class="flex justify-center gap-4">
 				<Button variant="outline" href="/containers">
 					<ArrowLeftIcon class="mr-2 size-4" />
-					{m.common_back_to_containers()}
+					{m.common_back_to({ resource: m.containers_title() })}
 				</Button>
 				<Button variant="default" onclick={refreshData}>
 					<RefreshCwIcon class="mr-2 size-4" />

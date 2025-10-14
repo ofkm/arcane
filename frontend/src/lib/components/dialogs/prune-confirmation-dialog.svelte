@@ -141,7 +141,7 @@
 				disabled={selectedTypes.length === 0 || isPruning}
 			>
 				{#if isPruning}
-					<Spinner class="mr-2 size-4" /> {m.images_pruning()}
+					<Spinner class="mr-2 size-4" /> {m.common_action_pruning()}
 				{:else}
 					<Trash2Icon class="mr-2 size-4" /> {m.prune_button({ count: selectedTypes.length })}
 				{/if}

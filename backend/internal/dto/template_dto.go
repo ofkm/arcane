@@ -31,13 +31,26 @@ type TemplateRegistryDto struct {
 }
 
 type ComposeTemplateMetadataDto struct {
-	Version          *string `json:"version,omitempty"`
-	Author           *string `json:"author,omitempty"`
-	Tags             *string `json:"tags,omitempty"`
-	RemoteURL        *string `json:"remoteUrl,omitempty"`
-	EnvURL           *string `json:"envUrl,omitempty"`
-	DocumentationURL *string `json:"documentationUrl,omitempty"`
-	UpdatedAt        *string `json:"updatedAt,omitempty"`
+	Version          *string  `json:"version,omitempty"`
+	Author           *string  `json:"author,omitempty"`
+	Tags             []string `json:"tags,omitempty"`
+	RemoteURL        *string  `json:"remoteUrl,omitempty"`
+	EnvURL           *string  `json:"envUrl,omitempty"`
+	DocumentationURL *string  `json:"documentationUrl,omitempty"`
+	UpdatedAt        *string  `json:"updatedAt,omitempty"`
+}
+
+type EnvVariable struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type ComposeTemplateContentDto struct {
+	Template     ComposeTemplateDto `json:"template"`
+	Content      string             `json:"content"`
+	EnvContent   string             `json:"envContent"`
+	Services     []string           `json:"services"`
+	EnvVariables []EnvVariable      `json:"envVariables"`
 }
 
 type ComposeTemplateDto struct {

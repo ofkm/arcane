@@ -50,8 +50,8 @@ func (h *VolumeHandler) List(c *gin.Context) {
 
 	pagination.ApplyFilterResultsHeaders(&c.Writer, pagination.FilterResult[dto.VolumeDto]{
 		Items:          volumes,
-		TotalCount:     int(paginationResp.TotalItems),
-		TotalAvailable: int(paginationResp.GrandTotalItems),
+		TotalCount:     paginationResp.TotalItems,
+		TotalAvailable: paginationResp.GrandTotalItems,
 	})
 
 	c.JSON(http.StatusOK, gin.H{

@@ -94,7 +94,7 @@
 				<Card.Header
 					class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
 				>
-					<Card.Title class="text-lg">{m.environments_add_button()}</Card.Title>
+					<Card.Title class="text-lg">{m.common_add_button({ resource: m.resource_environment_cap() })}</Card.Title>
 				</Card.Header>
 				<Card.Content class="px-6">
 					<form onsubmit={preventDefault(handleSubmit)} class="space-y-4">
@@ -120,7 +120,7 @@
 							{#if isSubmitting}
 								<Spinner class="mr-2 size-4" />
 							{/if}
-							{m.environments_add_button()}
+							{m.common_add_button({ resource: m.resource_environment_cap() })}
 						</Button>
 					</form>
 				</Card.Content>
