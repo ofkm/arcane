@@ -102,7 +102,7 @@
 		},
 		{
 			value: 'settings',
-			label: m.compose_nav_settings(),
+			label: m.common_settings(),
 			icon: SettingsIcon
 		}
 	]);
