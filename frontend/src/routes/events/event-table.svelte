@@ -69,8 +69,8 @@
 	async function handleDeleteEvent(eventId: string, title: string) {
 		const safeTitle = title?.trim() || m.common_unknown();
 		openConfirmDialog({
-			title: m.common_delete_title({ resource: 'event' }),
-			message: m.events_delete_confirm_message({ title: safeTitle }),
+			title: m.common_delete_title({ resource: m.resource_event() }),
+			message: m.common_delete_confirm({ resource: `${m.resource_event()} "${safeTitle}"` }),
 			confirm: {
 				label: m.common_delete(),
 				destructive: true,
@@ -78,10 +78,10 @@
 					isLoading.removing = true;
 					handleApiResultWithCallbacks({
 						result: await tryCatch(eventService.delete(eventId)),
-						message: m.events_delete_failed({ title: safeTitle }),
+						message: m.common_delete_failed({ resource: `${m.resource_event()} "${safeTitle}"` }),
 						setLoadingState: (value) => (isLoading.removing = value),
 						onSuccess: async () => {
-							toast.success(m.events_delete_success({ title: safeTitle }));
+							toast.success(m.common_delete_success({ resource: `${m.resource_event()} "${safeTitle}"` }));
 							events = await eventService.getEvents(requestOptions);
 						}
 					});

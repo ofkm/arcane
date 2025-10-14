@@ -58,10 +58,10 @@
 				action: async () => {
 					await handleApiResultWithCallbacks({
 						result: await tryCatch(imageService.deleteImage(id)),
-						message: m.images_remove_failed(),
+						message: m.common_remove_failed({ resource: m.resource_image() }),
 						setLoadingState: (value) => (isLoading.removing = value),
 						onSuccess: async () => {
-							toast.success(m.images_remove_success());
+							toast.success(m.common_remove_success({ resource: m.resource_image() }));
 							goto('/images');
 						}
 					});
@@ -157,9 +157,9 @@
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10 p-2">
 								<CpuIcon class="size-5 text-orange-500" />
 							</div>
-						<div class="min-w-0 flex-1">
-							<p class="text-muted-foreground text-sm font-medium">{m.common_architecture()}</p>
-							<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+							<div class="min-w-0 flex-1">
+								<p class="text-muted-foreground text-sm font-medium">{m.common_architecture()}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
 									{architecture()}
 								</p>
 							</div>

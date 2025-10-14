@@ -44,8 +44,8 @@
 		if (selectedIds.length === 0) return;
 
 		openConfirmDialog({
-			title: m.events_delete_selected_title({ count: selectedIds.length }),
-			message: m.events_delete_selected_message({ count: selectedIds.length }),
+			title: m.common_delete_selected_title({ count: selectedIds.length, resource: m.resource_events() }),
+			message: m.common_delete_confirm({ resource: m.resource_events() }),
 			confirm: {
 				label: m.common_delete(),
 				destructive: true,

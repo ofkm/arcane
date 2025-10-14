@@ -124,10 +124,10 @@
 					const volumes = !!checkboxStates.volumes;
 					handleApiResultWithCallbacks({
 						result: await tryCatch(containerService.deleteContainer(id, { force, volumes })),
-						message: m.containers_remove_failed(),
+						message: m.common_remove_failed({ resource: m.resource_container() }),
 						setLoadingState: (value) => (isLoading.remove = value),
 						async onSuccess() {
-							toast.success(m.containers_remove_success());
+							toast.success(m.common_remove_success({ resource: m.resource_container() }));
 							containers = await containerService.getContainers(requestOptions);
 						}
 					});

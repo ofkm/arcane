@@ -55,17 +55,17 @@
 
 		openConfirmDialog({
 			title: m.common_remove_title({ resource: m.resource_network() }),
-			message: m.networks_remove_confirm_message({ name: network?.name ?? shortId }),
+			message: m.common_remove_confirm({ resource: `${m.resource_network()} "${network?.name ?? shortId}"` }),
 			confirm: {
 				label: m.common_remove(),
 				destructive: true,
 				action: async () => {
 					handleApiResultWithCallbacks({
 						result: await tryCatch(networkService.deleteNetwork(network.id)),
-						message: m.networks_remove_failed({ name: network?.name ?? shortId }),
+						message: m.common_remove_failed({ resource: `${m.resource_network()} "${network?.name ?? shortId}"` }),
 						setLoadingState: (value) => (isRemoving = value),
 						onSuccess: async () => {
-							toast.success(m.networks_remove_success({ name: network?.name ?? shortId }));
+							toast.success(m.common_remove_success({ resource: `${m.resource_network()} "${network?.name ?? shortId}"` }));
 							goto('/networks');
 						},
 						onError: (error) => {
@@ -290,9 +290,7 @@
 
 											{#if config.Gateway}
 												<div class="flex flex-col sm:flex-row sm:items-center">
-													<span class="text-muted-foreground w-full text-sm font-medium sm:w-24"
-														>{m.common_gateway()}:</span
-													>
+													<span class="text-muted-foreground w-full text-sm font-medium sm:w-24">{m.common_gateway()}:</span>
 													<code
 														class="bg-muted text-muted-foreground mt-1 cursor-pointer rounded px-1.5 py-0.5 font-mono text-xs select-all sm:mt-0 sm:text-sm"
 														title="Click to select"

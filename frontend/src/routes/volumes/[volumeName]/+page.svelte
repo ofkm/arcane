@@ -30,7 +30,7 @@
 
 	async function handleRemoveVolumeConfirm(volumeName: string) {
 		const safeName = volumeName?.trim() || m.common_unknown();
-		let message = m.volumes_remove_confirm_message({ name: safeName });
+		let message = m.common_remove_confirm({ resource: `${m.resource_volume()} "${safeName}"` });
 		if (volume.inUse) {
 			message += `\n\n${m.volumes_remove_in_use_warning()}`;
 		}
@@ -44,10 +44,10 @@
 				action: async () => {
 					handleApiResultWithCallbacks({
 						result: await tryCatch(volumeService.deleteVolume(safeName)),
-						message: m.volumes_remove_failed({ name: safeName }),
+						message: m.common_remove_failed({ resource: `${m.resource_volume()} "${safeName}"` }),
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
-							toast.success(m.volumes_remove_success({ name: safeName }));
+							toast.success(m.common_remove_success({ resource: `${m.resource_volume()} "${safeName}"` }));
 							goto('/volumes');
 						}
 					});
