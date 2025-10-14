@@ -202,7 +202,7 @@
 			</Card.Header>
 			<Card.Content class="min-h-[500px] flex-grow p-0 lg:h-full">
 				<div class="h-full rounded-b-xl rounded-t-none [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
-					<CodeEditor bind:value={compose} language="yaml" />
+					<CodeEditor bind:value={compose} language="yaml" readOnly={true} />
 				</div>
 			</Card.Content>
 		</Card.Root>
@@ -272,7 +272,7 @@
 					</Card.Header>
 					<Card.Content class="h-[500px] flex-grow p-0 lg:h-full">
 						<div class="h-full rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
-							<CodeEditor bind:value={env} language="env" />
+							<CodeEditor bind:value={env} language="env" readOnly={true} />
 						</div>
 					</Card.Content>
 				</Card.Root>

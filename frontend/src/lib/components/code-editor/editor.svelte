@@ -19,7 +19,7 @@
 		language = 'yaml' as CodeLanguage,
 		placeholder = m.editor_placeholder(),
 		readOnly = false,
-		fontSize = '12px',
+		fontSize = '12px'
 	} = $props();
 
 	let editorView: EditorView;
