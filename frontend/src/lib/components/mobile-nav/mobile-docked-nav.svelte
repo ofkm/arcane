@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { scrollY } from 'svelte/reactivity/window';
+	import { untrack } from 'svelte';
 	import type { NavigationItem, MobileNavigationSettings } from '$lib/config/navigation-config';
 	import { getAvailableMobileNavItems } from '$lib/config/navigation-config';
 	import MobileNavItem from './mobile-nav-item.svelte';
@@ -30,6 +30,63 @@
 			.filter((item) => item !== undefined);
 	});
 
+	// Touch-based detection: hide/show immediately on the first touchmove
+	// direction change so mobile users get instant feedback.
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		if (!scrollToHideEnabled) return;
+
+		const handleTouchStart = (e: TouchEvent) => {
+			if (menuOpen) return;
+			const t = e.touches?.[0];
+			if (!t) return;
+			const target = e.target as HTMLElement | null;
+			// Ignore touches that start on interactive controls
+			if (target && target.closest && target.closest('button, a, input, select, textarea, [role="button"], [contenteditable]')) {
+				isInteractiveTouch = true;
+				touchStartY = null;
+				return;
+			}
+			isInteractiveTouch = false;
+			touchStartY = t.clientY;
+		};
+
+		const handleTouchMove = (e: TouchEvent) => {
+			if (menuOpen || isInteractiveTouch || touchStartY === null) return;
+			const t = e.touches?.[0];
+			if (!t) return;
+			const deltaY = t.clientY - touchStartY;
+			if (Math.abs(deltaY) < touchMoveThreshold) return;
+
+			// Negative deltaY => finger moved up => page scrolling down
+			if (deltaY < 0) {
+				visible = false;
+			} else {
+				visible = true;
+			}
+
+			// Sync lastScrollY so the scroll listener doesn't get out of sync
+			lastScrollY = window.scrollY;
+			// Update reference to avoid repeated toggles for the same gesture
+			touchStartY = t.clientY;
+		};
+
+		const handleTouchEnd = () => {
+			touchStartY = null;
+			isInteractiveTouch = false;
+		};
+
+		window.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
+		window.addEventListener('touchmove', handleTouchMove, { passive: true, capture: true });
+		window.addEventListener('touchend', handleTouchEnd, { passive: true, capture: true });
+
+		return () => {
+			window.removeEventListener('touchstart', handleTouchStart, { capture: true });
+			window.removeEventListener('touchmove', handleTouchMove, { capture: true });
+			window.removeEventListener('touchend', handleTouchEnd, { capture: true });
+		};
+	});
+
 	const currentPath = $derived(page.url.pathname);
 
 	const showLabels = $derived(navigationSettings.showLabels);
@@ -39,6 +96,15 @@
 	let menuOpen = $state(false);
 	let lastScrollY = $state(0);
 	let navElement: HTMLElement;
+	let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	// Immediate touch gesture detection so the nav hides as soon as the
+	// user starts a downward scroll gesture on touch devices. This
+	// complements the regular scroll listener which can lag on some
+	// devices or when scrolling inside nested scroll containers.
+	let touchStartY: number | null = null;
+	let isInteractiveTouch = false;
+	const touchMoveThreshold = 6; // small threshold to avoid noise
 
 	// Swipe gesture detector for opening menu
 	const swipeDetector = new SwipeGestureDetector(
@@ -54,28 +120,58 @@
 		}
 	);
 
-	// Simple scroll-to-hide logic using Svelte 5's reactive scrollY
+	// Improved scroll-to-hide using native scroll events with passive listeners
 	$effect(() => {
-		if (!scrollToHideEnabled || menuOpen) return;
-
-		const currentScrollY = scrollY.current ?? 0;
-		const scrollDiff = currentScrollY - lastScrollY;
-		const scrollThreshold = 50;
-
-		// Scrolling down and past threshold - hide nav
-		if (scrollDiff > scrollThreshold && currentScrollY > 100) {
-			visible = false;
-		}
-		// Scrolling up - show nav
-		else if (scrollDiff < -scrollThreshold) {
+		if (typeof window === 'undefined') return;
+		if (!scrollToHideEnabled || menuOpen) {
 			visible = true;
-		}
-		// At top of page - always show
-		else if (currentScrollY < 100) {
-			visible = true;
+			return;
 		}
 
-		lastScrollY = currentScrollY;
+		const scrollThreshold = 10; // Lower threshold for better touch responsiveness
+		const minScrollDistance = 80; // Minimum scroll from top to hide
+
+		const handleScroll = () => {
+			const currentScrollY = window.scrollY;
+			const scrollDiff = currentScrollY - untrack(() => lastScrollY);
+
+			// Clear any existing timeout
+			if (scrollTimeout) {
+				clearTimeout(scrollTimeout);
+				scrollTimeout = null;
+			}
+
+			// Only update if scroll difference exceeds threshold
+			if (Math.abs(scrollDiff) > scrollThreshold) {
+				// Scrolling down and past minimum distance - hide nav
+				if (scrollDiff > 0 && currentScrollY > minScrollDistance) {
+					visible = false;
+				}
+				// Scrolling up - show nav
+				else if (scrollDiff < 0) {
+					visible = true;
+				}
+
+				lastScrollY = currentScrollY;
+			}
+
+			// At top of page - always show after scroll stops
+			scrollTimeout = setTimeout(() => {
+				if (window.scrollY < minScrollDistance) {
+					visible = true;
+				}
+			}, 150);
+		};
+
+		// Add passive scroll listener for better touch performance
+		window.addEventListener('scroll', handleScroll, { passive: true });
+
+		return () => {
+			window.removeEventListener('scroll', handleScroll);
+			if (scrollTimeout) {
+				clearTimeout(scrollTimeout);
+			}
+		};
 	});
 
 	// Show nav when menu closes
