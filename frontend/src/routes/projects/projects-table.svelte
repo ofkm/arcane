@@ -49,6 +49,10 @@
 		updating: false
 	});
 
+	function getStatusTooltip(project: Project): string | undefined {
+		return project.status.toLowerCase() === 'unknown' && project.statusReason ? project.statusReason : undefined;
+	}
+
 	async function performProjectAction(action: string, id: string) {
 		isLoading[action as keyof typeof isLoading] = true;
 
@@ -161,12 +165,7 @@
 
 {#snippet StatusCell({ item }: { item: Project })}
 	{@const stateVariant = getStatusVariant(item.status)}
-	{@const showTooltip = item.status.toLowerCase() === 'unknown' && item.statusReason}
-	<StatusBadge
-		variant={stateVariant}
-		text={capitalizeFirstLetter(item.status)}
-		tooltip={showTooltip ? item.statusReason : undefined}
-	/>
+	<StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} tooltip={getStatusTooltip(item)} />
 {/snippet}
 
 {#snippet CreatedCell({ value }: { value: unknown })}
@@ -196,7 +195,7 @@
 					? {
 							variant: getStatusVariant(item.status),
 							text: capitalizeFirstLetter(item.status),
-							tooltip: item.status.toLowerCase() === 'unknown' && item.statusReason ? item.statusReason : undefined
+							tooltip: getStatusTooltip(item)
 						}
 					: null
 		]}
