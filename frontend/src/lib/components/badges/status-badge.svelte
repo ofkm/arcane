@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import { m } from '$lib/paraglide/messages';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 
 	type Variant =
 		| 'red'
@@ -29,6 +30,7 @@
 		variant = 'gray',
 		size = 'md',
 		minWidth = '20',
+		tooltip,
 		class: className = '',
 		...restProps
 	} = $props<{
@@ -36,6 +38,7 @@
 		variant?: Variant;
 		size?: Size;
 		minWidth?: MinWidth;
+		tooltip?: string;
 		class?: string;
 	}>();
 
@@ -77,22 +80,35 @@
 	};
 
 	const resolvedMinWidth = minWidth as MinWidth;
-</script>
-
-<span
-	class={cn(
+	const badgeClasses = cn(
 		// base
-		'inline-flex items-center justify-center gap-1 rounded-full font-medium whitespace-nowrap',
+		'inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full font-medium',
 		sizeStyles[size as Size],
 		// subtle border and translucency
-		'ring-1 transition-colors ring-inset',
+		'ring-1 ring-inset transition-colors',
 		// variant styles
 		variantStyles[variant as Variant],
 		// optional fixed width
 		minWidthClasses[resolvedMinWidth],
 		className
-	)}
-	{...restProps}
->
-	{text}
-</span>
+	);
+</script>
+
+{#snippet BadgeContent()}
+	<span class={badgeClasses} {...restProps}>
+		{text}
+	</span>
+{/snippet}
+
+{#if tooltip}
+	<Tooltip.Root>
+		<Tooltip.Trigger>
+			{@render BadgeContent()}
+		</Tooltip.Trigger>
+		<Tooltip.Content>
+			<p class="max-w-xs text-xs">{tooltip}</p>
+		</Tooltip.Content>
+	</Tooltip.Root>
+{:else}
+	{@render BadgeContent()}
+{/if}

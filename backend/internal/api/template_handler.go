@@ -9,6 +9,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
+	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
 type TemplateHandler struct {
@@ -22,7 +23,8 @@ func NewTemplateHandler(group *gin.RouterGroup, templateService *services.Templa
 
 	apiGroup.GET("/fetch", handler.FetchRegistry)
 
-	apiGroup.GET("", authMiddleware.WithAdminNotRequired().WithSuccessOptional().Add(), handler.GetAllTemplates)
+	apiGroup.GET("", authMiddleware.WithAdminNotRequired().WithSuccessOptional().Add(), handler.GetAllTemplatesPaginated)
+	apiGroup.GET("/all", authMiddleware.WithAdminNotRequired().WithSuccessOptional().Add(), handler.GetAllTemplates)
 	apiGroup.GET("/:id", authMiddleware.WithAdminNotRequired().WithSuccessOptional().Add(), handler.GetTemplate)
 	apiGroup.GET("/:id/content", authMiddleware.WithAdminNotRequired().WithSuccessOptional().Add(), handler.GetTemplateContent)
 
@@ -41,6 +43,35 @@ func NewTemplateHandler(group *gin.RouterGroup, templateService *services.Templa
 		apiGroup.GET("/variables", handler.GetGlobalVariables)
 		apiGroup.PUT("/variables", handler.UpdateGlobalVariables)
 	}
+}
+
+func (h *TemplateHandler) GetAllTemplatesPaginated(c *gin.Context) {
+	params := pagination.ExtractListModifiersQueryParams(c)
+
+	if params.Limit == 0 {
+		params.Limit = 20
+	}
+
+	templates, paginationResp, err := h.templateService.GetAllTemplatesPaginated(c.Request.Context(), params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to get templates: " + err.Error()},
+		})
+		return
+	}
+
+	pagination.ApplyFilterResultsHeaders(&c.Writer, pagination.FilterResult[dto.ComposeTemplateDto]{
+		Items:          templates,
+		TotalCount:     paginationResp.TotalItems,
+		TotalAvailable: paginationResp.GrandTotalItems,
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":    true,
+		"data":       templates,
+		"pagination": paginationResp,
+	})
 }
 
 func (h *TemplateHandler) GetAllTemplates(c *gin.Context) {
@@ -120,48 +151,18 @@ func (h *TemplateHandler) GetTemplateContent(c *gin.Context) {
 		return
 	}
 
-	template, err := h.templateService.GetTemplate(c.Request.Context(), id)
+	contentData, err := h.templateService.GetTemplateContentWithParsedData(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"data":    gin.H{"error": "Template not found"},
-		})
-		return
-	}
-
-	var outTemplate dto.ComposeTemplateDto
-	if mapErr := dto.MapStruct(template, &outTemplate); mapErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Failed to map template: " + mapErr.Error()},
+			"data":    gin.H{"error": "Failed to get template content: " + err.Error()},
 		})
 		return
-	}
-
-	var composeContent, envContent string
-	if template.IsRemote {
-		composeContent, envContent, err = h.templateService.FetchTemplateContent(c.Request.Context(), template)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"success": false,
-				"data":    gin.H{"error": "Failed to fetch template content: " + err.Error()},
-			})
-			return
-		}
-	} else {
-		composeContent = template.Content
-		if template.EnvContent != nil {
-			envContent = *template.EnvContent
-		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data": gin.H{
-			"content":    composeContent,
-			"envContent": envContent,
-			"template":   outTemplate,
-		},
+		"data":    contentData,
 	})
 }
 

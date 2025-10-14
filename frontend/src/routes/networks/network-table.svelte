@@ -45,7 +45,7 @@
 			return;
 		}
 		openConfirmDialog({
-			title: m.networks_delete_title(),
+			title: m.common_delete_title({ resource: m.resource_network() }),
 			message: m.networks_delete_confirm_message({ name: safeName }),
 			confirm: {
 				label: m.common_delete(),
@@ -53,10 +53,10 @@
 				action: async () => {
 					handleApiResultWithCallbacks({
 						result: await tryCatch(networkService.deleteNetwork(id)),
-						message: m.networks_delete_failed({ name: safeName }),
+						message: m.common_delete_failed({ resource: `${m.resource_network()} "${safeName}"` }),
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
-							toast.success(m.networks_delete_success({ name: safeName }));
+							toast.success(m.common_delete_success({ resource: `${m.resource_network()} "${safeName}"` }));
 							networks = await networkService.getNetworks(requestOptions);
 						}
 					});
@@ -93,10 +93,16 @@
 						const result = await tryCatch(networkService.deleteNetwork(networkId));
 						if (result.error) {
 							failureCount++;
-							toast.error(m.networks_delete_failed({ name: network.name ?? m.common_unknown() }));
+							toast.error(
+								m.common_delete_failed({ resource: `${m.resource_network()} "${network.name ?? m.common_unknown()}"` })
+							);
 						} else {
 							successCount++;
-							toast.success(m.networks_delete_success({ name: network.name ?? m.common_unknown() }));
+							toast.success(
+								m.common_delete_success({
+									resource: `${m.resource_network()} "${network.name ?? m.common_unknown()}"`
+								})
+							);
 						}
 					}
 

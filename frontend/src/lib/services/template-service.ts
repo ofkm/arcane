@@ -1,26 +1,25 @@
 import BaseAPIService from './api-service';
-import type { TemplateRegistry, Template, RemoteRegistry } from '$lib/types/template.type';
+import type { TemplateRegistry, Template, RemoteRegistry, TemplateContentData } from '$lib/types/template.type';
 import type { Variable } from '$lib/types/variable.type';
+import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
+import { transformPaginationParams } from '$lib/utils/params.util';
 
 export default class TemplateService extends BaseAPIService {
-	async loadAll(): Promise<Template[]> {
-		const response = await this.api.get('/templates');
+	async getTemplates(options?: SearchPaginationSortRequest): Promise<Paginated<Template>> {
+		const params = transformPaginationParams(options);
+		const response = await this.api.get('/templates', { params });
+		return response.data;
+	}
+
+	async getAllTemplates(): Promise<Template[]> {
+		const response = await this.api.get('/templates/all');
 		return response.data?.data ?? [];
 	}
 
-	async getTemplateContent(id: string): Promise<{
-		content: string;
-		envContent: string;
-		template: Template;
-	}> {
+	async getTemplateContent(id: string): Promise<TemplateContentData> {
 		const encodedId = encodeURIComponent(id);
 		const response = await this.api.get(`/templates/${encodedId}/content`);
-		const data = response.data?.data ?? {};
-		return {
-			content: data.content,
-			envContent: data.envContent,
-			template: data.template
-		};
+		return response.data?.data;
 	}
 
 	async download(id: string): Promise<Template> {
@@ -78,6 +77,10 @@ export default class TemplateService extends BaseAPIService {
 
 	async deleteRegistry(id: string): Promise<void> {
 		await this.api.delete(`/templates/registries/${id}`);
+	}
+
+	async deleteTemplate(id: string): Promise<void> {
+		await this.api.delete(`/templates/${encodeURIComponent(id)}`);
 	}
 
 	async getGlobalVariables(): Promise<Variable[]> {

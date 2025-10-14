@@ -182,7 +182,7 @@
 			>
 				{#if isChecking}
 					<Spinner class="size-3" />
-					{m.images_checking()}
+					{m.common_action_checking()}
 				{:else}
 					<RefreshCwIcon class="size-3 transition-transform group-hover:rotate-45" />
 					{m.image_update_recheck_button()}
@@ -235,7 +235,7 @@
 	<div class="bg-white/90 p-4 dark:bg-gray-950/90">
 		<div class="text-center">
 			<div class="mb-2 text-xs text-gray-600 dark:text-gray-400">
-				{m.image_update_running_prefix()}
+				{m.common_running()}
 				<span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs font-medium dark:bg-gray-800">{currentVersion}</span>
 			</div>
 			<div class="text-xs leading-relaxed text-gray-500 dark:text-gray-400">

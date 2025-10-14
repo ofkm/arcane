@@ -19,17 +19,8 @@
 		language = 'yaml' as CodeLanguage,
 		placeholder = m.editor_placeholder(),
 		readOnly = false,
-		height = '550px',
-		fontSize = '12px',
-		class: className = ''
+		fontSize = '12px'
 	} = $props();
-
-	const dynamicHeight = $derived(() => {
-		if (height === 'full' || height === 'auto') {
-			return 'calc(100dvh - 300px)';
-		}
-		return height;
-	});
 
 	let editorView: EditorView;
 
@@ -78,7 +69,6 @@
 
 	const styles = $derived({
 		'&': {
-			height: dynamicHeight(),
 			fontSize
 		},
 		'&.cm-editor[contenteditable=false]': {
@@ -94,19 +84,26 @@
 	}
 </script>
 
-<div class={`overflow-hidden rounded-md border ${className}`}>
-	<CodeMirror
-		bind:value
-		onready={(view) => handleReady(view)}
-		{extensions}
-		{styles}
-		{placeholder}
-		readonly={readOnly}
-		nodebounce={true}
-	/>
-</div>
+<CodeMirror
+	bind:value
+	onready={(view) => handleReady(view)}
+	{extensions}
+	{styles}
+	{placeholder}
+	readonly={readOnly}
+	nodebounce={true}
+/>
 
 <style>
+	:global(.cm-editor) {
+		height: 100%;
+	}
+	:global(.codemirror-wrapper) {
+		height: 100%;
+	}
+	:global(.cm-editor .cm-scroller) {
+		overflow: auto;
+	}
 	:global(.cm-editor .cm-gutters) {
 		background-color: #18181b;
 		border-right: none;

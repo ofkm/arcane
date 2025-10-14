@@ -30,6 +30,7 @@ export interface Project {
 	runningCount: string;
 	serviceCount: string;
 	status: string;
+	statusReason?: string;
 	updatedAt: string;
 	createdAt: string;
 	services?: ProjectService[];

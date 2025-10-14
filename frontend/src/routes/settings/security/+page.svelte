@@ -316,7 +316,7 @@
 												: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
 											onclick={() => ($formInputs.authPasswordPolicy.value = 'basic')}
 											type="button"
-											>{m.security_password_policy_basic()}
+											>{m.common_basic()}
 										</Button>
 									</Tooltip.Trigger>
 									<Tooltip.Content side="top" align="center">{m.security_password_policy_basic_tooltip()}</Tooltip.Content>

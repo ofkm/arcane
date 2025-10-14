@@ -69,7 +69,7 @@
 	async function handleDeleteEvent(eventId: string, title: string) {
 		const safeTitle = title?.trim() || m.common_unknown();
 		openConfirmDialog({
-			title: m.events_delete_title(),
+			title: m.common_delete_title({ resource: 'event' }),
 			message: m.events_delete_confirm_message({ title: safeTitle }),
 			confirm: {
 				label: m.common_delete(),
@@ -104,7 +104,7 @@
 		},
 		{
 			accessorKey: 'type',
-			title: m.events_col_type(),
+			title: m.common_type(),
 			sortable: true,
 			cell: TypeCell
 		},
@@ -129,7 +129,7 @@
 
 	const mobileFields = [
 		{ id: 'severity', label: m.events_col_severity(), defaultVisible: true },
-		{ id: 'type', label: m.events_col_type(), defaultVisible: true },
+		{ id: 'type', label: m.common_type(), defaultVisible: true },
 		{ id: 'resource', label: m.events_col_resource(), defaultVisible: true },
 		{ id: 'username', label: m.common_user(), defaultVisible: true },
 		{ id: 'timestamp', label: m.events_col_time(), defaultVisible: true }
@@ -199,7 +199,7 @@
 		]}
 		fields={[
 			{
-				label: m.events_col_type(),
+				label: m.common_type(),
 				getValue: (item: Event) => item.type,
 				icon: TagIcon,
 				iconVariant: 'gray' as const,

@@ -68,7 +68,7 @@
 
 									<Card.Root variant="outlined">
 										<Card.Content class="flex flex-col p-3">
-											<div class="text-muted-foreground mb-2 text-xs font-semibold">{m.containers_gateway()}</div>
+											<div class="text-muted-foreground mb-2 text-xs font-semibold">{m.common_gateway()}</div>
 											<div
 												class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
 												title="Click to select"
@@ -94,7 +94,7 @@
 
 									<Card.Root variant="outlined">
 										<Card.Content class="flex flex-col p-3">
-											<div class="text-muted-foreground mb-2 text-xs font-semibold">{m.containers_subnet()}</div>
+											<div class="text-muted-foreground mb-2 text-xs font-semibold">{m.common_subnet()}</div>
 											<div
 												class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
 												title="Click to select"

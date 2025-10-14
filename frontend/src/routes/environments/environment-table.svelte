@@ -52,7 +52,7 @@
 						const result = await tryCatch(environmentManagementService.delete(id));
 						handleApiResultWithCallbacks({
 							result,
-							message: m.environments_bulk_remove_failed_many({ count: ids.length }),
+							message: m.common_bulk_remove_failed({ count: ids.length, resource: m.environments_title() }),
 							setLoadingState: () => {},
 							onSuccess: () => {
 								successCount++;
@@ -64,18 +64,12 @@
 					isLoading.removing = false;
 
 					if (successCount > 0) {
-						const msg =
-							successCount === 1
-								? m.environments_bulk_remove_success_one()
-								: m.environments_bulk_remove_success_many({ count: successCount });
+						const msg = m.common_bulk_remove_success({ count: successCount, resource: m.environments_title() });
 						toast.success(msg);
 						environments = await environmentManagementService.getEnvironments(requestOptions);
 					}
 					if (failureCount > 0) {
-						const msg =
-							failureCount === 1
-								? m.environments_bulk_remove_failed_one()
-								: m.environments_bulk_remove_failed_many({ count: failureCount });
+						const msg = m.common_bulk_remove_failed({ count: failureCount, resource: m.environments_title() });
 						toast.error(msg);
 					}
 
@@ -87,7 +81,7 @@
 
 	async function handleDeleteOne(id: string, hostname: string) {
 		openConfirmDialog({
-			title: m.environments_delete_title(),
+			title: m.common_delete_title({ resource: m.resource_environment() }),
 			message: m.environments_delete_message({ name: hostname }),
 			confirm: {
 				label: m.common_remove(),
@@ -100,7 +94,7 @@
 						message: m.environments_delete_failed({ name: hostname }),
 						setLoadingState: () => {},
 						onSuccess: async () => {
-							toast.success(m.environments_delete_success({ name: hostname }));
+							toast.success(m.common_delete_success({ resource: `${m.resource_environment()} "${hostname}"` }));
 							environments = await environmentManagementService.getEnvironments(requestOptions);
 						}
 					});

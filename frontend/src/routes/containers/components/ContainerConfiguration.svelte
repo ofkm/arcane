@@ -21,7 +21,7 @@
 				<div class="flex flex-col space-y-1.5">
 					<Card.Title>
 						<h2>
-							{m.containers_env_vars_title()}
+							{m.common_environment_variables()}
 						</h2>
 					</Card.Title>
 					<Card.Description>{m.containers_env_vars_description()}</Card.Description>
@@ -78,7 +78,7 @@
 							{m.common_labels()}
 						</h2>
 					</Card.Title>
-					<Card.Description>{m.common_labels_description()}</Card.Description>
+					<Card.Description>{m.common_labels_description({ resource: m.resource_container() })}</Card.Description>
 				</div>
 			</Card.Header>
 			<Card.Content class="p-4">

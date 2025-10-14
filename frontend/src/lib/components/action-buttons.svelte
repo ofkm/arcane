@@ -143,11 +143,11 @@
 	function confirmAction(action: string) {
 		if (action === 'remove') {
 			openConfirmDialog({
-				title: type === 'project' ? m.compose_destroy() : m.action_confirm_removal_title(),
+				title: type === 'project' ? m.compose_destroy() : m.common_confirm_removal_title(),
 				message:
 					type === 'project'
-						? m.action_confirm_destroy_message({ type: m.project() })
-						: m.action_confirm_removal_message({ type: m.container() }),
+						? m.common_confirm_destroy_message({ type: m.project() })
+						: m.common_confirm_removal_message({ type: m.container() }),
 				confirm: {
 					label: type === 'project' ? m.compose_destroy() : m.common_remove(),
 					destructive: true,
@@ -162,7 +162,7 @@
 									? containerService.deleteContainer(id)
 									: projectService.destroyProject(id, removeVolumes, removeFiles)
 							),
-							message: m.action_failed_generic({
+							message: m.common_action_failed_with_type({
 								action: type === 'project' ? m.compose_destroy() : m.common_remove(),
 								type: type
 							}),
@@ -170,8 +170,8 @@
 							onSuccess: async () => {
 								toast.success(
 									type === 'project'
-										? m.action_destroyed_success({ type: m.project() })
-										: m.action_removed_success({ type: m.container() })
+										? m.common_destroyed_success({ type: m.project() })
+										: m.common_removed_success({ type: m.container() })
 								);
 								await invalidateAll();
 								goto(type === 'project' ? '/projects' : '/containers');
@@ -190,18 +190,18 @@
 			});
 		} else if (action === 'redeploy') {
 			openConfirmDialog({
-				title: m.action_confirm_redeploy_title(),
-				message: m.action_confirm_redeploy_message(),
+				title: m.common_confirm_redeploy_title(),
+				message: m.common_confirm_redeploy_message(),
 				confirm: {
-					label: m.action_redeploy(),
+					label: m.common_redeploy(),
 					action: async () => {
 						setLoading('redeploy', true);
 						handleApiResultWithCallbacks({
 							result: await tryCatch(projectService.redeployProject(id)),
-							message: m.action_failed_generic({ action: m.action_redeploy(), type }),
+							message: m.common_action_failed_with_type({ action: m.common_redeploy(), type }),
 							setLoadingState: (value) => setLoading('redeploy', value),
 							onSuccess: async () => {
-								toast.success(m.action_redeploy_success({ type: name || type }));
+								toast.success(m.common_redeploy_success({ type: name || type }));
 								onActionComplete('running');
 							}
 						});
@@ -215,11 +215,11 @@
 		setLoading('start', true);
 		await handleApiResultWithCallbacks({
 			result: await tryCatch(type === 'container' ? containerService.startContainer(id) : projectService.deployProject(id)),
-			message: m.action_failed_generic({ action: m.common_start(), type }),
+			message: m.common_action_failed_with_type({ action: m.common_start(), type }),
 			setLoadingState: (value) => setLoading('start', value),
 			onSuccess: async () => {
 				itemState = 'running';
-				toast.success(m.action_started_success({ type: name || type }));
+				toast.success(m.common_started_success({ type: name || type }));
 				onActionComplete('running');
 			}
 		});
@@ -296,10 +296,10 @@
 
 			// Deploy already completed successfully
 			itemState = 'running';
-			toast.success(m.action_started_success({ type: name || type }));
+			toast.success(m.common_started_success({ type: name || type }));
 			onActionComplete('running');
 		} catch (e: any) {
-			const message = e?.message || m.action_failed_generic({ action: m.common_start(), type });
+			const message = e?.message || m.common_action_failed_with_type({ action: m.common_start(), type });
 			if (openedPopover) {
 				pullError = message;
 				pullStatusText = m.images_pull_failed_with_error({ error: message });
@@ -315,11 +315,11 @@
 		setLoading('stop', true);
 		await handleApiResultWithCallbacks({
 			result: await tryCatch(type === 'container' ? containerService.stopContainer(id) : projectService.downProject(id)),
-			message: m.action_failed_generic({ action: m.common_stop(), type }),
+			message: m.common_action_failed_with_type({ action: m.common_stop(), type }),
 			setLoadingState: (value) => setLoading('stop', value),
 			onSuccess: async () => {
 				itemState = 'stopped';
-				toast.success(m.action_stopped_success({ type: name || type }));
+				toast.success(m.common_stopped_success({ type: name || type }));
 				onActionComplete('stopped');
 			}
 		});
@@ -329,11 +329,11 @@
 		setLoading('restart', true);
 		await handleApiResultWithCallbacks({
 			result: await tryCatch(type === 'container' ? containerService.restartContainer(id) : projectService.restartProject(id)),
-			message: m.action_failed_generic({ action: m.common_restart(), type }),
+			message: m.common_action_failed_with_type({ action: m.common_restart(), type }),
 			setLoadingState: (value) => setLoading('restart', value),
 			onSuccess: async () => {
 				itemState = 'running';
-				toast.success(m.action_restarted_success({ type: name || type }));
+				toast.success(m.common_restarted_success({ type: name || type }));
 				onActionComplete('running');
 			}
 		});
@@ -439,7 +439,7 @@
 		{#if isRunning}
 			<ArcaneButton
 				action="stop"
-				customLabel={type === 'project' ? (m.action_down ? m.action_down() : 'Down') : undefined}
+				customLabel={type === 'project' ? m.common_down() : undefined}
 				onclick={() => handleStop()}
 				loading={uiLoading.stop}
 			/>
@@ -493,12 +493,12 @@
 							</DropdownMenu.Item>
 						{:else}
 							<DropdownMenu.Item onclick={handleDeploy} disabled={uiLoading.start}>
-								{m.action_up()}
+								{m.common_up()}
 							</DropdownMenu.Item>
 						{/if}
 					{:else}
 						<DropdownMenu.Item onclick={handleStop} disabled={uiLoading.stop}>
-							{type === 'project' && m.action_down ? m.action_down() : m.common_stop()}
+							{type === 'project' ? m.common_down() : m.common_stop()}
 						</DropdownMenu.Item>
 						<DropdownMenu.Item onclick={handleRestart} disabled={uiLoading.restart}>
 							{m.common_restart()}
@@ -511,7 +511,7 @@
 						</DropdownMenu.Item>
 					{:else}
 						<DropdownMenu.Item onclick={() => confirmAction('redeploy')} disabled={uiLoading.redeploy}>
-							{m.action_redeploy()}
+							{m.common_redeploy()}
 						</DropdownMenu.Item>
 
 						{#if type === 'project'}

@@ -42,8 +42,8 @@
 	async function handleRemoveVolumeConfirm(name: string) {
 		const safeName = name?.trim() || m.common_unknown();
 		openConfirmDialog({
-			title: m.volumes_remove_title(),
-			message: m.volumes_remove_confirm_message({ name: safeName }),
+			title: m.common_remove_title({ resource: m.resource_volume() }),
+			message: m.common_remove_confirm({ resource: `${m.resource_volume()} "${safeName}"` }),
 			confirm: {
 				label: m.common_remove(),
 				destructive: true,
@@ -51,10 +51,10 @@
 					isLoading.removing = true;
 					handleApiResultWithCallbacks({
 						result: await tryCatch(volumeService.deleteVolume(safeName)),
-						message: m.volumes_remove_failed({ name: safeName }),
+						message: m.common_remove_failed({ resource: `${m.resource_volume()} "${safeName}"` }),
 						setLoadingState: (value) => (isLoading.removing = value),
 						onSuccess: async () => {
-							toast.success(m.volumes_remove_success({ name: safeName }));
+							toast.success(m.common_remove_success({ resource: `${m.resource_volume()} "${safeName}"` }));
 							volumes = await volumeService.getVolumes(requestOptions);
 						}
 					});
@@ -77,7 +77,7 @@
 			const result = await tryCatch(volumeService.deleteVolume(safeName));
 			handleApiResultWithCallbacks({
 				result,
-				message: m.volumes_remove_failed({ name: safeName }),
+				message: m.common_remove_failed({ resource: `${m.resource_volume()} "${safeName}"` }),
 				setLoadingState: () => {},
 				onSuccess: (_data) => {
 					successCount += 1;
@@ -88,14 +88,12 @@
 
 		isLoading.removing = false;
 		if (successCount > 0) {
-			const successMsg =
-				successCount === 1 ? m.volumes_bulk_remove_success_one() : m.volumes_bulk_remove_success_many({ count: successCount });
+			const successMsg = m.common_bulk_remove_success({ count: successCount, resource: m.volumes_title() });
 			toast.success(successMsg);
 			volumes = await volumeService.getVolumes(requestOptions);
 		}
 		if (failureCount > 0) {
-			const failureMsg =
-				failureCount === 1 ? m.volumes_bulk_remove_failed_one() : m.volumes_bulk_remove_failed_many({ count: failureCount });
+			const failureMsg = m.common_bulk_remove_failed({ count: failureCount, resource: m.volumes_title() });
 			toast.error(failureMsg);
 		}
 		selectedIds = [];
@@ -112,7 +110,7 @@
 		},
 		{
 			accessorKey: 'size',
-			title: m.images_size(),
+			title: m.common_size(),
 			sortable: true,
 			cell: SizeCell
 		},
@@ -123,7 +121,7 @@
 	const mobileFields = [
 		{ id: 'id', label: m.common_id(), defaultVisible: true },
 		{ id: 'status', label: m.common_status(), defaultVisible: true },
-		{ id: 'size', label: m.images_size(), defaultVisible: true },
+		{ id: 'size', label: m.common_size(), defaultVisible: true },
 		{ id: 'createdAt', label: m.common_created(), defaultVisible: true },
 		{ id: 'driver', label: m.common_driver(), defaultVisible: true }
 	];
@@ -191,7 +189,7 @@
 				show: mobileFieldVisibility.driver ?? true
 			},
 			{
-				label: m.images_size(),
+				label: m.common_size(),
 				getValue: (item: VolumeSummaryDto) =>
 					item.usageData && item.usageData.size >= 0 ? bytes.format(item.usageData.size) : '-',
 				icon: HardDriveIcon,

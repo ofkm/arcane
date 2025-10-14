@@ -49,6 +49,10 @@
 		updating: false
 	});
 
+	function getStatusTooltip(project: Project): string | undefined {
+		return project.status.toLowerCase() === 'unknown' && project.statusReason ? project.statusReason : undefined;
+	}
+
 	async function performProjectAction(action: string, id: string) {
 		isLoading[action as keyof typeof isLoading] = true;
 
@@ -95,7 +99,7 @@
 				});
 			} else if (action === 'destroy') {
 				openConfirmDialog({
-					title: m.compose_confirm_removal_title(),
+					title: m.common_confirm_removal_title(),
 					message: m.compose_confirm_removal_message(),
 					checkboxes: [
 						{
@@ -130,7 +134,7 @@
 				});
 			}
 		} catch (error) {
-			toast.error(m.action_failed());
+			toast.error(m.common_action_failed());
 		}
 	}
 
@@ -161,7 +165,7 @@
 
 {#snippet StatusCell({ item }: { item: Project })}
 	{@const stateVariant = getStatusVariant(item.status)}
-	<StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} />
+	<StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} tooltip={getStatusTooltip(item)} />
 {/snippet}
 
 {#snippet CreatedCell({ value }: { value: unknown })}
@@ -190,7 +194,8 @@
 				(mobileFieldVisibility.status ?? true)
 					? {
 							variant: getStatusVariant(item.status),
-							text: capitalizeFirstLetter(item.status)
+							text: capitalizeFirstLetter(item.status),
+							tooltip: getStatusTooltip(item)
 						}
 					: null
 		]}
@@ -242,7 +247,7 @@
 						{:else}
 							<PlayIcon class="size-4" />
 						{/if}
-						{m.action_up()}
+						{m.common_up()}
 					</DropdownMenu.Item>
 				{:else}
 					<DropdownMenu.Item
@@ -263,7 +268,7 @@
 						{:else}
 							<StopCircleIcon class="size-4" />
 						{/if}
-						{m.action_down()}
+						{m.common_down()}
 					</DropdownMenu.Item>
 				{/if}
 

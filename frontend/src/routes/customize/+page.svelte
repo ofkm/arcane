@@ -265,7 +265,7 @@
 						</div>
 						<div class="min-w-0 flex-1">
 							<div class="flex items-start justify-between gap-3">
-								<h1 class="min-w-0 text-xl font-bold tracking-tight sm:text-2xl">{m.sidebar_customization()}</h1>
+								<h1 class="min-w-0 text-xl font-bold tracking-tight sm:text-2xl">{m.customize_title()}</h1>
 								<div class="shrink-0">
 									<UiConfigDisabledTag />
 								</div>

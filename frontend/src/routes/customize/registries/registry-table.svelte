@@ -88,7 +88,7 @@
 	async function handleDeleteOne(id: string, url: string) {
 		const safeUrl = url ?? m.common_unknown();
 		openConfirmDialog({
-			title: m.registries_remove_title(),
+			title: m.common_remove_title({ resource: m.resource_registry() }),
 			message: m.registries_remove_message({ url: safeUrl }),
 			confirm: {
 				label: m.common_remove(),
@@ -102,7 +102,7 @@
 						message: m.registries_delete_failed({ url: safeUrl }),
 						setLoadingState: () => {},
 						onSuccess: async () => {
-							toast.success(m.registries_delete_success({ url: safeUrl }));
+							toast.success(m.common_delete_success({ resource: `${m.resource_registry()} "${safeUrl}"` }));
 							registries = await containerRegistryService.getRegistries(requestOptions);
 						}
 					});

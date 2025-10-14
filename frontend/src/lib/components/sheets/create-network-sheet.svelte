@@ -33,7 +33,7 @@
 
 	const formSchema = z.object({
 		networkName: z.string().min(1, m.network_name_required()),
-		networkDriver: z.string().min(1, m.network_driver_required()),
+		networkDriver: z.string().min(1, m.common_driver_required()),
 		checkDuplicate: z.boolean().default(true),
 		internal: z.boolean().default(false),
 		networkLabels: z.string().optional().default(''),
@@ -205,7 +205,7 @@
 
 			<Accordion.Root type="single" class="w-full">
 				<Accordion.Item value="labels">
-					<Accordion.Trigger class="text-sm font-medium">{m.networks_labels()}</Accordion.Trigger>
+					<Accordion.Trigger class="text-sm font-medium">{m.common_labels()}</Accordion.Trigger>
 					<Accordion.Content class="pt-4">
 						<div class="space-y-4">
 							<div class="space-y-2">
@@ -263,7 +263,7 @@
 							{#if $inputs.enableIpam.value}
 								<div class="border-muted space-y-4 border-l-2 pl-6">
 									<div class="space-y-2">
-										<Label for="subnet" class="text-sm font-medium">{m.networks_ipam_subnet_label()}</Label>
+										<Label for="subnet" class="text-sm font-medium">{m.common_subnet()}</Label>
 										<Input
 											id="subnet"
 											type="text"
@@ -311,10 +311,10 @@
 				<Button type="submit" class="arcane-button-create flex-1" disabled={isLoading}>
 					{#if isLoading}
 						<Spinner class="mr-2 size-4" />
-						{m.networks_creating()}
+						{m.common_action_creating()}
 					{:else}
 						<NetworkIcon class="mr-2 size-4" />
-						{m.networks_create_button()}
+						{m.common_create_button({ resource: m.resource_network_cap() })}
 					{/if}
 				</Button>
 			</Sheet.Footer>

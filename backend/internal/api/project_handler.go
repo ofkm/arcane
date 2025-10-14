@@ -159,6 +159,7 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 		return
 	}
 	response.Status = string(proj.Status)
+	response.StatusReason = proj.StatusReason
 	response.CreatedAt = proj.CreatedAt.Format(time.RFC3339)
 	response.UpdatedAt = proj.UpdatedAt.Format(time.RFC3339)
 	response.DirName = utils.DerefString(proj.DirName)

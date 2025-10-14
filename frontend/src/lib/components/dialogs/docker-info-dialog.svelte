@@ -121,7 +121,7 @@
 				<span class="font-mono text-sm">{dockerInfo?.osVersion ?? '-'}</span>
 			</div>
 			<div class="flex items-center justify-between">
-				<span class="text-muted-foreground text-sm">{m.docker_info_architecture_label()}</span>
+				<span class="text-muted-foreground text-sm">{m.common_architecture()}</span>
 				<Badge>{dockerInfo?.architecture ?? '-'}</Badge>
 			</div>
 			<div class="flex items-center justify-between">
@@ -129,7 +129,7 @@
 				<span class="font-mono text-sm">{dockerInfo?.kernelVersion ?? '-'}</span>
 			</div>
 			<div class="flex items-center justify-between">
-				<span class="text-muted-foreground text-sm">{m.docker_info_cpus_label()}</span>
+				<span class="text-muted-foreground text-sm">{m.common_cpus()}</span>
 				<Badge variant="secondary">{dockerInfo?.cpus ?? 0}</Badge>
 			</div>
 			<div class="flex items-center justify-between">
@@ -176,7 +176,7 @@
 				<Badge variant="secondary">{dockerInfo?.containers ?? 0}</Badge>
 			</div>
 			<div class="flex items-center justify-between">
-				<span class="text-muted-foreground text-sm">{m.docker_info_running_label()}</span>
+				<span class="text-muted-foreground text-sm">{m.common_running()}</span>
 				<Badge class="border-emerald-500/30 bg-emerald-500/15 text-emerald-600">
 					{dockerInfo?.containersRunning ?? 0}
 				</Badge>
@@ -188,7 +188,7 @@
 				</Badge>
 			</div>
 			<div class="flex items-center justify-between">
-				<span class="text-muted-foreground text-sm">{m.docker_info_stopped_label()}</span>
+				<span class="text-muted-foreground text-sm">{m.common_stopped()}</span>
 				<Badge variant="outline">{dockerInfo?.containersStopped ?? 0}</Badge>
 			</div>
 			<div class="flex items-center justify-between">

@@ -76,10 +76,10 @@
 		<div class="flex flex-col space-y-1.5">
 			<Card.Title>
 				<h2>
-					{m.containers_details_title()}
+					{m.common_details_title({ resource: m.resource_container_cap() })}
 				</h2>
 			</Card.Title>
-			<Card.Description>{m.containers_details_description()}</Card.Description>
+			<Card.Description>{m.common_details_description({ resource: m.resource_container() })}</Card.Description>
 		</div>
 	</Card.Header>
 	<Card.Content class="p-4">
@@ -263,7 +263,7 @@
 				<Card.Root variant="subtle">
 					<Card.Content class="flex flex-col gap-2 p-4">
 						<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-							{m.containers_working_directory()}
+							{m.common_working_directory()}
 						</div>
 						<div
 							class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
@@ -304,7 +304,7 @@
 				<Card.Root variant="subtle" class="sm:col-span-2 lg:col-span-3 xl:col-span-4">
 					<Card.Content class="flex flex-col gap-2 p-4">
 						<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-							{m.containers_command()}
+							{m.common_command()}
 						</div>
 						<div
 							class="text-foreground cursor-pointer font-mono text-sm font-medium break-all select-all"
@@ -320,7 +320,7 @@
 		{#if container.ports && container.ports.length > 0}
 			<div class="mt-6">
 				<div class="text-muted-foreground mb-3 text-xs font-semibold tracking-wide uppercase">
-					{m.containers_port_mappings()}
+					{m.common_port_mappings()}
 				</div>
 				<PortBadge ports={container.ports} {baseServerUrl} />
 			</div>
