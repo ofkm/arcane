@@ -357,7 +357,7 @@
 	<div class="space-y-4">
 		{#each groupedTemplates() ?? [] as [registryName, registryTemplates] (registryName)}
 			{@const registryTemplateIds = new Set(registryTemplates.map((t) => t.id))}
-			{@const registryRows = table.getRowModel().rows.filter((row) => registryTemplateIds.has((row.original as Template).id))}
+			{@const registryRows = table.getRowModel().rows.filter((row) => registryTemplateIds.has(row.original.id))}
 
 			<Collapsible.Root
 				class="w-full"
