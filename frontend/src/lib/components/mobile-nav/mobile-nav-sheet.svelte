@@ -412,19 +412,19 @@
 			});
 
 			return () => {
-				// Restore body scroll
-				bodyStyle.overflow = originalBodyOverflow;
-				bodyStyle.position = originalBodyPosition;
-				bodyStyle.top = originalBodyTop;
-				bodyStyle.width = '';
-				bodyStyle.left = '';
-				bodyStyle.right = '';
-				htmlStyle.overflow = originalHtmlOverflow;
+				return () => {
+					// Restore body scroll
+					bodyStyle.overflow = originalBodyOverflow;
+					bodyStyle.position = originalBodyPosition;
+					bodyStyle.top = originalBodyTop;
+					bodyStyle.width = originalBodyWidth;
+					bodyStyle.left = '';
+					bodyStyle.right = '';
+					htmlStyle.overflow = originalHtmlOverflow;
 
-				// Restore scroll position
-				window.scrollTo(0, scrollY);
-
-				// Clean up menu styles
+					// Restore scroll position
+					window.scrollTo(0, scrollY);
+				}; // Clean up menu styles
 				if (menuElement) {
 					menuElement.style.overflowY = '';
 					menuElement.style.touchAction = '';

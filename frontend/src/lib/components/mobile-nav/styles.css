@@ -3,9 +3,8 @@
 /* Base navigation styles */
 .mobile-nav-base {
 	pointer-events: auto;
-	/* Allow pan-y for page scrolling, but prevent zoom and other gestures */
-	touch-action: pan-y pinch-zoom;
-	-webkit-overflow-scrolling: touch;
+	/* Allow vertical gestures to pass through so the page stays the primary scroller */
+	touch-action: pan-y;
 	overscroll-behavior: contain;
 	/* Isolate touch interactions */
 	isolation: isolate;
@@ -21,6 +20,8 @@
 	/* Prevent the nav from being affected by virtual keyboard */
 	transform: translate3d(0, 0, 0);
 	backface-visibility: hidden;
+	/* Prevent body scroll leak */
+	contain: layout style paint;
 }
 
 /* Floating navigation specific positioning */

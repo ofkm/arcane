@@ -32,6 +32,25 @@
 
 	// Touch-based detection: hide/show immediately on the first touchmove
 	// direction change so mobile users get instant feedback.
+	const currentPath = $derived(page.url.pathname);
+
+	const showLabels = $derived(navigationSettings.showLabels);
+	const scrollToHideEnabled = $derived(navigationSettings.scrollToHide);
+
+	let visible = $state(true);
+	let menuOpen = $state(false);
+	let lastScrollY = $state(0);
+	let navElement: HTMLElement;
+	let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	// Immediate touch gesture detection so the nav hides as soon as the
+	// user starts a downward scroll gesture on touch devices. This
+	// complements the regular scroll listener which can lag on some
+	// devices or when scrolling inside nested scroll containers.
+	let touchStartY: number | null = null;
+	let isInteractiveTouch = false;
+	const touchMoveThreshold = 6; // small threshold to avoid noise
+
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 		if (!scrollToHideEnabled) return;
@@ -76,35 +95,17 @@
 			isInteractiveTouch = false;
 		};
 
-		window.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
-		window.addEventListener('touchmove', handleTouchMove, { passive: true, capture: true });
-		window.addEventListener('touchend', handleTouchEnd, { passive: true, capture: true });
+		const options = { passive: true, capture: true };
+		window.addEventListener('touchstart', handleTouchStart, options);
+		window.addEventListener('touchmove', handleTouchMove, options);
+		window.addEventListener('touchend', handleTouchEnd, options);
 
 		return () => {
-			window.removeEventListener('touchstart', handleTouchStart, { capture: true });
-			window.removeEventListener('touchmove', handleTouchMove, { capture: true });
-			window.removeEventListener('touchend', handleTouchEnd, { capture: true });
+			window.removeEventListener('touchstart', handleTouchStart, options);
+			window.removeEventListener('touchmove', handleTouchMove, options);
+			window.removeEventListener('touchend', handleTouchEnd, options);
 		};
 	});
-
-	const currentPath = $derived(page.url.pathname);
-
-	const showLabels = $derived(navigationSettings.showLabels);
-	const scrollToHideEnabled = $derived(navigationSettings.scrollToHide);
-
-	let visible = $state(true);
-	let menuOpen = $state(false);
-	let lastScrollY = $state(0);
-	let navElement: HTMLElement;
-	let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
-
-	// Immediate touch gesture detection so the nav hides as soon as the
-	// user starts a downward scroll gesture on touch devices. This
-	// complements the regular scroll listener which can lag on some
-	// devices or when scrolling inside nested scroll containers.
-	let touchStartY: number | null = null;
-	let isInteractiveTouch = false;
-	const touchMoveThreshold = 6; // small threshold to avoid noise
 
 	// Swipe gesture detector for opening menu
 	const swipeDetector = new SwipeGestureDetector(
@@ -128,39 +129,40 @@
 			return;
 		}
 
-		const scrollThreshold = 10; // Lower threshold for better touch responsiveness
-		const minScrollDistance = 80; // Minimum scroll from top to hide
+		const scrollThreshold = 10;
+		const minScrollDistance = 80;
 
 		const handleScroll = () => {
 			const currentScrollY = window.scrollY;
 			const scrollDiff = currentScrollY - untrack(() => lastScrollY);
 
-			// Clear any existing timeout
 			if (scrollTimeout) {
 				clearTimeout(scrollTimeout);
 				scrollTimeout = null;
 			}
 
-			// Only update if scroll difference exceeds threshold
+			// Check if at bottom of page
+			const scrollHeight = document.documentElement.scrollHeight;
+			const clientHeight = document.documentElement.clientHeight;
+			const atBottom = currentScrollY + clientHeight >= scrollHeight - 5;
+
 			if (Math.abs(scrollDiff) > scrollThreshold) {
-				// Scrolling down and past minimum distance - hide nav
-				if (scrollDiff > 0 && currentScrollY > minScrollDistance) {
+				if (scrollDiff > 0 && currentScrollY > minScrollDistance && !atBottom) {
 					visible = false;
-				}
-				// Scrolling up - show nav
-				else if (scrollDiff < 0) {
+				} else if (scrollDiff < 0 && !atBottom) {
 					visible = true;
 				}
-
 				lastScrollY = currentScrollY;
 			}
 
-			// At top of page - always show after scroll stops
-			scrollTimeout = setTimeout(() => {
-				if (window.scrollY < minScrollDistance) {
-					visible = true;
-				}
-			}, 150);
+			// At top - always show after scroll stops
+			if (!atBottom) {
+				scrollTimeout = setTimeout(() => {
+					if (window.scrollY < minScrollDistance) {
+						visible = true;
+					}
+				}, 150);
+			}
 		};
 
 		// Add passive scroll listener for better touch performance

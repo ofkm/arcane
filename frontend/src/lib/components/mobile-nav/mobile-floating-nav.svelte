@@ -67,39 +67,41 @@
 			return;
 		}
 
-		const scrollThreshold = 10; // Lower threshold for better touch responsiveness
-		const minScrollDistance = 80; // Minimum scroll from top to hide
+		const scrollThreshold = 10;
+		const minScrollDistance = 80;
 
 		const handleScroll = () => {
 			const currentScrollY = window.scrollY;
 			const scrollDiff = currentScrollY - untrack(() => lastScrollY);
 
-			// Clear any existing timeout
 			if (scrollTimeout) {
 				clearTimeout(scrollTimeout);
 				scrollTimeout = null;
 			}
 
-			// Only update if scroll difference exceeds threshold
-			if (Math.abs(scrollDiff) > scrollThreshold) {
-				// Scrolling down and past minimum distance - hide nav
-				if (scrollDiff > 0 && currentScrollY > minScrollDistance) {
-					visible = false;
-				}
-				// Scrolling up - show nav
-				else if (scrollDiff < 0) {
-					visible = true;
-				}
+			// Check if at bottom of page
+			const scrollHeight = document.documentElement.scrollHeight;
+			const clientHeight = document.documentElement.clientHeight;
+			const atBottom = currentScrollY + clientHeight >= scrollHeight - 5;
 
+			if (scrollDiff < 0 && !atBottom) {
+				visible = true;
+				lastScrollY = currentScrollY;
+			} else if (scrollDiff > scrollThreshold && currentScrollY > minScrollDistance && !atBottom) {
+				visible = false;
+				lastScrollY = currentScrollY;
+			} else if (Math.abs(scrollDiff) > scrollThreshold) {
 				lastScrollY = currentScrollY;
 			}
 
-			// At top of page - always show after scroll stops
-			scrollTimeout = setTimeout(() => {
-				if (window.scrollY < minScrollDistance) {
-					visible = true;
-				}
-			}, 150);
+			// At top - always show after scroll stops
+			if (!atBottom) {
+				scrollTimeout = setTimeout(() => {
+					if (window.scrollY < minScrollDistance) {
+						visible = true;
+					}
+				}, 150);
+			}
 		};
 
 		// Add passive scroll listener for better touch performance
