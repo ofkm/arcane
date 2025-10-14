@@ -147,8 +147,8 @@ importers:
         specifier: ^1.0.2
         version: 1.0.2(svelte@5.39.12)
       runed:
-        specifier: ^0.34.0
-        version: 0.34.0(@sveltejs/kit@2.46.5(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.39.12)(vite@7.1.9(@types/node@24.7.2)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)))(svelte@5.39.12)(vite@7.1.9(@types/node@24.7.2)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)))(svelte@5.39.12)
+        specifier: ^0.35.0
+        version: 0.35.0(@sveltejs/kit@2.46.5(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.39.12)(vite@7.1.9(@types/node@24.7.2)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)))(svelte@5.39.12)(vite@7.1.9(@types/node@24.7.2)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)))(svelte@5.39.12)
       svelte:
         specifier: ^5.39.12
         version: 5.39.12
@@ -2001,8 +2001,8 @@ packages:
     peerDependencies:
       svelte: ^5.7.0
 
-  runed@0.34.0:
-    resolution: {integrity: sha512-hdDCoxWCuOCa7HnuU2ihu2tXuAOacNXtvTDDZ02km+rguHZBtglzAoo3dVYtssZjFsooY9xawvYX9HmDJqaPTA==}
+  runed@0.35.0:
+    resolution: {integrity: sha512-RuLu56P58y+0T8nODLjHBkvJuQJkAbEeS7hL45Hry80JUOYchyI/td18tz4A6BJw2ZL2mFIlnZVo0wXVAJCxTg==}
     peerDependencies:
       '@sveltejs/kit': ^2.21.0
       svelte: ^5.7.0
@@ -4151,7 +4151,7 @@ snapshots:
       esm-env: 1.2.2
       svelte: 5.39.12
 
-  runed@0.34.0(@sveltejs/kit@2.46.5(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.39.12)(vite@7.1.9(@types/node@24.7.2)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)))(svelte@5.39.12)(vite@7.1.9(@types/node@24.7.2)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)))(svelte@5.39.12):
+  runed@0.35.0(@sveltejs/kit@2.46.5(@sveltejs/vite-plugin-svelte@6.2.1(svelte@5.39.12)(vite@7.1.9(@types/node@24.7.2)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)))(svelte@5.39.12)(vite@7.1.9(@types/node@24.7.2)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)))(svelte@5.39.12):
     dependencies:
       dequal: 2.0.3
       esm-env: 1.2.2
