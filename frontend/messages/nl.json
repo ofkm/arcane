@@ -1313,5 +1313,7 @@
 	"events_delete_selected_message": "Weet u zeker dat u de {count} geselecteerde evenement(en) wilt verwijderen?",
 	"events_delete_confirm_message": "Weet u zeker dat u wilt verwijderen \"{title}\"?",
 	"events_delete_failed": "Verwijderen van gebeurtenis \"{title} \" mislukt",
-	"events_delete_success": "Gebeurtenis \"{title}\" succesvol verwijderd"
+	"events_delete_success": "Gebeurtenis \"{title}\" succesvol verwijderd",
+	"sidebar_dark_mode": "Donker",
+	"sidebar_light_mode": "Licht"
 }
