@@ -412,7 +412,15 @@
 			});
 
 			return () => {
-				return () => {
+				// Clean up menu styles immediately
+				if (menuElement) {
+					menuElement.style.overflowY = '';
+					menuElement.style.touchAction = '';
+					(menuElement.style as any).webkitOverflowScrolling = '';
+				}
+
+				// Defer scroll restoration to avoid conflicts with animations
+				requestAnimationFrame(() => {
 					// Restore body scroll
 					bodyStyle.overflow = originalBodyOverflow;
 					bodyStyle.position = originalBodyPosition;
@@ -422,14 +430,11 @@
 					bodyStyle.right = '';
 					htmlStyle.overflow = originalHtmlOverflow;
 
-					// Restore scroll position
-					window.scrollTo(0, scrollY);
-				}; // Clean up menu styles
-				if (menuElement) {
-					menuElement.style.overflowY = '';
-					menuElement.style.touchAction = '';
-					(menuElement.style as any).webkitOverflowScrolling = '';
-				}
+					// Restore scroll position after a frame
+					requestAnimationFrame(() => {
+						window.scrollTo(0, scrollY);
+					});
+				});
 			};
 		}
 	});
