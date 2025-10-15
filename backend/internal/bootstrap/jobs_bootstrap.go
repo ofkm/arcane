@@ -87,4 +87,11 @@ func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices 
 			slog.WarnContext(ctx, "Failed to reschedule auto-update job", slog.Any("error", err))
 		}
 	}
+	appServices.Project.OnProjectPollingSettingsChanged = func(ctx context.Context, projectID string) {
+		if err := imagePollingJobFinal.HandleProjectSettingsChange(ctx, projectID); err != nil {
+			slog.WarnContext(ctx, "Failed to handle project polling settings change",
+				slog.String("projectID", projectID),
+				slog.Any("error", err))
+		}
+	}
 }

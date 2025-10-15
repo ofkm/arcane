@@ -25,10 +25,11 @@ import (
 )
 
 type ProjectService struct {
-	db              *database.DB
-	settingsService *SettingsService
-	eventService    *EventService
-	imageService    *ImageService
+	db                              *database.DB
+	settingsService                 *SettingsService
+	eventService                    *EventService
+	imageService                    *ImageService
+	OnProjectPollingSettingsChanged func(ctx context.Context, projectID string)
 }
 
 func NewProjectService(db *database.DB, settingsService *SettingsService, eventService *EventService, imageService *ImageService) *ProjectService {
@@ -998,6 +999,13 @@ func (s *ProjectService) UpdateProjectSettings(ctx context.Context, projectID st
 		return fmt.Errorf("failed to update project settings: %w", err)
 	}
 
+	// Trigger polling settings change callback if polling settings were updated
+	if updates.PollingEnabled != nil || updates.PollingInterval != nil {
+		if s.OnProjectPollingSettingsChanged != nil {
+			s.OnProjectPollingSettingsChanged(ctx, projectID)
+		}
+	}
+
 	return nil
 }
 
@@ -1027,6 +1035,13 @@ func (s *ProjectService) ClearProjectSettingOverride(ctx context.Context, projec
 
 	if err := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", project.ID).Updates(updateMap).Error; err != nil {
 		return fmt.Errorf("failed to clear project setting: %w", err)
+	}
+
+	// Trigger polling settings change callback if polling settings were cleared
+	if key == "pollingEnabled" || key == "pollingInterval" {
+		if s.OnProjectPollingSettingsChanged != nil {
+			s.OnProjectPollingSettingsChanged(ctx, projectID)
+		}
 	}
 
 	return nil

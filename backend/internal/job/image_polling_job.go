@@ -404,6 +404,52 @@ func (j *ImagePollingJob) Reschedule(ctx context.Context) error {
 	return nil
 }
 
+// HandleProjectSettingsChange handles changes to project polling settings
+func (j *ImagePollingJob) HandleProjectSettingsChange(ctx context.Context, projectID string) error {
+	slog.InfoContext(ctx, "Handling project polling settings change",
+		slog.String("projectID", projectID))
+
+	// Get the project to check current settings
+	project, err := j.projectService.GetProjectFromDatabaseByID(ctx, projectID)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to get project for settings change",
+			slog.String("projectID", projectID),
+			slog.String("error", err.Error()))
+		return err
+	}
+
+	// If polling is disabled or no custom interval, remove the project schedule
+	if project.PollingEnabled == nil || !*project.PollingEnabled {
+		slog.InfoContext(ctx, "Removing project polling schedule (disabled or cleared)",
+			slog.String("projectID", projectID))
+		return j.scheduler.Remove(&projectID)
+	}
+
+	// Polling is enabled with custom settings, update/create schedule
+	projectInterval := 60 // default
+	if project.PollingInterval != nil {
+		projectInterval = *project.PollingInterval
+	}
+	if projectInterval < 5 {
+		projectInterval = 5
+	}
+
+	interval := time.Duration(projectInterval) * time.Minute
+	nextPollTime := time.Now().Add(interval)
+
+	task := &services.PollTask{
+		ProjectID:       &projectID,
+		NextPollTime:    nextPollTime,
+		PollingInterval: interval,
+	}
+
+	slog.InfoContext(ctx, "Updating project polling schedule",
+		slog.String("projectID", projectID),
+		slog.Int("interval", projectInterval))
+
+	return j.scheduler.Schedule(task)
+}
+
 // Shutdown gracefully stops the polling job
 func (j *ImagePollingJob) Shutdown(ctx context.Context) error {
 	if j.mainLoopCancel != nil {
