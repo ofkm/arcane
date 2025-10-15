@@ -231,24 +231,16 @@
 		cn(
 			'mobile-nav-base',
 			mode === 'floating' ? 'mobile-nav-floating' : 'mobile-nav-docked',
-			mode === 'floating' 
-				? 'fixed left-1/2 z-50 -translate-x-1/2 transform'
-				: 'fixed bottom-0 left-0 right-0 z-50 gap-2',
+			mode === 'floating' ? 'fixed left-1/2 z-50 -translate-x-1/2 transform' : 'fixed bottom-0 left-0 right-0 z-50 gap-2',
 			'bg-background/60 border-border/30 backdrop-blur-xl',
 			'shadow-sm select-none transition-all duration-300 ease-out',
 			'flex items-center',
-			mode === 'floating' 
-				? cn(
-					'rounded-3xl border',
-					showLabels ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-2.5'
-				)
-				: cn(
-					'border-t border-border/50 justify-around',
-					showLabels ? 'px-3 py-2' : 'px-3 py-2.5'
-				),
-			visible 
-				? mode === 'floating' 
-					? 'translate-y-0 scale-100 opacity-100' 
+			mode === 'floating'
+				? cn('rounded-3xl border', showLabels ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-2.5')
+				: cn('border-t border-border/50 justify-around', showLabels ? 'px-3 py-2' : 'px-3 py-2.5'),
+			visible
+				? mode === 'floating'
+					? 'translate-y-0 scale-100 opacity-100'
 					: 'translate-y-0 opacity-100'
 				: mode === 'floating'
 					? 'translate-y-full scale-95 opacity-0'
@@ -261,12 +253,7 @@
 	const testId = $derived(mode === 'floating' ? 'mobile-floating-nav' : 'mobile-docked-nav');
 </script>
 
-<nav
-	bind:this={navElement}
-	class={navClasses}
-	data-testid={testId}
-	aria-label={ariaLabel}
->
+<nav bind:this={navElement} class={navClasses} data-testid={testId} aria-label={ariaLabel}>
 	{#each pinnedItems as item (item.url)}
 		<MobileNavItem {item} {showLabels} active={currentPath === item.url || currentPath.startsWith(item.url + '/')} />
 	{/each}

@@ -507,7 +507,7 @@
 		tabindex={0}
 	>
 		<!-- Handle indicator -->
-		<div class="flex justify-center pb-3 pt-4" data-drag-handle>
+		<div class="flex justify-center pt-4 pb-3" data-drag-handle>
 			<div
 				class={cn(
 					'h-1.5 w-10 rounded-full transition-all duration-150',
@@ -529,7 +529,7 @@
 			<div class="space-y-8">
 				<!-- Management -->
 				<section>
-					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 						{m.sidebar_management()}
 					</h4>
 					<div class="space-y-2">
@@ -556,7 +556,7 @@
 
 				<!-- Customization -->
 				<section>
-					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 						{m.sidebar_customization()}
 					</h4>
 					<div class="space-y-2">
@@ -586,7 +586,7 @@
 					<!-- Environments -->
 					{#if navigationItems.environmentItems}
 						<section>
-							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 								{m.sidebar_environments()}
 							</h4>
 							<div class="space-y-2">
@@ -613,7 +613,7 @@
 					<!-- Administration -->
 					{#if navigationItems.settingsItems}
 						<section>
-							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 								{m.sidebar_administration()}
 							</h4>
 							<div class="space-y-2">
