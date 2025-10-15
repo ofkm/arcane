@@ -636,6 +636,13 @@ func (s *ProjectService) DestroyProject(ctx context.Context, projectID string, r
 		}
 	}
 
+	// Clean up polling schedule BEFORE deleting from database
+	// This ensures the callback can still access project info if needed
+	if s.OnProjectPollingSettingsChanged != nil {
+		// Trigger with the project ID to remove any schedule
+		s.OnProjectPollingSettingsChanged(ctx, projectID)
+	}
+
 	if err := s.db.WithContext(ctx).Delete(proj).Error; err != nil {
 		return fmt.Errorf("failed to delete project from database: %w", err)
 	}

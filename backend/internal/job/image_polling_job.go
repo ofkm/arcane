@@ -90,9 +90,12 @@ func (j *ImagePollingJob) Register(ctx context.Context) error {
 func (j *ImagePollingJob) run(ctx context.Context) {
 	slog.InfoContext(ctx, "Image polling job main loop started")
 
+	// Batch window: collect tasks scheduled within 30 seconds of each other
+	const batchWindow = 30 * time.Second
+
 	for {
-		// Block until next task is ready
-		task, err := j.scheduler.NextTask(ctx)
+		// Get the first task (blocks until ready)
+		firstTask, err := j.scheduler.NextTask(ctx)
 		if err != nil {
 			if ctx.Err() != nil {
 				slog.InfoContext(ctx, "Image polling job main loop stopped")
@@ -104,18 +107,49 @@ func (j *ImagePollingJob) run(ctx context.Context) {
 			continue
 		}
 
-		// Submit task to worker pool
-		if err := j.workerPool.Submit(task); err != nil {
-			slog.ErrorContext(ctx, "Failed to submit task to worker pool",
-				slog.Any("projectID", task.ProjectID),
-				slog.String("error", err.Error()))
+		// Collect additional tasks within the batch window
+		batch := []*services.PollTask{firstTask}
+		batchDeadline := time.Now().Add(batchWindow)
 
-			// Reschedule the task immediately to retry
-			task.NextPollTime = time.Now().Add(5 * time.Minute)
-			if reschedErr := j.scheduler.Reschedule(task); reschedErr != nil {
-				slog.ErrorContext(ctx, "Failed to reschedule task after submit error",
+		// Try to collect more tasks (non-blocking peek with timeout)
+		for time.Now().Before(batchDeadline) {
+			// Use a short timeout to check for more tasks
+			batchCtx, cancel := context.WithTimeout(ctx, time.Until(batchDeadline))
+			nextTask, err := j.scheduler.NextTask(batchCtx)
+			cancel()
+
+			if err != nil {
+				// No more tasks available in time window, break
+				break
+			}
+
+			batch = append(batch, nextTask)
+
+			// Limit batch size to prevent unbounded growth
+			if len(batch) >= 10 {
+				break
+			}
+		}
+
+		// Submit all tasks in batch
+		if len(batch) > 1 {
+			slog.InfoContext(ctx, "Processing batched polling tasks",
+				slog.Int("batchSize", len(batch)))
+		}
+
+		for _, task := range batch {
+			if err := j.workerPool.Submit(task); err != nil {
+				slog.ErrorContext(ctx, "Failed to submit task to worker pool",
 					slog.Any("projectID", task.ProjectID),
-					slog.String("error", reschedErr.Error()))
+					slog.String("error", err.Error()))
+
+				// Reschedule the task immediately to retry
+				task.NextPollTime = time.Now().Add(5 * time.Minute)
+				if reschedErr := j.scheduler.Reschedule(task); reschedErr != nil {
+					slog.ErrorContext(ctx, "Failed to reschedule task after submit error",
+						slog.Any("projectID", task.ProjectID),
+						slog.String("error", reschedErr.Error()))
+				}
 			}
 		}
 	}
@@ -412,10 +446,11 @@ func (j *ImagePollingJob) HandleProjectSettingsChange(ctx context.Context, proje
 	// Get the project to check current settings
 	project, err := j.projectService.GetProjectFromDatabaseByID(ctx, projectID)
 	if err != nil {
-		slog.WarnContext(ctx, "Failed to get project for settings change",
+		// Project not found (deleted) or other error - remove schedule if it exists
+		slog.InfoContext(ctx, "Project not found, removing polling schedule if exists",
 			slog.String("projectID", projectID),
 			slog.String("error", err.Error()))
-		return err
+		return j.scheduler.Remove(&projectID)
 	}
 
 	// If polling is disabled or no custom interval, remove the project schedule

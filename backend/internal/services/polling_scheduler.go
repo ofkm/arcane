@@ -233,16 +233,21 @@ func (s *PollingScheduler) Remove(projectID *string) error {
 	key := s.getTaskKey(projectID)
 	task, exists := s.taskMap[key]
 	if !exists {
-		return nil // Already removed
+		// Task not in heap, but try to clean up database anyway
+		// (in case it was removed from heap but not from DB)
+		_ = s.deleteTask(s.ctx, projectID) // Ignore errors, might already be deleted
+		return nil
 	}
 
 	// Remove from heap
 	heap.Remove(s.heap, task.heapIndex)
 	delete(s.taskMap, key)
 
-	// Delete from database
+	// Delete from database (ignore errors, might have been CASCADE deleted)
 	if err := s.deleteTask(s.ctx, projectID); err != nil {
-		return fmt.Errorf("failed to delete task from database: %w", err)
+		slog.WarnContext(s.ctx, "Failed to delete task from database (might already be deleted)",
+			slog.Any("projectID", projectID),
+			slog.String("error", err.Error()))
 	}
 
 	return nil
@@ -382,6 +387,13 @@ func (s *PollingScheduler) getTaskKey(projectID *string) string {
 	return *projectID
 }
 
+// Size returns the current number of scheduled tasks
+func (s *PollingScheduler) Size() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.taskMap)
+}
+
 // notify sends a notification to NextTask
 func (s *PollingScheduler) notify() {
 	select {
@@ -389,11 +401,4 @@ func (s *PollingScheduler) notify() {
 	default:
 		// Channel already has a notification
 	}
-}
-
-// Size returns the number of tasks in the scheduler
-func (s *PollingScheduler) Size() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.heap.Len()
 }
