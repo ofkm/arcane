@@ -1313,5 +1313,7 @@
 	"events_delete_selected_message": "Sind Sie sicher, dass Sie {count} ausgewählte Ereignisse(n) löschen möchten?",
 	"events_delete_confirm_message": "Sind Sie sicher, dass Sie das Ereignis \"{title} \"löschen wollen?",
 	"events_delete_failed": "Löschen des Termins \"{title} \" fehlgeschlagen",
-	"events_delete_success": "Ereignis \"{title}\" erfolgreich gelöscht"
+	"events_delete_success": "Ereignis \"{title}\" erfolgreich gelöscht",
+	"sidebar_dark_mode": "Dunkel",
+	"sidebar_light_mode": "Hell"
 }
