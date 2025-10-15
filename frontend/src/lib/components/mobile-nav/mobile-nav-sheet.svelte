@@ -453,7 +453,6 @@
 	}
 </script>
 
-<!-- Backdrop -->
 {#if open}
 	<div
 		class={cn(
