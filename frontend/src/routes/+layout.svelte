@@ -15,8 +15,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
 	import { IsTablet } from '$lib/hooks/is-tablet.svelte.js';
-	import MobileFloatingNav from '$lib/components/mobile-nav/mobile-floating-nav.svelte';
-	import MobileDockedNav from '$lib/components/mobile-nav/mobile-docked-nav.svelte';
+	import MobileNav from '$lib/components/mobile-nav/mobile-nav.svelte';
 	import { getEffectiveNavigationSettings, navigationSettingsOverridesStore } from '$lib/utils/navigation.utils';
 	import { browser, dev } from '$app/environment';
 	import { onMount } from 'svelte';
@@ -97,11 +96,7 @@
 					{@render children()}
 				</section>
 			</main>
-			{#if navigationMode === 'floating'}
-				<MobileFloatingNav {navigationSettings} {user} {versionInformation} />
-			{:else}
-				<MobileDockedNav {navigationSettings} {user} {versionInformation} />
-			{/if}
+			<MobileNav {navigationSettings} {user} {versionInformation} />
 		{:else}
 			<Sidebar.Provider>
 				<AppSidebar {versionInformation} {user} />

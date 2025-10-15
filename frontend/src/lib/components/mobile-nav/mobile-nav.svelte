@@ -7,6 +7,7 @@
 	import { cn } from '$lib/utils';
 	import { SwipeGestureDetector, type SwipeDirection } from '$lib/hooks/use-swipe-gesture.svelte';
 	import MobileNavSheet from './mobile-nav-sheet.svelte';
+	import { m } from '$lib/paraglide/messages';
 	import './styles.css';
 
 	let {
@@ -21,7 +22,6 @@
 		class?: string;
 	} = $props();
 
-	// Get pinned items from navigation settings
 	const pinnedItems = $derived.by(() => {
 		const availableItems = getAvailableMobileNavItems();
 		return navigationSettings.pinnedItems
@@ -30,9 +30,9 @@
 	});
 
 	const currentPath = $derived(page.url.pathname);
-
 	const showLabels = $derived(navigationSettings.showLabels);
 	const scrollToHideEnabled = $derived(navigationSettings.scrollToHide);
+	const mode = $derived(navigationSettings.mode);
 
 	let visible = $state(true);
 	let menuOpen = $state(false);
@@ -40,83 +40,12 @@
 	let navElement: HTMLElement;
 	let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
 
-	// Touch gesture helpers to detect immediate scroll direction on touch
+	// Touch gesture detection variables
 	let touchStartY: number | null = null;
 	let isInteractiveTouch = false;
 	const touchMoveThreshold = 6;
 
-	// Swipe gesture detector for opening menu
-	const swipeDetector = new SwipeGestureDetector(
-		(direction: SwipeDirection) => {
-			if (direction === 'up') {
-				menuOpen = true;
-			}
-		},
-		{
-			threshold: 20,
-			velocity: 0.1,
-			timeLimit: 1000
-		}
-	);
-
-	// Improved scroll-to-hide using native scroll events with passive listeners
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-		if (!scrollToHideEnabled || menuOpen) {
-			visible = true;
-			return;
-		}
-
-		const scrollThreshold = 10;
-		const minScrollDistance = 80;
-
-		const handleScroll = () => {
-			const currentScrollY = window.scrollY;
-			const prevScrollY = lastScrollY;
-			const scrollDiff = currentScrollY - prevScrollY;
-
-			if (scrollTimeout) {
-				clearTimeout(scrollTimeout);
-				scrollTimeout = null;
-			}
-
-			// Check if at bottom of page
-			const scrollHeight = document.documentElement.scrollHeight;
-			const clientHeight = document.documentElement.clientHeight;
-			const atBottom = currentScrollY + clientHeight >= scrollHeight - 5;
-
-			if (scrollDiff < 0 && !atBottom) {
-				visible = true;
-				lastScrollY = currentScrollY;
-			} else if (scrollDiff > scrollThreshold && currentScrollY > minScrollDistance && !atBottom) {
-				visible = false;
-				lastScrollY = currentScrollY;
-			} else if (Math.abs(scrollDiff) > scrollThreshold) {
-				lastScrollY = currentScrollY;
-			}
-
-			// At top - always show after scroll stops
-			if (!atBottom) {
-				scrollTimeout = setTimeout(() => {
-					if (window.scrollY < minScrollDistance) {
-						visible = true;
-					}
-				}, 150);
-			}
-		};
-
-		// Add passive scroll listener for better touch performance
-		window.addEventListener('scroll', handleScroll, { passive: true });
-
-		return () => {
-			window.removeEventListener('scroll', handleScroll);
-			if (scrollTimeout) {
-				clearTimeout(scrollTimeout);
-			}
-		};
-	});
-
-	// Touch-based detection: hide/show immediately on the first touchmove
+	// Touch-based detection for immediate hide/show
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 		if (!scrollToHideEnabled) return;
@@ -157,14 +86,83 @@
 			isInteractiveTouch = false;
 		};
 
-		window.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
-		window.addEventListener('touchmove', handleTouchMove, { passive: true, capture: true });
-		window.addEventListener('touchend', handleTouchEnd, { passive: true, capture: true });
+		const options = { passive: true, capture: true };
+		window.addEventListener('touchstart', handleTouchStart, options);
+		window.addEventListener('touchmove', handleTouchMove, options);
+		window.addEventListener('touchend', handleTouchEnd, options);
 
 		return () => {
-			window.removeEventListener('touchstart', handleTouchStart, { capture: true });
-			window.removeEventListener('touchmove', handleTouchMove, { capture: true });
-			window.removeEventListener('touchend', handleTouchEnd, { capture: true });
+			window.removeEventListener('touchstart', handleTouchStart, options);
+			window.removeEventListener('touchmove', handleTouchMove, options);
+			window.removeEventListener('touchend', handleTouchEnd, options);
+		};
+	});
+
+	// Swipe gesture detector for opening menu
+	const swipeDetector = new SwipeGestureDetector(
+		(direction: SwipeDirection) => {
+			if (direction === 'up') {
+				menuOpen = true;
+			}
+		},
+		{
+			threshold: 20,
+			velocity: 0.1,
+			timeLimit: 1000
+		}
+	);
+
+	// Improved scroll-to-hide using native scroll events with passive listeners
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+		if (!scrollToHideEnabled || menuOpen) {
+			visible = true;
+			return;
+		}
+
+		const scrollThreshold = 10;
+		const minScrollDistance = 80;
+
+		const handleScroll = () => {
+			const currentScrollY = window.scrollY;
+			const prevScrollY = lastScrollY;
+			const scrollDiff = currentScrollY - prevScrollY;
+
+			if (scrollTimeout) {
+				clearTimeout(scrollTimeout);
+				scrollTimeout = null;
+			}
+
+			const scrollHeight = document.documentElement.scrollHeight;
+			const clientHeight = document.documentElement.clientHeight;
+			const atBottom = currentScrollY + clientHeight >= scrollHeight - 5;
+
+			if (scrollDiff < 0 && !atBottom) {
+				visible = true;
+				lastScrollY = currentScrollY;
+			} else if (scrollDiff > scrollThreshold && currentScrollY > minScrollDistance && !atBottom) {
+				visible = false;
+				lastScrollY = currentScrollY;
+			} else if (Math.abs(scrollDiff) > scrollThreshold) {
+				lastScrollY = currentScrollY;
+			}
+
+			if (!atBottom) {
+				scrollTimeout = setTimeout(() => {
+					if (window.scrollY < minScrollDistance) {
+						visible = true;
+					}
+				}, 150);
+			}
+		};
+
+		window.addEventListener('scroll', handleScroll, { passive: true });
+
+		return () => {
+			window.removeEventListener('scroll', handleScroll);
+			if (scrollTimeout) {
+				clearTimeout(scrollTimeout);
+			}
 		};
 	});
 
@@ -185,18 +183,23 @@
 		}
 	});
 
-	// Keep layout padding synced with the floating nav footprint
+	// Keep page padding in sync with nav height via CSS variables
 	$effect(() => {
 		if (!navElement || typeof document === 'undefined') return;
 
 		const root = document.documentElement;
+		const cssVarName = mode === 'floating' ? '--mobile-floating-nav-offset' : '--mobile-docked-nav-offset';
 
 		const applyOffset = () => {
-			const rect = navElement.getBoundingClientRect();
-			const computed = window.getComputedStyle(navElement);
-			const bottomGap = parseFloat(computed.bottom || '0') || 0;
-			const offset = rect.height + bottomGap;
-			root.style.setProperty('--mobile-floating-nav-offset', `${offset}px`);
+			if (mode === 'floating') {
+				const rect = navElement.getBoundingClientRect();
+				const computed = window.getComputedStyle(navElement);
+				const bottomGap = parseFloat(computed.bottom || '0') || 0;
+				const offset = rect.height + bottomGap;
+				root.style.setProperty(cssVarName, `${offset}px`);
+			} else {
+				root.style.setProperty(cssVarName, `${navElement.offsetHeight}px`);
+			}
 		};
 
 		applyOffset();
@@ -207,42 +210,66 @@
 			observer.observe(navElement);
 		}
 
-		const handleResize = () => applyOffset();
-		if (typeof window !== 'undefined') {
+		const handleResize = mode === 'floating' ? () => applyOffset() : null;
+		if (handleResize && typeof window !== 'undefined') {
 			window.addEventListener('resize', handleResize);
 			window.visualViewport?.addEventListener('resize', handleResize);
 		}
 
 		return () => {
 			observer?.disconnect();
-			if (typeof window !== 'undefined') {
+			if (handleResize && typeof window !== 'undefined') {
 				window.removeEventListener('resize', handleResize);
 				window.visualViewport?.removeEventListener('resize', handleResize);
 			}
-			root.style.removeProperty('--mobile-floating-nav-offset');
+			root.style.removeProperty(cssVarName);
 		};
 	});
+
+	// Mode-specific styles
+	const navClasses = $derived(
+		cn(
+			'mobile-nav-base',
+			mode === 'floating' ? 'mobile-nav-floating' : 'mobile-nav-docked',
+			mode === 'floating' 
+				? 'fixed left-1/2 z-50 -translate-x-1/2 transform'
+				: 'fixed bottom-0 left-0 right-0 z-50 gap-2',
+			'bg-background/60 border-border/30 backdrop-blur-xl',
+			'shadow-sm select-none transition-all duration-300 ease-out',
+			'flex items-center',
+			mode === 'floating' 
+				? cn(
+					'rounded-3xl border',
+					showLabels ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-2.5'
+				)
+				: cn(
+					'border-t border-border/50 justify-around',
+					showLabels ? 'px-3 py-2' : 'px-3 py-2.5'
+				),
+			visible 
+				? mode === 'floating' 
+					? 'translate-y-0 scale-100 opacity-100' 
+					: 'translate-y-0 opacity-100'
+				: mode === 'floating'
+					? 'translate-y-full scale-95 opacity-0'
+					: 'translate-y-full opacity-0',
+			className
+		)
+	);
+
+	const ariaLabel = $derived(mode === 'docked' ? m.mobile_navigation() : 'Mobile navigation');
+	const testId = $derived(mode === 'floating' ? 'mobile-floating-nav' : 'mobile-docked-nav');
 </script>
 
 <nav
 	bind:this={navElement}
-	class={cn(
-		'mobile-nav-base mobile-nav-floating',
-		'fixed left-1/2 z-50 -translate-x-1/2 transform',
-		'bg-background/60 border-border/30 border backdrop-blur-xl',
-		'rounded-3xl shadow-sm',
-		'select-none',
-		'transition-all duration-300 ease-out',
-		showLabels ? 'flex items-center gap-2 px-3 py-2' : 'flex items-center gap-3 px-4 py-2.5',
-		visible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-full scale-95 opacity-0',
-		className
-	)}
-	data-testid="mobile-floating-nav"
-	aria-label="Mobile navigation"
+	class={navClasses}
+	data-testid={testId}
+	aria-label={ariaLabel}
 >
 	{#each pinnedItems as item (item.url)}
 		<MobileNavItem {item} {showLabels} active={currentPath === item.url || currentPath.startsWith(item.url + '/')} />
 	{/each}
 </nav>
 
-<MobileNavSheet bind:open={menuOpen} {user} {versionInformation} navigationMode="floating" />
+<MobileNavSheet bind:open={menuOpen} {user} {versionInformation} navigationMode={mode} />
