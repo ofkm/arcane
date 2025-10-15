@@ -62,7 +62,7 @@
 	}
 </script>
 
-<div class={`bg-muted/30 border-border/20 overflow-hidden rounded-3xl border ${className}`}>
+<div class={`bg-muted/30 border-border dark:border-border/20 overflow-hidden rounded-3xl border-2 ${className}`}>
 	<button
 		class="hover:bg-muted/40 flex w-full items-center gap-4 p-5 text-left transition-all duration-200"
 		onclick={() => (userCardExpanded = !userCardExpanded)}
@@ -114,7 +114,7 @@
 							{/if}
 						</div>
 						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground/70 text-xs font-medium tracking-widest uppercase">
+							<div class="text-muted-foreground/70 text-xs font-medium uppercase tracking-widest">
 								{m.sidebar_environment_label()}
 							</div>
 							<div class="text-foreground text-sm font-medium">
@@ -131,7 +131,7 @@
 								<Select.Trigger class="bg-background/50 border-border/30 text-foreground h-9 w-32 text-sm font-medium">
 									<span class="truncate">Switch</span>
 								</Select.Trigger>
-								<Select.Content class="max-w-[280px] min-w-[160px]">
+								<Select.Content class="min-w-[160px] max-w-[280px]">
 									{#each environmentStore.available as env (env.id)}
 										<Select.Item value={env.id} class="text-sm">
 											{getEnvLabel(env)}
@@ -151,7 +151,7 @@
 							<LanguagesIcon class="size-4" />
 						</div>
 						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground/70 mb-1 text-xs font-medium tracking-widest uppercase">Language</div>
+							<div class="text-muted-foreground/70 mb-1 text-xs font-medium uppercase tracking-widest">Language</div>
 							<div class="text-foreground text-sm font-medium"></div>
 						</div>
 						<LocalePicker
@@ -172,7 +172,7 @@
 							{/if}
 						</div>
 						<div class="flex min-w-0 flex-1 flex-col justify-center">
-							<div class="text-muted-foreground/70 mb-1 text-xs font-medium tracking-widest uppercase">Theme</div>
+							<div class="text-muted-foreground/70 mb-1 text-xs font-medium uppercase tracking-widest">Theme</div>
 							<div class="text-foreground text-sm font-medium">
 								{isDarkMode ? 'Dark' : 'Light'}
 							</div>

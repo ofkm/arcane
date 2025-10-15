@@ -29,8 +29,6 @@
 	/* Safe area handling for floating navigation */
 	/* Use safe area inset if it's greater than 1.5rem, otherwise use 1.5rem */
 	bottom: max(1.5rem, env(safe-area-inset-bottom));
-	/* Ensure proper stacking in viewport */
-	position: fixed;
 }
 
 /* Docked navigation specific positioning */
@@ -39,8 +37,6 @@
 	padding-bottom: env(safe-area-inset-bottom);
 	/* Keep it anchored to bottom */
 	bottom: 0;
-	/* Ensure proper stacking in viewport */
-	position: fixed;
 }
 
 /* Shared button/link styles */

@@ -30,10 +30,7 @@
 			.filter((item) => item !== undefined);
 	});
 
-	// Touch-based detection: hide/show immediately on the first touchmove
-	// direction change so mobile users get instant feedback.
 	const currentPath = $derived(page.url.pathname);
-
 	const showLabels = $derived(navigationSettings.showLabels);
 	const scrollToHideEnabled = $derived(navigationSettings.scrollToHide);
 
@@ -43,13 +40,10 @@
 	let navElement: HTMLElement;
 	let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
 
-	// Immediate touch gesture detection so the nav hides as soon as the
-	// user starts a downward scroll gesture on touch devices. This
-	// complements the regular scroll listener which can lag on some
-	// devices or when scrolling inside nested scroll containers.
+	// Touch gesture detection variables
 	let touchStartY: number | null = null;
 	let isInteractiveTouch = false;
-	const touchMoveThreshold = 6; // small threshold to avoid noise
+	const touchMoveThreshold = 6;
 
 	$effect(() => {
 		if (typeof window === 'undefined') return;
@@ -61,9 +55,6 @@
 			if (!t) return;
 			const target = e.target as HTMLElement | null;
 
-			// Check if touch started on the nav bar itself
-			const touchedNav = target?.closest('[data-testid="mobile-docked-nav"]');
-
 			// Ignore touches that start on interactive controls
 			if (target && target.closest && target.closest('button, a, input, select, textarea, [role="button"], [contenteditable]')) {
 				isInteractiveTouch = true;
@@ -73,11 +64,6 @@
 
 			isInteractiveTouch = false;
 			touchStartY = t.clientY;
-
-			// If touch started on nav, prevent background scroll
-			if (touchedNav) {
-				e.preventDefault();
-			}
 		};
 
 		const handleTouchMove = (e: TouchEvent) => {
@@ -87,15 +73,6 @@
 			const deltaY = t.clientY - touchStartY;
 			if (Math.abs(deltaY) < touchMoveThreshold) return;
 
-			// Check if touch is on nav
-			const target = e.target as HTMLElement | null;
-			const touchedNav = target?.closest('[data-testid="mobile-docked-nav"]');
-
-			// If on nav bar, prevent background scroll
-			if (touchedNav) {
-				e.preventDefault();
-			}
-
 			// Negative deltaY => finger moved up => page scrolling down
 			if (deltaY < 0) {
 				visible = false;
@@ -103,9 +80,6 @@
 				visible = true;
 			}
 
-			// Sync lastScrollY so the scroll listener doesn't get out of sync
-			lastScrollY = window.scrollY;
-			// Update reference to avoid repeated toggles for the same gesture
 			touchStartY = t.clientY;
 		};
 
@@ -114,17 +88,14 @@
 			isInteractiveTouch = false;
 		};
 
-		const options = { passive: false, capture: true };
-		const touchEndPassiveOptions = { passive: true, capture: true } as const;
+		const options = { passive: true, capture: true };
 		window.addEventListener('touchstart', handleTouchStart, options);
 		window.addEventListener('touchmove', handleTouchMove, options);
-		window.addEventListener('touchend', handleTouchEnd, touchEndPassiveOptions);
 		window.addEventListener('touchend', handleTouchEnd, options);
 
 		return () => {
 			window.removeEventListener('touchstart', handleTouchStart, options);
 			window.removeEventListener('touchmove', handleTouchMove, options);
-			window.removeEventListener('touchend', handleTouchEnd, touchEndPassiveOptions);
 			window.removeEventListener('touchend', handleTouchEnd, options);
 		};
 	});
@@ -156,7 +127,8 @@
 
 		const handleScroll = () => {
 			const currentScrollY = window.scrollY;
-			const scrollDiff = currentScrollY - untrack(() => lastScrollY);
+			const prevScrollY = lastScrollY;
+			const scrollDiff = currentScrollY - prevScrollY;
 
 			if (scrollTimeout) {
 				clearTimeout(scrollTimeout);

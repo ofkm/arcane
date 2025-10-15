@@ -72,7 +72,8 @@
 
 		const handleScroll = () => {
 			const currentScrollY = window.scrollY;
-			const scrollDiff = currentScrollY - untrack(() => lastScrollY);
+			const prevScrollY = lastScrollY;
+			const scrollDiff = currentScrollY - prevScrollY;
 
 			if (scrollTimeout) {
 				clearTimeout(scrollTimeout);
@@ -125,10 +126,7 @@
 			const t = e.touches?.[0];
 			if (!t) return;
 			const target = e.target as HTMLElement | null;
-			
-			// Check if touch started on the nav bar itself
-			const touchedNav = target?.closest('[data-testid="mobile-floating-nav"]');
-			
+
 			if (target && target.closest && target.closest('button, a, input, select, textarea, [role="button"], [contenteditable]')) {
 				isInteractiveTouch = true;
 				touchStartY = null;
@@ -136,11 +134,6 @@
 			}
 			isInteractiveTouch = false;
 			touchStartY = t.clientY;
-			
-			// If touch started on nav, prevent background scroll
-			if (touchedNav) {
-				e.preventDefault();
-			}
 		};
 
 		const handleTouchMove = (e: TouchEvent) => {
@@ -149,15 +142,6 @@
 			if (!t) return;
 			const deltaY = t.clientY - touchStartY;
 			if (Math.abs(deltaY) < touchMoveThreshold) return;
-			
-			// Check if touch is on nav
-			const target = e.target as HTMLElement | null;
-			const touchedNav = target?.closest('[data-testid="mobile-floating-nav"]');
-			
-			// If on nav bar, prevent background scroll
-			if (touchedNav) {
-				e.preventDefault();
-			}
 
 			if (deltaY < 0) {
 				visible = false;
@@ -165,7 +149,6 @@
 				visible = true;
 			}
 
-			lastScrollY = window.scrollY;
 			touchStartY = t.clientY;
 		};
 
@@ -174,8 +157,8 @@
 			isInteractiveTouch = false;
 		};
 
-		window.addEventListener('touchstart', handleTouchStart, { passive: false, capture: true });
-		window.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+		window.addEventListener('touchstart', handleTouchStart, { passive: true, capture: true });
+		window.addEventListener('touchmove', handleTouchMove, { passive: true, capture: true });
 		window.addEventListener('touchend', handleTouchEnd, { passive: true, capture: true });
 
 		return () => {

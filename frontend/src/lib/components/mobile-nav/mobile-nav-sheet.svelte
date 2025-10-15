@@ -6,7 +6,7 @@
 	import { page } from '$app/state';
 	import userStore from '$lib/stores/user-store';
 	import { m } from '$lib/paraglide/messages';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import MobileUserCard from './mobile-user-card.svelte';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
@@ -158,8 +158,8 @@
 		interaction.inputType = 'touch';
 		interaction.dragStartedFromHandle = !!isOnHandle;
 
-			// Determine if we can drag to close (handle always qualifies, otherwise needs to be at top)
-			interaction.canDragToClose = !!isOnHandle || isAtScrollTop;
+		// Determine if we can drag to close (handle always qualifies, otherwise needs to be at top)
+		interaction.canDragToClose = !!isOnHandle || isAtScrollTop;
 
 		// Don't set isDragging yet - wait for touchmove to determine intent
 		interaction.isDragging = false;
@@ -396,23 +396,21 @@
 			htmlStyle.overflow = 'hidden';
 
 			// Wait for layout then setup sheet scrolling
-			import('svelte').then(({ tick }) => {
-				tick().then(() => {
-					if (!menuElement || !open) return;
+			tick().then(() => {
+				if (!menuElement || !open) return;
 
-					// Ensure the menu element can scroll independently
-					menuElement.style.overflowY = 'auto';
-					menuElement.style.touchAction = 'pan-y';
-					(menuElement.style as any).webkitOverflowScrolling = 'touch';
-					// Force layout recalculation
-					void menuElement.offsetHeight;
+				// Ensure the menu element can scroll independently
+				menuElement.style.overflowY = 'auto';
+				menuElement.style.touchAction = 'pan-y';
+				(menuElement.style as any).webkitOverflowScrolling = 'touch';
+				// Force layout recalculation
+				void menuElement.offsetHeight;
 
-					// Focus for accessibility
-					requestAnimationFrame(() => {
-						if (menuElement && open) {
-							menuElement.focus();
-						}
-					});
+				// Focus for accessibility
+				requestAnimationFrame(() => {
+					if (menuElement && open) {
+						menuElement.focus();
+					}
 				});
 			});
 
