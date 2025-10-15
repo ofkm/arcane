@@ -3,8 +3,8 @@
 /* Base navigation styles */
 .mobile-nav-base {
 	pointer-events: auto;
-	/* Allow vertical gestures to pass through so the page stays the primary scroller */
-	touch-action: pan-y;
+	/* Capture vertical gestures so opening the sheet doesn't scroll the page while still allowing horizontal swipes and pinch zoom */
+	touch-action: pan-x pinch-zoom;
 	overscroll-behavior: contain;
 	/* Isolate touch interactions */
 	isolation: isolate;

@@ -6,7 +6,7 @@
 	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog.svelte';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import AppSidebar from '$lib/components/sidebar/sidebar.svelte';
-	import { goto } from '$app/navigation';
+	import { goto, afterNavigate } from '$app/navigation';
 	import { getAuthRedirectPath } from '$lib/utils/redirect.util';
 	import LoadingIndicator from '$lib/components/loading-indicator.svelte';
 	import type { LayoutData } from './$types';
@@ -14,6 +14,7 @@
 	import Error from '$lib/components/error.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
+	import { IsTablet } from '$lib/hooks/is-tablet.svelte.js';
 	import MobileFloatingNav from '$lib/components/mobile-nav/mobile-floating-nav.svelte';
 	import MobileDockedNav from '$lib/components/mobile-nav/mobile-docked-nav.svelte';
 	import { getEffectiveNavigationSettings, navigationSettingsOverridesStore } from '$lib/utils/navigation.utils';
@@ -37,6 +38,7 @@
 	const { versionInformation, user, settings } = data;
 
 	const isMobile = new IsMobile();
+	const isTablet = new IsTablet();
 	const isNavigating = $derived(navigating.type !== null);
 	const isOnboardingPage = $derived(String(page.url.pathname).startsWith('/onboarding'));
 
@@ -57,6 +59,18 @@
 	const redirectPath = getAuthRedirectPath(page.url.pathname, user, settings);
 	if (redirectPath) {
 		goto(redirectPath);
+	}
+
+	if (browser) {
+		afterNavigate((event) => {
+			if (!event.from) {
+				return;
+			}
+
+			if (isMobile.current || isTablet.current) {
+				window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+			}
+		});
 	}
 </script>
 
