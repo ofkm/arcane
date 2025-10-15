@@ -158,12 +158,8 @@
 		interaction.inputType = 'touch';
 		interaction.dragStartedFromHandle = !!isOnHandle;
 
-		// If on nav bar at top, prevent background scroll
-		if (isAtScrollTop && !isOnHandle) {
-			// Don't prevent yet, but mark that we might need to
-			interaction.canDragToClose = true;
-		} // Determine if we CAN drag to close, but don't start yet
-		interaction.canDragToClose = !!isOnHandle || isAtScrollTop;
+			// Determine if we can drag to close (handle always qualifies, otherwise needs to be at top)
+			interaction.canDragToClose = !!isOnHandle || isAtScrollTop;
 
 		// Don't set isDragging yet - wait for touchmove to determine intent
 		interaction.isDragging = false;

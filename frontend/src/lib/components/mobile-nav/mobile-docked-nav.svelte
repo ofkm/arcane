@@ -60,20 +60,20 @@
 			const t = e.touches?.[0];
 			if (!t) return;
 			const target = e.target as HTMLElement | null;
-			
+
 			// Check if touch started on the nav bar itself
 			const touchedNav = target?.closest('[data-testid="mobile-docked-nav"]');
-			
+
 			// Ignore touches that start on interactive controls
 			if (target && target.closest && target.closest('button, a, input, select, textarea, [role="button"], [contenteditable]')) {
 				isInteractiveTouch = true;
 				touchStartY = null;
 				return;
 			}
-			
+
 			isInteractiveTouch = false;
 			touchStartY = t.clientY;
-			
+
 			// If touch started on nav, prevent background scroll
 			if (touchedNav) {
 				e.preventDefault();
@@ -86,11 +86,11 @@
 			if (!t) return;
 			const deltaY = t.clientY - touchStartY;
 			if (Math.abs(deltaY) < touchMoveThreshold) return;
-			
+
 			// Check if touch is on nav
 			const target = e.target as HTMLElement | null;
 			const touchedNav = target?.closest('[data-testid="mobile-docked-nav"]');
-			
+
 			// If on nav bar, prevent background scroll
 			if (touchedNav) {
 				e.preventDefault();
@@ -115,14 +115,16 @@
 		};
 
 		const options = { passive: false, capture: true };
+		const touchEndPassiveOptions = { passive: true, capture: true } as const;
 		window.addEventListener('touchstart', handleTouchStart, options);
 		window.addEventListener('touchmove', handleTouchMove, options);
-		window.addEventListener('touchend', handleTouchEnd, { passive: true, capture: true });
+		window.addEventListener('touchend', handleTouchEnd, touchEndPassiveOptions);
 		window.addEventListener('touchend', handleTouchEnd, options);
 
 		return () => {
 			window.removeEventListener('touchstart', handleTouchStart, options);
 			window.removeEventListener('touchmove', handleTouchMove, options);
+			window.removeEventListener('touchend', handleTouchEnd, touchEndPassiveOptions);
 			window.removeEventListener('touchend', handleTouchEnd, options);
 		};
 	});
@@ -211,6 +213,34 @@
 				swipeDetector.setElement(null);
 			};
 		}
+	});
+
+	// Keep page padding in sync with the actual docked nav height
+	$effect(() => {
+		if (!navElement || typeof document === 'undefined') return;
+
+		const root = document.documentElement;
+		const applyOffset = () => {
+			root.style.setProperty('--mobile-docked-nav-offset', `${navElement.offsetHeight}px`);
+		};
+
+		applyOffset();
+
+		if (typeof ResizeObserver === 'undefined') {
+			return () => {
+				root.style.removeProperty('--mobile-docked-nav-offset');
+			};
+		}
+
+		const observer = new ResizeObserver(() => {
+			applyOffset();
+		});
+		observer.observe(navElement);
+
+		return () => {
+			observer.disconnect();
+			root.style.removeProperty('--mobile-docked-nav-offset');
+		};
 	});
 </script>
 

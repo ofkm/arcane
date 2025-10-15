@@ -37,8 +37,6 @@
 .mobile-nav-docked {
 	/* Safe area handling for devices with home indicators */
 	padding-bottom: env(safe-area-inset-bottom);
-	/* Ensure minimum padding even without safe area */
-	padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 	/* Keep it anchored to bottom */
 	bottom: 0;
 	/* Ensure proper stacking in viewport */

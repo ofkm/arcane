@@ -201,6 +201,44 @@
 			};
 		}
 	});
+
+	// Keep layout padding synced with the floating nav footprint
+	$effect(() => {
+		if (!navElement || typeof document === 'undefined') return;
+
+		const root = document.documentElement;
+
+		const applyOffset = () => {
+			const rect = navElement.getBoundingClientRect();
+			const computed = window.getComputedStyle(navElement);
+			const bottomGap = parseFloat(computed.bottom || '0') || 0;
+			const offset = rect.height + bottomGap;
+			root.style.setProperty('--mobile-floating-nav-offset', `${offset}px`);
+		};
+
+		applyOffset();
+
+		let observer: ResizeObserver | null = null;
+		if (typeof ResizeObserver !== 'undefined') {
+			observer = new ResizeObserver(() => applyOffset());
+			observer.observe(navElement);
+		}
+
+		const handleResize = () => applyOffset();
+		if (typeof window !== 'undefined') {
+			window.addEventListener('resize', handleResize);
+			window.visualViewport?.addEventListener('resize', handleResize);
+		}
+
+		return () => {
+			observer?.disconnect();
+			if (typeof window !== 'undefined') {
+				window.removeEventListener('resize', handleResize);
+				window.visualViewport?.removeEventListener('resize', handleResize);
+			}
+			root.style.removeProperty('--mobile-floating-nav-offset');
+		};
+	});
 </script>
 
 <nav
