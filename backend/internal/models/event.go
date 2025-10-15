@@ -27,6 +27,7 @@ const (
 	EventTypeProjectStop   EventType = "project.stop"
 	EventTypeProjectCreate EventType = "project.create"
 	EventTypeProjectUpdate EventType = "project.update"
+	EventTypeProjectPoll   EventType = "project.poll"
 
 	EventTypeVolumeCreate EventType = "volume.create"
 	EventTypeVolumeDelete EventType = "volume.delete"
@@ -35,6 +36,7 @@ const (
 	EventTypeNetworkDelete EventType = "network.delete"
 
 	EventTypeSystemPrune      EventType = "system.prune"
+	EventTypeSystemPoll       EventType = "system.poll"
 	EventTypeUserLogin        EventType = "user.login"
 	EventTypeUserLogout       EventType = "user.logout"
 	EventTypeSystemAutoUpdate EventType = "system.auto_update"

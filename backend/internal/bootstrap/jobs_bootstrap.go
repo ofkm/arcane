@@ -39,6 +39,7 @@ func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices 
 		appServices.Environment,
 		appServices.Project,
 		appServices.Docker,
+		appServices.Event,
 	)
 
 	// Create worker pool with task executor from the job
@@ -55,6 +56,7 @@ func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices 
 		appServices.Environment,
 		appServices.Project,
 		appServices.Docker,
+		appServices.Event,
 	)
 
 	if err := imagePollingJobFinal.Register(appCtx); err != nil {

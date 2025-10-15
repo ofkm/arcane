@@ -8,6 +8,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/ofkm/arcane-backend/internal/dto"
+	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 )
 
@@ -19,6 +20,7 @@ type ImagePollingJob struct {
 	environmentService *services.EnvironmentService
 	projectService     *services.ProjectService
 	dockerService      *services.DockerClientService
+	eventService       *services.EventService
 	mainLoopCtx        context.Context
 	mainLoopCancel     context.CancelFunc
 }
@@ -31,6 +33,7 @@ func NewImagePollingJob(
 	environmentService *services.EnvironmentService,
 	projectService *services.ProjectService,
 	dockerService *services.DockerClientService,
+	eventService *services.EventService,
 ) *ImagePollingJob {
 	return &ImagePollingJob{
 		scheduler:          scheduler,
@@ -40,6 +43,7 @@ func NewImagePollingJob(
 		environmentService: environmentService,
 		projectService:     projectService,
 		dockerService:      dockerService,
+		eventService:       eventService,
 	}
 }
 
@@ -159,10 +163,18 @@ func (j *ImagePollingJob) run(ctx context.Context) {
 func (j *ImagePollingJob) ExecuteTask(ctx context.Context, task *services.PollTask) error {
 	startTime := time.Now()
 	var projectIDStr string
+	var projectName string
 	if task.ProjectID == nil {
 		projectIDStr = "global"
+		projectName = "Global Polling"
 	} else {
 		projectIDStr = *task.ProjectID
+		// Try to get project name for better event logging
+		if project, err := j.projectService.GetProjectFromDatabaseByID(ctx, *task.ProjectID); err == nil {
+			projectName = project.Name
+		} else {
+			projectName = projectIDStr
+		}
 	}
 
 	slog.InfoContext(ctx, "Executing polling task",
@@ -175,6 +187,9 @@ func (j *ImagePollingJob) ExecuteTask(ctx context.Context, task *services.PollTa
 		slog.ErrorContext(ctx, "Failed to get images for polling",
 			slog.String("projectID", projectIDStr),
 			slog.String("error", err.Error()))
+
+		// Log failure event
+		j.logPollingEvent(ctx, task.ProjectID, projectName, false, 0, 0, time.Since(startTime), err.Error())
 
 		// Update task result with failure
 		duration := time.Since(startTime)
@@ -262,6 +277,13 @@ func (j *ImagePollingJob) ExecuteTask(ctx context.Context, task *services.PollTa
 		slog.Int("updates", updates),
 		slog.Int("errors", errors),
 		slog.Duration("duration", duration))
+
+	// Log success event (only if no critical errors)
+	if errors < len(results) {
+		j.logPollingEvent(ctx, task.ProjectID, projectName, true, len(results), updates, duration, "")
+	} else {
+		j.logPollingEvent(ctx, task.ProjectID, projectName, false, len(results), 0, duration, "All image checks failed")
+	}
 
 	// Update task result with success
 	if updateErr := j.scheduler.UpdateTaskResult(ctx, task.ProjectID, duration, true); updateErr != nil {
@@ -491,4 +513,70 @@ func (j *ImagePollingJob) Shutdown(ctx context.Context) error {
 		j.mainLoopCancel()
 	}
 	return j.scheduler.Shutdown(ctx)
+}
+
+// logPollingEvent logs a polling event to the event log
+func (j *ImagePollingJob) logPollingEvent(ctx context.Context, projectID *string, projectName string, success bool, imagesChecked, imagesUpdated int, duration time.Duration, errorMsg string) {
+	if j.eventService == nil {
+		return
+	}
+
+	var eventType models.EventType
+	var severity models.EventSeverity
+	var title, description string
+	metadata := models.JSON{
+		"imagesChecked": imagesChecked,
+		"imagesUpdated": imagesUpdated,
+		"durationMs":    duration.Milliseconds(),
+	}
+
+	if projectID == nil {
+		// Global polling event
+		eventType = models.EventTypeSystemPoll
+		if success {
+			severity = models.EventSeveritySuccess
+			title = "Global polling completed"
+			description = fmt.Sprintf("Checked %d images, found %d updates in %dms",
+				imagesChecked, imagesUpdated, duration.Milliseconds())
+		} else {
+			severity = models.EventSeverityError
+			title = "Global polling failed"
+			description = fmt.Sprintf("Failed after %dms: %s", duration.Milliseconds(), errorMsg)
+			metadata["error"] = errorMsg
+		}
+
+		_, _ = j.eventService.CreateEvent(ctx, services.CreateEventRequest{
+			Type:        eventType,
+			Severity:    severity,
+			Title:       title,
+			Description: description,
+			Metadata:    metadata,
+		})
+	} else {
+		// Project-specific polling event
+		eventType = models.EventTypeProjectPoll
+		if success {
+			severity = models.EventSeveritySuccess
+			title = fmt.Sprintf("Polling completed: %s", projectName)
+			description = fmt.Sprintf("Checked %d images, found %d updates in %dms",
+				imagesChecked, imagesUpdated, duration.Milliseconds())
+		} else {
+			severity = models.EventSeverityError
+			title = fmt.Sprintf("Polling failed: %s", projectName)
+			description = fmt.Sprintf("Failed after %dms: %s", duration.Milliseconds(), errorMsg)
+			metadata["error"] = errorMsg
+		}
+
+		resourceType := "project"
+		_, _ = j.eventService.CreateEvent(ctx, services.CreateEventRequest{
+			Type:         eventType,
+			Severity:     severity,
+			Title:        title,
+			Description:  description,
+			ResourceType: &resourceType,
+			ResourceID:   projectID,
+			ResourceName: &projectName,
+			Metadata:     metadata,
+		})
+	}
 }
