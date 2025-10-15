@@ -58,12 +58,6 @@
 </script>
 
 <Sidebar.Menu>
-	<Label
-		class={cn(
-			'text-sidebar-foreground/60 mb-2 px-2 text-xs font-medium transition-opacity duration-200',
-			sidebar.open || sidebar.isHovered ? 'opacity-100' : 'opacity-0'
-		)}>{m.sidebar_environment_label()}</Label
-	>
 	<Sidebar.MenuItem>
 		<DropdownMenu.Root bind:open={dropdownOpen}>
 			<DropdownMenu.Trigger>

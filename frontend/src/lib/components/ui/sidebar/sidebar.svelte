@@ -64,9 +64,11 @@
 				variant === 'floating' || variant === 'inset'
 					? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'
 					: 'group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l',
-				// Hover overlay effect - expand to full width when collapsed and hovered
-				'group-data-[collapsible=icon]:group-data-[hovered=true]:w-(--sidebar-width)',
-				'group-data-[collapsible=icon]:group-data-[hovered=true]:shadow-lg',
+				// Conditionally apply hover expansion if enabled
+				sidebar.hoverExpansionEnabled && [
+					'group-data-[collapsible=icon]:group-data-[hovered=true]:w-(--sidebar-width)',
+					'group-data-[collapsible=icon]:group-data-[hovered=true]:shadow-lg'
+				],
 				className
 			)}
 			onmouseenter={() => {

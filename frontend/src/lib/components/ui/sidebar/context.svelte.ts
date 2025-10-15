@@ -27,6 +27,7 @@ class SidebarState {
 	setOpen: SidebarStateProps['setOpen'];
 	#isTablet: IsTablet;
 	#isPinnedState = new PersistedState('sidebar-pinned', true);
+	#hoverExpansionEnabled = new PersistedState('sidebar-hover-expansion', false);
 	#isHovered = $state(false);
 	#hoverTimeout: ReturnType<typeof setTimeout> | null = null;
 	state = $derived.by(() => (this.open ? 'expanded' : 'collapsed'));
@@ -66,6 +67,16 @@ class SidebarState {
 	get isPinned() {
 		return this.#isPinnedState.current;
 	}
+
+	// Getter for hover expansion preference
+	get hoverExpansionEnabled() {
+		return this.#hoverExpansionEnabled.current;
+	}
+
+	// Setter for hover expansion preference
+	setHoverExpansion = (enabled: boolean) => {
+		this.#hoverExpansionEnabled.current = enabled;
+	};
 
 	// Derived state that shows if sidebar should be visually expanded (either open or hovered)
 	get isExpanded() {
