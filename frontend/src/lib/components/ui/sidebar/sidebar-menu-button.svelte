@@ -60,7 +60,8 @@
 			sidebarMenuButtonVariants({ variant, size }),
 			sidebar.hoverExpansionEnabled && [
 				'group-data-[collapsible=icon]:group-data-[hovered=true]:w-full!',
-				size === 'lg' && 'group-data-[collapsible=icon]:group-data-[hovered=true]:h-12! group-data-[collapsible=icon]:group-data-[hovered=true]:p-2!'
+				size === 'lg' &&
+					'group-data-[collapsible=icon]:group-data-[hovered=true]:h-12! group-data-[collapsible=icon]:group-data-[hovered=true]:p-2!'
 			],
 			className
 		),

@@ -161,7 +161,9 @@
 				</Card.Header>
 				<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
 					<div class="flex items-start gap-3 rounded-lg border p-3 sm:p-4">
-						<div class="bg-primary/10 text-primary ring-primary/20 flex size-7 flex-shrink-0 items-center justify-center rounded-lg ring-1 sm:size-8">
+						<div
+							class="bg-primary/10 text-primary ring-primary/20 flex size-7 flex-shrink-0 items-center justify-center rounded-lg ring-1 sm:size-8"
+						>
 							<SidebarIcon class="size-3 sm:size-4" />
 						</div>
 						<div class="flex flex-1 flex-col gap-3">
@@ -181,7 +183,9 @@
 									}}
 								/>
 								<label for="sidebarHoverExpansion" class="text-xs font-medium">
-									{sidebarHoverExpansion ? m.navigation_sidebar_hover_expansion_enabled() : m.navigation_sidebar_hover_expansion_disabled()}
+									{sidebarHoverExpansion
+										? m.navigation_sidebar_hover_expansion_enabled()
+										: m.navigation_sidebar_hover_expansion_disabled()}
 								</label>
 							</div>
 						</div>

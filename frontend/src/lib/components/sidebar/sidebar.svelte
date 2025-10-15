@@ -40,9 +40,7 @@
 	});
 	const effectiveUser = $derived(user ?? storeUser);
 
-	const isCollapsed = $derived(
-		sidebar.state === 'collapsed' && !(sidebar.hoverExpansionEnabled && sidebar.isHovered)
-	);
+	const isCollapsed = $derived(sidebar.state === 'collapsed' && !(sidebar.hoverExpansionEnabled && sidebar.isHovered));
 	const isAdmin = $derived(!!effectiveUser?.roles?.includes('admin'));
 </script>
 

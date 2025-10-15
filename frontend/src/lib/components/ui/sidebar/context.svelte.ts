@@ -80,12 +80,14 @@ class SidebarState {
 
 	// Derived state that shows if sidebar should be visually expanded (either open or hovered)
 	get isExpanded() {
-		// In desktop mode: expanded if open OR (collapsed AND hovered)
+		// In desktop mode: expanded if open OR (collapsed AND hovered AND hover expansion is enabled)
 		// In tablet mode: expanded only when hovered (since it's always collapsed)
 		if (this.#isTablet.current) {
 			return this.#isHovered;
 		}
-		return this.open || (!this.open && this.#isHovered);
+		// Only consider hover state for expansion if hover expansion is enabled
+		const shouldExpandOnHover = !this.open && this.#isHovered && this.#hoverExpansionEnabled.current;
+		return this.open || shouldExpandOnHover;
 	}
 
 	// Set hover state with optional delay for clearing
