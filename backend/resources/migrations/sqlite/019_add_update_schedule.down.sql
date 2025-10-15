@@ -17,6 +17,12 @@ ALTER TABLE projects DROP COLUMN auto_update_nullable;
 -- Note: We don't drop the other new columns as SQLite doesn't support it easily
 -- In a real rollback scenario, you'd need to recreate the entire table
 
+-- Drop polling_schedules table
+DROP TABLE IF EXISTS polling_schedules;
+
+-- Remove pollingWorkerCount setting
+DELETE FROM settings WHERE key = 'pollingWorkerCount';
+
 -- Remove update schedule settings
 DELETE FROM settings WHERE key = 'updateScheduleEnabled';
 DELETE FROM settings WHERE key = 'updateScheduleWindows';

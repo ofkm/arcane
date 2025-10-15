@@ -175,6 +175,32 @@ func (s *ProjectService) GetProjectServices(ctx context.Context, projectID strin
 	return services, nil
 }
 
+// GetProjectRunningImages returns a deduplicated list of images from running containers in a project
+func (s *ProjectService) GetProjectRunningImages(ctx context.Context, projectID string) ([]string, error) {
+	services, err := s.GetProjectServices(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project services: %w", err)
+	}
+
+	imageSet := make(map[string]struct{})
+	for _, svc := range services {
+		// Only include images from running containers
+		status := strings.ToLower(strings.TrimSpace(svc.Status))
+		if status == "running" || status == "up" {
+			if svc.Image != "" {
+				imageSet[svc.Image] = struct{}{}
+			}
+		}
+	}
+
+	images := make([]string, 0, len(imageSet))
+	for image := range imageSet {
+		images = append(images, image)
+	}
+
+	return images, nil
+}
+
 func (s *ProjectService) GetProjectContent(ctx context.Context, projectID string) (composeContent, envContent string, err error) {
 	proj, err := s.GetProjectFromDatabaseByID(ctx, projectID)
 	if err != nil {

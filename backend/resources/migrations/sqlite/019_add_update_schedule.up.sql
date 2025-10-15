@@ -33,3 +33,22 @@ UPDATE projects SET auto_update = CASE WHEN auto_update_old = 1 THEN 1 ELSE NULL
 -- If your SQLite is older, this will fail silently and the old column will remain unused
 ALTER TABLE projects DROP COLUMN auto_update_old;
 
+-- Create polling_schedules table for heap-based polling scheduler
+CREATE TABLE IF NOT EXISTS polling_schedules (
+    id TEXT PRIMARY KEY,
+    project_id TEXT UNIQUE,
+    next_poll_time DATETIME NOT NULL,
+    last_poll_time DATETIME,
+    last_poll_duration_ms INTEGER,
+    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+-- Create index on next_poll_time for efficient scheduling queries
+CREATE INDEX IF NOT EXISTS idx_polling_schedules_next_poll_time ON polling_schedules(next_poll_time);
+
+-- Add pollingWorkerCount setting for worker pool configuration
+INSERT OR IGNORE INTO settings (key, value) VALUES ('pollingWorkerCount', '10');
+

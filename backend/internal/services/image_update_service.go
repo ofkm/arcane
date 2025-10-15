@@ -24,6 +24,7 @@ type ImageUpdateService struct {
 	registryService *ContainerRegistryService
 	dockerService   *DockerClientService
 	eventService    *EventService
+	digestCache     *DigestCache
 }
 
 type ImageParts struct {
@@ -32,13 +33,14 @@ type ImageParts struct {
 	Tag        string
 }
 
-func NewImageUpdateService(db *database.DB, settingsService *SettingsService, registryService *ContainerRegistryService, dockerService *DockerClientService, eventService *EventService) *ImageUpdateService {
+func NewImageUpdateService(db *database.DB, settingsService *SettingsService, registryService *ContainerRegistryService, dockerService *DockerClientService, eventService *EventService, digestCache *DigestCache) *ImageUpdateService {
 	return &ImageUpdateService{
 		db:              db,
 		settingsService: settingsService,
 		registryService: registryService,
 		dockerService:   dockerService,
 		eventService:    eventService,
+		digestCache:     digestCache,
 	}
 }
 
@@ -177,24 +179,46 @@ func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *Image
 	}
 
 	normalizedRepo := s.normalizeRepository(parts.Registry, parts.Repository)
+	imageRef := fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag)
 
-	start := time.Now()
-	remoteDigest, _, err := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token)
-	if err != nil && strings.Contains(strings.ToLower(err.Error()), "unauthorized") {
-		// Attempt to resolve auth header via registry helpers and retry once
-		enabledRegs, _ := s.registryService.GetEnabledRegistries(ctx)
-		authHeader, _, _, resolveErr := registry.ResolveAuthHeaderForRepository(ctx, parts.Registry, normalizedRepo, parts.Tag, enabledRegs)
-		if resolveErr == nil && authHeader != "" {
-			remoteDigest, _, err = rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, authHeader)
+	// Check cache first
+	var remoteDigest string
+	var elapsed time.Duration
+	if s.digestCache != nil {
+		if cachedDigest, found := s.digestCache.Get(imageRef); found {
+			remoteDigest = cachedDigest
+			elapsed = 0 // Cache hit, no remote call
+			slog.DebugContext(ctx, "Digest cache hit",
+				slog.String("imageRef", imageRef),
+				slog.String("cachedDigest", cachedDigest))
 		}
 	}
-	elapsed := time.Since(start)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get remote digest: %w", err)
+
+	// Cache miss, fetch from registry
+	if remoteDigest == "" {
+		start := time.Now()
+		remoteDigest, _, err = rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token)
+		if err != nil && strings.Contains(strings.ToLower(err.Error()), "unauthorized") {
+			// Attempt to resolve auth header via registry helpers and retry once
+			enabledRegs, _ := s.registryService.GetEnabledRegistries(ctx)
+			authHeader, _, _, resolveErr := registry.ResolveAuthHeaderForRepository(ctx, parts.Registry, normalizedRepo, parts.Tag, enabledRegs)
+			if resolveErr == nil && authHeader != "" {
+				remoteDigest, _, err = rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, authHeader)
+			}
+		}
+		elapsed = time.Since(start)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get remote digest: %w", err)
+		}
+
+		// Update cache on successful fetch
+		if s.digestCache != nil {
+			s.digestCache.Set(imageRef, remoteDigest)
+		}
 	}
 
 	// Get local image and all its digests
-	localDigest, allLocalDigests, err := s.getLocalImageDigestWithAll(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
+	localDigest, allLocalDigests, err := s.getLocalImageDigestWithAll(ctx, imageRef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get local digest: %w", err)
 	}
@@ -209,7 +233,7 @@ func (s *ImageUpdateService) checkDigestUpdate(ctx context.Context, parts *Image
 	}
 
 	slog.DebugContext(ctx, "digest comparison",
-		slog.String("imageRef", fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag)),
+		slog.String("imageRef", imageRef),
 		slog.String("primaryLocalDigest", localDigest),
 		slog.Any("allLocalDigests", allLocalDigests),
 		slog.String("remoteDigest", remoteDigest),
@@ -824,30 +848,50 @@ func (s *ImageUpdateService) checkSingleImageInBatch(
 	token := authInfo.token
 	auth := authInfo.auth
 	normalizedRepo := s.normalizeRepository(parts.Registry, parts.Repository)
+	imageRef := fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag)
 
-	remoteDigest, _, digestErr := rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token)
-	if digestErr != nil && strings.Contains(strings.ToLower(digestErr.Error()), "unauthorized") {
-		authHeader, method, username, resolveErr := registry.ResolveAuthHeaderForRepository(ctx, parts.Registry, normalizedRepo, parts.Tag, enabledRegs)
-		if resolveErr == nil && authHeader != "" {
-			remoteDigest, _, digestErr = rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, authHeader)
-			if digestErr == nil {
-				auth = &authDetails{Method: method, Username: username, Registry: parts.Registry}
+	// Check cache first
+	var remoteDigest string
+	var digestErr error
+	if s.digestCache != nil {
+		if cachedDigest, found := s.digestCache.Get(imageRef); found {
+			remoteDigest = cachedDigest
+			slog.DebugContext(ctx, "Batch digest cache hit",
+				slog.String("imageRef", imageRef))
+		}
+	}
+
+	// Cache miss, fetch from registry
+	if remoteDigest == "" {
+		remoteDigest, _, digestErr = rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, token)
+		if digestErr != nil && strings.Contains(strings.ToLower(digestErr.Error()), "unauthorized") {
+			authHeader, method, username, resolveErr := registry.ResolveAuthHeaderForRepository(ctx, parts.Registry, normalizedRepo, parts.Tag, enabledRegs)
+			if resolveErr == nil && authHeader != "" {
+				remoteDigest, _, digestErr = rc.GetLatestDigestTimed(ctx, parts.Registry, normalizedRepo, parts.Tag, authHeader)
+				if digestErr == nil {
+					auth = &authDetails{Method: method, Username: username, Registry: parts.Registry}
+				}
 			}
 		}
-	}
-	if digestErr != nil {
-		return &dto.ImageUpdateResponse{
-			Error:          digestErr.Error(),
-			CheckTime:      time.Now(),
-			ResponseTimeMs: int(time.Since(start).Milliseconds()),
-			AuthMethod:     auth.Method,
-			AuthUsername:   auth.Username,
-			AuthRegistry:   auth.Registry,
-			UsedCredential: auth.Method == "credential",
+		if digestErr != nil {
+			return &dto.ImageUpdateResponse{
+				Error:          digestErr.Error(),
+				CheckTime:      time.Now(),
+				ResponseTimeMs: int(time.Since(start).Milliseconds()),
+				AuthMethod:     auth.Method,
+				AuthUsername:   auth.Username,
+				AuthRegistry:   auth.Registry,
+				UsedCredential: auth.Method == "credential",
+			}
+		}
+
+		// Update cache on successful fetch
+		if s.digestCache != nil {
+			s.digestCache.Set(imageRef, remoteDigest)
 		}
 	}
 
-	localDigest, allLocalDigests, ldErr := s.getLocalImageDigestWithAll(ctx, fmt.Sprintf("%s/%s:%s", parts.Registry, parts.Repository, parts.Tag))
+	localDigest, allLocalDigests, ldErr := s.getLocalImageDigestWithAll(ctx, imageRef)
 	if ldErr != nil {
 		return &dto.ImageUpdateResponse{
 			Error:          ldErr.Error(),

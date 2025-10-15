@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/google/uuid"
@@ -89,16 +88,4 @@ func (s *Scheduler) RemoveJobByName(name string) {
 			_ = s.scheduler.RemoveJob(j.ID())
 		}
 	}
-}
-
-func (s *Scheduler) RescheduleDurationJobByName(
-	ctx context.Context,
-	name string,
-	interval time.Duration,
-	taskFunc func(ctx context.Context) error,
-	runImmediately bool,
-) error {
-	s.RemoveJobByName(name)
-	definition := gocron.DurationJob(interval)
-	return s.RegisterJob(ctx, name, definition, taskFunc, runImmediately)
 }

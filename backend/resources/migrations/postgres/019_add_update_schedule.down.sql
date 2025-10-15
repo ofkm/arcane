@@ -1,3 +1,9 @@
+-- Drop polling_schedules table
+DROP TABLE IF EXISTS polling_schedules;
+
+-- Remove pollingWorkerCount setting
+DELETE FROM settings WHERE key = 'pollingWorkerCount';
+
 -- Remove per-project override columns
 ALTER TABLE projects DROP COLUMN IF EXISTS polling_enabled;
 ALTER TABLE projects DROP COLUMN IF EXISTS polling_interval;

@@ -27,3 +27,23 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS update_schedule_enabled BOOLEAN;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS update_schedule_windows TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS update_schedule_timezone TEXT;
 
+-- Create polling_schedules table for heap-based polling scheduler
+CREATE TABLE IF NOT EXISTS polling_schedules (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID UNIQUE,
+    next_poll_time TIMESTAMP NOT NULL,
+    last_poll_time TIMESTAMP,
+    last_poll_duration_ms INTEGER,
+    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+-- Create index on next_poll_time for efficient scheduling queries
+CREATE INDEX IF NOT EXISTS idx_polling_schedules_next_poll_time ON polling_schedules(next_poll_time);
+
+-- Add pollingWorkerCount setting for worker pool configuration
+INSERT INTO settings (key, value) VALUES ('pollingWorkerCount', '10')
+ON CONFLICT (key) DO NOTHING;
+

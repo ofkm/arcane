@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
@@ -31,6 +32,10 @@ type Services struct {
 	Updater           *services.UpdaterService
 	Event             *services.EventService
 	Version           *services.VersionService
+	DigestCache       *services.DigestCache
+	PollingScheduler  *services.PollingScheduler
+	WorkerPool        *services.PollingWorkerPool
+	BatchCoordinator  *services.RegistryBatchCoordinator
 }
 
 func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config, httpClient *http.Client) (svcs *Services, dockerSrvice *services.DockerClientService, err error) {
@@ -46,7 +51,12 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs.Docker = dockerClient
 	svcs.User = services.NewUserService(db)
 	svcs.ContainerRegistry = services.NewContainerRegistryService(db)
-	svcs.ImageUpdate = services.NewImageUpdateService(db, svcs.Settings, svcs.ContainerRegistry, svcs.Docker, svcs.Event)
+
+	// Initialize digest cache with 30-minute TTL
+	svcs.DigestCache = services.NewDigestCache(30 * time.Minute)
+	svcs.DigestCache.Start(ctx)
+
+	svcs.ImageUpdate = services.NewImageUpdateService(db, svcs.Settings, svcs.ContainerRegistry, svcs.Docker, svcs.Event, svcs.DigestCache)
 	svcs.Image = services.NewImageService(db, svcs.Docker, svcs.ContainerRegistry, svcs.ImageUpdate, svcs.Event)
 	svcs.Project = services.NewProjectService(db, svcs.Settings, svcs.Event, svcs.Image)
 	svcs.Environment = services.NewEnvironmentService(db, httpClient)
@@ -59,6 +69,16 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs.Updater = services.NewUpdaterService(db, svcs.Settings, svcs.Docker, svcs.Project, svcs.ImageUpdate, svcs.ContainerRegistry, svcs.Event, svcs.Image)
 	svcs.System = services.NewSystemService(db, svcs.Docker, svcs.Container, svcs.Image, svcs.Volume, svcs.Network, svcs.Settings)
 	svcs.Version = services.NewVersionService(httpClient, cfg.UpdateCheckDisabled)
+
+	// Initialize polling scheduler
+	var schedulerErr error
+	svcs.PollingScheduler, schedulerErr = services.NewPollingScheduler(ctx, db)
+	if schedulerErr != nil {
+		return nil, nil, fmt.Errorf("failed to initialize polling scheduler: %w", schedulerErr)
+	}
+
+	// Initialize registry batch coordinator
+	svcs.BatchCoordinator = services.NewRegistryBatchCoordinator(svcs.ImageUpdate)
 
 	return svcs, dockerClient, nil
 }

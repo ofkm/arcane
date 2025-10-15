@@ -102,5 +102,8 @@ func (j *AutoUpdateJob) Reschedule(ctx context.Context) error {
 	}
 	slog.InfoContext(ctx, "auto-update settings changed; rescheduling", "interval", interval.String())
 
-	return j.scheduler.RescheduleDurationJobByName(ctx, "auto-update", interval, j.Execute, false)
+	// Remove old job and register new one with updated interval
+	j.scheduler.RemoveJobByName("auto-update")
+	jobDefinition := gocron.DurationJob(interval)
+	return j.scheduler.RegisterJob(ctx, "auto-update", jobDefinition, j.Execute, false)
 }
