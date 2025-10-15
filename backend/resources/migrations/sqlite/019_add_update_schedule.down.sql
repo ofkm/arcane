@@ -2,6 +2,8 @@
 -- This down migration does its best to restore the previous state
 
 -- Restore auto_update to NOT NULL DEFAULT false
+BEGIN TRANSACTION;
+
 -- Step 1: Rename current nullable column
 ALTER TABLE projects RENAME COLUMN auto_update TO auto_update_nullable;
 
@@ -13,6 +15,8 @@ UPDATE projects SET auto_update = COALESCE(auto_update_nullable, false);
 
 -- Step 4: Drop temporary column
 ALTER TABLE projects DROP COLUMN auto_update_nullable;
+
+COMMIT;
 
 -- Note: We don't drop the other new columns as SQLite doesn't support it easily
 -- In a real rollback scenario, you'd need to recreate the entire table

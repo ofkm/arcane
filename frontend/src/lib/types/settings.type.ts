@@ -70,7 +70,7 @@ export interface OidcStatusInfo {
 }
 
 export interface UpdateScheduleWindow {
-	days: string[]; // e.g., ["monday", "tuesday", "wednesday"]
+	days: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[];
 	startTime: string; // e.g., "02:00"
 	endTime: string; // e.g., "06:00"
 	timezone: string; // e.g., "UTC"

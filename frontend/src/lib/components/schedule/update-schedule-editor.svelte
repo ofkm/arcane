@@ -14,14 +14,21 @@
 		enabled?: boolean;
 		windows: UpdateScheduleWindow[];
 		timezone: string;
-		onUpdate: (enabled: boolean, windows: UpdateScheduleWindow[], timezone: string) => void;
 	}
 
-	let { enabled = $bindable(false), windows = $bindable([]), timezone = $bindable('UTC'), onUpdate }: Props = $props();
+	let { enabled = $bindable(false), windows = $bindable([]), timezone = $bindable('UTC') }: Props = $props();
 
-	const allDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+	const allDays: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[] = [
+		'monday',
+		'tuesday',
+		'wednesday',
+		'thursday',
+		'friday',
+		'saturday',
+		'sunday'
+	];
 
-	const dayLabels: Record<string, string> = {
+	const dayLabels: Record<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday', string> = {
 		monday: m.day_monday(),
 		tuesday: m.day_tuesday(),
 		wednesday: m.day_wednesday(),
@@ -52,15 +59,16 @@
 			timezone: timezone
 		};
 		windows = [...windows, newWindow];
-		onUpdate(enabled, windows, timezone);
 	}
 
 	function removeWindow(index: number) {
 		windows = windows.filter((_, i) => i !== index);
-		onUpdate(enabled, windows, timezone);
 	}
 
-	function toggleDay(windowIndex: number, day: string) {
+	function toggleDay(
+		windowIndex: number,
+		day: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'
+	) {
 		const window = windows[windowIndex];
 		if (window.days.includes(day)) {
 			window.days = window.days.filter((d) => d !== day);
@@ -68,24 +76,20 @@
 			window.days = [...window.days, day];
 		}
 		windows = [...windows];
-		onUpdate(enabled, windows, timezone);
 	}
 
 	function updateTime(windowIndex: number, field: 'startTime' | 'endTime', value: string) {
 		windows[windowIndex][field] = value;
 		windows = [...windows];
-		onUpdate(enabled, windows, timezone);
 	}
 
 	function updateGlobalTimezone(newTimezone: string) {
 		timezone = newTimezone;
 		windows = windows.map((w) => ({ ...w, timezone: newTimezone }));
-		onUpdate(enabled, windows, timezone);
 	}
 
 	function updateEnabled(value: boolean) {
 		enabled = value;
-		onUpdate(enabled, windows, timezone);
 	}
 </script>
 

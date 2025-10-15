@@ -52,7 +52,7 @@ export interface ProjectStatusCounts {
 }
 
 export interface UpdateScheduleWindow {
-	days: string[];
+	days: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[];
 	startTime: string;
 	endTime: string;
 	timezone: string;

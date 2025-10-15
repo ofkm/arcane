@@ -9,7 +9,6 @@
 	import { createForm } from '$lib/utils/form.utils';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
-	import { Label } from '$lib/components/ui/label';
 	import { m } from '$lib/paraglide/messages';
 	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
@@ -22,7 +21,6 @@
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import UpdateScheduleEditor from '$lib/components/schedule/update-schedule-editor.svelte';
-	import { cn } from '$lib/utils';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings!);
@@ -35,18 +33,33 @@
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
-		dockerPruneMode: z.enum(['all', 'dangling']),
-		defaultShell: z.string(),
 		updateScheduleEnabled: z.boolean(),
 		updateScheduleWindows: z.any(),
-		updateScheduleTimezone: z.string()
+		updateScheduleTimezone: z.string(),
+		dockerPruneMode: z.enum(['all', 'dangling']),
+		defaultShell: z.string()
 	});
 
-	let scheduleEnabled = $derived<boolean>(currentSettings.updateScheduleEnabled ?? false);
-	let scheduleWindows = $derived<UpdateScheduleWindow[]>(currentSettings.updateScheduleWindows?.windows || []);
-	let scheduleTimezone = $derived<string>(currentSettings.updateScheduleTimezone || 'UTC');
-
 	let pruneMode = $derived(currentSettings.dockerPruneMode);
+
+	// Local state for schedule editor (synced with form inputs)
+	let localScheduleEnabled = $state(false);
+	let localScheduleWindows = $state<UpdateScheduleWindow[]>([]);
+	let localScheduleTimezone = $state('UTC');
+
+	// Sync local state with form inputs
+	$effect(() => {
+		localScheduleEnabled = $formInputs.updateScheduleEnabled.value;
+		localScheduleWindows = $formInputs.updateScheduleWindows.value;
+		localScheduleTimezone = $formInputs.updateScheduleTimezone.value;
+	});
+
+	// Sync changes back to form inputs
+	$effect(() => {
+		$formInputs.updateScheduleEnabled.value = localScheduleEnabled;
+		$formInputs.updateScheduleWindows.value = localScheduleWindows;
+		$formInputs.updateScheduleTimezone.value = localScheduleTimezone;
+	});
 
 	type PollingIntervalMode = 'hourly' | 'daily' | 'weekly' | 'custom';
 
@@ -124,9 +137,10 @@
 			$formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
 			$formInputs.dockerPruneMode.value != currentSettings.dockerPruneMode ||
 			$formInputs.defaultShell.value != currentSettings.defaultShell ||
-			scheduleEnabled !== currentSettings.updateScheduleEnabled ||
-			JSON.stringify(scheduleWindows) !== JSON.stringify(currentSettings.updateScheduleWindows?.windows || []) ||
-			scheduleTimezone !== currentSettings.updateScheduleTimezone
+			$formInputs.updateScheduleEnabled.value !== currentSettings.updateScheduleEnabled ||
+			JSON.stringify($formInputs.updateScheduleWindows.value) !==
+				JSON.stringify(currentSettings.updateScheduleWindows?.windows || []) ||
+			$formInputs.updateScheduleTimezone.value !== currentSettings.updateScheduleTimezone
 	);
 
 	$effect(() => {
@@ -172,12 +186,10 @@
 		// Add schedule data to form submission
 		const settingsToUpdate = {
 			...formData,
-			updateScheduleEnabled: scheduleEnabled,
 			updateScheduleWindows: {
-				enabled: scheduleEnabled,
-				windows: scheduleWindows
-			} as UpdateScheduleConfig,
-			updateScheduleTimezone: scheduleTimezone
+				enabled: formData.updateScheduleEnabled,
+				windows: formData.updateScheduleWindows
+			} as UpdateScheduleConfig
 		};
 
 		await updateSettingsConfig(settingsToUpdate)
@@ -195,15 +207,9 @@
 		$formInputs.autoUpdate.value = currentSettings.autoUpdate;
 		$formInputs.dockerPruneMode.value = currentSettings.dockerPruneMode;
 		$formInputs.defaultShell.value = currentSettings.defaultShell;
-		scheduleEnabled = currentSettings.updateScheduleEnabled ?? false;
-		scheduleWindows = currentSettings.updateScheduleWindows?.windows || [];
-		scheduleTimezone = currentSettings.updateScheduleTimezone || 'UTC';
-	}
-
-	function handleScheduleUpdate(enabled: boolean, windows: UpdateScheduleWindow[], timezone: string) {
-		scheduleEnabled = enabled;
-		scheduleWindows = windows;
-		scheduleTimezone = timezone;
+		$formInputs.updateScheduleEnabled.value = currentSettings.updateScheduleEnabled;
+		$formInputs.updateScheduleWindows.value = currentSettings.updateScheduleWindows?.windows || [];
+		$formInputs.updateScheduleTimezone.value = currentSettings.updateScheduleTimezone;
 	}
 
 	onMount(() => {
@@ -305,10 +311,9 @@
 							</Card.Header>
 							<Card.Content class="px-3 py-4 sm:px-6">
 								<UpdateScheduleEditor
-									bind:enabled={scheduleEnabled}
-									bind:windows={scheduleWindows}
-									bind:timezone={scheduleTimezone}
-									onUpdate={handleScheduleUpdate}
+									bind:enabled={localScheduleEnabled}
+									bind:windows={localScheduleWindows}
+									bind:timezone={localScheduleTimezone}
 								/>
 							</Card.Content>
 						</Card.Root>

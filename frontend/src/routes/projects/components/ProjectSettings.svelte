@@ -16,7 +16,7 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import settingsStore from '$lib/stores/config-store';
 	import type { Project, ProjectSettingsUpdate } from '$lib/types/project.type';
-	import type { UpdateScheduleWindow, UpdateScheduleConfig } from '$lib/types/settings.type';
+	import type { UpdateScheduleWindow } from '$lib/types/settings.type';
 
 	interface Props {
 		project: Project;
@@ -188,7 +188,7 @@
 				updates.updateScheduleWindows = {
 					enabled: localScheduleEnabled,
 					windows: localScheduleWindows
-				} as UpdateScheduleConfig;
+				};
 				updates.updateScheduleTimezone = localScheduleTimezone;
 			}
 
@@ -239,11 +239,6 @@
 		}
 	}
 
-	function handleScheduleUpdate(enabled: boolean, windows: UpdateScheduleWindow[], timezone: string) {
-		localScheduleEnabled = enabled;
-		localScheduleWindows = windows;
-		localScheduleTimezone = timezone;
-	}
 </script>
 
 <div class="space-y-6">
@@ -332,7 +327,6 @@
 							bind:enabled={localScheduleEnabled}
 							bind:windows={localScheduleWindows}
 							bind:timezone={localScheduleTimezone}
-							onUpdate={handleScheduleUpdate}
 						/>
 					{/snippet}
 				</SettingsSection>

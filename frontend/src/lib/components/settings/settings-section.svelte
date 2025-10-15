@@ -2,7 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import XIcon from '@lucide/svelte/icons/x';
 	import { m } from '$lib/paraglide/messages';
-	import type { Component } from 'svelte';
+	import type { Component, Snippet } from 'svelte';
 
 	interface Props {
 		title: string;
@@ -12,7 +12,7 @@
 		isLoading?: boolean;
 		onClearOverride: () => void;
 		onEnableOverride: () => void;
-		children?: any;
+		children?: Snippet;
 	}
 
 	let {
