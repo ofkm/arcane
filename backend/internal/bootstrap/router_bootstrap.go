@@ -12,12 +12,13 @@ import (
 	"github.com/ofkm/arcane-backend/frontend"
 	"github.com/ofkm/arcane-backend/internal/api"
 	"github.com/ofkm/arcane-backend/internal/config"
+	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 )
 
 var registerPlaywrightRoutes []func(apiGroup *gin.RouterGroup, services *Services)
 
-func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
+func setupRouter(cfg *config.Config, appServices *Services, db *database.DB) *gin.Engine {
 
 	if cfg.Environment == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -107,7 +108,48 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewVolumeHandler(apiGroup, appServices.Docker, appServices.Volume, authMiddleware)
 	api.NewSettingsHandler(apiGroup, appServices.Settings, authMiddleware)
 
+	// Health endpoints (always available, no auth)
+	pollingHealthHandler := api.NewPollingHealthHandler(
+		appServices.PollingScheduler,
+		appServices.WorkerPool,
+		appServices.DigestCache,
+		db,
+	)
+	healthGroup := apiGroup.Group("/health")
+	{
+		healthGroup.GET("/polling", pollingHealthHandler.GetPollingHealth)
+	}
+
+	// Metrics endpoints (require auth)
+	metricsGroup := apiGroup.Group("/metrics")
+	metricsGroup.Use(authMiddleware.WithAdminNotRequired().Add())
+	{
+		metricsGroup.GET("/polling", pollingHealthHandler.GetPollingMetrics)
+	}
+
+	// Admin endpoints (require auth)
+	adminGroup := apiGroup.Group("/admin")
+	adminGroup.Use(authMiddleware.WithAdminNotRequired().Add())
+	{
+		adminGroup.POST("/polling/cleanup-orphaned", pollingHealthHandler.CleanupOrphanedSchedules)
+	}
+
 	if cfg.Environment != "production" {
+		// Debug endpoints for development
+		pollingDebugHandler := api.NewPollingDebugHandler(
+			appServices.PollingScheduler,
+			appServices.WorkerPool,
+			appServices.DigestCache,
+			db,
+			appServices.Settings,
+			appServices.Project,
+		)
+		debugGroup := apiGroup.Group("/debug")
+		debugGroup.Use(authMiddleware.WithAdminNotRequired().Add())
+		{
+			debugGroup.GET("/polling", pollingDebugHandler.GetPollingDebugInfo)
+		}
+
 		for _, registerFunc := range registerPlaywrightRoutes {
 			registerFunc(apiGroup, appServices)
 		}

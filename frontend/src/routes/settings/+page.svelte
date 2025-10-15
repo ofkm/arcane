@@ -6,11 +6,13 @@
 	import UserIcon from '@lucide/svelte/icons/user';
 	import ShieldIcon from '@lucide/svelte/icons/shield';
 	import NavigationIcon from '@lucide/svelte/icons/navigation';
+	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { m } from '$lib/paraglide/messages';
 	import { UiConfigDisabledTag } from '$lib/components/badges/index.js';
+	import { dev } from '$app/environment';
 
 	interface SettingMeta {
 		key: string;
@@ -228,6 +230,19 @@
 			settings: []
 		}
 	];
+
+	// Add debug category in development mode
+	if (dev) {
+		settingsCategories.push({
+			id: 'polling-debug',
+			title: 'Polling Debug',
+			description: 'Monitor the real-time state of the image polling system (Dev Only)',
+			icon: ActivityIcon,
+			url: '/settings/polling-debug',
+			keywords: ['polling', 'debug', 'monitor', 'scheduler', 'worker', 'cache', 'development'],
+			settings: []
+		});
+	}
 
 	// Search functionality
 	$effect(() => {

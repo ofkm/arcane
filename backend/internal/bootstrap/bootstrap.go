@@ -76,7 +76,7 @@ func Bootstrap(ctx context.Context) error {
 	}
 	registerJobs(appCtx, scheduler, appServices, cfg)
 
-	router := setupRouter(cfg, appServices) //nolint:contextcheck
+	router := setupRouter(cfg, appServices, db) //nolint:contextcheck
 
 	err = runServices(appCtx, cfg, router, scheduler)
 	if err != nil {

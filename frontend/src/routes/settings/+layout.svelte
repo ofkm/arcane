@@ -60,6 +60,8 @@
 				return m.users_title();
 			case 'navigation':
 				return m.navigation_title();
+			case 'polling-debug':
+				return 'Polling Debug';
 			default:
 				return m.sidebar_settings();
 		}
