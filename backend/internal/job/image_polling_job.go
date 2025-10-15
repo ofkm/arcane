@@ -82,7 +82,9 @@ func (j *ImagePollingJob) Register(ctx context.Context) error {
 
 	// Start the main polling loop
 	j.mainLoopCtx, j.mainLoopCancel = context.WithCancel(ctx)
-	go j.run(j.mainLoopCtx)
+	go func() {
+		j.run(j.mainLoopCtx)
+	}()
 
 	slog.InfoContext(ctx, "Image polling job registered with heap-based scheduler",
 		slog.Int("schedulerSize", j.scheduler.Size()))

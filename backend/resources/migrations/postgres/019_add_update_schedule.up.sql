@@ -29,8 +29,8 @@ ALTER TABLE projects ADD COLUMN IF NOT EXISTS update_schedule_timezone TEXT;
 
 -- Create polling_schedules table for heap-based polling scheduler
 CREATE TABLE IF NOT EXISTS polling_schedules (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    project_id UUID UNIQUE,
+    id TEXT PRIMARY KEY,
+    project_id TEXT UNIQUE,
     next_poll_time TIMESTAMP NOT NULL,
     last_poll_time TIMESTAMP,
     last_poll_duration_ms INTEGER,

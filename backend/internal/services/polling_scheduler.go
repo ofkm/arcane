@@ -3,6 +3,7 @@ package services
 import (
 	"container/heap"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"gorm.io/gorm"
 )
 
 // PollTask represents a polling task for a project or global polling
@@ -23,16 +25,16 @@ type PollTask struct {
 // pollTaskHeap implements heap.Interface for PollTask
 type pollTaskHeap []*PollTask
 
-func (h pollTaskHeap) Len() int { return len(h) }
+func (h *pollTaskHeap) Len() int { return len(*h) }
 
-func (h pollTaskHeap) Less(i, j int) bool {
-	return h[i].NextPollTime.Before(h[j].NextPollTime)
+func (h *pollTaskHeap) Less(i, j int) bool {
+	return (*h)[i].NextPollTime.Before((*h)[j].NextPollTime)
 }
 
-func (h pollTaskHeap) Swap(i, j int) {
-	h[i], h[j] = h[j], h[i]
-	h[i].heapIndex = i
-	h[j].heapIndex = j
+func (h *pollTaskHeap) Swap(i, j int) {
+	(*h)[i], (*h)[j] = (*h)[j], (*h)[i]
+	(*h)[i].heapIndex = i
+	(*h)[j].heapIndex = j
 }
 
 func (h *pollTaskHeap) Push(x interface{}) {
@@ -355,8 +357,15 @@ func (s *PollingScheduler) CalculateNextPollTime(ctx context.Context, projectID 
 		query = query.Where("project_id = ?", *projectID)
 	}
 
-	if err := query.First(&schedule).Error; err != nil {
-		// No failures recorded, use base interval
+	err := query.First(&schedule).Error
+	if err != nil {
+		// No schedule record found (first poll) or query error
+		// In either case, use base interval without backoff
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			slog.WarnContext(ctx, "Failed to query schedule for backoff calculation",
+				slog.Any("projectID", projectID),
+				slog.String("error", err.Error()))
+		}
 		return time.Now().Add(baseInterval), nil
 	}
 
@@ -366,6 +375,9 @@ func (s *PollingScheduler) CalculateNextPollTime(ctx context.Context, projectID 
 
 	// Apply exponential backoff: baseInterval * 2^failures
 	backoffMultiplier := 1 << uint(schedule.ConsecutiveFailures)
+	if schedule.ConsecutiveFailures < 0 {
+		backoffMultiplier = 0
+	}
 	if backoffMultiplier > 1440 { // Cap at 24 hours for hourly interval (1440 minutes)
 		backoffMultiplier = 1440
 	}

@@ -393,8 +393,12 @@ func (s *EventService) generateEventTitle(eventType models.EventType, resourceNa
 		return fmt.Sprintf("Network deleted: %s", resourceName)
 	case models.EventTypeSystemPrune:
 		return "System prune completed"
+	case models.EventTypeSystemPoll:
+		return "Global polling completed"
 	case models.EventTypeSystemAutoUpdate:
 		return "System auto-update completed"
+	case models.EventTypeProjectPoll:
+		return fmt.Sprintf("Project polling completed: %s", resourceName)
 	case models.EventTypeUserLogin:
 		return fmt.Sprintf("User logged in: %s", resourceName)
 	case models.EventTypeUserLogout:
@@ -446,8 +450,12 @@ func (s *EventService) generateEventDescription(eventType models.EventType, reso
 		return fmt.Sprintf("Network '%s' has been deleted", resourceName)
 	case models.EventTypeSystemPrune:
 		return "System resources have been pruned"
+	case models.EventTypeSystemPoll:
+		return "Global polling has completed"
 	case models.EventTypeSystemAutoUpdate:
 		return "System auto-update process has completed"
+	case models.EventTypeProjectPoll:
+		return fmt.Sprintf("Polling completed for project '%s'", resourceName)
 	case models.EventTypeUserLogin:
 		return fmt.Sprintf("User '%s' has logged in", resourceName)
 	case models.EventTypeUserLogout:
@@ -463,7 +471,7 @@ func (s *EventService) getEventSeverity(eventType models.EventType) models.Event
 		return models.EventSeverityWarning
 	case models.EventTypeContainerStart, models.EventTypeContainerCreate, models.EventTypeImagePull, models.EventTypeProjectDeploy, models.EventTypeProjectStart, models.EventTypeProjectCreate, models.EventTypeVolumeCreate, models.EventTypeNetworkCreate:
 		return models.EventSeveritySuccess
-	case models.EventTypeContainerStop, models.EventTypeContainerRestart, models.EventTypeContainerScan, models.EventTypeContainerUpdate, models.EventTypeImageScan, models.EventTypeProjectStop, models.EventTypeProjectUpdate, models.EventTypeSystemPrune, models.EventTypeSystemAutoUpdate, models.EventTypeUserLogin, models.EventTypeUserLogout:
+	case models.EventTypeContainerStop, models.EventTypeContainerRestart, models.EventTypeContainerScan, models.EventTypeContainerUpdate, models.EventTypeImageScan, models.EventTypeProjectStop, models.EventTypeProjectUpdate, models.EventTypeProjectPoll, models.EventTypeSystemPrune, models.EventTypeSystemPoll, models.EventTypeSystemAutoUpdate, models.EventTypeUserLogin, models.EventTypeUserLogout:
 		return models.EventSeverityInfo
 	default:
 		return models.EventSeverityInfo

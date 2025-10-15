@@ -159,9 +159,10 @@ func (h *PollingHealthHandler) GetPollingHealth(c *gin.Context) {
 
 	// Return appropriate HTTP status code
 	statusCode := http.StatusOK
-	if response.Status == "degraded" {
-		statusCode = http.StatusOK // Still 200, but status indicates issues
-	} else if response.Status == "unhealthy" {
+	switch response.Status {
+	case "degraded":
+		statusCode = http.StatusOK
+	case "unhealthy":
 		statusCode = http.StatusServiceUnavailable
 	}
 
@@ -240,7 +241,7 @@ func (h *PollingHealthHandler) GetPollingMetrics(c *gin.Context) {
 	}
 
 	if pollCount > 0 {
-		avgDuration = avgDuration / float64(pollCount)
+		avgDuration /= float64(pollCount)
 	}
 
 	// Return metrics in a simple format
