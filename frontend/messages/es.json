@@ -1313,5 +1313,7 @@
 	"events_delete_selected_message": "¿Está seguro que desea eliminar {count} evento(s) seleccionado(s)?",
 	"events_delete_confirm_message": "¿Está seguro de que desea eliminar el evento \"{title}\"?",
 	"events_delete_failed": "Error al eliminar el evento \"{title}\"",
-	"events_delete_success": "Evento \"{title}\" eliminado correctamente"
+	"events_delete_success": "Evento \"{title}\" eliminado correctamente",
+	"sidebar_dark_mode": "Oscuro",
+	"sidebar_light_mode": "Claro"
 }
