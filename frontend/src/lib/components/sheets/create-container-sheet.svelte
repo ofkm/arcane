@@ -502,7 +502,7 @@
 													{#each portMappings as mapping, index (index)}
 														<div class="flex items-center gap-3">
 															<div class="flex flex-1 items-center gap-2">
-																<div class="text-muted-foreground min-w-12 text-sm whitespace-nowrap">{m.port_label_host()}</div>
+																<div class="text-muted-foreground min-w-12 whitespace-nowrap text-sm">{m.port_label_host()}</div>
 																<Input
 																	type="text"
 																	placeholder="8080"
@@ -513,7 +513,7 @@
 															</div>
 															<span class="text-muted-foreground">→</span>
 															<div class="flex flex-1 items-center gap-2">
-																<div class="text-muted-foreground min-w-20 text-sm whitespace-nowrap">
+																<div class="text-muted-foreground min-w-20 whitespace-nowrap text-sm">
 																	{m.port_label_container()}
 																</div>
 																<Input
