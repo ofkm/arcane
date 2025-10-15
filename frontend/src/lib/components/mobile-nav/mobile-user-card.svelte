@@ -62,7 +62,7 @@
 	}
 </script>
 
-<div class={`bg-muted/30 border-border/20 overflow-hidden rounded-3xl border ${className}`}>
+<div class={`bg-muted/30 border-border dark:border-border/20 overflow-hidden rounded-3xl border-2 ${className}`}>
 	<button
 		class="hover:bg-muted/40 flex w-full items-center gap-4 p-5 text-left transition-all duration-200"
 		onclick={() => (userCardExpanded = !userCardExpanded)}

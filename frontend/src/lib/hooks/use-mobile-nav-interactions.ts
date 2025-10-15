@@ -162,28 +162,22 @@ export class MobileNavInteractionManager {
 
 			// Store touch start target and check if it's interactive
 			this.touchStartTarget = e.target as HTMLElement;
-			this.isInteractiveTouch = !!this.touchStartTarget.closest('button, a, [role="button"]');
+			this.isInteractiveTouch = !!this.touchStartTarget.closest('button, a, [role="button"], input, select, textarea');
 
-			// Only prevent background scrolling for gesture interactions
-			if (!this.isInteractiveTouch) {
-				this.lockBodyScroll();
-				e.stopPropagation();
-			}
+			// Don't prevent default or lock scrolling - let native behavior work
+			// The CSS touch-action: pan-y will handle this properly
 		};
 
 		const handleTouchMove = (e: TouchEvent) => {
 			const shouldPreventTouch = this.callbacks.shouldPreventTouch?.(this.state.menuOpen);
 			if (shouldPreventTouch) return;
 
-			// Always prevent default for touchmove to stop page scrolling
-			e.preventDefault();
-			e.stopPropagation();
-
-			// If touch started on an interactive element, check if still on it
+			// Don't prevent default - let native scrolling work
+			// Only track if we moved off an interactive element
 			if (this.isInteractiveTouch) {
 				const touch = e.touches[0];
 				const target = document.elementFromPoint(touch.clientX, touch.clientY) as HTMLElement;
-				const stillOnInteractive = target && target.closest('button, a, [role="button"]');
+				const stillOnInteractive = target && target.closest('button, a, [role="button"], input, select, textarea');
 
 				if (!stillOnInteractive) {
 					// Moved off interactive element, treat as gesture
@@ -193,21 +187,13 @@ export class MobileNavInteractionManager {
 		};
 
 		const handleTouchEnd = (e: TouchEvent) => {
-			// Always restore scrolling after a brief delay
-			setTimeout(() => {
-				// Only restore if menu is still closed, or if menu just opened
-				if (!this.state.menuOpen || Date.now() - this.lastGestureTime < 500) {
-					this.unlockBodyScroll();
-				}
-			}, this.options.touchEndDelay);
-
 			// Reset touch state
 			this.touchStartTarget = null;
 			this.isInteractiveTouch = false;
 		};
 
-		element.addEventListener('touchstart', handleTouchStart, { passive: false, capture: false });
-		element.addEventListener('touchmove', handleTouchMove, { passive: false, capture: false });
+		element.addEventListener('touchstart', handleTouchStart, { passive: true, capture: false });
+		element.addEventListener('touchmove', handleTouchMove, { passive: true, capture: false });
 		element.addEventListener('touchend', handleTouchEnd, { passive: true, capture: false });
 
 		// Store cleanup functions
@@ -220,43 +206,22 @@ export class MobileNavInteractionManager {
 
 	private setupMouseHandlers(element: HTMLElement) {
 		const handleWheel = (e: WheelEvent) => {
-			e.preventDefault();
-			e.stopPropagation();
-
-			// Only respond to downward gestures
+			// Don't prevent default - let page scroll naturally
+			// Only respond to downward gestures on the navbar itself to open menu
 			if (e.deltaY > this.options.wheelThreshold) {
 				this.callbacks.onMenuOpen();
 			}
 		};
 
-		const handleDocumentWheel = (e: WheelEvent) => {
-			// Only prevent scrolling if the event is NOT on the navbar
-			if (!element.contains(e.target as Node)) {
-				e.preventDefault();
-				e.stopPropagation();
-			}
-		};
-
 		const handleMouseEnter = () => {
-			// Prevent page scrolling except on navbar when hovering navbar
-			document.addEventListener('wheel', handleDocumentWheel, { passive: false, capture: true });
-			element.addEventListener('wheel', handleWheel, { passive: false });
-
-			// Prevent page body scrolling and capture pointer
-			this.lockBodyScroll();
-			document.body.style.pointerEvents = 'none';
-			element.style.pointerEvents = 'auto';
+			// Don't lock scrolling or manipulate pointer events
+			// Just listen for wheel events on the navbar
+			element.addEventListener('wheel', handleWheel, { passive: true });
 		};
 
 		const handleMouseLeave = () => {
-			// Restore page scrolling when leaving navbar
-			document.removeEventListener('wheel', handleDocumentWheel, true);
+			// Clean up wheel listener
 			element.removeEventListener('wheel', handleWheel);
-
-			// Restore scrolling and interactions
-			this.unlockBodyScroll();
-			document.body.style.pointerEvents = '';
-			element.style.pointerEvents = '';
 		};
 
 		element.addEventListener('mouseenter', handleMouseEnter);
@@ -267,7 +232,6 @@ export class MobileNavInteractionManager {
 			element.removeEventListener('mouseenter', handleMouseEnter);
 			element.removeEventListener('mouseleave', handleMouseLeave);
 			element.removeEventListener('wheel', handleWheel);
-			document.removeEventListener('wheel', handleDocumentWheel, true);
 		});
 	}
 
@@ -303,23 +267,6 @@ export class MobileNavInteractionManager {
 			this.state.visible = true;
 			this.callbacks.onVisibilityChange(true);
 		}
-
-		// If menu just opened, ensure touch scrolling is restored for the menu
-		if (!previousMenuOpen && currentMenuOpen) {
-			setTimeout(() => {
-				this.unlockBodyScroll();
-			}, this.options.menuOpenRestoreDelay);
-		}
-	}
-
-	public lockBodyScroll() {
-		document.body.style.overflow = 'hidden';
-		document.documentElement.style.overflow = 'hidden';
-	}
-
-	public unlockBodyScroll() {
-		document.body.style.overflow = '';
-		document.documentElement.style.overflow = '';
 	}
 
 	public cleanup() {
@@ -327,21 +274,23 @@ export class MobileNavInteractionManager {
 		this.cleanupFunctions.forEach((fn) => fn());
 		this.cleanupFunctions = [];
 
+		// Cleanup scroll detector
+		this.scrollDetector.cleanup();
+
 		// Clear tap debounce timeout
 		if (this.tapDebounceTimeoutId) {
 			clearTimeout(this.tapDebounceTimeoutId);
 			this.tapDebounceTimeoutId = null;
 		}
 
-		// Always ensure all mouse interactions are unlocked during cleanup
-		this.unlockBodyScroll();
-		document.body.style.pointerEvents = '';
+		// Clean up any remaining styles
+		if (document.body) {
+			document.body.style.pointerEvents = '';
+		}
 
 		if (this.navElement) {
 			this.navElement.style.pointerEvents = '';
 		}
-
-		// Clean up any remaining overlay
 	}
 
 	// Getters for accessing detectors

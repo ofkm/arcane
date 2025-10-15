@@ -6,7 +6,7 @@
 	import ConfirmDialog from '$lib/components/confirm-dialog/confirm-dialog.svelte';
 	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
 	import AppSidebar from '$lib/components/sidebar/sidebar.svelte';
-	import { goto } from '$app/navigation';
+	import { goto, afterNavigate } from '$app/navigation';
 	import { getAuthRedirectPath } from '$lib/utils/redirect.util';
 	import LoadingIndicator from '$lib/components/loading-indicator.svelte';
 	import type { LayoutData } from './$types';
@@ -14,8 +14,8 @@
 	import Error from '$lib/components/error.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
-	import MobileFloatingNav from '$lib/components/mobile-nav/mobile-floating-nav.svelte';
-	import MobileDockedNav from '$lib/components/mobile-nav/mobile-docked-nav.svelte';
+	import { IsTablet } from '$lib/hooks/is-tablet.svelte.js';
+	import MobileNav from '$lib/components/mobile-nav/mobile-nav.svelte';
 	import { getEffectiveNavigationSettings, navigationSettingsOverridesStore } from '$lib/utils/navigation.utils';
 	import { browser, dev } from '$app/environment';
 	import { onMount } from 'svelte';
@@ -37,6 +37,7 @@
 	const { versionInformation, user, settings } = data;
 
 	const isMobile = new IsMobile();
+	const isTablet = new IsTablet();
 	const isNavigating = $derived(navigating.type !== null);
 	const isOnboardingPage = $derived(String(page.url.pathname).startsWith('/onboarding'));
 
@@ -58,6 +59,18 @@
 	if (redirectPath) {
 		goto(redirectPath);
 	}
+
+	if (browser) {
+		afterNavigate((event) => {
+			if (!event.from) {
+				return;
+			}
+
+			if (isMobile.current || isTablet.current) {
+				window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+			}
+		});
+	}
 </script>
 
 <svelte:head><title>{m.layout_title()}</title></svelte:head>
@@ -69,17 +82,21 @@
 		{#if isMobile.current}
 			<main class="flex-1">
 				<section
-					class={`px-2 py-5 sm:p-5 ${navigationMode === 'docked' ? 'pb-6' : 'pb-24'}`}
-					style={navigationMode === 'docked' ? 'padding-bottom: max(1.5rem, calc(4rem + env(safe-area-inset-bottom)))' : ''}
+					class={navigationMode === 'docked'
+						? navigationSettings.scrollToHide
+							? 'px-2 pt-5 sm:px-5 sm:pt-5'
+							: 'px-2 pt-5 sm:p-5'
+						: 'px-2 py-5 sm:p-5'}
+					style={navigationMode === 'docked' && !navigationSettings.scrollToHide
+						? 'padding-bottom: var(--mobile-docked-nav-offset, calc(3.5rem + env(safe-area-inset-bottom)));'
+						: navigationMode === 'floating' && !navigationSettings.scrollToHide
+							? 'padding-bottom: var(--mobile-floating-nav-offset, 6rem);'
+							: ''}
 				>
 					{@render children()}
 				</section>
 			</main>
-			{#if navigationMode === 'floating'}
-				<MobileFloatingNav {navigationSettings} {user} {versionInformation} />
-			{:else}
-				<MobileDockedNav {navigationSettings} {user} {versionInformation} />
-			{/if}
+			<MobileNav {navigationSettings} {user} {versionInformation} />
 		{:else}
 			<Sidebar.Provider>
 				<AppSidebar {versionInformation} {user} />

@@ -157,9 +157,9 @@
 							<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-orange-500/10 p-2">
 								<CpuIcon class="size-5 text-orange-500" />
 							</div>
-						<div class="min-w-0 flex-1">
-							<p class="text-muted-foreground text-sm font-medium">{m.common_architecture()}</p>
-							<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
+							<div class="min-w-0 flex-1">
+								<p class="text-muted-foreground text-sm font-medium">{m.common_architecture()}</p>
+								<p class="mt-1 cursor-pointer text-sm font-semibold select-all sm:text-base" title="Click to select">
 									{architecture()}
 								</p>
 							</div>
