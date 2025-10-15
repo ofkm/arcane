@@ -1313,5 +1313,7 @@
 	"events_delete_selected_message": "Are you sure you want to delete {count} selected event(s)?",
 	"events_delete_confirm_message": "Êtes-vous sûr de vouloir supprimer l'événement \"{title} \" ?",
 	"events_delete_failed": "Impossible de supprimer l'événement \"{title}\"",
-	"events_delete_success": "L'événement \"{title}\" a été supprimé avec succès"
+	"events_delete_success": "L'événement \"{title}\" a été supprimé avec succès",
+	"sidebar_dark_mode": "Sombre",
+	"sidebar_light_mode": "Lumière"
 }
