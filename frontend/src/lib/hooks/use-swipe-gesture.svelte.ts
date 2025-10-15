@@ -21,9 +21,9 @@ export class SwipeGestureDetector {
 	constructor(onSwipe: (direction: SwipeDirection, details: SwipeDetails) => void, options: SwipeGestureOptions = {}) {
 		this.onSwipe = onSwipe;
 		this.options = {
-			threshold: options.threshold ?? 30,
-			velocity: options.velocity ?? 0.2,
-			timeLimit: options.timeLimit ?? 1000
+			threshold: options.threshold ?? 50,
+			velocity: options.velocity ?? 0.3,
+			timeLimit: options.timeLimit ?? 500
 		};
 
 		onMount(() => {
@@ -74,36 +74,12 @@ export class SwipeGestureDetector {
 			const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 			const velocity = distance / deltaTime;
 
-			// Check if gesture meets distance OR velocity thresholds (more forgiving)
-			// Lower both thresholds when user achieves one of them
+			// Check if gesture meets thresholds
+			// More lenient: meet either distance OR velocity threshold
 			const meetsDistanceThreshold = distance >= this.options.threshold;
 			const meetsVelocityThreshold = velocity >= this.options.velocity;
 
-			// More responsive: allow smaller distance if velocity is good, or smaller velocity if distance is good
-			const responsiveDistanceThreshold = meetsVelocityThreshold ? this.options.threshold * 0.6 : this.options.threshold;
-			const responsiveVelocityThreshold = meetsDistanceThreshold ? this.options.velocity * 0.6 : this.options.velocity;
-
-			const meetsAdjustedDistance = distance >= responsiveDistanceThreshold;
-			const meetsAdjustedVelocity = velocity >= responsiveVelocityThreshold;
-
-			if (!meetsAdjustedDistance && !meetsAdjustedVelocity) return;
-
-			// If the gesture started on an interactive element, require more deliberate movement
-			// to distinguish between taps and swipes
-			if (this.isInteractiveTouch) {
-				// For interactive elements, require either:
-				// 1. Significant distance (at least 25px) OR
-				// 2. Good velocity with some distance (at least 15px)
-				const minDistanceForInteractive = 25;
-				const minDistanceWithVelocity = 15;
-
-				const hasSignificantDistance = distance >= minDistanceForInteractive;
-				const hasGoodVelocityWithDistance = distance >= minDistanceWithVelocity && velocity >= this.options.velocity;
-
-				if (!hasSignificantDistance && !hasGoodVelocityWithDistance) {
-					return; // Likely a tap, not a swipe
-				}
-			}
+			if (!meetsDistanceThreshold && !meetsVelocityThreshold) return;
 
 			// Determine primary direction
 			const absDeltaX = Math.abs(deltaX);
@@ -124,30 +100,15 @@ export class SwipeGestureDetector {
 				duration: deltaTime
 			};
 
-			// Don't lock body scroll - let CSS handle scroll containment
-			// This prevents interference with main page scrolling
-			this.onSwipe(direction, details); // For interactive elements, only prevent default if this was clearly a swipe gesture
-			// This allows button clicks to still work for small movements
-			if (this.isInteractiveTouch) {
-				// Only prevent if the movement was significant enough to be a clear swipe
-				if (distance >= 20) {
-					e.preventDefault();
-					e.stopPropagation();
-				}
-			} else {
-				// Always prevent for non-interactive areas
-				e.preventDefault();
-				e.stopPropagation();
-			}
+			this.onSwipe(direction, details);
 		};
 
-		element.addEventListener('touchstart', handleTouchStart, { passive: false });
-		element.addEventListener('touchend', handleTouchEnd, { passive: false });
+		element.addEventListener('touchstart', handleTouchStart, { passive: true });
+		element.addEventListener('touchend', handleTouchEnd, { passive: true });
 
 		this.cleanupFn = () => {
 			element.removeEventListener('touchstart', handleTouchStart);
 			element.removeEventListener('touchend', handleTouchEnd);
-			// No need to restore overflow styles since we don't set them
 		};
 	}
 }

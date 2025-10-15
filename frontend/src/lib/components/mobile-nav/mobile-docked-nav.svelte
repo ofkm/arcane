@@ -60,14 +60,24 @@
 			const t = e.touches?.[0];
 			if (!t) return;
 			const target = e.target as HTMLElement | null;
+			
+			// Check if touch started on the nav bar itself
+			const touchedNav = target?.closest('[data-testid="mobile-docked-nav"]');
+			
 			// Ignore touches that start on interactive controls
 			if (target && target.closest && target.closest('button, a, input, select, textarea, [role="button"], [contenteditable]')) {
 				isInteractiveTouch = true;
 				touchStartY = null;
 				return;
 			}
+			
 			isInteractiveTouch = false;
 			touchStartY = t.clientY;
+			
+			// If touch started on nav, prevent background scroll
+			if (touchedNav) {
+				e.preventDefault();
+			}
 		};
 
 		const handleTouchMove = (e: TouchEvent) => {
@@ -76,6 +86,15 @@
 			if (!t) return;
 			const deltaY = t.clientY - touchStartY;
 			if (Math.abs(deltaY) < touchMoveThreshold) return;
+			
+			// Check if touch is on nav
+			const target = e.target as HTMLElement | null;
+			const touchedNav = target?.closest('[data-testid="mobile-docked-nav"]');
+			
+			// If on nav bar, prevent background scroll
+			if (touchedNav) {
+				e.preventDefault();
+			}
 
 			// Negative deltaY => finger moved up => page scrolling down
 			if (deltaY < 0) {
@@ -95,9 +114,10 @@
 			isInteractiveTouch = false;
 		};
 
-		const options = { passive: true, capture: true };
+		const options = { passive: false, capture: true };
 		window.addEventListener('touchstart', handleTouchStart, options);
 		window.addEventListener('touchmove', handleTouchMove, options);
+		window.addEventListener('touchend', handleTouchEnd, { passive: true, capture: true });
 		window.addEventListener('touchend', handleTouchEnd, options);
 
 		return () => {

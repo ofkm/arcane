@@ -8,6 +8,8 @@
 	import { m } from '$lib/paraglide/messages';
 	import { onMount } from 'svelte';
 	import MobileUserCard from './mobile-user-card.svelte';
+	import { fly } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
 
 	let {
 		open = $bindable(false),
@@ -21,7 +23,7 @@
 		navigationMode?: 'floating' | 'docked';
 	} = $props();
 
-	let menuElement: HTMLElement;
+	let menuElement = $state<HTMLElement | undefined>(undefined);
 	let storeUser: any = $state(null);
 
 	// Interaction state
@@ -156,7 +158,11 @@
 		interaction.inputType = 'touch';
 		interaction.dragStartedFromHandle = !!isOnHandle;
 
-		// Determine if we CAN drag to close, but don't start yet
+		// If on nav bar at top, prevent background scroll
+		if (isAtScrollTop && !isOnHandle) {
+			// Don't prevent yet, but mark that we might need to
+			interaction.canDragToClose = true;
+		} // Determine if we CAN drag to close, but don't start yet
 		interaction.canDragToClose = !!isOnHandle || isAtScrollTop;
 
 		// Don't set isDragging yet - wait for touchmove to determine intent
@@ -165,16 +171,14 @@
 	}
 
 	function handleTouchMove(e: TouchEvent) {
-		if (!open || isClosing) return;
-		if (interaction.inputType !== 'touch') return;
+		if (!open || interaction.inputType !== 'touch') return;
 
 		const touch = e.touches[0];
 		interaction.currentY = touch.clientY;
-
 		const deltaY = interaction.currentY - interaction.startY;
 		const deltaX = touch.clientX - interaction.startX;
 
-		// If moving more horizontally than vertically, it's probably a horizontal gesture, ignore
+		// Check if this is a horizontal swipe - if so, don't interfere
 		if (Math.abs(deltaX) > Math.abs(deltaY) && !interaction.isDragging) {
 			return;
 		}
@@ -184,7 +188,7 @@
 		let canContinueDrag = interaction.dragStartedFromHandle;
 
 		if (!interaction.dragStartedFromHandle) {
-			const currentScrollTop = menuElement.scrollTop;
+			const currentScrollTop = menuElement?.scrollTop ?? 0;
 			const isAtScrollTop = currentScrollTop === 0;
 			// Only allow content drag if at top AND pulling down (not scrolling up)
 			canContinueDrag = isAtScrollTop && interaction.canDragToClose && deltaY > 0;
@@ -198,23 +202,26 @@
 			// Now we can start dragging
 			interaction.isDragging = true;
 			provideFeedback('grab');
+			// Prevent default to stop background scroll
+			e.preventDefault();
 		}
 
-		// Only process drag if we're actually dragging
-		if (interaction.isDragging && canContinueDrag) {
-			// Calculate drag distance using unified physics
-			const newDistance = calculateDragDistance(interaction.currentY);
+		if (interaction.isDragging) {
+			// Prevent scrolling background when dragging
+			e.preventDefault();
 
-			// Only update if dragging downward
-			if (newDistance > 0) {
-				interaction.dragDistance = newDistance;
-				// Prevent default to stop the sheet from scrolling while dragging
+			// Apply resistance
+			const rawDistance = Math.max(0, deltaY);
+			interaction.dragDistance = rawDistance * PHYSICS.resistanceFactor;
+		} else if (deltaY < 0 && menuElement) {
+			// Scrolling up - allow native scroll but prevent background interaction
+			// This ensures smooth scrolling within the sheet
+			const currentScrollTop = menuElement.scrollTop;
+			if (currentScrollTop === 0 && deltaY < 0) {
+				// At top and trying to scroll up more - prevent overscroll
 				e.preventDefault();
-			} else {
-				// If dragging upward, cancel the drag
-				resetInteractionState();
 			}
-		} else if (!canContinueDrag && interaction.isDragging) {
+		} else if (deltaY > threshold && !canContinueDrag) {
 			// Lost the conditions for dragging (e.g., scrolled down)
 			resetInteractionState();
 		}
@@ -339,11 +346,13 @@
 			updateScrollPosition();
 
 			return () => {
-				menuElement.removeEventListener('scroll', updateScrollPosition);
-				menuElement.removeEventListener('touchstart', handleTouchStart);
-				menuElement.removeEventListener('touchmove', handleTouchMove);
-				menuElement.removeEventListener('touchend', handleTouchEnd);
-				menuElement.removeEventListener('wheel', handleWheel);
+				if (menuElement) {
+					menuElement.removeEventListener('scroll', updateScrollPosition);
+					menuElement.removeEventListener('touchstart', handleTouchStart);
+					menuElement.removeEventListener('touchmove', handleTouchMove);
+					menuElement.removeEventListener('touchend', handleTouchEnd);
+					menuElement.removeEventListener('wheel', handleWheel);
+				}
 			};
 		}
 	});
@@ -419,21 +428,18 @@
 					(menuElement.style as any).webkitOverflowScrolling = '';
 				}
 
-				// Defer scroll restoration to avoid conflicts with animations
-				requestAnimationFrame(() => {
-					// Restore body scroll
-					bodyStyle.overflow = originalBodyOverflow;
-					bodyStyle.position = originalBodyPosition;
-					bodyStyle.top = originalBodyTop;
-					bodyStyle.width = originalBodyWidth;
-					bodyStyle.left = '';
-					bodyStyle.right = '';
-					htmlStyle.overflow = originalHtmlOverflow;
+				// Restore immediately, not deferred
+				bodyStyle.overflow = originalBodyOverflow;
+				bodyStyle.position = originalBodyPosition;
+				bodyStyle.top = originalBodyTop;
+				bodyStyle.width = originalBodyWidth;
+				bodyStyle.left = '';
+				bodyStyle.right = '';
+				htmlStyle.overflow = originalHtmlOverflow;
 
-					// Restore scroll position after a frame
-					requestAnimationFrame(() => {
-						window.scrollTo(0, scrollY);
-					});
+				// Restore scroll position after a single frame
+				requestAnimationFrame(() => {
+					window.scrollTo(0, scrollY);
 				});
 			};
 		}
@@ -481,180 +487,116 @@
 {/if}
 
 <!-- Menu Content -->
-<div
-	bind:this={menuElement}
-	class={cn(
-		'bg-background/60 border-border/30 fixed inset-x-0 bottom-0 z-50 rounded-t-3xl border-t shadow-sm backdrop-blur-xl',
-		'transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
-		'max-h-[85vh] overflow-y-auto',
-		open ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0',
-		interaction.isDragging && !isClosing ? 'transition-none' : ''
-	)}
-	style={`
-		touch-action: pan-y; 
-		-webkit-overflow-scrolling: touch;
-		overscroll-behavior: contain;
-		${
-			interaction.isDragging && !isClosing
-				? `transform: translateY(${interaction.dragDistance}px); opacity: ${Math.max(0.3, 1 - interaction.dragDistance / 300)};`
-				: ''
-		}
-	`}
-	data-testid="mobile-nav-sheet"
-	role="dialog"
-	aria-modal="true"
-	aria-label="Main navigation sheet"
-	aria-hidden={!open}
-	tabindex={open ? 0 : -1}
->
-	<!-- Handle indicator -->
-	<div class="flex justify-center pb-3 pt-4" data-drag-handle>
-		<div
-			class={cn(
-				'h-1.5 w-10 rounded-full transition-all duration-150',
-				interaction.isDragging && !isClosing ? 'bg-muted-foreground/50 h-2 w-12' : 'bg-muted-foreground/20',
-				'hover:bg-muted-foreground/30 active:bg-muted-foreground/50'
-			)}
-			style={`transform: ${interaction.isDragging && !isClosing ? 'scale(1.15)' : 'scale(1)'};
+{#if open}
+	<div
+		bind:this={menuElement}
+		transition:fly={{ y: 500, duration: 300, easing: cubicOut }}
+		class={cn(
+			'bg-background/60 border-border/30 fixed inset-x-0 bottom-0 z-50 rounded-t-3xl border-t shadow-sm backdrop-blur-xl',
+			'max-h-[85vh] overflow-y-auto',
+			interaction.isDragging && !isClosing ? 'transition-none' : ''
+		)}
+		style={`
+			touch-action: pan-y; 
+			-webkit-overflow-scrolling: touch;
+			overscroll-behavior: contain;
+			${
+				interaction.isDragging && !isClosing
+					? `transform: translateY(${interaction.dragDistance}px); opacity: ${Math.max(0.3, 1 - interaction.dragDistance / 300)};`
+					: ''
+			}
+		`}
+		data-testid="mobile-nav-sheet"
+		role="dialog"
+		aria-modal="true"
+		aria-label="Main navigation sheet"
+		tabindex={0}
+	>
+		<!-- Handle indicator -->
+		<div class="flex justify-center pb-3 pt-4" data-drag-handle>
+			<div
+				class={cn(
+					'h-1.5 w-10 rounded-full transition-all duration-150',
+					interaction.isDragging && !isClosing ? 'bg-muted-foreground/50 h-2 w-12' : 'bg-muted-foreground/20',
+					'hover:bg-muted-foreground/30 active:bg-muted-foreground/50'
+				)}
+				style={`transform: ${interaction.isDragging && !isClosing ? 'scale(1.15)' : 'scale(1)'};
 				transition: transform 150ms cubic-bezier(0.34, 1.56, 0.64, 1), background-color 150ms ease;`}
-		></div>
-	</div>
+			></div>
+		</div>
 
-	<div class="px-6 pb-4">
-		<!-- User Profile Section -->
-		{#if memoizedUser}
-			<MobileUserCard user={memoizedUser} class="mb-6" />
-		{/if}
+		<div class="px-6 pb-4">
+			<!-- User Profile Section -->
+			{#if memoizedUser}
+				<MobileUserCard user={memoizedUser} class="mb-6" />
+			{/if}
 
-		<!-- Navigation Sections -->
-		<div class="space-y-8">
-			<!-- Management -->
-			<section>
-				<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
-					{m.sidebar_management()}
-				</h4>
-				<div class="space-y-2">
-					{#each navigationItems.managementItems as item}
-						{@const IconComponent = item.icon}
-						<a
-							href={item.url}
-							onclick={() => handleItemClick(item)}
-							class={cn(
-								'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ease-out',
-								'focus-visible:ring-muted-foreground/50 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
-								isActiveItem(item) ? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm' : 'text-foreground hover:bg-muted/50'
-							)}
-							aria-current={isActiveItem(item) ? 'page' : undefined}
-						>
-							<IconComponent size={20} />
-							<span>{item.title}</span>
-						</a>
-					{/each}
-				</div>
-			</section>
+			<!-- Navigation Sections -->
+			<div class="space-y-8">
+				<!-- Management -->
+				<section>
+					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+						{m.sidebar_management()}
+					</h4>
+					<div class="space-y-2">
+						{#each navigationItems.managementItems as item}
+							{@const IconComponent = item.icon}
+							<a
+								href={item.url}
+								onclick={() => handleItemClick(item)}
+								class={cn(
+									'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ease-out',
+									'focus-visible:ring-muted-foreground/50 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
+									isActiveItem(item)
+										? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm'
+										: 'text-foreground hover:bg-muted/50'
+								)}
+								aria-current={isActiveItem(item) ? 'page' : undefined}
+							>
+								<IconComponent size={20} />
+								<span>{item.title}</span>
+							</a>
+						{/each}
+					</div>
+				</section>
 
-			<!-- Customization -->
-			<section>
-				<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
-					{m.sidebar_customization()}
-				</h4>
-				<div class="space-y-2">
-					{#each navigationItems.customizationItems as item}
-						{@const IconComponent = item.icon}
-						<a
-							href={item.url}
-							onclick={() => handleItemClick(item)}
-							class={cn(
-								'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ease-out',
-								'focus-visible:ring-muted-foreground/50 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
-								isActiveItem(item) ? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm' : 'text-foreground hover:bg-muted/50'
-							)}
-							aria-current={isActiveItem(item) ? 'page' : undefined}
-						>
-							<IconComponent size={20} />
-							<span>{item.title}</span>
-						</a>
-					{/each}
-				</div>
-			</section>
+				<!-- Customization -->
+				<section>
+					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+						{m.sidebar_customization()}
+					</h4>
+					<div class="space-y-2">
+						{#each navigationItems.customizationItems as item}
+							{@const IconComponent = item.icon}
+							<a
+								href={item.url}
+								onclick={() => handleItemClick(item)}
+								class={cn(
+									'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ease-out',
+									'focus-visible:ring-muted-foreground/50 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
+									isActiveItem(item)
+										? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm'
+										: 'text-foreground hover:bg-muted/50'
+								)}
+								aria-current={isActiveItem(item) ? 'page' : undefined}
+							>
+								<IconComponent size={20} />
+								<span>{item.title}</span>
+							</a>
+						{/each}
+					</div>
+				</section>
 
-			<!-- Admin Sections -->
-			{#if memoizedIsAdmin}
-				<!-- Environments -->
-				{#if navigationItems.environmentItems}
-					<section>
-						<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
-							{m.sidebar_environments()}
-						</h4>
-						<div class="space-y-2">
-							{#each navigationItems.environmentItems as item}
-								{@const IconComponent = item.icon}
-								<a
-									href={item.url}
-									onclick={() => handleItemClick(item)}
-									class={cn(
-										'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ease-out',
-										isActiveItem(item)
-											? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm'
-											: 'text-foreground hover:bg-muted/50'
-									)}
-								>
-									<IconComponent size={20} />
-									<span>{item.title}</span>
-								</a>
-							{/each}
-						</div>
-					</section>
-				{/if}
-
-				<!-- Administration -->
-				{#if navigationItems.settingsItems}
-					<section>
-						<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
-							{m.sidebar_administration()}
-						</h4>
-						<div class="space-y-2">
-							{#each navigationItems.settingsItems as item}
-								{#if item.items}
-									<!-- Settings with subitems -->
-									{@const IconComponent = item.icon}
-									<div class="space-y-2">
-										<a
-											href={item.url}
-											onclick={() => handleItemClick(item)}
-											class={cn(
-												'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ease-out',
-												isActiveItem(item)
-													? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm'
-													: 'text-foreground hover:bg-muted/50'
-											)}
-										>
-											<IconComponent size={20} />
-											<span>{item.title}</span>
-										</a>
-										<!-- Sub-items -->
-										<div class="ml-6 space-y-1">
-											{#each item.items as subItem}
-												{@const SubIconComponent = subItem.icon}
-												<a
-													href={subItem.url}
-													onclick={() => handleItemClick(subItem)}
-													class={cn(
-														'flex items-center gap-3 rounded-xl px-4 py-2 text-sm transition-all duration-200 ease-out',
-														'focus-visible:ring-muted-foreground/50 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
-														isActiveItem(subItem)
-															? 'bg-muted/70 text-foreground shadow-sm'
-															: 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
-													)}
-													aria-current={isActiveItem(subItem) ? 'page' : undefined}
-												>
-													<SubIconComponent size={16} />
-													<span>{subItem.title}</span>
-												</a>
-											{/each}
-										</div>
-									</div>
-								{:else}
+				<!-- Admin Sections -->
+				{#if memoizedIsAdmin}
+					<!-- Environments -->
+					{#if navigationItems.environmentItems}
+						<section>
+							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+								{m.sidebar_environments()}
+							</h4>
+							<div class="space-y-2">
+								{#each navigationItems.environmentItems as item}
 									{@const IconComponent = item.icon}
 									<a
 										href={item.url}
@@ -669,30 +611,98 @@
 										<IconComponent size={20} />
 										<span>{item.title}</span>
 									</a>
-								{/if}
-							{/each}
-						</div>
-					</section>
+								{/each}
+							</div>
+						</section>
+					{/if}
+
+					<!-- Administration -->
+					{#if navigationItems.settingsItems}
+						<section>
+							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+								{m.sidebar_administration()}
+							</h4>
+							<div class="space-y-2">
+								{#each navigationItems.settingsItems as item}
+									{#if item.items}
+										<!-- Settings with subitems -->
+										{@const IconComponent = item.icon}
+										<div class="space-y-2">
+											<a
+												href={item.url}
+												onclick={() => handleItemClick(item)}
+												class={cn(
+													'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ease-out',
+													isActiveItem(item)
+														? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm'
+														: 'text-foreground hover:bg-muted/50'
+												)}
+											>
+												<IconComponent size={20} />
+												<span>{item.title}</span>
+											</a>
+											<!-- Sub-items -->
+											<div class="ml-6 space-y-1">
+												{#each item.items as subItem}
+													{@const SubIconComponent = subItem.icon}
+													<a
+														href={subItem.url}
+														onclick={() => handleItemClick(subItem)}
+														class={cn(
+															'flex items-center gap-3 rounded-xl px-4 py-2 text-sm transition-all duration-200 ease-out',
+															'focus-visible:ring-muted-foreground/50 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-offset-1 focus-visible:ring-offset-transparent',
+															isActiveItem(subItem)
+																? 'bg-muted/70 text-foreground shadow-sm'
+																: 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+														)}
+														aria-current={isActiveItem(subItem) ? 'page' : undefined}
+													>
+														<SubIconComponent size={16} />
+														<span>{subItem.title}</span>
+													</a>
+												{/each}
+											</div>
+										</div>
+									{:else}
+										{@const IconComponent = item.icon}
+										<a
+											href={item.url}
+											onclick={() => handleItemClick(item)}
+											class={cn(
+												'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all duration-200 ease-out',
+												isActiveItem(item)
+													? 'bg-muted text-foreground hover:bg-muted/70 shadow-sm'
+													: 'text-foreground hover:bg-muted/50'
+											)}
+										>
+											<IconComponent size={20} />
+											<span>{item.title}</span>
+										</a>
+									{/if}
+								{/each}
+							</div>
+						</section>
+					{/if}
 				{/if}
+			</div>
+
+			<!-- Version Information -->
+			{#if versionInformation}
+				<div class={cn('border-border/30 mt-6 border-t pt-4', navigationMode === 'docked' ? 'pb-24' : 'pb-6')}>
+					<div class="text-muted-foreground/60 text-center text-xs">
+						<p class="font-medium">Arcane v{versionInformation.currentVersion}</p>
+						{#if versionInformation.updateAvailable}
+							<p class="text-primary/80 mt-1 font-medium">Update available</p>
+						{/if}
+					</div>
+				</div>
+			{:else}
+				<!-- Add padding even if no version info to prevent content hiding behind nav -->
+				<div class="pb-20"></div>
 			{/if}
 		</div>
-
-		<!-- Version Information -->
-		{#if versionInformation}
-			<div class={cn('border-border/30 mt-6 border-t pt-4', navigationMode === 'docked' ? 'pb-24' : 'pb-6')}>
-				<div class="text-muted-foreground/60 text-center text-xs">
-					<p class="font-medium">Arcane v{versionInformation.currentVersion}</p>
-					{#if versionInformation.updateAvailable}
-						<p class="text-primary/80 mt-1 font-medium">Update available</p>
-					{/if}
-				</div>
-			</div>
-		{:else}
-			<!-- Add padding even if no version info to prevent content hiding behind nav -->
-			<div class="pb-20"></div>
-		{/if}
 	</div>
-</div>
+{/if}
 
 <style>
 	/* Ensure smooth scrolling and prevent overscroll issues */
@@ -710,24 +720,5 @@
 	/* Remove focus outline from dialog container since it's focused for accessibility */
 	div[data-testid='mobile-nav-sheet']:focus {
 		outline: none;
-	}
-
-	/* Respect reduced motion preferences */
-	@media (prefers-reduced-motion: reduce) {
-		div[data-testid='mobile-nav-sheet'] {
-			transition: none;
-			will-change: auto;
-		}
-
-		/* Instantly show/hide without animation */
-		div[data-testid='mobile-nav-sheet']:not([aria-hidden='true']) {
-			transform: translateY(0) translateZ(0);
-			opacity: 1;
-		}
-
-		div[data-testid='mobile-nav-sheet'][aria-hidden='true'] {
-			transform: translateY(100%) translateZ(0);
-			opacity: 0;
-		}
 	}
 </style>
