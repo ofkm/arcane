@@ -14,7 +14,7 @@
 
 	function formatBytes(bytes: number): string {
 		if (bytes === 0) return '0 GB';
-		const gb = bytes / 1000; // MB to GB (using 1000 for decimal)
+	const gb = bytes / 1024; // MB to GB (using 1024 for binary)
 		return `${gb.toFixed(1)} GB`;
 	}
 
