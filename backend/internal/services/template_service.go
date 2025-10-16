@@ -372,7 +372,7 @@ func (s *TemplateService) SaveComposeTemplate(content string) error {
 	}
 
 	composePath := filepath.Join(templateDir, ".compose.template")
-	if err := os.WriteFile(composePath, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(composePath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to save compose template: %w", err)
 	}
 
@@ -396,7 +396,7 @@ func (s *TemplateService) SaveEnvTemplate(content string) error {
 	}
 
 	envPath := filepath.Join(templateDir, ".env.template")
-	if err := os.WriteFile(envPath, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(envPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to save env template: %w", err)
 	}
 
@@ -969,7 +969,7 @@ func (s *TemplateService) UpdateGlobalVariables(ctx context.Context, vars []dto.
 		builder.WriteString(fmt.Sprintf("%s=%s\n", key, value))
 	}
 
-	if err := os.WriteFile(envPath, []byte(builder.String()), 0600); err != nil {
+	if err := os.WriteFile(envPath, []byte(builder.String()), 0644); err != nil {
 		return fmt.Errorf("failed to write global variables file: %w", err)
 	}
 
@@ -996,7 +996,7 @@ func (s *TemplateService) ParseComposeServices(ctx context.Context, composeConte
 
 	// Create a dummy .env file to prevent env file errors
 	envPath := filepath.Join(tmpDir, ".env")
-	if err := os.WriteFile(envPath, []byte(""), 0600); err != nil {
+	if err := os.WriteFile(envPath, []byte(""), 0644); err != nil {
 		slog.WarnContext(ctx, "Failed to create dummy env file", "error", err)
 	}
 

@@ -1,4 +1,20 @@
 import axios, { type AxiosResponse } from 'axios';
+import { toast } from 'svelte-sonner';
+
+function extractServerMessage(data: any, includeErrors = false): string | undefined {
+	const inner = (data && typeof data === 'object' ? ((data as any).data ?? data) : data) as any;
+	if (typeof inner === 'string') {
+		return inner;
+	}
+	if (inner) {
+		const msg = inner.error || inner.message || inner.error_description;
+		if (msg) return msg;
+		if (includeErrors && Array.isArray(inner.errors) && inner.errors.length) {
+			return inner.errors[0]?.message || inner.errors[0];
+		}
+	}
+	return undefined;
+}
 
 abstract class BaseAPIService {
 	api = axios.create({
@@ -17,6 +33,9 @@ abstract class BaseAPIService {
 				console.log(error);
 				const status = error?.response?.status;
 				if (status === 401 && typeof window !== 'undefined') {
+					const serverMsg = extractServerMessage(error?.response?.data);
+					const isVersionMismatch = serverMsg?.toLowerCase().includes('application has been updated');
+
 					let reqUrl: string = error?.config?.url ?? '';
 					const baseURL: string = error?.config?.baseURL ?? this.api.defaults.baseURL ?? '';
 					try {
@@ -24,7 +43,6 @@ abstract class BaseAPIService {
 							const u = new URL(reqUrl);
 							reqUrl = u.pathname;
 						} else if (baseURL && /^https?:\/\//i.test(baseURL)) {
-							// if baseURL is absolute and url is relative, construct full url then extract pathname
 							const u = new URL(reqUrl, baseURL);
 							reqUrl = u.pathname;
 						}
@@ -50,27 +68,18 @@ abstract class BaseAPIService {
 					const isOnAuthPage = pathname.startsWith('/auth');
 
 					if (!isAuthApi && !isOnAuthPage) {
+						if (isVersionMismatch) {
+							toast.info('Application has been updated. Please log in again.');
+						}
 						const redirectTo = encodeURIComponent(pathname);
-						// Hard replace to avoid history pollution
 						window.location.replace(`/auth/login?redirect=${redirectTo}`);
-						// Stop further promise chain
 						return new Promise(() => {});
 					}
 				}
 
 				try {
-					const data = error?.response?.data;
-					const inner = (data && typeof data === 'object' ? ((data as any).data ?? data) : data) as any;
-					let serverMsg: string | undefined;
-					if (typeof inner === 'string') {
-						serverMsg = inner;
-					} else if (inner) {
-						serverMsg = inner.error || inner.message || inner.error_description;
-						if (!serverMsg && Array.isArray(inner.errors) && inner.errors.length) {
-							serverMsg = inner.errors[0]?.message || inner.errors[0];
-						}
-					}
-					if (serverMsg && typeof serverMsg === 'string') {
+					const serverMsg = extractServerMessage(error?.response?.data, true);
+					if (serverMsg) {
 						error.message = serverMsg;
 					}
 				} catch {

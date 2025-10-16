@@ -73,7 +73,7 @@ func (l *EnvLoader) loadProcessEnv() EnvMap {
 func (l *EnvLoader) ensureGlobalEnvFile(ctx context.Context, path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		header := fmt.Sprintf(globalEnvHeader, time.Now().Format(time.RFC3339))
-		if werr := os.WriteFile(path, []byte(header), 0600); werr != nil {
+		if werr := os.WriteFile(path, []byte(header), 0644); werr != nil {
 			return fmt.Errorf("write file: %w", werr)
 		}
 		slog.InfoContext(ctx, "Created global env file", "path", path)

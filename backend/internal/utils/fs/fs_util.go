@@ -109,13 +109,13 @@ func SaveOrUpdateProjectFiles(projectPath, composeContent string, envContent *st
 		composePath = filepath.Join(projectPath, "compose.yaml")
 	}
 
-	if err := os.WriteFile(composePath, []byte(composeContent), 0600); err != nil {
+	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil {
 		return fmt.Errorf("failed to save compose file: %w", err)
 	}
 
 	if envContent != nil && *envContent != "" {
 		envPath := filepath.Join(projectPath, ".env")
-		if err := os.WriteFile(envPath, []byte(*envContent), 0600); err != nil {
+		if err := os.WriteFile(envPath, []byte(*envContent), 0644); err != nil {
 			return fmt.Errorf("failed to save env file: %w", err)
 		}
 	}
