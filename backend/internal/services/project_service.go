@@ -538,15 +538,9 @@ func (s *ProjectService) CreateProject(ctx context.Context, name, composeContent
 	}
 
 	basePath := filepath.Join(projectsDirectory, sanitized)
-	projectPath, folderName, err := fs.CreateUniqueDir(basePath, name, 0755)
+	projectPath, folderName, err := fs.CreateUniqueDir(projectsDirectory, basePath, name, 0755)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create project directory: %w", err)
-	}
-
-	// Security: Validate that the created project path is within the projects directory
-	if !fs.IsSafeSubdirectory(projectsDirectory, projectPath) {
-		os.RemoveAll(projectPath) // Clean up the created directory
-		return nil, fmt.Errorf("invalid project path: must be within projects directory")
 	}
 
 	proj := &models.Project{

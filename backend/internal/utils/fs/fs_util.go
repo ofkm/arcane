@@ -68,7 +68,9 @@ func GetTemplatesDirectory(ctx context.Context) (string, error) {
 	return templatesDir, nil
 }
 
-func CreateUniqueDir(basePath, name string, perm os.FileMode) (path, folderName string, err error) {
+// CreateUniqueDir creates a unique directory within the allowed projectsRoot.
+// It validates that the created directory is always within projectsRoot.
+func CreateUniqueDir(projectsRoot, basePath, name string, perm os.FileMode) (path, folderName string, err error) {
 	sanitized := SanitizeProjectName(name)
 
 	// Reject empty or invalid sanitized names
@@ -76,28 +78,35 @@ func CreateUniqueDir(basePath, name string, perm os.FileMode) (path, folderName 
 		return "", "", fmt.Errorf("invalid project name: results in empty directory name")
 	}
 
+	// Get absolute path of the true projects root for validation
+	projectsRootAbs, err := filepath.Abs(projectsRoot)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to resolve projects root directory: %w", err)
+	}
+	projectsRootAbs = filepath.Clean(projectsRootAbs)
+
 	candidate := basePath
 	folderName = sanitized
 
-	// Get absolute path of parent directory for validation
-	parentAbs, err := filepath.Abs(filepath.Dir(basePath))
-	if err != nil {
-		return "", "", fmt.Errorf("failed to resolve parent directory: %w", err)
-	}
-
 	for counter := 1; ; counter++ {
-		// Validate candidate is within allowed parent
+		// Validate candidate is within the allowed projects root
 		candidateAbs, absErr := filepath.Abs(candidate)
 		if absErr != nil {
 			return "", "", fmt.Errorf("failed to resolve candidate path: %w", absErr)
 		}
+		candidateAbs = filepath.Clean(candidateAbs)
 
-		rel, relErr := filepath.Rel(parentAbs, candidateAbs)
-		if relErr != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
-			return "", "", fmt.Errorf("project directory would be outside allowed path")
+		// Security check: ensure candidate is a subdirectory of projectsRoot
+		if !IsSafeSubdirectory(projectsRootAbs, candidateAbs) {
+			return "", "", fmt.Errorf("project directory would be outside allowed projects root")
 		}
 
 		if mkErr := os.Mkdir(candidate, perm); mkErr == nil {
+			// Double-check after creation
+			if !IsSafeSubdirectory(projectsRootAbs, candidateAbs) {
+				os.Remove(candidate) // Clean up
+				return "", "", fmt.Errorf("created directory is outside allowed projects root")
+			}
 			return candidate, folderName, nil
 		} else if !os.IsExist(mkErr) {
 			return "", "", mkErr
