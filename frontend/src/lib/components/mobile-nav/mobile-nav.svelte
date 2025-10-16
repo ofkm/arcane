@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { untrack } from 'svelte';
-	import type { NavigationItem, MobileNavigationSettings } from '$lib/config/navigation-config';
+	import type { MobileNavigationSettings } from '$lib/config/navigation-config';
 	import { getAvailableMobileNavItems } from '$lib/config/navigation-config';
 	import MobileNavItem from './mobile-nav-item.svelte';
 	import { cn } from '$lib/utils';
@@ -9,7 +8,7 @@
 	import MobileNavSheet from './mobile-nav-sheet.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import './styles.css';
-    import Grid3x3Icon from '@lucide/svelte/icons/grid-3x3';
+	import Grid3x3Icon from '@lucide/svelte/icons/grid-3x3';
 
 	let {
 		navigationSettings,
@@ -35,7 +34,8 @@
 	const scrollToHideEnabled = $derived(navigationSettings.scrollToHide);
 	const mode = $derived(navigationSettings.mode);
 
-    const centerIndex = $derived(Math.ceil(pinnedItems.length / 2));
+	const leftItems = $derived(pinnedItems.slice(0, Math.floor(pinnedItems.length / 2)));
+	const rightItems = $derived(pinnedItems.slice(Math.floor(pinnedItems.length / 2)));
 
 	let visible = $state(true);
 	let menuOpen = $state(false);
@@ -314,31 +314,36 @@
 </script>
 
 <nav bind:this={navElement} class={navClasses} data-testid={testId} aria-label={ariaLabel}>
-	{#each pinnedItems as item, i (item.url)}
-		{#if i === centerIndex}
-			<!-- Center action button -->
-			<button
-				type="button"
-				class={cn(
-					'bg-primary text-primary-foreground shadow-md hover:bg-primary/90 focus-visible:ring-ring/50',
-					'rounded-full transition-all duration-200 ease-out active:scale-95',
-					showLabels ? 'size-14 mx-1' : 'size-14 mx-2'
-				)}
-				aria-label={m.mobile_navigation()}
-				onclick={() => (menuOpen = true)}
-				data-testid="mobile-nav-open"
-			>
-				<Grid3x3Icon size={28} aria-hidden="true" />
-				<span class="sr-only">{m.mobile_navigation()}</span>
-			</button>
-		{/if}
+	<!-- Left side items -->
+	{#each leftItems as item (item.url)}
 		<MobileNavItem {item} {showLabels} active={currentPath === item.url || currentPath.startsWith(item.url + '/')} />
 	{/each}
+
+	<!-- Center action button -->
+	<button
+		type="button"
+		class={cn(
+			'bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-ring/50 shadow-md',
+			'flex-shrink-0 rounded-full transition-all duration-200 ease-out active:scale-95',
+			'flex items-center justify-center',
+			showLabels ? 'size-14' : 'size-14'
+		)}
+		aria-label={m.mobile_navigation()}
+		onclick={() => (menuOpen = true)}
+		data-testid="mobile-nav-open"
+	>
+		<Grid3x3Icon size={28} aria-hidden="true" />
+		<span class="sr-only">{m.mobile_navigation()}</span>
+	</button>
+
+	{#each rightItems as item (item.url)}
+		<MobileNavItem {item} {showLabels} active={currentPath === item.url || currentPath.startsWith(item.url + '/')} />
+	{/each}
+
 	{#if pinnedItems.length === 0}
-		<!-- Fallback trigger when no pinned items configured -->
 		<button
 			type="button"
-			class="bg-primary text-primary-foreground rounded-full size-14 shadow-md hover:bg-primary/90 active:scale-95"
+			class="bg-primary text-primary-foreground hover:bg-primary/90 size-14 rounded-full shadow-md active:scale-95"
 			aria-label={m.mobile_navigation()}
 			onclick={() => (menuOpen = true)}
 			data-testid="mobile-nav-open"

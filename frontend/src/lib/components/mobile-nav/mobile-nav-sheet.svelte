@@ -40,22 +40,24 @@
 	}
 </script>
 
-<Drawer.Root bind:open={open} shouldScaleBackground direction="bottom">
+<Drawer.Root bind:open shouldScaleBackground direction="bottom">
 	<Drawer.Content
 		data-testid="mobile-nav-sheet"
 		class={cn(
 			'bg-background/60 border-border/30 rounded-t-3xl border-t shadow-sm backdrop-blur-xl',
-			'max-h-[85vh] overflow-y-auto'
+			'flex max-h-[85vh] flex-col'
 		)}
 	>
-		<div class="px-6 pb-4">
+		<div class="px-6 pt-4">
 			{#if memoizedUser}
 				<MobileUserCard user={memoizedUser} class="mb-6" />
 			{/if}
+		</div>
 
+		<div class="flex-1 overflow-y-auto px-6">
 			<div class="space-y-8">
 				<section>
-					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 						{m.sidebar_management()}
 					</h4>
 					<div class="space-y-2">
@@ -81,7 +83,7 @@
 				</section>
 
 				<section>
-					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 						{m.sidebar_customization()}
 					</h4>
 					<div class="space-y-2">
@@ -148,7 +150,7 @@
 				{#if memoizedIsAdmin}
 					{#if navigationItems.environmentItems}
 						<section>
-							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 								{m.sidebar_environments()}
 							</h4>
 							<div class="space-y-2">
@@ -174,7 +176,7 @@
 
 					{#if navigationItems.settingsItems}
 						<section>
-							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 								{m.sidebar_administration()}
 							</h4>
 							<div class="space-y-2">
@@ -238,9 +240,11 @@
 					{/if}
 				{/if}
 			</div>
+		</div>
 
+		<div class="border-border/30 border-t px-6 pt-4 pb-4">
 			{#if versionInformation}
-				<div class={cn('border-border/30 mt-6 border-t pt-4', navigationMode === 'docked' ? 'pb-24' : 'pb-6')}>
+				<div class={cn(navigationMode === 'docked' ? 'pb-24' : 'pb-0')}>
 					<div class="text-muted-foreground/60 text-center text-xs">
 						<p class="font-medium">Arcane v{versionInformation.currentVersion}</p>
 						{#if versionInformation.updateAvailable}
@@ -249,9 +253,8 @@
 					</div>
 				</div>
 			{:else}
-				<div class="pb-20"></div>
+				<div class={navigationMode === 'docked' ? 'pb-24' : 'pb-0'}></div>
 			{/if}
 		</div>
 	</Drawer.Content>
 </Drawer.Root>
-
