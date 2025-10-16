@@ -18,12 +18,13 @@ import (
 )
 
 var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserNotFound       = errors.New("user not found")
-	ErrInvalidToken       = errors.New("invalid token")
-	ErrExpiredToken       = errors.New("token expired")
-	ErrLocalAuthDisabled  = errors.New("local authentication is disabled")
-	ErrOidcAuthDisabled   = errors.New("OIDC authentication is disabled")
+	ErrInvalidCredentials   = errors.New("invalid credentials")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrInvalidToken         = errors.New("invalid token")
+	ErrExpiredToken         = errors.New("token expired")
+	ErrTokenVersionMismatch = errors.New("token version mismatch")
+	ErrLocalAuthDisabled    = errors.New("local authentication is disabled")
+	ErrOidcAuthDisabled     = errors.New("OIDC authentication is disabled")
 )
 
 type TokenPair struct {
@@ -481,11 +482,11 @@ func (s *AuthService) VerifyToken(ctx context.Context, accessToken string) (*mod
 	}
 
 	if claims.AppVersion != "" && claims.AppVersion != config.Version {
-		slog.InfoContext(ctx, "Token version mismatch detected", 
-			"tokenVersion", claims.AppVersion, 
+		slog.InfoContext(ctx, "Token version mismatch detected",
+			"tokenVersion", claims.AppVersion,
 			"currentVersion", config.Version,
 			"user", claims.Username)
-		return nil, errors.New("token version mismatch")
+		return nil, ErrTokenVersionMismatch
 	}
 
 	user := &models.User{

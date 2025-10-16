@@ -177,17 +177,17 @@ func TestPersistOidcTokens_SetsFields(t *testing.T) {
 func TestVerifyToken_VersionMismatch(t *testing.T) {
 	s := newTestAuthService("")
 	exp := time.Now().Add(5 * time.Minute)
-	
+
 	oldVersion := config.Version
 	config.Version = "1.0.0"
 	token := makeAccessToken(t, s.jwtSecret, "access", "u1", "bob", []string{"user"}, "", "", exp)
 	config.Version = "2.0.0"
-	
+
 	_, err := s.VerifyToken(context.Background(), token)
-	if err == nil || err.Error() != "token version mismatch" {
-		t.Errorf("want 'token version mismatch', got %v", err)
+	if !errors.Is(err, ErrTokenVersionMismatch) {
+		t.Errorf("want ErrTokenVersionMismatch, got %v", err)
 	}
-	
+
 	config.Version = oldVersion
 }
 

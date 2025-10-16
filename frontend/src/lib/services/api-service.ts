@@ -26,9 +26,9 @@ abstract class BaseAPIService {
 					} else if (inner) {
 						serverMsg = inner.error || inner.message || inner.error_description;
 					}
-					
+
 					const isVersionMismatch = serverMsg?.toLowerCase().includes('application has been updated');
-					
+
 					let reqUrl: string = error?.config?.url ?? '';
 					const baseURL: string = error?.config?.baseURL ?? this.api.defaults.baseURL ?? '';
 					try {
