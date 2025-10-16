@@ -112,6 +112,16 @@ func (m *AuthMiddleware) managerAuth(c *gin.Context) {
 
 	user, err := m.authService.VerifyToken(c.Request.Context(), token)
 	if err != nil {
+		if strings.Contains(err.Error(), "token version mismatch") {
+			cookie.ClearTokenCookie(c)
+			c.JSON(http.StatusUnauthorized, models.APIError{
+				Code:    models.APIErrorCodeUnauthorized,
+				Message: "Application has been updated. Please log in again.",
+			})
+			c.Abort()
+			return
+		}
+		
 		if m.options.SuccessOptional {
 			c.Next()
 			return
