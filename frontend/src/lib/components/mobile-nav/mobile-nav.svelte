@@ -161,8 +161,22 @@
 			}
 		};
 
-		// Wheel handler for detecting ONLY super fast trackpad flicks
+		window.addEventListener('scroll', handleScroll, { passive: true });
+
+		return () => {
+			window.removeEventListener('scroll', handleScroll);
+			if (scrollTimeout) {
+				clearTimeout(scrollTimeout);
+			}
+		};
+	});
+
+	// Wheel handler for detecting ONLY super fast trackpad flicks on navbar
+	$effect(() => {
+		if (!navElement || typeof window === 'undefined') return;
+
 		const handleWheel = (e: WheelEvent) => {
+			e.preventDefault(); // Prevent scrolling when hovering navbar
 			if (menuOpen || !scrollToHideEnabled) return;
 
 			// Only respond to downward scrolls (positive deltaY)
@@ -170,35 +184,21 @@
 
 			const now = Date.now();
 			const timeSinceLastWheel = now - lastWheelTime;
-
-			// Calculate velocity: deltaY per millisecond
 			const velocity = e.deltaY / Math.max(1, timeSinceLastWheel);
+			const isFastFlick = velocity > 3;
 
-			// Only trigger on EXTREME velocity (> 5 pixels per ms = very fast flick)
-			// Normal scrolling is typically 0.1-0.5 px/ms
-			// Fast flicks are 2+ px/ms
-			// Super fast flicks are 5+ px/ms
-			const isSuperFastFlick = velocity > 5;
-
-			if (isSuperFastFlick) {
+			if (isFastFlick) {
 				menuOpen = true;
 				wheelVelocityHistory = [];
-
-				if (flickDetectTimeout) {
-					clearTimeout(flickDetectTimeout);
-				}
+				if (flickDetectTimeout) clearTimeout(flickDetectTimeout);
 			}
 
-			// Update tracking for next event
 			lastWheelTime = now;
 			lastWheelDelta = e.deltaY;
 			wheelVelocityHistory.push(velocity);
-			wheelVelocityHistory = wheelVelocityHistory.slice(-3); // Keep last 3 velocities
+			wheelVelocityHistory = wheelVelocityHistory.slice(-3);
 
-			// Reset after 200ms of inactivity
-			if (flickDetectTimeout) {
-				clearTimeout(flickDetectTimeout);
-			}
+			if (flickDetectTimeout) clearTimeout(flickDetectTimeout);
 			flickDetectTimeout = setTimeout(() => {
 				lastWheelTime = 0;
 				lastWheelDelta = 0;
@@ -206,18 +206,11 @@
 			}, 200);
 		};
 
-		window.addEventListener('scroll', handleScroll, { passive: true });
-		window.addEventListener('wheel', handleWheel, { passive: true });
+		navElement.addEventListener('wheel', handleWheel, { passive: false });
 
 		return () => {
-			window.removeEventListener('scroll', handleScroll);
-			window.removeEventListener('wheel', handleWheel);
-			if (scrollTimeout) {
-				clearTimeout(scrollTimeout);
-			}
-			if (flickDetectTimeout) {
-				clearTimeout(flickDetectTimeout);
-			}
+			navElement.removeEventListener('wheel', handleWheel);
+			if (flickDetectTimeout) clearTimeout(flickDetectTimeout);
 		};
 	});
 
