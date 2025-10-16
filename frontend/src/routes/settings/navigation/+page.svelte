@@ -39,6 +39,7 @@
 
 	const sidebar = useSidebar();
 	let sidebarHoverExpansion = $state(sidebar.hoverExpansionEnabled);
+	let initialSidebarHoverExpansion = $state(sidebar.hoverExpansionEnabled);
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
@@ -47,7 +48,8 @@
 			$formInputs.mobileNavigationMode.value !== currentSettings.mobileNavigationMode ||
 			$formInputs.mobileNavigationShowLabels.value !== currentSettings.mobileNavigationShowLabels ||
 			$formInputs.mobileNavigationScrollToHide.value !== currentSettings.mobileNavigationScrollToHide ||
-			$formInputs.mobileNavigationTapToHide.value !== currentSettings.mobileNavigationTapToHide
+			$formInputs.mobileNavigationTapToHide.value !== currentSettings.mobileNavigationTapToHide ||
+			sidebarHoverExpansion !== initialSidebarHoverExpansion
 	);
 
 	$effect(() => {
@@ -114,7 +116,9 @@
 
 		await updateSettingsConfig(formData)
 			.then(() => {
+				sidebar.setHoverExpansion(sidebarHoverExpansion);				
 				toast.success(m.navigation_settings_saved());
+				initialSidebarHoverExpansion = sidebarHoverExpansion;
 
 				// Reset navigation bar visibility if behavior settings changed
 				if (behaviorChanged) {
@@ -133,6 +137,8 @@
 		$formInputs.mobileNavigationShowLabels.value = currentSettings.mobileNavigationShowLabels;
 		$formInputs.mobileNavigationScrollToHide.value = currentSettings.mobileNavigationScrollToHide;
 		$formInputs.mobileNavigationTapToHide.value = currentSettings.mobileNavigationTapToHide;
+		sidebarHoverExpansion = initialSidebarHoverExpansion;
+		sidebar.setHoverExpansion(initialSidebarHoverExpansion);
 	}
 
 	onMount(() => {
@@ -179,7 +185,6 @@
 									checked={sidebarHoverExpansion}
 									onCheckedChange={(checked) => {
 										sidebarHoverExpansion = checked;
-										sidebar.setHoverExpansion(checked);
 									}}
 								/>
 								<label for="sidebarHoverExpansion" class="text-xs font-medium">
