@@ -9,6 +9,7 @@
 	import MobileNavSheet from './mobile-nav-sheet.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import './styles.css';
+    import Grid3x3Icon from '@lucide/svelte/icons/grid-3x3';
 
 	let {
 		navigationSettings,
@@ -33,6 +34,8 @@
 	const showLabels = $derived(navigationSettings.showLabels);
 	const scrollToHideEnabled = $derived(navigationSettings.scrollToHide);
 	const mode = $derived(navigationSettings.mode);
+
+    const centerIndex = $derived(Math.ceil(pinnedItems.length / 2));
 
 	let visible = $state(true);
 	let menuOpen = $state(false);
@@ -311,9 +314,39 @@
 </script>
 
 <nav bind:this={navElement} class={navClasses} data-testid={testId} aria-label={ariaLabel}>
-	{#each pinnedItems as item (item.url)}
+	{#each pinnedItems as item, i (item.url)}
+		{#if i === centerIndex}
+			<!-- Center action button -->
+			<button
+				type="button"
+				class={cn(
+					'bg-primary text-primary-foreground shadow-md hover:bg-primary/90 focus-visible:ring-ring/50',
+					'rounded-full transition-all duration-200 ease-out active:scale-95',
+					showLabels ? 'size-14 mx-1' : 'size-14 mx-2'
+				)}
+				aria-label={m.mobile_navigation()}
+				onclick={() => (menuOpen = true)}
+				data-testid="mobile-nav-open"
+			>
+				<Grid3x3Icon size={28} aria-hidden="true" />
+				<span class="sr-only">{m.mobile_navigation()}</span>
+			</button>
+		{/if}
 		<MobileNavItem {item} {showLabels} active={currentPath === item.url || currentPath.startsWith(item.url + '/')} />
 	{/each}
+	{#if pinnedItems.length === 0}
+		<!-- Fallback trigger when no pinned items configured -->
+		<button
+			type="button"
+			class="bg-primary text-primary-foreground rounded-full size-14 shadow-md hover:bg-primary/90 active:scale-95"
+			aria-label={m.mobile_navigation()}
+			onclick={() => (menuOpen = true)}
+			data-testid="mobile-nav-open"
+		>
+			<Grid3x3Icon size={28} aria-hidden="true" />
+			<span class="sr-only">{m.mobile_navigation()}</span>
+		</button>
+	{/if}
 </nav>
 
 <MobileNavSheet bind:open={menuOpen} {user} {versionInformation} navigationMode={mode} />
