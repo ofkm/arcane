@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import { Switch } from '$lib/components/ui/switch';
-	import { Label } from '$lib/components/ui/label';
-	import UpdateScheduleEditor from '$lib/components/schedule/update-schedule-editor.svelte';
+	import UpdateScheduleEditor from '$lib/components/update-schedule-editor.svelte';
 	import SettingsSection from '$lib/components/settings/settings-section.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toast } from 'svelte-sonner';
@@ -27,79 +25,64 @@
 	const globalSettings = $derived($settingsStore);
 
 	// Check if settings are overridden (saved in DB as project-specific)
-	const isAutoUpdateOverridden = $derived(project.autoUpdate !== null && project.autoUpdate !== undefined);
-	const isScheduleOverridden = $derived(project.updateScheduleEnabled !== null && project.updateScheduleEnabled !== undefined);
+	// Now we check if either auto-update OR schedule settings are overridden
+	const isUpdateSettingsOverridden = $derived(
+		(project.autoUpdate !== null && project.autoUpdate !== undefined) ||
+			(project.updateScheduleEnabled !== null && project.updateScheduleEnabled !== undefined)
+	);
 
 	let isLoading = $state(false);
-
-	// Local editable state
-	let localAutoUpdateOverride = $state<boolean | null>(null);
+	let localUpdateSettingsOverride = $state<boolean | null>(null);
 	let localAutoUpdate = $state(false);
-
-	let localScheduleOverride = $state<boolean | null>(null);
 	let localScheduleEnabled = $state(false);
 	let localScheduleWindows = $state<UpdateScheduleWindow[]>([]);
 	let localScheduleTimezone = $state('UTC');
 
 	// Initialize local state from project/global on mount
 	$effect(() => {
-		// Auto-update
-		localAutoUpdateOverride = isAutoUpdateOverridden ? true : null;
+		localUpdateSettingsOverride = isUpdateSettingsOverridden ? true : null;
 		localAutoUpdate = project.autoUpdate ?? globalSettings?.autoUpdate ?? false;
-
-		// Schedule
-		localScheduleOverride = isScheduleOverridden ? true : null;
 		localScheduleEnabled = project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false;
 		localScheduleWindows = project.updateScheduleWindows?.windows ?? globalSettings?.updateScheduleWindows?.windows ?? [];
 		localScheduleTimezone = project.updateScheduleTimezone ?? globalSettings?.updateScheduleTimezone ?? 'UTC';
 	});
 
 	// Check for unsaved changes
-	const hasAutoUpdateChanges = $derived(
-		(localAutoUpdateOverride !== null && !isAutoUpdateOverridden) ||
-			(localAutoUpdateOverride === null && isAutoUpdateOverridden) ||
-			(localAutoUpdateOverride !== null && localAutoUpdate !== (project.autoUpdate ?? globalSettings?.autoUpdate ?? false))
-	);
-
-	const hasScheduleChanges = $derived(
-		(localScheduleOverride !== null && !isScheduleOverridden) ||
-			(localScheduleOverride === null && isScheduleOverridden) ||
-			(localScheduleOverride !== null &&
-				(localScheduleEnabled !== (project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false) ||
+	const hasUpdateSettingsChanges = $derived(
+		(localUpdateSettingsOverride !== null && !isUpdateSettingsOverridden) ||
+			(localUpdateSettingsOverride === null && isUpdateSettingsOverridden) ||
+			(localUpdateSettingsOverride !== null &&
+				(localAutoUpdate !== (project.autoUpdate ?? globalSettings?.autoUpdate ?? false) ||
+					localScheduleEnabled !== (project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false) ||
 					localScheduleTimezone !== (project.updateScheduleTimezone ?? globalSettings?.updateScheduleTimezone ?? 'UTC') ||
 					JSON.stringify(localScheduleWindows) !==
 						JSON.stringify(project.updateScheduleWindows?.windows ?? globalSettings?.updateScheduleWindows?.windows ?? [])))
 	);
 
-	const hasAnyChanges = $derived(hasAutoUpdateChanges || hasScheduleChanges);
+	const hasAnyChanges = $derived(hasUpdateSettingsChanges);
 
-	// Derived descriptions for each section
-	const autoUpdateDescription = $derived(() => {
-		if (localAutoUpdateOverride !== null) {
+	// Derived description for update settings section
+	const updateSettingsDescription = $derived(() => {
+		if (localUpdateSettingsOverride !== null) {
 			return m.project_settings_overridden();
 		}
-		const enabled = globalSettings?.autoUpdate ? m.common_enabled() : m.common_disabled();
-		return `Global: ${enabled}`;
-	});
-
-	const scheduleDescription = $derived(() => {
-		if (localScheduleOverride !== null) {
-			return m.project_settings_overridden();
-		}
-		const mode = globalSettings?.updateScheduleEnabled ? m.update_schedule_mode_scheduled() : m.update_schedule_mode_immediate();
+		// Derive mode from global settings
+		const autoUpdate = globalSettings?.autoUpdate ?? false;
+		const scheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;
+		const mode = !autoUpdate
+			? m.update_schedule_mode_never()
+			: scheduleEnabled
+				? m.update_schedule_mode_scheduled()
+				: m.update_schedule_mode_immediate();
 		return `Global: ${mode}`;
 	});
 
-	function enableOverride(setting: 'autoUpdate' | 'schedule') {
-		if (setting === 'autoUpdate') {
-			localAutoUpdateOverride = true;
-			localAutoUpdate = globalSettings?.autoUpdate ?? false;
-		} else if (setting === 'schedule') {
-			localScheduleOverride = true;
-			localScheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;
-			localScheduleWindows = globalSettings?.updateScheduleWindows?.windows ?? [];
-			localScheduleTimezone = globalSettings?.updateScheduleTimezone ?? 'UTC';
-		}
+	function enableOverride() {
+		localUpdateSettingsOverride = true;
+		localAutoUpdate = globalSettings?.autoUpdate ?? false;
+		localScheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;
+		localScheduleWindows = globalSettings?.updateScheduleWindows?.windows ?? [];
+		localScheduleTimezone = globalSettings?.updateScheduleTimezone ?? 'UTC';
 	}
 
 	async function saveSettings() {
@@ -108,14 +91,10 @@
 			// First, check if we need to clear any overrides (X button was clicked)
 			const clearPromises: Promise<any>[] = [];
 
-			// Clear auto-update override if X was clicked
-			if (localAutoUpdateOverride === null && isAutoUpdateOverridden) {
-				clearPromises.push(projectService.clearProjectSettingOverride(project.id, 'autoUpdate'));
-			}
-
-			// Clear schedule override if X was clicked
-			if (localScheduleOverride === null && isScheduleOverridden) {
+			// Clear update settings override if X was clicked
+			if (localUpdateSettingsOverride === null && isUpdateSettingsOverridden) {
 				clearPromises.push(
+					projectService.clearProjectSettingOverride(project.id, 'autoUpdate'),
 					projectService.clearProjectSettingOverride(project.id, 'updateScheduleEnabled'),
 					projectService.clearProjectSettingOverride(project.id, 'updateScheduleWindows'),
 					projectService.clearProjectSettingOverride(project.id, 'updateScheduleTimezone')
@@ -130,13 +109,9 @@
 			// Now save any active overrides (even if they match global)
 			const updates: ProjectSettingsUpdate = {};
 
-			// Save auto-update if overridden
-			if (localAutoUpdateOverride !== null) {
+			// Save update settings if overridden
+			if (localUpdateSettingsOverride !== null) {
 				updates.autoUpdate = localAutoUpdate;
-			}
-
-			// Save schedule if overridden
-			if (localScheduleOverride !== null) {
 				updates.updateScheduleEnabled = localScheduleEnabled;
 				updates.updateScheduleWindows = {
 					enabled: localScheduleEnabled,
@@ -162,31 +137,24 @@
 
 	function resetChanges() {
 		// Reset to saved values
-		localAutoUpdateOverride = isAutoUpdateOverridden ? true : null;
+		localUpdateSettingsOverride = isUpdateSettingsOverridden ? true : null;
 		localAutoUpdate = project.autoUpdate ?? globalSettings?.autoUpdate ?? false;
-
-		localScheduleOverride = isScheduleOverridden ? true : null;
 		localScheduleEnabled = project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false;
 		localScheduleWindows = project.updateScheduleWindows?.windows ?? globalSettings?.updateScheduleWindows?.windows ?? [];
 		localScheduleTimezone = project.updateScheduleTimezone ?? globalSettings?.updateScheduleTimezone ?? 'UTC';
 	}
 
-	function clearOverride(setting: 'autoUpdate' | 'schedule') {
+	function clearOverride() {
 		// Just clear local override - actual DB clear happens on Save
-		if (setting === 'autoUpdate') {
-			localAutoUpdateOverride = null;
-			localAutoUpdate = globalSettings?.autoUpdate ?? false;
-		} else if (setting === 'schedule') {
-			localScheduleOverride = null;
-			localScheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;
-			localScheduleWindows = globalSettings?.updateScheduleWindows?.windows ?? [];
-			localScheduleTimezone = globalSettings?.updateScheduleTimezone ?? 'UTC';
-		}
+		localUpdateSettingsOverride = null;
+		localAutoUpdate = globalSettings?.autoUpdate ?? false;
+		localScheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;
+		localScheduleWindows = globalSettings?.updateScheduleWindows?.windows ?? [];
+		localScheduleTimezone = globalSettings?.updateScheduleTimezone ?? 'UTC';
 	}
 </script>
 
 <div class="space-y-6">
-	<!-- Action Buttons -->
 	<div class="flex justify-end gap-2">
 		<Button size="sm" variant="outline" onclick={resetChanges} disabled={isLoading || !hasAnyChanges}>
 			<RotateCcwIcon class="mr-2 size-4" />
@@ -198,7 +166,6 @@
 		</Button>
 	</div>
 
-	<!-- Updates Card -->
 	<Card.Root>
 		<Card.Header icon={RefreshCwIcon}>
 			<div class="flex flex-col space-y-1.5">
@@ -207,40 +174,20 @@
 			</div>
 		</Card.Header>
 		<Card.Content class="space-y-6 px-3 py-4 sm:px-6">
-			<!-- Auto Update Settings Section (only shown when polling is enabled) -->
 			{#if globalSettings?.pollingEnabled}
 				<SettingsSection
-					title={m.project_settings_auto_update_section()}
-					description={autoUpdateDescription()}
-					icon={RefreshCwIcon}
-					isOverridden={localAutoUpdateOverride !== null}
-					{isLoading}
-					onClearOverride={() => clearOverride('autoUpdate')}
-					onEnableOverride={() => enableOverride('autoUpdate')}
-				>
-					{#snippet children()}
-						<div class="flex items-center justify-between">
-							<Label for="auto-update">{m.docker_auto_update_label()}</Label>
-							<Switch id="auto-update" bind:checked={localAutoUpdate} disabled={isLoading} />
-						</div>
-					{/snippet}
-				</SettingsSection>
-			{/if}
-
-			<!-- Schedule Settings Section (only shown when auto-update is enabled) -->
-			{#if localAutoUpdateOverride !== null ? localAutoUpdate : globalSettings?.autoUpdate}
-				<SettingsSection
-					title={m.project_settings_schedule_section()}
-					description={scheduleDescription()}
+					title={m.update_schedule_title()}
+					description={updateSettingsDescription()}
 					icon={ClockIcon}
-					isOverridden={localScheduleOverride !== null}
+					isOverridden={localUpdateSettingsOverride !== null}
 					{isLoading}
-					onClearOverride={() => clearOverride('schedule')}
-					onEnableOverride={() => enableOverride('schedule')}
+					onClearOverride={clearOverride}
+					onEnableOverride={enableOverride}
 				>
 					{#snippet children()}
 						<UpdateScheduleEditor
-							bind:enabled={localScheduleEnabled}
+							bind:autoUpdate={localAutoUpdate}
+							bind:scheduleEnabled={localScheduleEnabled}
 							bind:windows={localScheduleWindows}
 							bind:timezone={localScheduleTimezone}
 						/>

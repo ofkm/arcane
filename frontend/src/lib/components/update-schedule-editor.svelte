@@ -10,13 +10,39 @@
 	import type { UpdateScheduleWindow } from '$lib/types/settings.type';
 	import { cn } from '$lib/utils';
 
+	type UpdateMode = 'never' | 'immediate' | 'scheduled';
+
 	interface Props {
-		enabled?: boolean;
+		autoUpdate?: boolean;
+		scheduleEnabled?: boolean;
 		windows: UpdateScheduleWindow[];
 		timezone: string;
 	}
 
-	let { enabled = $bindable(false), windows = $bindable([]), timezone = $bindable('UTC') }: Props = $props();
+	let { 
+		autoUpdate = $bindable(false), 
+		scheduleEnabled = $bindable(false), 
+		windows = $bindable([]), 
+		timezone = $bindable('UTC') 
+	}: Props = $props();
+
+	// Derive the mode from autoUpdate and scheduleEnabled
+	const mode = $derived<UpdateMode>(
+		!autoUpdate ? 'never' : scheduleEnabled ? 'scheduled' : 'immediate'
+	);
+
+	function updateMode(newMode: UpdateMode) {
+		if (newMode === 'never') {
+			autoUpdate = false;
+			scheduleEnabled = false;
+		} else if (newMode === 'immediate') {
+			autoUpdate = true;
+			scheduleEnabled = false;
+		} else if (newMode === 'scheduled') {
+			autoUpdate = true;
+			scheduleEnabled = true;
+		}
+	}
 
 	const allDays: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[] = [
 		'monday',
@@ -87,10 +113,6 @@
 		timezone = newTimezone;
 		windows = windows.map((w) => ({ ...w, timezone: newTimezone }));
 	}
-
-	function updateEnabled(value: boolean) {
-		enabled = value;
-	}
 </script>
 
 <div class="space-y-4">
@@ -100,10 +122,24 @@
 			<label
 				class={cn(
 					'hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-all',
-					!enabled && 'bg-primary/5 border-primary shadow-sm'
+					mode === 'never' && 'bg-primary/5 border-primary shadow-sm'
 				)}
 			>
-				<input type="radio" checked={!enabled} onchange={() => updateEnabled(false)} class="accent-primary mt-1" />
+				<input type="radio" checked={mode === 'never'} onchange={() => updateMode('never')} class="accent-primary mt-1" />
+				<div class="flex-1">
+					<div class="font-medium">{m.update_schedule_mode_never()}</div>
+					<div class="text-muted-foreground text-sm">
+						{m.update_schedule_mode_never_description()}
+					</div>
+				</div>
+			</label>
+			<label
+				class={cn(
+					'hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-all',
+					mode === 'immediate' && 'bg-primary/5 border-primary shadow-sm'
+				)}
+			>
+				<input type="radio" checked={mode === 'immediate'} onchange={() => updateMode('immediate')} class="accent-primary mt-1" />
 				<div class="flex-1">
 					<div class="font-medium">{m.update_schedule_mode_immediate()}</div>
 					<div class="text-muted-foreground text-sm">
@@ -114,10 +150,10 @@
 			<label
 				class={cn(
 					'hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-all',
-					enabled && 'bg-primary/5 border-primary shadow-sm'
+					mode === 'scheduled' && 'bg-primary/5 border-primary shadow-sm'
 				)}
 			>
-				<input type="radio" checked={enabled} onchange={() => updateEnabled(true)} class="accent-primary mt-1" />
+				<input type="radio" checked={mode === 'scheduled'} onchange={() => updateMode('scheduled')} class="accent-primary mt-1" />
 				<div class="flex-1">
 					<div class="font-medium">{m.update_schedule_mode_scheduled()}</div>
 					<div class="text-muted-foreground text-sm">
@@ -128,7 +164,7 @@
 		</div>
 	</div>
 
-	{#if enabled}
+	{#if mode === 'scheduled'}
 		<div class="border-primary/20 space-y-4 border-l-2 pl-4">
 			<div class="space-y-2">
 				<Label>{m.common_timezone()}</Label>

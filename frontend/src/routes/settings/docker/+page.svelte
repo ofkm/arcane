@@ -11,7 +11,6 @@
 	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import ActivityIcon from '@lucide/svelte/icons/activity';
-	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import TrashIcon from '@lucide/svelte/icons/trash';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import ClockIcon from '@lucide/svelte/icons/clock';
@@ -20,7 +19,7 @@
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
-	import UpdateScheduleEditor from '$lib/components/schedule/update-schedule-editor.svelte';
+	import UpdateScheduleEditor from '$lib/components/update-schedule-editor.svelte';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings!);
@@ -43,12 +42,14 @@
 	let pruneMode = $derived(currentSettings.dockerPruneMode);
 
 	// Local state for schedule editor (synced with form inputs)
+	let localAutoUpdate = $state(false);
 	let localScheduleEnabled = $state(false);
 	let localScheduleWindows = $state<UpdateScheduleWindow[]>([]);
 	let localScheduleTimezone = $state('UTC');
 
 	// Sync local state with form inputs
 	$effect(() => {
+		localAutoUpdate = $formInputs.autoUpdate.value;
 		localScheduleEnabled = $formInputs.updateScheduleEnabled.value;
 		localScheduleWindows = $formInputs.updateScheduleWindows.value;
 		localScheduleTimezone = $formInputs.updateScheduleTimezone.value;
@@ -56,6 +57,7 @@
 
 	// Sync changes back to form inputs
 	$effect(() => {
+		$formInputs.autoUpdate.value = localAutoUpdate;
 		$formInputs.updateScheduleEnabled.value = localScheduleEnabled;
 		$formInputs.updateScheduleWindows.value = localScheduleWindows;
 		$formInputs.updateScheduleTimezone.value = localScheduleTimezone;
@@ -282,42 +284,21 @@
 
 				{#if $formInputs.pollingEnabled.value}
 					<Card.Root>
-						<Card.Header icon={RefreshCwIcon}>
+						<Card.Header icon={ClockIcon}>
 							<div class="flex flex-col space-y-1.5">
-								<Card.Title>{m.docker_auto_updates_title()}</Card.Title>
-								<Card.Description>{m.docker_auto_updates_description()}</Card.Description>
+								<Card.Title>{m.update_schedule_title()}</Card.Title>
+								<Card.Description>{m.update_schedule_description()}</Card.Description>
 							</div>
 						</Card.Header>
 						<Card.Content class="px-3 py-4 sm:px-6">
-							<div class="space-y-3">
-								<SwitchWithLabel
-									id="autoUpdateSwitch"
-									label={m.docker_auto_update_label()}
-									description={m.docker_auto_update_description()}
-									bind:checked={$formInputs.autoUpdate.value}
-								/>
-							</div>
+							<UpdateScheduleEditor
+								bind:autoUpdate={localAutoUpdate}
+								bind:scheduleEnabled={localScheduleEnabled}
+								bind:windows={localScheduleWindows}
+								bind:timezone={localScheduleTimezone}
+							/>
 						</Card.Content>
 					</Card.Root>
-
-					<!-- Update Schedule Card -->
-					{#if $formInputs.autoUpdate.value}
-						<Card.Root>
-							<Card.Header icon={ClockIcon}>
-								<div class="flex flex-col space-y-1.5">
-									<Card.Title>{m.update_schedule_title()}</Card.Title>
-									<Card.Description>{m.update_schedule_description()}</Card.Description>
-								</div>
-							</Card.Header>
-							<Card.Content class="px-3 py-4 sm:px-6">
-								<UpdateScheduleEditor
-									bind:enabled={localScheduleEnabled}
-									bind:windows={localScheduleWindows}
-									bind:timezone={localScheduleTimezone}
-								/>
-							</Card.Content>
-						</Card.Root>
-					{/if}
 				{/if}
 
 				<Card.Root>
