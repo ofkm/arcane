@@ -28,6 +28,7 @@ import (
 type SystemHandler struct {
 	dockerService     *services.DockerClientService
 	systemService     *services.SystemService
+	gpuService        *services.GPUService
 	sysWsUpgrader     websocket.Upgrader
 	activeConnections sync.Map
 	cpuCache          struct {
@@ -46,6 +47,7 @@ func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClie
 	handler := &SystemHandler{
 		dockerService: dockerService,
 		systemService: systemService,
+		gpuService:    services.NewGPUService(),
 		sysWsUpgrader: websocket.Upgrader{
 			CheckOrigin: httputil.ValidateWebSocketOrigin(cfg.AppUrl),
 		},
@@ -66,15 +68,17 @@ func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClie
 }
 
 type SystemStats struct {
-	CPUUsage     float64 `json:"cpuUsage"`
-	MemoryUsage  uint64  `json:"memoryUsage"`
-	MemoryTotal  uint64  `json:"memoryTotal"`
-	DiskUsage    uint64  `json:"diskUsage,omitempty"`
-	DiskTotal    uint64  `json:"diskTotal,omitempty"`
-	CPUCount     int     `json:"cpuCount"`
-	Architecture string  `json:"architecture"`
-	Platform     string  `json:"platform"`
-	Hostname     string  `json:"hostname,omitempty"`
+	CPUUsage     float64               `json:"cpuUsage"`
+	MemoryUsage  uint64                `json:"memoryUsage"`
+	MemoryTotal  uint64                `json:"memoryTotal"`
+	DiskUsage    uint64                `json:"diskUsage,omitempty"`
+	DiskTotal    uint64                `json:"diskTotal,omitempty"`
+	CPUCount     int                   `json:"cpuCount"`
+	Architecture string                `json:"architecture"`
+	Platform     string                `json:"platform"`
+	Hostname     string                `json:"hostname,omitempty"`
+	GPUCount     int                   `json:"gpuCount"`
+	GPUs         []services.GPUStats   `json:"gpus,omitempty"`
 }
 
 func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
@@ -373,6 +377,14 @@ func (h *SystemHandler) Stats(c *gin.Context) {
 			hostname = hostInfo.Hostname
 		}
 
+		// Collect GPU stats (non-blocking, fails gracefully)
+		var gpuStats []services.GPUStats
+		var gpuCount int
+		if gpuData, err := h.gpuService.GetGPUStats(ctx); err == nil {
+			gpuStats = gpuData
+			gpuCount = len(gpuData)
+		}
+
 		stats := SystemStats{
 			CPUUsage:     cpuUsage,
 			MemoryUsage:  memUsed,
@@ -383,6 +395,8 @@ func (h *SystemHandler) Stats(c *gin.Context) {
 			Architecture: runtime.GOARCH,
 			Platform:     runtime.GOOS,
 			Hostname:     hostname,
+			GPUCount:     gpuCount,
+			GPUs:         gpuStats,
 		}
 
 		_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))

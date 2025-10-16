@@ -26,7 +26,7 @@ RUN CGO_ENABLED=0 \
     ./cmd/main.go
 
 FROM alpine:3 AS agent
-RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl su-exec
+RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl su-exec gcompat
 
 WORKDIR /app
 RUN mkdir -p /app/data && chmod 755 /app/data
