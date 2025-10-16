@@ -56,7 +56,10 @@
 	<Sidebar.Menu>
 		{#each enhancedItems as item (item.title)}
 			{#if (item.items?.length ?? 0) > 0}
-				<Collapsible.Root open={item.isActive || (sidebar.state === 'collapsed' && sidebar.isHovered)} class="group/collapsible">
+				<Collapsible.Root
+					open={item.isActive && sidebar.hoverExpansionEnabled}
+					class="group/collapsible"
+				>
 					{#snippet child({ props })}
 						<Sidebar.MenuItem {...props}>
 							<Collapsible.Trigger>
@@ -79,7 +82,9 @@
 							</Collapsible.Trigger>
 							<Collapsible.Content>
 								<Sidebar.MenuSub
-									class={sidebar.state === 'collapsed' && !sidebar.isHovered ? 'hidden' : undefined}
+									class={sidebar.state === 'collapsed' && (!sidebar.isHovered || !sidebar.hoverExpansionEnabled)
+										? 'hidden'
+										: undefined}
 								>
 									{#each item.items ?? [] as subItem (subItem.title)}
 										<Sidebar.MenuSubItem>
