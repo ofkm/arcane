@@ -113,9 +113,7 @@
 
 	// Trackpad flick detection - ONLY super fast velocity flicks trigger the menu
 	let lastWheelTime = $state(0);
-	let lastWheelDelta = $state(0);
 	let flickDetectTimeout: ReturnType<typeof setTimeout> | null = null;
-	let wheelVelocityHistory: number[] = $state([]);
 
 	// Improved scroll-to-hide using native scroll events with passive listeners
 	$effect(() => {
@@ -176,33 +174,22 @@
 		if (!navElement || typeof window === 'undefined') return;
 
 		const handleWheel = (e: WheelEvent) => {
-			e.preventDefault(); // Prevent scrolling when hovering navbar
-			if (menuOpen || !scrollToHideEnabled) return;
-
-			// Only respond to downward scrolls (positive deltaY)
-			if (e.deltaY <= 0) return;
+			e.preventDefault();
+			if (menuOpen || !scrollToHideEnabled || e.deltaY <= 0) return;
 
 			const now = Date.now();
-			const timeSinceLastWheel = now - lastWheelTime;
-			const velocity = e.deltaY / Math.max(1, timeSinceLastWheel);
-			const isFastFlick = velocity > 3;
+			const velocity = e.deltaY / Math.max(1, now - lastWheelTime);
 
-			if (isFastFlick) {
+			if (velocity > 3) {
 				menuOpen = true;
-				wheelVelocityHistory = [];
-				if (flickDetectTimeout) clearTimeout(flickDetectTimeout);
+				return;
 			}
 
 			lastWheelTime = now;
-			lastWheelDelta = e.deltaY;
-			wheelVelocityHistory.push(velocity);
-			wheelVelocityHistory = wheelVelocityHistory.slice(-3);
 
 			if (flickDetectTimeout) clearTimeout(flickDetectTimeout);
 			flickDetectTimeout = setTimeout(() => {
 				lastWheelTime = 0;
-				lastWheelDelta = 0;
-				wheelVelocityHistory = [];
 			}, 200);
 		};
 

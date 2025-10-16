@@ -6,7 +6,7 @@
 	import { page } from '$app/state';
 	import userStore from '$lib/stores/user-store';
 	import { m } from '$lib/paraglide/messages';
-	import { onMount, tick } from 'svelte';
+	import { tick } from 'svelte';
 	import MobileUserCard from './mobile-user-card.svelte';
 	import { fly } from 'svelte/transition';
 	import { cubicOut } from 'svelte/easing';
@@ -89,15 +89,6 @@
 
 		// Calculate max sheet height (85vh as per CSS)
 		maxSheetHeight = Math.min(window.innerHeight * 0.85, clientHeight);
-	}
-
-	function calculateDragDistance(currentY: number): number {
-		const deltaY = currentY - interaction.startY;
-		if (deltaY <= 0) return 0;
-
-		// Apply consistent resistance curve for all input types
-		const rawDistance = deltaY * PHYSICS.resistanceFactor;
-		return Math.min(rawDistance, maxSheetHeight * 0.8);
 	}
 
 	function shouldCloseSheet(distance: number, velocity: number = 0): boolean {
@@ -256,9 +247,7 @@
 		if (momentumBlockTimeout && isAtScrollTop && !isScrollingUp) {
 			e.preventDefault();
 			clearTimeout(momentumBlockTimeout);
-			momentumBlockTimeout = setTimeout(() => {
-				momentumBlockTimeout = null;
-			}, 150);
+			momentumBlockTimeout = setTimeout(() => (momentumBlockTimeout = null), 150);
 			return;
 		}
 
@@ -267,48 +256,36 @@
 			// Initialize wheel interaction if not already active
 			if (interaction.inputType === 'none') {
 				interaction.inputType = 'wheel';
-				interaction.startY = 0; // Virtual start position for wheel
+				interaction.startY = 0;
 				interaction.canDragToClose = true;
 				interaction.isDragging = true;
-				interaction.dragDistance = 0; // Reset accumulated distance
+				interaction.dragDistance = 0;
 			}
 
-			// Only accumulate if we're still at the top and in wheel mode
-			if (interaction.inputType === 'wheel' && isAtScrollTop) {
+			// Accumulate drag distance
+			if (interaction.inputType === 'wheel') {
 				const wheelDistance = Math.abs(e.deltaY) * PHYSICS.wheelSensitivity;
-
-				// For wheel events, we accumulate raw distance and apply resistance directly
 				const rawDistance = interaction.dragDistance + wheelDistance;
-				const resistedDistance = rawDistance * PHYSICS.resistanceFactor;
-				interaction.dragDistance = Math.min(resistedDistance, maxSheetHeight * 0.8);
+				interaction.dragDistance = Math.min(rawDistance * PHYSICS.resistanceFactor, maxSheetHeight * 0.8);
 
 				e.preventDefault();
 
-				// Check if should close using unified physics
 				if (shouldCloseSheet(interaction.dragDistance)) {
 					closeSheet();
 					return;
 				}
 
-				// Schedule reset after wheel stops
 				scheduleReset();
 			}
-		} else {
-			// Reset when conditions change (not at top or not scrolling up)
-			if (interaction.inputType === 'wheel') {
-				resetInteractionState();
-			}
+		} else if (interaction.inputType === 'wheel') {
+			resetInteractionState();
 		}
 	}
 
 	function scheduleReset() {
-		if (resetTimeout) {
-			clearTimeout(resetTimeout);
-		}
+		if (resetTimeout) clearTimeout(resetTimeout);
 		resetTimeout = setTimeout(() => {
-			if (interaction.inputType === 'wheel') {
-				resetInteractionState();
-			}
+			if (interaction.inputType === 'wheel') resetInteractionState();
 		}, PHYSICS.resetDelay);
 	}
 
@@ -365,10 +342,10 @@
 	});
 
 	// Handle keyboard navigation
-	onMount(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			if (!open) return;
+	$effect(() => {
+		if (!open) return;
 
+		const handleKeyDown = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') {
 				e.preventDefault();
 				provideFeedback('close');
@@ -377,10 +354,7 @@
 		};
 
 		window.addEventListener('keydown', handleKeyDown);
-
-		return () => {
-			window.removeEventListener('keydown', handleKeyDown);
-		};
+		return () => window.removeEventListener('keydown', handleKeyDown);
 	});
 
 	// Proper body scroll locking that prevents background scroll but allows sheet scroll
@@ -388,10 +362,8 @@
 		if (open && menuElement) {
 			// Start momentum blocking - will auto-extend while momentum events fire
 			if (momentumBlockTimeout) clearTimeout(momentumBlockTimeout);
-			momentumBlockTimeout = setTimeout(() => {
-				momentumBlockTimeout = null;
-			}, 150);
-			
+			momentumBlockTimeout = setTimeout(() => (momentumBlockTimeout = null), 150);
+
 			// Store original styles
 			const scrollY = window.scrollY;
 			const bodyStyle = document.body.style;
@@ -444,7 +416,7 @@
 					clearTimeout(momentumBlockTimeout);
 					momentumBlockTimeout = null;
 				}
-				
+
 				// Clean up menu styles immediately
 				if (menuElement) {
 					menuElement.style.overflowY = '';
@@ -539,7 +511,7 @@
 		tabindex={0}
 	>
 		<!-- Handle indicator -->
-		<div class="flex justify-center pb-3 pt-4" data-drag-handle>
+		<div class="flex justify-center pt-4 pb-3" data-drag-handle>
 			<div
 				class={cn(
 					'h-1.5 w-10 rounded-full transition-all duration-150',
@@ -561,7 +533,7 @@
 			<div class="space-y-8">
 				<!-- Management -->
 				<section>
-					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 						{m.sidebar_management()}
 					</h4>
 					<div class="space-y-2">
@@ -588,7 +560,7 @@
 
 				<!-- Customization -->
 				<section>
-					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 						{m.sidebar_customization()}
 					</h4>
 					<div class="space-y-2">
@@ -659,7 +631,7 @@
 					<!-- Environments -->
 					{#if navigationItems.environmentItems}
 						<section>
-							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 								{m.sidebar_environments()}
 							</h4>
 							<div class="space-y-2">
@@ -686,7 +658,7 @@
 					<!-- Administration -->
 					{#if navigationItems.settingsItems}
 						<section>
-							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
+							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
 								{m.sidebar_administration()}
 							</h4>
 							<div class="space-y-2">
