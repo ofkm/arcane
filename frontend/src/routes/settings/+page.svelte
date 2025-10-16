@@ -215,6 +215,38 @@
 					type: 'boolean',
 					description: m.navigation_tap_to_hide_description(),
 					keywords: ['tap', 'touch', 'hide', 'show', 'toggle', 'gesture', 'click', 'outside', 'dismiss', 'interact', 'control']
+				},
+				{
+					key: 'sidebarHoverExpansion',
+					label: m.navigation_sidebar_hover_expansion_label(),
+					type: 'boolean',
+					description: m.navigation_sidebar_hover_expansion_description(),
+					keywords: [
+						'sidebar',
+						'hover',
+						'expansion',
+						'expand',
+						'desktop',
+						'mouse',
+						'over',
+						'collapsed',
+						'collapsible',
+						'icon',
+						'labels',
+						'text',
+						'preview',
+						'peek',
+						'tooltip',
+						'overlay',
+						'temporary',
+						'quick',
+						'access',
+						'navigation',
+						'menu',
+						'items',
+						'submenu',
+						'nested'
+					]
 				}
 			]
 		},

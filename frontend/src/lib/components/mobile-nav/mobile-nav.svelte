@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { untrack } from 'svelte';
-	import type { NavigationItem, MobileNavigationSettings } from '$lib/config/navigation-config';
+	import type { MobileNavigationSettings } from '$lib/config/navigation-config';
 	import { getAvailableMobileNavItems } from '$lib/config/navigation-config';
 	import MobileNavItem from './mobile-nav-item.svelte';
 	import { cn } from '$lib/utils';
