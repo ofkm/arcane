@@ -306,7 +306,7 @@
 	<section>
 		<h2 class="mb-4 text-lg font-semibold tracking-tight">{m.dashboard_system_overview()}</h2>
 		<div class="space-y-3">
-			<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				<MeterMetric
 					title={m.dashboard_meter_cpu()}
 					icon={CpuIcon}
