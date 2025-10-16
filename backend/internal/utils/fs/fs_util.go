@@ -70,10 +70,33 @@ func GetTemplatesDirectory(ctx context.Context) (string, error) {
 
 func CreateUniqueDir(basePath, name string, perm os.FileMode) (path, folderName string, err error) {
 	sanitized := SanitizeProjectName(name)
+
+	// Reject empty or invalid sanitized names
+	if sanitized == "" || strings.Trim(sanitized, "_") == "" {
+		return "", "", fmt.Errorf("invalid project name: results in empty directory name")
+	}
+
 	candidate := basePath
 	folderName = sanitized
 
+	// Get absolute path of parent directory for validation
+	parentAbs, err := filepath.Abs(filepath.Dir(basePath))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to resolve parent directory: %w", err)
+	}
+
 	for counter := 1; ; counter++ {
+		// Validate candidate is within allowed parent
+		candidateAbs, absErr := filepath.Abs(candidate)
+		if absErr != nil {
+			return "", "", fmt.Errorf("failed to resolve candidate path: %w", absErr)
+		}
+
+		rel, relErr := filepath.Rel(parentAbs, candidateAbs)
+		if relErr != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+			return "", "", fmt.Errorf("project directory would be outside allowed path")
+		}
+
 		if mkErr := os.Mkdir(candidate, perm); mkErr == nil {
 			return candidate, folderName, nil
 		} else if !os.IsExist(mkErr) {
@@ -95,6 +118,27 @@ func SanitizeProjectName(name string) string {
 		}
 		return '_'
 	}, name)
+}
+
+// IsSafeSubdirectory returns true if subdir is a subdirectory of baseDir (absolute, normalized)
+func IsSafeSubdirectory(baseDir, subdir string) bool {
+	absBase, err1 := filepath.Abs(baseDir)
+	absSubdir, err2 := filepath.Abs(subdir)
+	if err1 != nil || err2 != nil {
+		return false
+	}
+
+	// Ensure both paths end consistently for comparison
+	absBase = filepath.Clean(absBase)
+	absSubdir = filepath.Clean(absSubdir)
+
+	rel, err := filepath.Rel(absBase, absSubdir)
+	if err != nil {
+		return false
+	}
+
+	// The path must not escape the base directory
+	return !strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel)
 }
 
 func SaveOrUpdateProjectFiles(projectPath, composeContent string, envContent *string) error {

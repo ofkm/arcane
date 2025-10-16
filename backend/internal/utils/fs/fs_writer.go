@@ -33,6 +33,13 @@ func detectExistingComposeFile(dir string) string {
 // It detects existing compose file names (docker-compose.yml, compose.yaml, etc.)
 // and uses the existing name if found, otherwise defaults to compose.yaml
 func WriteComposeFile(dirPath, content string) error {
+	// Security: Validate dirPath is absolute and clean to prevent path traversal
+	absPath, err := filepath.Abs(dirPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve directory path: %w", err)
+	}
+	dirPath = filepath.Clean(absPath)
+
 	if err := os.MkdirAll(dirPath, DirPerm); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
@@ -53,6 +60,13 @@ func WriteComposeFile(dirPath, content string) error {
 
 // WriteEnvFile writes a .env file to the specified directory
 func WriteEnvFile(dirPath, content string) error {
+	// Security: Validate dirPath is absolute and clean to prevent path traversal
+	absPath, err := filepath.Abs(dirPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve directory path: %w", err)
+	}
+	dirPath = filepath.Clean(absPath)
+
 	if err := os.MkdirAll(dirPath, DirPerm); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
