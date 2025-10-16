@@ -56,6 +56,7 @@
 	let maxSheetHeight = $state(0);
 	let resetTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isClosing = $state(false);
+	let momentumBlockTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Physics configuration
 	const PHYSICS = {
@@ -251,6 +252,16 @@
 		const isAtScrollTop = currentScrollTop === 0;
 		const isScrollingUp = e.deltaY < 0;
 
+		// Block momentum: if at scroll top and trying to scroll down, prevent it and extend timeout
+		if (momentumBlockTimeout && isAtScrollTop && !isScrollingUp) {
+			e.preventDefault();
+			clearTimeout(momentumBlockTimeout);
+			momentumBlockTimeout = setTimeout(() => {
+				momentumBlockTimeout = null;
+			}, 150);
+			return;
+		}
+
 		// Only handle wheel drag when exactly at scroll top AND scrolling up
 		if (isAtScrollTop && isScrollingUp) {
 			// Initialize wheel interaction if not already active
@@ -375,6 +386,12 @@
 	// Proper body scroll locking that prevents background scroll but allows sheet scroll
 	$effect(() => {
 		if (open && menuElement) {
+			// Start momentum blocking - will auto-extend while momentum events fire
+			if (momentumBlockTimeout) clearTimeout(momentumBlockTimeout);
+			momentumBlockTimeout = setTimeout(() => {
+				momentumBlockTimeout = null;
+			}, 150);
+			
 			// Store original styles
 			const scrollY = window.scrollY;
 			const bodyStyle = document.body.style;
@@ -422,6 +439,12 @@
 			});
 
 			return () => {
+				// Clear the momentum blocking timeout
+				if (momentumBlockTimeout) {
+					clearTimeout(momentumBlockTimeout);
+					momentumBlockTimeout = null;
+				}
+				
 				// Clean up menu styles immediately
 				if (menuElement) {
 					menuElement.style.overflowY = '';
