@@ -78,12 +78,6 @@
 		}
 	});
 
-	function handleScheduleUpdate(enabled: boolean, windows: UpdateScheduleWindow[], timezone: string) {
-		scheduleEnabled = enabled;
-		scheduleWindows = windows;
-		scheduleTimezone = timezone;
-	}
-
 	async function handleNext() {
 		const data = form.validate();
 		if (!data) return;
@@ -209,12 +203,7 @@
 					<Card.Description>{m.update_schedule_description()}</Card.Description>
 				</Card.Header>
 				<Card.Content class="px-6">
-					<UpdateScheduleEditor
-						bind:enabled={scheduleEnabled}
-						bind:windows={scheduleWindows}
-						bind:timezone={scheduleTimezone}
-						onUpdate={handleScheduleUpdate}
-					/>
+					<UpdateScheduleEditor bind:enabled={scheduleEnabled} bind:windows={scheduleWindows} bind:timezone={scheduleTimezone} />
 				</Card.Content>
 			</Card.Root>
 		{/if}

@@ -15,8 +15,6 @@ type UpdateProjectDto struct {
 }
 
 type UpdateProjectSettingsDto struct {
-	PollingEnabled         *bool        `json:"pollingEnabled,omitempty"`
-	PollingInterval        *int         `json:"pollingInterval,omitempty"`
 	AutoUpdate             *bool        `json:"autoUpdate,omitempty"`
 	UpdateScheduleEnabled  *bool        `json:"updateScheduleEnabled,omitempty"`
 	UpdateScheduleWindows  *models.JSON `json:"updateScheduleWindows,omitempty"`
@@ -51,8 +49,6 @@ type ProjectDetailsDto struct {
 	UpdatedAt      string  `json:"updatedAt"`
 	Services       []any   `json:"services,omitempty"`
 
-	PollingEnabled         *bool        `json:"pollingEnabled,omitempty"`
-	PollingInterval        *int         `json:"pollingInterval,omitempty"`
 	AutoUpdate             *bool        `json:"autoUpdate,omitempty"`
 	UpdateScheduleEnabled  *bool        `json:"updateScheduleEnabled,omitempty"`
 	UpdateScheduleWindows  *models.JSON `json:"updateScheduleWindows,omitempty"`
@@ -63,8 +59,6 @@ type ProjectDetailsDto struct {
 }
 
 type ResolvedProjectSettings struct {
-	PollingEnabled         bool                         `json:"pollingEnabled"`
-	PollingInterval        int                          `json:"pollingInterval"`
 	AutoUpdate             bool                         `json:"autoUpdate"`
 	UpdateScheduleEnabled  bool                         `json:"updateScheduleEnabled"`
 	UpdateScheduleWindows  *models.UpdateScheduleConfig `json:"updateScheduleWindows,omitempty"`

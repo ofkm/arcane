@@ -633,8 +633,6 @@ func (s *SettingsService) ResolveProjectSettings(ctx context.Context, project *m
 	}
 
 	resolved := &dto.ResolvedProjectSettings{
-		PollingEnabled:         globalSettings.PollingEnabled.IsTrue(),
-		PollingInterval:        globalSettings.PollingInterval.AsInt(),
 		AutoUpdate:             globalSettings.AutoUpdate.IsTrue(),
 		UpdateScheduleEnabled:  globalSettings.UpdateScheduleEnabled.IsTrue(),
 		UpdateScheduleTimezone: globalSettings.UpdateScheduleTimezone.Value,
@@ -655,12 +653,6 @@ func (s *SettingsService) ResolveProjectSettings(ctx context.Context, project *m
 		return resolved, nil
 	}
 
-	if project.PollingEnabled != nil {
-		resolved.PollingEnabled = *project.PollingEnabled
-	}
-	if project.PollingInterval != nil {
-		resolved.PollingInterval = *project.PollingInterval
-	}
 	if project.AutoUpdate != nil {
 		resolved.AutoUpdate = *project.AutoUpdate
 	}

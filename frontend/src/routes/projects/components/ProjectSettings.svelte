@@ -2,7 +2,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import { Switch } from '$lib/components/ui/switch';
-	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import UpdateScheduleEditor from '$lib/components/schedule/update-schedule-editor.svelte';
 	import SettingsSection from '$lib/components/settings/settings-section.svelte';
@@ -11,7 +10,6 @@
 	import { projectService } from '$lib/services/project-service';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import ClockIcon from '@lucide/svelte/icons/clock';
-	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import SaveIcon from '@lucide/svelte/icons/save';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import settingsStore from '$lib/stores/config-store';
@@ -29,17 +27,12 @@
 	const globalSettings = $derived($settingsStore);
 
 	// Check if settings are overridden (saved in DB as project-specific)
-	const isPollingOverridden = $derived(project.pollingEnabled !== null && project.pollingEnabled !== undefined);
 	const isAutoUpdateOverridden = $derived(project.autoUpdate !== null && project.autoUpdate !== undefined);
 	const isScheduleOverridden = $derived(project.updateScheduleEnabled !== null && project.updateScheduleEnabled !== undefined);
 
 	let isLoading = $state(false);
 
 	// Local editable state
-	let localPollingOverride = $state<boolean | null>(null);
-	let localPollingEnabled = $state(false);
-	let localPollingInterval = $state(60);
-
 	let localAutoUpdateOverride = $state<boolean | null>(null);
 	let localAutoUpdate = $state(false);
 
@@ -50,11 +43,6 @@
 
 	// Initialize local state from project/global on mount
 	$effect(() => {
-		// Polling
-		localPollingOverride = isPollingOverridden ? true : null;
-		localPollingEnabled = project.pollingEnabled ?? globalSettings?.pollingEnabled ?? true;
-		localPollingInterval = project.pollingInterval ?? globalSettings?.pollingInterval ?? 60;
-
 		// Auto-update
 		localAutoUpdateOverride = isAutoUpdateOverridden ? true : null;
 		localAutoUpdate = project.autoUpdate ?? globalSettings?.autoUpdate ?? false;
@@ -67,14 +55,6 @@
 	});
 
 	// Check for unsaved changes
-	const hasPollingChanges = $derived(
-		(localPollingOverride !== null && !isPollingOverridden) ||
-			(localPollingOverride === null && isPollingOverridden) ||
-			(localPollingOverride !== null &&
-				(localPollingEnabled !== (project.pollingEnabled ?? globalSettings?.pollingEnabled ?? true) ||
-					localPollingInterval !== (project.pollingInterval ?? globalSettings?.pollingInterval ?? 60)))
-	);
-
 	const hasAutoUpdateChanges = $derived(
 		(localAutoUpdateOverride !== null && !isAutoUpdateOverridden) ||
 			(localAutoUpdateOverride === null && isAutoUpdateOverridden) ||
@@ -91,18 +71,9 @@
 						JSON.stringify(project.updateScheduleWindows?.windows ?? globalSettings?.updateScheduleWindows?.windows ?? [])))
 	);
 
-	const hasAnyChanges = $derived(hasPollingChanges || hasAutoUpdateChanges || hasScheduleChanges);
+	const hasAnyChanges = $derived(hasAutoUpdateChanges || hasScheduleChanges);
 
 	// Derived descriptions for each section
-	const pollingDescription = $derived(() => {
-		if (localPollingOverride !== null) {
-			return m.project_settings_overridden();
-		}
-		const enabled = globalSettings?.pollingEnabled ? m.common_enabled() : m.common_disabled();
-		const interval = globalSettings?.pollingEnabled ? ` • ${globalSettings?.pollingInterval} ${m.minutes()}` : '';
-		return `Global: ${enabled}${interval}`;
-	});
-
 	const autoUpdateDescription = $derived(() => {
 		if (localAutoUpdateOverride !== null) {
 			return m.project_settings_overridden();
@@ -119,12 +90,8 @@
 		return `Global: ${mode}`;
 	});
 
-	function enableOverride(setting: 'polling' | 'autoUpdate' | 'schedule') {
-		if (setting === 'polling') {
-			localPollingOverride = true;
-			localPollingEnabled = globalSettings?.pollingEnabled ?? true;
-			localPollingInterval = globalSettings?.pollingInterval ?? 60;
-		} else if (setting === 'autoUpdate') {
+	function enableOverride(setting: 'autoUpdate' | 'schedule') {
+		if (setting === 'autoUpdate') {
 			localAutoUpdateOverride = true;
 			localAutoUpdate = globalSettings?.autoUpdate ?? false;
 		} else if (setting === 'schedule') {
@@ -140,14 +107,6 @@
 		try {
 			// First, check if we need to clear any overrides (X button was clicked)
 			const clearPromises: Promise<any>[] = [];
-
-			// Clear polling override if X was clicked
-			if (localPollingOverride === null && isPollingOverridden) {
-				clearPromises.push(
-					projectService.clearProjectSettingOverride(project.id, 'pollingEnabled'),
-					projectService.clearProjectSettingOverride(project.id, 'pollingInterval')
-				);
-			}
 
 			// Clear auto-update override if X was clicked
 			if (localAutoUpdateOverride === null && isAutoUpdateOverridden) {
@@ -170,12 +129,6 @@
 
 			// Now save any active overrides (even if they match global)
 			const updates: ProjectSettingsUpdate = {};
-
-			// Save polling if overridden
-			if (localPollingOverride !== null) {
-				updates.pollingEnabled = localPollingEnabled;
-				updates.pollingInterval = localPollingInterval;
-			}
 
 			// Save auto-update if overridden
 			if (localAutoUpdateOverride !== null) {
@@ -209,10 +162,6 @@
 
 	function resetChanges() {
 		// Reset to saved values
-		localPollingOverride = isPollingOverridden ? true : null;
-		localPollingEnabled = project.pollingEnabled ?? globalSettings?.pollingEnabled ?? true;
-		localPollingInterval = project.pollingInterval ?? globalSettings?.pollingInterval ?? 60;
-
 		localAutoUpdateOverride = isAutoUpdateOverridden ? true : null;
 		localAutoUpdate = project.autoUpdate ?? globalSettings?.autoUpdate ?? false;
 
@@ -222,13 +171,9 @@
 		localScheduleTimezone = project.updateScheduleTimezone ?? globalSettings?.updateScheduleTimezone ?? 'UTC';
 	}
 
-	function clearOverride(setting: 'polling' | 'autoUpdate' | 'schedule') {
+	function clearOverride(setting: 'autoUpdate' | 'schedule') {
 		// Just clear local override - actual DB clear happens on Save
-		if (setting === 'polling') {
-			localPollingOverride = null;
-			localPollingEnabled = globalSettings?.pollingEnabled ?? true;
-			localPollingInterval = globalSettings?.pollingInterval ?? 60;
-		} else if (setting === 'autoUpdate') {
+		if (setting === 'autoUpdate') {
 			localAutoUpdateOverride = null;
 			localAutoUpdate = globalSettings?.autoUpdate ?? false;
 		} else if (setting === 'schedule') {
@@ -238,7 +183,6 @@
 			localScheduleTimezone = globalSettings?.updateScheduleTimezone ?? 'UTC';
 		}
 	}
-
 </script>
 
 <div class="space-y-6">
@@ -263,36 +207,8 @@
 			</div>
 		</Card.Header>
 		<Card.Content class="space-y-6 px-3 py-4 sm:px-6">
-			<!-- Polling Settings Section -->
-			<SettingsSection
-				title={m.project_settings_polling_section()}
-				description={pollingDescription()}
-				icon={ActivityIcon}
-				isOverridden={localPollingOverride !== null}
-				{isLoading}
-				onClearOverride={() => clearOverride('polling')}
-				onEnableOverride={() => enableOverride('polling')}
-			>
-				{#snippet children()}
-					<div class="space-y-3">
-						<div class="flex items-center justify-between">
-							<Label for="polling-enabled">{m.docker_enable_polling_label()}</Label>
-							<Switch id="polling-enabled" bind:checked={localPollingEnabled} disabled={isLoading} />
-						</div>
-
-						{#if localPollingEnabled}
-							<div class="border-primary/20 space-y-2 border-l-2 pl-3">
-								<Label for="polling-interval">{m.docker_polling_interval_label()}</Label>
-								<Input id="polling-interval" type="number" bind:value={localPollingInterval} disabled={isLoading} class="h-9" />
-								<p class="text-muted-foreground text-xs">{m.docker_polling_interval_description()}</p>
-							</div>
-						{/if}
-					</div>
-				{/snippet}
-			</SettingsSection>
-
 			<!-- Auto Update Settings Section (only shown when polling is enabled) -->
-			{#if localPollingOverride !== null ? localPollingEnabled : globalSettings?.pollingEnabled}
+			{#if globalSettings?.pollingEnabled}
 				<SettingsSection
 					title={m.project_settings_auto_update_section()}
 					description={autoUpdateDescription()}

@@ -929,15 +929,6 @@ func (s *ProjectService) UpdateProjectSettings(ctx context.Context, projectID st
 
 	updateMap := make(map[string]interface{})
 
-	if updates.PollingEnabled != nil {
-		updateMap["polling_enabled"] = updates.PollingEnabled
-	}
-	if updates.PollingInterval != nil {
-		if *updates.PollingInterval < 5 || *updates.PollingInterval > 10080 {
-			return fmt.Errorf("polling interval must be between 5 and 10080 minutes")
-		}
-		updateMap["polling_interval"] = updates.PollingInterval
-	}
 	if updates.AutoUpdate != nil {
 		updateMap["auto_update"] = updates.AutoUpdate
 	}
@@ -982,8 +973,6 @@ func (s *ProjectService) ClearProjectSettingOverride(ctx context.Context, projec
 	}
 
 	columnMap := map[string]string{
-		"pollingEnabled":         "polling_enabled",
-		"pollingInterval":        "polling_interval",
 		"autoUpdate":             "auto_update",
 		"updateScheduleEnabled":  "update_schedule_enabled",
 		"updateScheduleWindows":  "update_schedule_windows",
@@ -1013,8 +1002,6 @@ func (s *ProjectService) ClearAllProjectSettingOverrides(ctx context.Context, pr
 	}
 
 	updateMap := map[string]interface{}{
-		"polling_enabled":          nil,
-		"polling_interval":         nil,
 		"auto_update":              nil,
 		"update_schedule_enabled":  nil,
 		"update_schedule_windows":  nil,

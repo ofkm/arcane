@@ -36,8 +36,6 @@ export interface Project {
 	services?: ProjectService[];
 	composeContent?: string;
 	envContent?: string;
-	pollingEnabled?: boolean | null;
-	pollingInterval?: number | null;
 	autoUpdate?: boolean | null;
 	updateScheduleEnabled?: boolean | null;
 	updateScheduleWindows?: UpdateScheduleConfig | null;
@@ -64,8 +62,6 @@ export interface UpdateScheduleConfig {
 }
 
 export interface ResolvedProjectSettings {
-	pollingEnabled: boolean;
-	pollingInterval: number;
 	autoUpdate: boolean;
 	updateScheduleEnabled: boolean;
 	updateScheduleWindows?: UpdateScheduleConfig;
@@ -73,8 +69,6 @@ export interface ResolvedProjectSettings {
 }
 
 export interface ProjectSettingsUpdate {
-	pollingEnabled?: boolean;
-	pollingInterval?: number;
 	autoUpdate?: boolean;
 	updateScheduleEnabled?: boolean;
 	updateScheduleWindows?: UpdateScheduleConfig;
