@@ -1,0 +1,125 @@
+package fs
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
+const (
+	FilePerm = 0644
+	DirPerm  = 0755
+)
+
+var composeFileCandidates = []string{
+	"compose.yaml",
+	"compose.yml",
+	"docker-compose.yaml",
+	"docker-compose.yml",
+}
+
+// detectExistingComposeFile finds an existing compose file in the directory
+func detectExistingComposeFile(dir string) string {
+	for _, filename := range composeFileCandidates {
+		fullPath := filepath.Join(dir, filename)
+		if info, err := os.Stat(fullPath); err == nil && !info.IsDir() {
+			return fullPath
+		}
+	}
+	return ""
+}
+
+// WriteComposeFile writes a compose file to the specified directory.
+// It detects existing compose file names (docker-compose.yml, compose.yaml, etc.)
+// and uses the existing name if found, otherwise defaults to compose.yaml
+func WriteComposeFile(dirPath, content string) error {
+	if err := os.MkdirAll(dirPath, DirPerm); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	var composePath string
+	if existingFile := detectExistingComposeFile(dirPath); existingFile != "" {
+		composePath = existingFile
+	} else {
+		composePath = filepath.Join(dirPath, "compose.yaml")
+	}
+
+	if err := os.WriteFile(composePath, []byte(content), FilePerm); err != nil {
+		return fmt.Errorf("failed to write compose file: %w", err)
+	}
+
+	return nil
+}
+
+// WriteEnvFile writes a .env file to the specified directory
+func WriteEnvFile(dirPath, content string) error {
+	if err := os.MkdirAll(dirPath, DirPerm); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	envPath := filepath.Join(dirPath, ".env")
+	if err := os.WriteFile(envPath, []byte(content), FilePerm); err != nil {
+		return fmt.Errorf("failed to write env file: %w", err)
+	}
+
+	return nil
+}
+
+// WriteProjectFiles writes both compose and optional env files to a project directory
+func WriteProjectFiles(dirPath, composeContent string, envContent *string) error {
+	if err := WriteComposeFile(dirPath, composeContent); err != nil {
+		return err
+	}
+
+	if envContent != nil && *envContent != "" {
+		if err := WriteEnvFile(dirPath, *envContent); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// WriteTemplateFile writes a template file (like .compose.template or .env.template)
+func WriteTemplateFile(filePath, content string) error {
+	dir := filepath.Dir(filePath)
+	if err := os.MkdirAll(dir, DirPerm); err != nil {
+		return fmt.Errorf("failed to create template directory: %w", err)
+	}
+
+	if err := os.WriteFile(filePath, []byte(content), FilePerm); err != nil {
+		return fmt.Errorf("failed to write template file: %w", err)
+	}
+
+	return nil
+}
+
+// WriteTemplateComposeAndEnv writes both compose and optional env template files
+func WriteTemplateComposeAndEnv(composePath, envPath, composeContent, envContent string) (*string, error) {
+	if err := WriteTemplateFile(composePath, composeContent); err != nil {
+		return nil, err
+	}
+
+	if envContent != "" {
+		if err := WriteTemplateFile(envPath, envContent); err != nil {
+			return nil, err
+		}
+		return &envContent, nil
+	}
+
+	return nil, nil
+}
+
+// WriteFileWithPerm is a generic file writer with custom permissions
+func WriteFileWithPerm(filePath, content string, perm os.FileMode) error {
+	dir := filepath.Dir(filePath)
+	if err := os.MkdirAll(dir, DirPerm); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	if err := os.WriteFile(filePath, []byte(content), perm); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+
+	return nil
+}

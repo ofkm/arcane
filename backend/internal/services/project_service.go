@@ -737,8 +737,8 @@ func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, na
 				return nil, fmt.Errorf("failed to remove env file: %w", err)
 			}
 		} else {
-			if err := os.WriteFile(envPath, []byte(*envContent), 0644); err != nil {
-				return nil, fmt.Errorf("failed to update env file: %w", err)
+			if err := fs.WriteEnvFile(proj.Path, *envContent); err != nil {
+				return nil, err
 			}
 		}
 	}

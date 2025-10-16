@@ -98,27 +98,5 @@ func SanitizeProjectName(name string) string {
 }
 
 func SaveOrUpdateProjectFiles(projectPath, composeContent string, envContent *string) error {
-	if err := os.MkdirAll(projectPath, 0755); err != nil {
-		return fmt.Errorf("failed to create project directory: %w", err)
-	}
-
-	var composePath string
-	if existingComposeFile, derr := projects.DetectComposeFile(projectPath); derr == nil && existingComposeFile != "" {
-		composePath = existingComposeFile
-	} else {
-		composePath = filepath.Join(projectPath, "compose.yaml")
-	}
-
-	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil {
-		return fmt.Errorf("failed to save compose file: %w", err)
-	}
-
-	if envContent != nil && *envContent != "" {
-		envPath := filepath.Join(projectPath, ".env")
-		if err := os.WriteFile(envPath, []byte(*envContent), 0644); err != nil {
-			return fmt.Errorf("failed to save env file: %w", err)
-		}
-	}
-
-	return nil
+	return WriteProjectFiles(projectPath, composeContent, envContent)
 }
