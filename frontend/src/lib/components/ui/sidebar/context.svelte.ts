@@ -3,6 +3,9 @@ import { getContext, setContext } from 'svelte';
 import { PersistedState } from 'runed';
 import { SIDEBAR_KEYBOARD_SHORTCUT } from './constants.js';
 
+export const sidebarHoverExpansionState = new PersistedState('sidebar-hover-expansion', false);
+export const sidebarPinnedState = new PersistedState('sidebar-pinned', true);
+
 type Getter<T> = () => T;
 
 export type SidebarStateProps = {
@@ -26,8 +29,8 @@ class SidebarState {
 	open = $derived.by(() => this.props.open());
 	setOpen: SidebarStateProps['setOpen'];
 	#isTablet: IsTablet;
-	#isPinnedState = new PersistedState('sidebar-pinned', true);
-	#hoverExpansionEnabled = new PersistedState('sidebar-hover-expansion', false);
+	#isPinnedState = sidebarPinnedState;
+	#hoverExpansionEnabled = sidebarHoverExpansionState;
 	#isHovered = $state(false);
 	#hoverTimeout: ReturnType<typeof setTimeout> | null = null;
 	state = $derived.by(() => (this.open ? 'expanded' : 'collapsed'));

@@ -1,8 +1,6 @@
 <script lang="ts">
-	import * as Sheet from '$lib/components/ui/sheet/index.js';
 	import { cn, type WithElementRef } from '$lib/utils.js';
 	import type { HTMLAttributes } from 'svelte/elements';
-	import { SIDEBAR_WIDTH_MOBILE } from './constants.js';
 	import { useSidebar } from './context.svelte.js';
 
 	let {
@@ -24,7 +22,7 @@
 
 {#if collapsible === 'none'}
 	<div
-		class={cn('bg-sidebar text-sidebar-foreground w-(--sidebar-width) flex h-full flex-col', className)}
+		class={cn('bg-sidebar text-sidebar-foreground flex h-full w-(--sidebar-width) flex-col', className)}
 		bind:this={ref}
 		{...restProps}
 	>
@@ -45,7 +43,7 @@
 		<div
 			data-slot="sidebar-gap"
 			class={cn(
-				'w-(--sidebar-width) relative bg-transparent transition-[width] duration-200 ease-linear',
+				'relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear',
 				'group-data-[collapsible=offcanvas]:w-0',
 				'group-data-[side=right]:rotate-180',
 				variant === 'floating' || variant === 'inset'
@@ -56,7 +54,7 @@
 		<div
 			data-slot="sidebar-container"
 			class={cn(
-				'w-(--sidebar-width) fixed inset-y-0 z-10 hidden h-svh overflow-x-hidden transition-[left,right,width] duration-200 ease-linear md:flex',
+				'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) overflow-x-hidden transition-[left,right,width] duration-200 ease-linear md:flex',
 				side === 'left'
 					? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
 					: 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',

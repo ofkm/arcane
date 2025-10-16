@@ -18,7 +18,7 @@
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import { Switch } from '$lib/components/ui/switch/index.js';
-	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
+	import { sidebarHoverExpansionState } from '$lib/components/ui/sidebar';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings!);
@@ -36,10 +36,7 @@
 
 	// Track local override state using the shared store
 	let persistedState = $state(navigationSettingsOverridesStore.current);
-
-	const sidebar = useSidebar();
-	let sidebarHoverExpansion = $state(sidebar.hoverExpansionEnabled);
-	let initialSidebarHoverExpansion = $state(sidebar.hoverExpansionEnabled);
+	let sidebarHoverExpansion = $state(sidebarHoverExpansionState.current);
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
@@ -49,7 +46,7 @@
 			$formInputs.mobileNavigationShowLabels.value !== currentSettings.mobileNavigationShowLabels ||
 			$formInputs.mobileNavigationScrollToHide.value !== currentSettings.mobileNavigationScrollToHide ||
 			$formInputs.mobileNavigationTapToHide.value !== currentSettings.mobileNavigationTapToHide ||
-			sidebarHoverExpansion !== initialSidebarHoverExpansion
+			sidebarHoverExpansion !== sidebarHoverExpansionState.current
 	);
 
 	$effect(() => {
@@ -116,9 +113,9 @@
 
 		await updateSettingsConfig(formData)
 			.then(() => {
-				sidebar.setHoverExpansion(sidebarHoverExpansion);				
+				// Update the shared persisted hover expansion state directly
+				sidebarHoverExpansionState.current = sidebarHoverExpansion;
 				toast.success(m.navigation_settings_saved());
-				initialSidebarHoverExpansion = sidebarHoverExpansion;
 
 				// Reset navigation bar visibility if behavior settings changed
 				if (behaviorChanged) {
@@ -137,8 +134,7 @@
 		$formInputs.mobileNavigationShowLabels.value = currentSettings.mobileNavigationShowLabels;
 		$formInputs.mobileNavigationScrollToHide.value = currentSettings.mobileNavigationScrollToHide;
 		$formInputs.mobileNavigationTapToHide.value = currentSettings.mobileNavigationTapToHide;
-		sidebarHoverExpansion = initialSidebarHoverExpansion;
-		sidebar.setHoverExpansion(initialSidebarHoverExpansion);
+		sidebarHoverExpansion = sidebarHoverExpansionState.current;
 	}
 
 	onMount(() => {
@@ -174,7 +170,7 @@
 						</div>
 						<div class="flex flex-1 flex-col gap-3">
 							<div>
-								<h4 class="mb-1 text-sm font-medium leading-tight">{m.navigation_sidebar_hover_expansion_label()}</h4>
+								<h4 class="mb-1 text-sm leading-tight font-medium">{m.navigation_sidebar_hover_expansion_label()}</h4>
 								<p class="text-muted-foreground text-xs leading-relaxed">
 									{m.navigation_sidebar_hover_expansion_description()}
 								</p>

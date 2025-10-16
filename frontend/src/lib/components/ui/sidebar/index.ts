@@ -1,4 +1,4 @@
-import { useSidebar } from './context.svelte.js';
+import { sidebarHoverExpansionState, sidebarPinnedState, useSidebar } from './context.svelte.js';
 import Content from './sidebar-content.svelte';
 import Footer from './sidebar-footer.svelte';
 import GroupAction from './sidebar-group-action.svelte';
@@ -71,5 +71,8 @@ export {
 	Separator as SidebarSeparator,
 	Trigger as SidebarTrigger,
 	Trigger,
-	useSidebar
+	useSidebar,
+	//
+	sidebarHoverExpansionState,
+	sidebarPinnedState
 };
