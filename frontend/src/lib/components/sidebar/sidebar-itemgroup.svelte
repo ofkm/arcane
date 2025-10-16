@@ -4,6 +4,7 @@
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import type { Icon as IconType } from '@lucide/svelte';
 	import { page } from '$app/state';
+	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
 
 	let {
 		items,
@@ -21,6 +22,8 @@
 			}[];
 		}[];
 	} = $props();
+
+	const sidebar = useSidebar();
 
 	function isActiveItem(url: string): boolean {
 		return page.url.pathname === url || (page.url.pathname.startsWith(url) && url !== '/');
@@ -53,7 +56,7 @@
 	<Sidebar.Menu>
 		{#each enhancedItems as item (item.title)}
 			{#if (item.items?.length ?? 0) > 0}
-				<Collapsible.Root open={item.isActive} class="group/collapsible">
+				<Collapsible.Root open={item.isActive || (sidebar.state === 'collapsed' && sidebar.isHovered)} class="group/collapsible">
 					{#snippet child({ props })}
 						<Sidebar.MenuItem {...props}>
 							<Collapsible.Trigger>
@@ -75,7 +78,9 @@
 								{/snippet}
 							</Collapsible.Trigger>
 							<Collapsible.Content>
-								<Sidebar.MenuSub>
+								<Sidebar.MenuSub
+									class={sidebar.state === 'collapsed' && !sidebar.isHovered ? 'hidden' : undefined}
+								>
 									{#each item.items ?? [] as subItem (subItem.title)}
 										<Sidebar.MenuSubItem>
 											<Sidebar.MenuSubButton isActive={subItem.isActive}>

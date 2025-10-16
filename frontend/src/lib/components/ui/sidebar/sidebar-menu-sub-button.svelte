@@ -23,7 +23,7 @@
 			'data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground',
 			size === 'sm' && 'text-xs',
 			size === 'md' && 'text-sm',
-			'group-data-[collapsible=icon]:hidden',
+			'group-data-[collapsible=icon]:group-data-[hovered=true]:flex group-data-[collapsible=icon]:hidden',
 			className
 		),
 		'data-slot': 'sidebar-menu-sub-button',
