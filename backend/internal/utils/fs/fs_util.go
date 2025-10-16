@@ -102,9 +102,14 @@ func CreateUniqueDir(projectsRoot, basePath, name string, perm os.FileMode) (pat
 		}
 
 		if mkErr := os.Mkdir(candidate, perm); mkErr == nil {
-			// Double-check after creation
+			// Double-check after creation - paranoid validation
 			if !IsSafeSubdirectory(projectsRootAbs, candidateAbs) {
-				os.Remove(candidate) // Clean up
+				// Security violation detected - remove the unsafe directory
+				// We only reach here if somehow a directory was created outside the root
+				// despite pre-checks. Clean up by removing ONLY if it's actually within root.
+				if strings.HasPrefix(candidateAbs, projectsRootAbs+string(filepath.Separator)) {
+					os.Remove(candidateAbs)
+				}
 				return "", "", fmt.Errorf("created directory is outside allowed projects root")
 			}
 			return candidate, folderName, nil
@@ -150,6 +155,6 @@ func IsSafeSubdirectory(baseDir, subdir string) bool {
 	return !strings.HasPrefix(rel, "..") && !filepath.IsAbs(rel)
 }
 
-func SaveOrUpdateProjectFiles(projectPath, composeContent string, envContent *string) error {
-	return WriteProjectFiles(projectPath, composeContent, envContent)
+func SaveOrUpdateProjectFiles(projectsRoot, projectPath, composeContent string, envContent *string) error {
+	return WriteProjectFiles(projectsRoot, projectPath, composeContent, envContent)
 }

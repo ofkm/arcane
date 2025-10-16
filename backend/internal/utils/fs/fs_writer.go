@@ -32,13 +32,25 @@ func detectExistingComposeFile(dir string) string {
 // WriteComposeFile writes a compose file to the specified directory.
 // It detects existing compose file names (docker-compose.yml, compose.yaml, etc.)
 // and uses the existing name if found, otherwise defaults to compose.yaml
-func WriteComposeFile(dirPath, content string) error {
+// projectsRoot is the allowed root directory to prevent path traversal attacks
+func WriteComposeFile(projectsRoot, dirPath, content string) error {
 	// Security: Validate dirPath is absolute and clean to prevent path traversal
 	absPath, err := filepath.Abs(dirPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve directory path: %w", err)
 	}
 	dirPath = filepath.Clean(absPath)
+
+	// Security: Validate dirPath is within projectsRoot
+	rootAbs, err := filepath.Abs(projectsRoot)
+	if err != nil {
+		return fmt.Errorf("failed to resolve projects root: %w", err)
+	}
+	rootAbs = filepath.Clean(rootAbs)
+
+	if !IsSafeSubdirectory(rootAbs, dirPath) {
+		return fmt.Errorf("refusing to write compose file: path outside projects root")
+	}
 
 	if err := os.MkdirAll(dirPath, DirPerm); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
@@ -59,13 +71,25 @@ func WriteComposeFile(dirPath, content string) error {
 }
 
 // WriteEnvFile writes a .env file to the specified directory
-func WriteEnvFile(dirPath, content string) error {
+// projectsRoot is the allowed root directory to prevent path traversal attacks
+func WriteEnvFile(projectsRoot, dirPath, content string) error {
 	// Security: Validate dirPath is absolute and clean to prevent path traversal
 	absPath, err := filepath.Abs(dirPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve directory path: %w", err)
 	}
 	dirPath = filepath.Clean(absPath)
+
+	// Security: Validate dirPath is within projectsRoot
+	rootAbs, err := filepath.Abs(projectsRoot)
+	if err != nil {
+		return fmt.Errorf("failed to resolve projects root: %w", err)
+	}
+	rootAbs = filepath.Clean(rootAbs)
+
+	if !IsSafeSubdirectory(rootAbs, dirPath) {
+		return fmt.Errorf("refusing to write env file: path outside projects root")
+	}
 
 	if err := os.MkdirAll(dirPath, DirPerm); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
@@ -80,13 +104,14 @@ func WriteEnvFile(dirPath, content string) error {
 }
 
 // WriteProjectFiles writes both compose and optional env files to a project directory
-func WriteProjectFiles(dirPath, composeContent string, envContent *string) error {
-	if err := WriteComposeFile(dirPath, composeContent); err != nil {
+// projectsRoot is the allowed root directory to prevent path traversal attacks
+func WriteProjectFiles(projectsRoot, dirPath, composeContent string, envContent *string) error {
+	if err := WriteComposeFile(projectsRoot, dirPath, composeContent); err != nil {
 		return err
 	}
 
 	if envContent != nil && *envContent != "" {
-		if err := WriteEnvFile(dirPath, *envContent); err != nil {
+		if err := WriteEnvFile(projectsRoot, dirPath, *envContent); err != nil {
 			return err
 		}
 	}
@@ -106,22 +131,6 @@ func WriteTemplateFile(filePath, content string) error {
 	}
 
 	return nil
-}
-
-// WriteTemplateComposeAndEnv writes both compose and optional env template files
-func WriteTemplateComposeAndEnv(composePath, envPath, composeContent, envContent string) (*string, error) {
-	if err := WriteTemplateFile(composePath, composeContent); err != nil {
-		return nil, err
-	}
-
-	if envContent != "" {
-		if err := WriteTemplateFile(envPath, envContent); err != nil {
-			return nil, err
-		}
-		return &envContent, nil
-	}
-
-	return nil, nil
 }
 
 // WriteFileWithPerm is a generic file writer with custom permissions
