@@ -5,9 +5,9 @@
 	import MobileNavItem from './mobile-nav-item.svelte';
 	import MobileNavMenuButton from './mobile-nav-menu-button.svelte';
 	import { cn } from '$lib/utils';
-	import { SwipeGestureDetector, type SwipeDirection } from '$lib/hooks/use-swipe-gesture.svelte';
 	import MobileNavSheet from './mobile-nav-sheet.svelte';
 	import { m } from '$lib/paraglide/messages';
+	import { MobileNavGestures } from './gestures.svelte';
 	import './styles.css';
 
 	let {
@@ -40,198 +40,49 @@
 
 	let visible = $state(true);
 	let menuOpen = $state(false);
-	let lastScrollY = $state(0);
 	let navElement: HTMLElement;
-	let scrollTimeout: ReturnType<typeof setTimeout> | null = null;
 
-	// Touch gesture detection variables
-	let touchStartY: number | null = null;
-	let isInteractiveTouch = false;
-	const touchMoveThreshold = 6;
-
-	// Touch-based detection for immediate hide/show
-	$effect(() => {
-		if (typeof window === 'undefined') return;
-		if (!scrollToHideEnabled) return;
-
-		const handleTouchStart = (e: TouchEvent) => {
-			if (menuOpen) return;
-			const t = e.touches?.[0];
-			if (!t) return;
-			const target = e.target as HTMLElement | null;
-
-			if (target && target.closest && target.closest('button, a, input, select, textarea, [role="button"], [contenteditable]')) {
-				isInteractiveTouch = true;
-				touchStartY = null;
-				return;
-			}
-			isInteractiveTouch = false;
-			touchStartY = t.clientY;
-		};
-
-		const handleTouchMove = (e: TouchEvent) => {
-			if (menuOpen || isInteractiveTouch || touchStartY === null) return;
-			const t = e.touches?.[0];
-			if (!t) return;
-			const deltaY = t.clientY - touchStartY;
-			if (Math.abs(deltaY) < touchMoveThreshold) return;
-
-			if (deltaY < 0) {
-				visible = false;
-			} else {
-				visible = true;
-			}
-
-			touchStartY = t.clientY;
-		};
-
-		const handleTouchEnd = () => {
-			touchStartY = null;
-			isInteractiveTouch = false;
-		};
-
-		const options = { passive: true, capture: true };
-		window.addEventListener('touchstart', handleTouchStart, options);
-		window.addEventListener('touchmove', handleTouchMove, options);
-		window.addEventListener('touchend', handleTouchEnd, options);
-
-		return () => {
-			window.removeEventListener('touchstart', handleTouchStart, options);
-			window.removeEventListener('touchmove', handleTouchMove, options);
-			window.removeEventListener('touchend', handleTouchEnd, options);
-		};
-	});
-
-	// Swipe gesture detector for opening menu (touch devices swipe UP on nav bar)
-	const swipeDetector = new SwipeGestureDetector(
-		(direction: SwipeDirection) => {
-			if (direction === 'up') {
-				menuOpen = true;
-			}
+	const gestures = new MobileNavGestures(
+		{
+			onMenuOpen: () => (menuOpen = true),
+			onVisibilityChange: (isVisible) => (visible = isVisible)
 		},
 		{
-			threshold: 20,
-			velocity: 0.1,
-			timeLimit: 1000
+			scrollToHideEnabled: false,
+			menuOpen: false
 		}
 	);
 
-	// Trackpad flick detection - ONLY super fast velocity flicks trigger the menu
-	let lastWheelTime = $state(0);
-	let flickDetectTimeout: ReturnType<typeof setTimeout> | null = null;
-
-	// Improved scroll-to-hide using native scroll events with passive listeners
+	// Update gesture options when reactive values change
 	$effect(() => {
-		if (typeof window === 'undefined') return;
-		if (!scrollToHideEnabled || menuOpen) {
-			visible = true;
-			return;
-		}
-
-		const scrollThreshold = 10;
-		const minScrollDistance = 80;
-
-		const handleScroll = () => {
-			const currentScrollY = window.scrollY;
-			const prevScrollY = lastScrollY;
-			const scrollDiff = currentScrollY - prevScrollY;
-
-			if (scrollTimeout) {
-				clearTimeout(scrollTimeout);
-				scrollTimeout = null;
-			}
-
-			const scrollHeight = document.documentElement.scrollHeight;
-			const clientHeight = document.documentElement.clientHeight;
-			const atBottom = currentScrollY + clientHeight >= scrollHeight - 5;
-
-			if (scrollDiff < 0 && !atBottom) {
-				visible = true;
-				lastScrollY = currentScrollY;
-			} else if (scrollDiff > scrollThreshold && currentScrollY > minScrollDistance && !atBottom) {
-				visible = false;
-				lastScrollY = currentScrollY;
-			} else if (Math.abs(scrollDiff) > scrollThreshold) {
-				lastScrollY = currentScrollY;
-			}
-
-			if (!atBottom) {
-				scrollTimeout = setTimeout(() => {
-					if (window.scrollY < minScrollDistance) {
-						visible = true;
-					}
-				}, 150);
-			}
-		};
-
-		window.addEventListener('scroll', handleScroll, { passive: true });
-
-		return () => {
-			window.removeEventListener('scroll', handleScroll);
-			if (scrollTimeout) {
-				clearTimeout(scrollTimeout);
-			}
-		};
+		gestures.updateOptions({
+			scrollToHideEnabled,
+			menuOpen
+		});
 	});
 
-	// Wheel handler for detecting ONLY super fast trackpad flicks on navbar
+	// Enable touch gestures
 	$effect(() => {
-		if (!navElement || typeof window === 'undefined') return;
+		return gestures.enableTouchGestures();
+	});
 
-		const handleWheel = (e: WheelEvent) => {
-			e.preventDefault();
-			if (menuOpen || !scrollToHideEnabled || e.deltaY <= 0) return;
+	// Enable scroll gestures
+	$effect(() => {
+		return gestures.enableScrollGestures();
+	});
 
-			const now = Date.now();
-			const velocity = e.deltaY / Math.max(1, now - lastWheelTime);
-
-			if (velocity > 3) {
-				menuOpen = true;
-				return;
-			}
-
-			lastWheelTime = now;
-
-			if (flickDetectTimeout) clearTimeout(flickDetectTimeout);
-			flickDetectTimeout = setTimeout(() => {
-				lastWheelTime = 0;
-			}, 200);
-		};
-
-		navElement.addEventListener('wheel', handleWheel, { passive: false });
-
-		return () => {
-			navElement.removeEventListener('wheel', handleWheel);
-			if (flickDetectTimeout) clearTimeout(flickDetectTimeout);
-		};
+	// Enable wheel gestures on nav element
+	$effect(() => {
+		if (navElement) {
+			gestures.setElement(navElement);
+			return gestures.enableWheelGestures();
+		}
 	});
 
 	// Show nav when menu closes
 	$effect(() => {
 		if (!menuOpen) {
 			visible = true;
-		}
-	});
-
-	// Setup swipe gesture detection on nav element
-	$effect(() => {
-		if (navElement) {
-			swipeDetector.setElement(navElement);
-
-			return () => {
-				swipeDetector.setElement(null);
-			};
-		}
-	});
-
-	// Setup swipe gesture detection on nav element
-	$effect(() => {
-		if (navElement) {
-			swipeDetector.setElement(navElement);
-
-			return () => {
-				swipeDetector.setElement(null);
-			};
 		}
 	});
 
@@ -289,7 +140,7 @@
 			'flex items-center',
 			mode === 'floating'
 				? cn('rounded-3xl border', showLabels ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-2.5')
-				: cn('border-t border-border/50 justify-around', showLabels ? 'px-3 py-2' : 'px-3 py-2.5'),
+				: cn('border-t border-border/50 justify-around', showLabels ? 'px-4 pt-2 pb-4' : 'px-4 pt-2.5 pb-4'),
 			visible
 				? mode === 'floating'
 					? 'translate-y-0 scale-100 opacity-100'

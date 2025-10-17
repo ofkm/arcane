@@ -246,16 +246,12 @@
 
 		<div class="border-border/30 border-t px-6 pt-4 pb-4">
 			{#if versionInformation}
-				<div class={cn(navigationMode === 'docked' ? 'pb-24' : 'pb-0')}>
-					<div class="text-muted-foreground/60 text-center text-xs">
-						<p class="font-medium">Arcane v{versionInformation.currentVersion}</p>
-						{#if versionInformation.updateAvailable}
-							<p class="text-primary/80 mt-1 font-medium">Update available</p>
-						{/if}
-					</div>
+				<div class="text-muted-foreground/60 text-center text-xs">
+					<p class="font-medium">Arcane v{versionInformation.currentVersion}</p>
+					{#if versionInformation.updateAvailable}
+						<p class="text-primary/80 mt-1 font-medium">Update available</p>
+					{/if}
 				</div>
-			{:else}
-				<div class={navigationMode === 'docked' ? 'pb-24' : 'pb-0'}></div>
 			{/if}
 		</div>
 	</Drawer.Content>
