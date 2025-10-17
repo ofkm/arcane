@@ -538,7 +538,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, name, composeContent
 	}
 
 	basePath := filepath.Join(projectsDirectory, sanitized)
-	projectPath, folderName, err := fs.CreateUniqueDir(basePath, name, 0755)
+	projectPath, folderName, err := fs.CreateUniqueDir(projectsDirectory, basePath, name, 0755)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create project directory: %w", err)
 	}
@@ -556,7 +556,7 @@ func (s *ProjectService) CreateProject(ctx context.Context, name, composeContent
 		return nil, fmt.Errorf("failed to create project: %w", err)
 	}
 
-	if err := fs.SaveOrUpdateProjectFiles(projectPath, composeContent, envContent); err != nil {
+	if err := fs.SaveOrUpdateProjectFiles(projectsDirectory, projectPath, composeContent, envContent); err != nil {
 		s.db.WithContext(ctx).Delete(proj)
 		return nil, fmt.Errorf("failed to save project files: %w", err)
 	}
@@ -719,6 +719,12 @@ func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, na
 		return nil, fmt.Errorf("failed to get project: %w", err)
 	}
 
+	// Get projects directory for security validation
+	projectsDirectory, err := fs.GetProjectsDirectory(ctx, s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get projects directory: %w", err)
+	}
+
 	if name != nil {
 		if newName := strings.TrimSpace(*name); newName != "" && proj.Name != newName {
 			proj.Name = newName
@@ -727,7 +733,7 @@ func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, na
 
 	switch {
 	case composeContent != nil:
-		if err := fs.SaveOrUpdateProjectFiles(proj.Path, *composeContent, envContent); err != nil {
+		if err := fs.SaveOrUpdateProjectFiles(projectsDirectory, proj.Path, *composeContent, envContent); err != nil {
 			return nil, fmt.Errorf("failed to save project files: %w", err)
 		}
 	case envContent != nil:
@@ -737,8 +743,8 @@ func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, na
 				return nil, fmt.Errorf("failed to remove env file: %w", err)
 			}
 		} else {
-			if err := os.WriteFile(envPath, []byte(*envContent), 0644); err != nil {
-				return nil, fmt.Errorf("failed to update env file: %w", err)
+			if err := fs.WriteEnvFile(projectsDirectory, proj.Path, *envContent); err != nil {
+				return nil, err
 			}
 		}
 	}

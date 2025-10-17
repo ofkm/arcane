@@ -68,15 +68,17 @@ func ImportedComposeDescription(dir string) string {
 }
 
 func WriteTemplateFiles(composePath, envPath, composeContent, envContent string) (*string, error) {
-	if err := os.WriteFile(composePath, []byte(composeContent), 0644); err != nil {
-		return nil, fmt.Errorf("failed to write compose file: %w", err)
+	if err := WriteTemplateFile(composePath, composeContent); err != nil {
+		return nil, err
 	}
+
 	envTrim := strings.TrimSpace(envContent)
 	if envTrim == "" {
 		return nil, nil
 	}
-	if err := os.WriteFile(envPath, []byte(envContent), 0644); err != nil {
-		return nil, fmt.Errorf("failed to write env file: %w", err)
+
+	if err := WriteTemplateFile(envPath, envContent); err != nil {
+		return nil, err
 	}
 	return &envContent, nil
 }
@@ -92,14 +94,14 @@ func EnsureDefaultTemplates(ctx context.Context) error {
 
 	// Write default compose template if it doesn't exist
 	if _, err := os.Stat(composePath); os.IsNotExist(err) {
-		if err := os.WriteFile(composePath, []byte(getDefaultComposeTemplate()), 0644); err != nil {
+		if err := WriteTemplateFile(composePath, getDefaultComposeTemplate()); err != nil {
 			return fmt.Errorf("write default compose template: %w", err)
 		}
 	}
 
 	// Write default env template if it doesn't exist
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
-		if err := os.WriteFile(envPath, []byte(getDefaultEnvTemplate()), 0644); err != nil {
+		if err := WriteTemplateFile(envPath, getDefaultEnvTemplate()); err != nil {
 			return fmt.Errorf("write default env template: %w", err)
 		}
 	}
