@@ -1,4 +1,5 @@
 export type NotificationProvider = 'discord' | 'email';
+export type EmailTLSMode = 'none' | 'starttls' | 'ssl';
 
 export interface DiscordConfig {
 	webhookUrl: string;
@@ -13,7 +14,7 @@ export interface EmailConfig {
 	smtpPassword: string;
 	fromAddress: string;
 	toAddresses: string[];
-	useTls: boolean;
+	tlsMode: EmailTLSMode;
 }
 
 export type NotificationConfig = DiscordConfig | EmailConfig;

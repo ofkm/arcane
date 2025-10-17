@@ -11,6 +11,14 @@ const (
 	NotificationProviderEmail   NotificationProvider = "email"
 )
 
+type EmailTLSMode string
+
+const (
+	EmailTLSModeNone     EmailTLSMode = "none"
+	EmailTLSModeStartTLS EmailTLSMode = "starttls"
+	EmailTLSModeSSL      EmailTLSMode = "ssl"
+)
+
 type NotificationSettings struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
 	Provider  string    `json:"provider" gorm:"not null;index"`
@@ -47,11 +55,11 @@ type DiscordConfig struct {
 }
 
 type EmailConfig struct {
-	SMTPHost     string   `json:"smtpHost"`
-	SMTPPort     int      `json:"smtpPort"`
-	SMTPUsername string   `json:"smtpUsername"`
-	SMTPPassword string   `json:"smtpPassword"`
-	FromAddress  string   `json:"fromAddress"`
-	ToAddresses  []string `json:"toAddresses"`
-	UseTLS       bool     `json:"useTls"`
+	SMTPHost     string       `json:"smtpHost"`
+	SMTPPort     int          `json:"smtpPort"`
+	SMTPUsername string       `json:"smtpUsername"`
+	SMTPPassword string       `json:"smtpPassword"`
+	FromAddress  string       `json:"fromAddress"`
+	ToAddresses  []string     `json:"toAddresses"`
+	TLSMode      EmailTLSMode `json:"tlsMode"`
 }

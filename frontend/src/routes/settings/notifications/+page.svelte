@@ -8,6 +8,7 @@
 	import { createForm } from '$lib/utils/form.utils';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
+	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import BellIcon from '@lucide/svelte/icons/bell';
 	import SendIcon from '@lucide/svelte/icons/send';
@@ -17,7 +18,7 @@
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { notificationService } from '$lib/services/notification-service';
-	import type { NotificationSettings as NotificationSettingsType } from '$lib/types/notification.type';
+	import type { NotificationSettings as NotificationSettingsType, EmailTLSMode } from '$lib/types/notification.type';
 
 	interface FormNotificationSettings {
 		discordEnabled: boolean;
@@ -31,7 +32,7 @@
 		emailSmtpPassword: string;
 		emailFromAddress: string;
 		emailToAddresses: string;
-		emailUseTls: boolean;
+		emailTlsMode: EmailTLSMode;
 	}
 
 	let { data } = $props();
@@ -53,7 +54,7 @@
 		emailSmtpPassword: '',
 		emailFromAddress: '',
 		emailToAddresses: '',
-		emailUseTls: true
+		emailTlsMode: 'starttls'
 	});
 
 	const formSchema = z.object({
@@ -68,7 +69,7 @@
 		emailSmtpPassword: z.string(),
 		emailFromAddress: z.string().email().or(z.literal('')),
 		emailToAddresses: z.string(),
-		emailUseTls: z.boolean()
+		emailTlsMode: z.enum(['none', 'starttls', 'ssl'])
 	});
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
@@ -86,7 +87,7 @@
 			$formInputs.emailSmtpPassword.value !== currentSettings.emailSmtpPassword ||
 			$formInputs.emailFromAddress.value !== currentSettings.emailFromAddress ||
 			$formInputs.emailToAddresses.value !== currentSettings.emailToAddresses ||
-			$formInputs.emailUseTls.value !== currentSettings.emailUseTls
+			$formInputs.emailTlsMode.value !== currentSettings.emailTlsMode
 	);
 
 	$effect(() => {
@@ -117,7 +118,7 @@
 				currentSettings.emailSmtpPassword = emailSetting.config?.smtpPassword || '';
 				currentSettings.emailFromAddress = emailSetting.config?.fromAddress || '';
 				currentSettings.emailToAddresses = (emailSetting.config?.toAddresses || []).join(', ');
-				currentSettings.emailUseTls = emailSetting.config?.useTls !== false;
+				currentSettings.emailTlsMode = emailSetting.config?.tlsMode || 'starttls';
 			}
 
 			// Sync form inputs after currentSettings is updated
@@ -132,7 +133,7 @@
 			$formInputs.emailSmtpPassword.value = currentSettings.emailSmtpPassword;
 			$formInputs.emailFromAddress.value = currentSettings.emailFromAddress;
 			$formInputs.emailToAddresses.value = currentSettings.emailToAddresses;
-			$formInputs.emailUseTls.value = currentSettings.emailUseTls;
+			$formInputs.emailTlsMode.value = currentSettings.emailTlsMode;
 		}
 
 		if (formState) {
@@ -186,7 +187,7 @@
 						smtpPassword: formData.emailSmtpPassword,
 						fromAddress: formData.emailFromAddress,
 						toAddresses: toAddressArray,
-						useTls: formData.emailUseTls
+						tlsMode: formData.emailTlsMode
 					}
 				});
 			} catch (error: any) {
@@ -220,7 +221,7 @@
 		$formInputs.emailSmtpPassword.value = currentSettings.emailSmtpPassword;
 		$formInputs.emailFromAddress.value = currentSettings.emailFromAddress;
 		$formInputs.emailToAddresses.value = currentSettings.emailToAddresses;
-		$formInputs.emailUseTls.value = currentSettings.emailUseTls;
+		$formInputs.emailTlsMode.value = currentSettings.emailTlsMode;
 	}
 
 	async function testNotification(provider: string) {
@@ -394,12 +395,18 @@
 									<p class="text-muted-foreground text-sm">{m.notifications_email_to_addresses_help()}</p>
 								</div>
 
-								<SwitchWithLabel
-									id="email-use-tls"
-									bind:checked={$formInputs.emailUseTls.value}
+								<SelectWithLabel
+									id="email-tls-mode"
+									label="TLS Mode"
+									bind:value={$formInputs.emailTlsMode.value}
 									disabled={isReadOnly}
-									label={m.notifications_email_use_tls_label()}
-									description={m.notifications_email_use_tls_description()}
+									placeholder="Select TLS mode"
+									options={[
+										{ value: 'none', label: 'None' },
+										{ value: 'starttls', label: 'StartTLS' },
+										{ value: 'ssl', label: 'SSL/TLS' }
+									]}
+									description="StartTLS (default) upgrades from plain connection. SSL/TLS uses encryption from start. None uses no encryption."
 								/>
 							</div>
 						{/if}

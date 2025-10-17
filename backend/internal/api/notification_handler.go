@@ -36,7 +36,18 @@ func (h *NotificationHandler) GetAllSettings(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, settings)
+	// Map to DTOs
+	responses := make([]dto.NotificationSettingsResponse, len(settings))
+	for i, setting := range settings {
+		responses[i] = dto.NotificationSettingsResponse{
+			ID:       setting.ID,
+			Provider: setting.Provider,
+			Enabled:  setting.Enabled,
+			Config:   setting.Config,
+		}
+	}
+
+	c.JSON(http.StatusOK, responses)
 }
 
 func (h *NotificationHandler) GetSettings(c *gin.Context) {
@@ -48,7 +59,14 @@ func (h *NotificationHandler) GetSettings(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, settings)
+	response := dto.NotificationSettingsResponse{
+		ID:       settings.ID,
+		Provider: settings.Provider,
+		Enabled:  settings.Enabled,
+		Config:   settings.Config,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *NotificationHandler) CreateOrUpdateSettings(c *gin.Context) {
@@ -69,7 +87,14 @@ func (h *NotificationHandler) CreateOrUpdateSettings(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, settings)
+	response := dto.NotificationSettingsResponse{
+		ID:       settings.ID,
+		Provider: settings.Provider,
+		Enabled:  settings.Enabled,
+		Config:   settings.Config,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *NotificationHandler) DeleteSettings(c *gin.Context) {
