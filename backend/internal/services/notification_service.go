@@ -20,6 +20,22 @@ import (
 	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
+// sanitizeForEmail restricts to safe characters for email (alphanumerics, dash, dot, slash, colon, at, underscore).
+// It removes any character not matching the safe set and prevents header injection.
+func sanitizeForEmail(s string) string {
+	// Allow: letters, numbers, dot, slash, dash, colon, at, underscore
+	safe := make([]rune, 0, len(s))
+	for _, c := range s {
+		if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+			(c >= '0' && c <= '9') ||
+			c == '.' || c == '/' || c == '-' || c == ':' ||
+			c == '@' || c == '_' {
+			safe = append(safe, c)
+		}
+	}
+	return string(safe)
+}
+
 type NotificationService struct {
 	db *database.DB
 }
@@ -278,7 +294,8 @@ func (s *NotificationService) sendEmailNotification(ctx context.Context, imageRe
 }
 
 func (s *NotificationService) buildEmailMessage(emailConfig models.EmailConfig, imageRef string, updateInfo *dto.ImageUpdateResponse) string {
-	subject := fmt.Sprintf("Container Update Available: %s", imageRef)
+	safeImageRef := sanitizeForEmail(imageRef)
+	subject := fmt.Sprintf("Container Update Available: %s", safeImageRef)
 	body := fmt.Sprintf(`Container Image Update Notification
 
 Image: %s
@@ -289,7 +306,7 @@ Latest Digest: %s
 
 Checked at: %s
 `,
-		imageRef,
+		safeImageRef,
 		updateInfo.HasUpdate,
 		updateInfo.UpdateType,
 		updateInfo.CurrentDigest,
