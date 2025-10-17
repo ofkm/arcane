@@ -6,11 +6,15 @@ ARG REVISION="unknown"
 # Stage 1: Build Frontend
 FROM node:25-alpine AS frontend-builder
 WORKDIR /build
+
+# Install Corepack and enable pnpm (Corepack not included by default in Node 25)
+RUN npm install -g --force corepack && corepack enable
+
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY frontend/package.json ./frontend/package.json
 COPY frontend ./frontend
 
-RUN --mount=type=cache,target=/root/.pnpm-store pnpm -C frontend install --frozen-lockfile
+RUN pnpm -C frontend install --no-frozen-lockfile
 ENV BUILD_PATH=dist
 RUN pnpm -C frontend build
 
