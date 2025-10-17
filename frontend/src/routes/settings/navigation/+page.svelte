@@ -31,23 +31,28 @@
 		mobileNavigationMode: z.enum(['floating', 'docked']),
 		mobileNavigationShowLabels: z.boolean(),
 		mobileNavigationScrollToHide: z.boolean(),
-		mobileNavigationTapToHide: z.boolean()
+		sidebarHoverExpansion: z.boolean()
 	});
 
 	// Track local override state using the shared store
 	let persistedState = $state(navigationSettingsOverridesStore.current);
 
-	const sidebar = useSidebar();
-	let sidebarHoverExpansion = $state(sidebar.hoverExpansionEnabled);
+	// Sidebar context is only available in desktop view
+	let sidebar: ReturnType<typeof useSidebar> | null = null;
+
+	try {
+		sidebar = useSidebar();
+	} catch (e) {
+		// Sidebar context not available (mobile view)
+	}
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
-
 	const formHasChanges = $derived.by(
 		() =>
 			$formInputs.mobileNavigationMode.value !== currentSettings.mobileNavigationMode ||
 			$formInputs.mobileNavigationShowLabels.value !== currentSettings.mobileNavigationShowLabels ||
 			$formInputs.mobileNavigationScrollToHide.value !== currentSettings.mobileNavigationScrollToHide ||
-			$formInputs.mobileNavigationTapToHide.value !== currentSettings.mobileNavigationTapToHide
+			$formInputs.sidebarHoverExpansion.value !== currentSettings.sidebarHoverExpansion
 	);
 
 	$effect(() => {
@@ -58,7 +63,7 @@
 		}
 	});
 
-	function setLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide' | 'tapToHide', value: any) {
+		function setLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide', value: any) {
 		const currentOverrides = navigationSettingsOverridesStore.current;
 		navigationSettingsOverridesStore.current = {
 			...currentOverrides,
@@ -67,12 +72,12 @@
 		persistedState = navigationSettingsOverridesStore.current;
 
 		// Reset navigation bar visibility when behavior settings change
-		if (key === 'scrollToHide' || key === 'tapToHide') {
+		if (key === 'scrollToHide') {
 			resetNavigationVisibility();
 		}
 	}
 
-	function clearLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide' | 'tapToHide') {
+	function clearLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide') {
 		const currentOverrides = navigationSettingsOverridesStore.current;
 		const newOverrides = { ...currentOverrides };
 		delete newOverrides[key];
@@ -80,7 +85,7 @@
 		persistedState = navigationSettingsOverridesStore.current;
 
 		// Reset navigation bar visibility when behavior settings change
-		if (key === 'scrollToHide' || key === 'tapToHide') {
+		if (key === 'scrollToHide') {
 			resetNavigationVisibility();
 		}
 
@@ -109,8 +114,7 @@
 
 		// Check if behavior settings changed
 		const behaviorChanged =
-			formData.mobileNavigationScrollToHide !== currentSettings.mobileNavigationScrollToHide ||
-			formData.mobileNavigationTapToHide !== currentSettings.mobileNavigationTapToHide;
+			formData.mobileNavigationScrollToHide !== currentSettings.mobileNavigationScrollToHide;
 
 		await updateSettingsConfig(formData)
 			.then(() => {
@@ -132,7 +136,6 @@
 		$formInputs.mobileNavigationMode.value = currentSettings.mobileNavigationMode;
 		$formInputs.mobileNavigationShowLabels.value = currentSettings.mobileNavigationShowLabels;
 		$formInputs.mobileNavigationScrollToHide.value = currentSettings.mobileNavigationScrollToHide;
-		$formInputs.mobileNavigationTapToHide.value = currentSettings.mobileNavigationTapToHide;
 	}
 
 	onMount(() => {
@@ -176,14 +179,18 @@
 							<div class="flex items-center gap-2">
 								<Switch
 									id="sidebarHoverExpansion"
-									checked={sidebarHoverExpansion}
+									checked={$formInputs.sidebarHoverExpansion.value}
+									disabled={isReadOnly}
 									onCheckedChange={(checked) => {
-										sidebarHoverExpansion = checked;
-										sidebar.setHoverExpansion(checked);
+										$formInputs.sidebarHoverExpansion.value = checked;
+										// Update the sidebar immediately if context is available
+										if (sidebar) {
+											sidebar.setHoverExpansion(checked);
+										}
 									}}
 								/>
 								<label for="sidebarHoverExpansion" class="text-xs font-medium">
-									{sidebarHoverExpansion
+									{$formInputs.sidebarHoverExpansion.value
 										? m.navigation_sidebar_hover_expansion_enabled()
 										: m.navigation_sidebar_hover_expansion_disabled()}
 								</label>
@@ -259,20 +266,6 @@
 							serverDisabled={isReadOnly}
 						/>
 
-						<NavigationSettingControl
-							id="mobileNavigationTapToHide"
-							label={m.navigation_tap_to_hide_label()}
-							description={m.navigation_tap_to_hide_description()}
-							icon={MousePointerClickIcon}
-							serverValue={$formInputs.mobileNavigationTapToHide.value}
-							localOverride={persistedState.tapToHide}
-							onServerChange={(value) => {
-								$formInputs.mobileNavigationTapToHide.value = value;
-							}}
-							onLocalOverride={(value) => setLocalOverride('tapToHide', value)}
-							onClearOverride={() => clearLocalOverride('tapToHide')}
-							serverDisabled={isReadOnly}
-						/>
 					</div>
 				</Card.Content>
 			</Card.Root>

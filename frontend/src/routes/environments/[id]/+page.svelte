@@ -372,15 +372,6 @@
 														/>
 													</div>
 												</div>
-												<div>
-													<Label class="text-muted-foreground text-sm font-medium">{m.navigation_tap_to_hide_label()}</Label>
-													<div class="mt-1">
-														<StatusBadge
-															text={settings.mobileNavigationTapToHide ? m.common_enabled() : m.common_disabled()}
-															variant={settings.mobileNavigationTapToHide ? 'green' : 'gray'}
-														/>
-													</div>
-												</div>
 											</div>
 										</div>
 									{/if}

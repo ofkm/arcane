@@ -97,7 +97,7 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		MobileNavigationMode:         models.SettingVariable{Value: "floating"},
 		MobileNavigationShowLabels:   models.SettingVariable{Value: "true"},
 		MobileNavigationScrollToHide: models.SettingVariable{Value: "true"},
-		MobileNavigationTapToHide:    models.SettingVariable{Value: "false"},
+		SidebarHoverExpansion:        models.SettingVariable{Value: "true"},
 		AccentColor:                  models.SettingVariable{Value: "oklch(0.606 0.25 292.717)"},
 
 		InstanceID: models.SettingVariable{Value: ""},
