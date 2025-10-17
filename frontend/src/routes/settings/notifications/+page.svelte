@@ -280,6 +280,7 @@
 									label={m.notifications_discord_webhook_url_label()}
 									placeholder={m.notifications_discord_webhook_url_placeholder()}
 									type="text"
+									autocomplete="off"
 									helpText={m.notifications_discord_webhook_url_help()}
 								/>
 
@@ -289,6 +290,7 @@
 									label={m.notifications_discord_username_label()}
 									placeholder={m.notifications_discord_username_placeholder()}
 									type="text"
+									autocomplete="off"
 									helpText={m.notifications_discord_username_help()}
 								/>
 
@@ -298,6 +300,7 @@
 									label={m.notifications_discord_avatar_url_label()}
 									placeholder={m.notifications_discord_avatar_url_placeholder()}
 									type="text"
+									autocomplete="off"
 									helpText={m.notifications_discord_avatar_url_help()}
 								/>
 							</div>
@@ -342,6 +345,7 @@
 										label={m.notifications_email_smtp_host_label()}
 										placeholder={m.notifications_email_smtp_host_placeholder()}
 										type="text"
+										autocomplete="off"
 										helpText={m.notifications_email_smtp_host_help()}
 									/>
 
@@ -352,6 +356,7 @@
 											type="number"
 											bind:value={$formInputs.emailSmtpPort.value}
 											disabled={isReadOnly}
+											autocomplete="off"
 											placeholder={m.notifications_email_smtp_port_placeholder()}
 										/>
 										<p class="text-muted-foreground text-sm">{m.notifications_email_smtp_port_help()}</p>
@@ -365,6 +370,7 @@
 										label={m.notifications_email_username_label()}
 										placeholder={m.notifications_email_username_placeholder()}
 										type="text"
+										autocomplete="off"
 										helpText={m.notifications_email_username_help()}
 									/>
 
@@ -374,6 +380,7 @@
 										label={m.notifications_email_password_label()}
 										placeholder={m.notifications_email_password_placeholder()}
 										type="password"
+										autocomplete="new-password"
 										helpText={m.notifications_email_password_help()}
 									/>
 								</div>
@@ -384,6 +391,7 @@
 									label={m.notifications_email_from_address_label()}
 									placeholder={m.notifications_email_from_address_placeholder()}
 									type="email"
+									autocomplete="off"
 									helpText={m.notifications_email_from_address_help()}
 								/>
 
@@ -393,6 +401,7 @@
 										id="to-addresses"
 										bind:value={$formInputs.emailToAddresses.value}
 										disabled={isReadOnly}
+										autocomplete="off"
 										placeholder={m.notifications_email_to_addresses_placeholder()}
 										rows={2}
 									/>
