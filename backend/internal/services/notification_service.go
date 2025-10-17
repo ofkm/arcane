@@ -48,7 +48,7 @@ func (s *NotificationService) GetSettingsByProvider(ctx context.Context, provide
 
 func (s *NotificationService) CreateOrUpdateSettings(ctx context.Context, provider string, enabled bool, config models.JSON) (*models.NotificationSettings, error) {
 	var setting models.NotificationSettings
-	
+
 	err := s.db.WithContext(ctx).Where("provider = ?", provider).First(&setting).Error
 	if err != nil {
 		setting = models.NotificationSettings{
@@ -66,7 +66,7 @@ func (s *NotificationService) CreateOrUpdateSettings(ctx context.Context, provid
 			return nil, fmt.Errorf("failed to update notification settings: %w", err)
 		}
 	}
-	
+
 	return &setting, nil
 }
 
@@ -110,10 +110,10 @@ func (s *NotificationService) SendImageUpdateNotification(ctx context.Context, i
 		}
 
 		s.logNotification(ctx, setting.Provider, imageRef, status, errMsg, models.JSON{
-			"hasUpdate":      updateInfo.HasUpdate,
-			"currentDigest":  updateInfo.CurrentDigest,
-			"latestDigest":   updateInfo.LatestDigest,
-			"updateType":     updateInfo.UpdateType,
+			"hasUpdate":     updateInfo.HasUpdate,
+			"currentDigest": updateInfo.CurrentDigest,
+			"latestDigest":  updateInfo.LatestDigest,
+			"updateType":    updateInfo.UpdateType,
 		})
 	}
 
@@ -412,7 +412,7 @@ func validateWebhookURL(webhookURL string) error {
 		"discord.com",
 		"discordapp.com",
 	}
-	
+
 	isValid := false
 	for _, validHost := range validHosts {
 		if parsedURL.Host == validHost || strings.HasSuffix(parsedURL.Host, "."+validHost) {

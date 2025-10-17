@@ -104,7 +104,7 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 			slog.String("imageRef", imageRef),
 			slog.String("error", saveErr.Error()))
 	}
-	
+
 	// Send notification if update is available
 	if digestResult.HasUpdate && s.notificationService != nil {
 		if notifErr := s.notificationService.SendImageUpdateNotification(ctx, imageRef, digestResult); notifErr != nil {
@@ -113,7 +113,7 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 				slog.String("error", notifErr.Error()))
 		}
 	}
-	
+
 	return digestResult, nil
 }
 
