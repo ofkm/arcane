@@ -187,7 +187,7 @@ importers:
         version: 8.46.1(eslint@9.37.0(jiti@2.6.1))(typescript@5.9.3)
       vaul-svelte:
         specifier: 1.0.0-next.7
-        version: 1.0.0-next.7(svelte@5.40.0)
+        version: 1.0.0-next.7(svelte@5.40.2)
       vite:
         specifier: ^7.1.10
         version: 7.1.10(@types/node@24.8.1)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6)
@@ -4767,11 +4767,11 @@ snapshots:
   validator@13.15.15:
     optional: true
 
-  vaul-svelte@1.0.0-next.7(svelte@5.40.0):
+  vaul-svelte@1.0.0-next.7(svelte@5.40.2):
     dependencies:
-      runed: 0.23.4(svelte@5.40.0)
-      svelte: 5.40.0
-      svelte-toolbelt: 0.7.1(svelte@5.40.0)
+      runed: 0.23.4(svelte@5.40.2)
+      svelte: 5.40.2
+      svelte-toolbelt: 0.7.1(svelte@5.40.2)
 
   vite@7.1.10(@types/node@24.8.1)(jiti@2.6.1)(lightningcss@1.30.1)(terser@5.44.0)(tsx@4.20.6):
     dependencies:
