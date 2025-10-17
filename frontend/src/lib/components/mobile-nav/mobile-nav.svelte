@@ -23,6 +23,7 @@
 	} = $props();
 
 	const pinnedItems = $derived.by(() => {
+		if (!navigationSettings?.pinnedItems) return [];
 		const availableItems = getAvailableMobileNavItems();
 		return navigationSettings.pinnedItems
 			.map((url) => availableItems.find((item) => item.url === url))
@@ -30,9 +31,9 @@
 	});
 
 	const currentPath = $derived(page.url.pathname);
-	const showLabels = $derived(navigationSettings.showLabels);
-	const scrollToHideEnabled = $derived(navigationSettings.scrollToHide);
-	const mode = $derived(navigationSettings.mode);
+	const showLabels = $derived(navigationSettings?.showLabels ?? true);
+	const scrollToHideEnabled = $derived(navigationSettings?.scrollToHide ?? true);
+	const mode = $derived(navigationSettings?.mode ?? 'floating');
 
 	const leftItems = $derived(pinnedItems.slice(0, Math.floor(pinnedItems.length / 2)));
 	const rightItems = $derived(pinnedItems.slice(Math.floor(pinnedItems.length / 2)));

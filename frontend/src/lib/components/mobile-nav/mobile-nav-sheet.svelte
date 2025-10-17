@@ -31,7 +31,8 @@
 	const memoizedUser = $derived.by(() => user ?? storeUser);
 	const memoizedIsAdmin = $derived.by(() => !!memoizedUser?.roles?.includes('admin'));
 
-	function handleItemClick(item: NavigationItem) {
+	function handleItemClick(item: NavigationItem, event?: MouseEvent) {
+		// Don't prevent default - let the navigation happen
 		open = false;
 	}
 
@@ -57,7 +58,7 @@
 		<div class="flex-1 overflow-y-auto px-6">
 			<div class="space-y-8">
 				<section>
-					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 						{m.sidebar_management()}
 					</h4>
 					<div class="space-y-2">
@@ -83,7 +84,7 @@
 				</section>
 
 				<section>
-					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+					<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 						{m.sidebar_customization()}
 					</h4>
 					<div class="space-y-2">
@@ -150,7 +151,7 @@
 				{#if memoizedIsAdmin}
 					{#if navigationItems.environmentItems}
 						<section>
-							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 								{m.sidebar_environments()}
 							</h4>
 							<div class="space-y-2">
@@ -176,7 +177,7 @@
 
 					{#if navigationItems.settingsItems}
 						<section>
-							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold tracking-widest uppercase">
+							<h4 class="text-muted-foreground/70 mb-4 px-3 text-[11px] font-bold uppercase tracking-widest">
 								{m.sidebar_administration()}
 							</h4>
 							<div class="space-y-2">
@@ -242,7 +243,7 @@
 			</div>
 		</div>
 
-		<div class="border-border/30 border-t px-6 pt-4 pb-4">
+		<div class="border-border/30 border-t px-6 pb-4 pt-4">
 			{#if versionInformation}
 				<div class={cn(navigationMode === 'docked' ? 'pb-24' : 'pb-0')}>
 					<div class="text-muted-foreground/60 text-center text-xs">

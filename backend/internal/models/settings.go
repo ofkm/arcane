@@ -73,6 +73,7 @@ type Settings struct {
 	MobileNavigationShowLabels   SettingVariable `key:"mobileNavigationShowLabels,public"`
 	MobileNavigationScrollToHide SettingVariable `key:"mobileNavigationScrollToHide,public"`
 	MobileNavigationTapToHide    SettingVariable `key:"mobileNavigationTapToHide,public"`
+	SidebarHoverExpansion        SettingVariable `key:"sidebarHoverExpansion,public"`
 
 	InstanceID SettingVariable `key:"instanceId,internal"`
 }

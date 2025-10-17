@@ -41,6 +41,7 @@ export type Settings = {
 	mobileNavigationShowLabels: boolean;
 	mobileNavigationScrollToHide: boolean;
 	mobileNavigationTapToHide: boolean;
+	sidebarHoverExpansion: boolean;
 
 	registryCredentials: RegistryCredential[];
 	templateRegistries: TemplateRegistryConfig[];

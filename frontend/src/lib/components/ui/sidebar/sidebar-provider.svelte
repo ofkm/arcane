@@ -7,6 +7,7 @@
 	import { IsTablet } from '$lib/hooks/is-tablet.svelte.js';
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte.js';
 	import { PersistedState } from 'runed';
+	import settingsStore from '$lib/stores/config-store';
 
 	const persistedPinned = new PersistedState('sidebar-pinned', true);
 
@@ -56,6 +57,14 @@
 
 			// This sets the cookie to keep the sidebar state.
 			document.cookie = `${SIDEBAR_COOKIE_NAME}=${open}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+		}
+	});
+
+	// Sync sidebar hover expansion with backend settings
+	$effect(() => {
+		const settings = $settingsStore;
+		if (settings && settings.sidebarHoverExpansion !== undefined) {
+			sidebar.setHoverExpansion(settings.sidebarHoverExpansion);
 		}
 	});
 </script>
