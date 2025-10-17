@@ -118,9 +118,7 @@
 
 	// Trackpad flick detection - ONLY super fast velocity flicks trigger the menu
 	let lastWheelTime = $state(0);
-	let lastWheelDelta = $state(0);
 	let flickDetectTimeout: ReturnType<typeof setTimeout> | null = null;
-	let wheelVelocityHistory: number[] = $state([]);
 
 	// Improved scroll-to-hide using native scroll events with passive listeners
 	$effect(() => {
@@ -166,63 +164,45 @@
 			}
 		};
 
-		// Wheel handler for detecting ONLY super fast trackpad flicks
-		const handleWheel = (e: WheelEvent) => {
-			if (menuOpen || !scrollToHideEnabled) return;
-
-			// Only respond to downward scrolls (positive deltaY)
-			if (e.deltaY <= 0) return;
-
-			const now = Date.now();
-			const timeSinceLastWheel = now - lastWheelTime;
-
-			// Calculate velocity: deltaY per millisecond
-			const velocity = e.deltaY / Math.max(1, timeSinceLastWheel);
-
-			// Only trigger on EXTREME velocity (> 5 pixels per ms = very fast flick)
-			// Normal scrolling is typically 0.1-0.5 px/ms
-			// Fast flicks are 2+ px/ms
-			// Super fast flicks are 5+ px/ms
-			const isSuperFastFlick = velocity > 5;
-
-			if (isSuperFastFlick) {
-				menuOpen = true;
-				wheelVelocityHistory = [];
-
-				if (flickDetectTimeout) {
-					clearTimeout(flickDetectTimeout);
-				}
-			}
-
-			// Update tracking for next event
-			lastWheelTime = now;
-			lastWheelDelta = e.deltaY;
-			wheelVelocityHistory.push(velocity);
-			wheelVelocityHistory = wheelVelocityHistory.slice(-3); // Keep last 3 velocities
-
-			// Reset after 200ms of inactivity
-			if (flickDetectTimeout) {
-				clearTimeout(flickDetectTimeout);
-			}
-			flickDetectTimeout = setTimeout(() => {
-				lastWheelTime = 0;
-				lastWheelDelta = 0;
-				wheelVelocityHistory = [];
-			}, 200);
-		};
-
 		window.addEventListener('scroll', handleScroll, { passive: true });
-		window.addEventListener('wheel', handleWheel, { passive: true });
 
 		return () => {
 			window.removeEventListener('scroll', handleScroll);
-			window.removeEventListener('wheel', handleWheel);
 			if (scrollTimeout) {
 				clearTimeout(scrollTimeout);
 			}
-			if (flickDetectTimeout) {
-				clearTimeout(flickDetectTimeout);
+		};
+	});
+
+	// Wheel handler for detecting ONLY super fast trackpad flicks on navbar
+	$effect(() => {
+		if (!navElement || typeof window === 'undefined') return;
+
+		const handleWheel = (e: WheelEvent) => {
+			e.preventDefault();
+			if (menuOpen || !scrollToHideEnabled || e.deltaY <= 0) return;
+
+			const now = Date.now();
+			const velocity = e.deltaY / Math.max(1, now - lastWheelTime);
+
+			if (velocity > 3) {
+				menuOpen = true;
+				return;
 			}
+
+			lastWheelTime = now;
+
+			if (flickDetectTimeout) clearTimeout(flickDetectTimeout);
+			flickDetectTimeout = setTimeout(() => {
+				lastWheelTime = 0;
+			}, 200);
+		};
+
+		navElement.addEventListener('wheel', handleWheel, { passive: false });
+
+		return () => {
+			navElement.removeEventListener('wheel', handleWheel);
+			if (flickDetectTimeout) clearTimeout(flickDetectTimeout);
 		};
 	});
 
@@ -230,6 +210,17 @@
 	$effect(() => {
 		if (!menuOpen) {
 			visible = true;
+		}
+	});
+
+	// Setup swipe gesture detection on nav element
+	$effect(() => {
+		if (navElement) {
+			swipeDetector.setElement(navElement);
+
+			return () => {
+				swipeDetector.setElement(null);
+			};
 		}
 	});
 
