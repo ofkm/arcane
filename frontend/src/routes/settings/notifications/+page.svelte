@@ -45,7 +45,7 @@
 			const response = await fetch('/api/environments/0/notifications/settings');
 			if (response.ok) {
 				const settings = await response.json();
-				
+
 				const discordSetting = settings.find((s: any) => s.provider === 'discord');
 				if (discordSetting) {
 					discordEnabled = discordSetting.enabled;
@@ -113,8 +113,8 @@
 		try {
 			const toAddressArray = emailToAddresses
 				.split(',')
-				.map(addr => addr.trim())
-				.filter(addr => addr.length > 0);
+				.map((addr) => addr.trim())
+				.filter((addr) => addr.length > 0);
 
 			const response = await fetch('/api/environments/0/notifications/settings', {
 				method: 'POST',
@@ -170,14 +170,12 @@
 	}
 </script>
 
-<SettingsPageLayout title="Notifications" description="Configure notifications for container updates">
+{#snippet mainContent()}
 	<div class="space-y-6">
 		{#if isReadOnly}
 			<Alert.Root variant="default">
 				<Alert.Title>Read-only Mode</Alert.Title>
-				<Alert.Description>
-					Settings are read-only in this environment. Configuration changes are disabled.
-				</Alert.Description>
+				<Alert.Description>Settings are read-only in this environment. Configuration changes are disabled.</Alert.Description>
 			</Alert.Root>
 		{/if}
 
@@ -188,12 +186,11 @@
 					<BellIcon class="h-5 w-5" />
 					<Card.Title>Discord Notifications</Card.Title>
 				</div>
-				<Card.Description>
-					Send notifications to Discord when container updates are detected
-				</Card.Description>
+				<Card.Description>Send notifications to Discord when container updates are detected</Card.Description>
 			</Card.Header>
 			<Card.Content class="space-y-4">
 				<SwitchWithLabel
+					id="discord-enabled"
 					bind:checked={discordEnabled}
 					disabled={isReadOnly}
 					label="Enable Discord Notifications"
@@ -208,7 +205,7 @@
 							label="Webhook URL"
 							placeholder="https://discord.com/api/webhooks/..."
 							type="text"
-							helperText="Discord webhook URL for sending notifications"
+							helpText="Discord webhook URL for sending notifications"
 						/>
 
 						<TextInputWithLabel
@@ -217,7 +214,7 @@
 							label="Bot Username"
 							placeholder="Arcane"
 							type="text"
-							helperText="Display name for the notification bot"
+							helpText="Display name for the notification bot"
 						/>
 
 						<TextInputWithLabel
@@ -226,21 +223,15 @@
 							label="Avatar URL (Optional)"
 							placeholder="https://..."
 							type="text"
-							helperText="Avatar image URL for the notification bot"
+							helpText="Avatar image URL for the notification bot"
 						/>
 					</div>
 				{/if}
 			</Card.Content>
 			<Card.Footer class="flex gap-2">
-				<Button onclick={saveDiscordSettings} disabled={isReadOnly || isLoading}>
-					Save Discord Settings
-				</Button>
+				<Button onclick={saveDiscordSettings} disabled={isReadOnly || isLoading}>Save Discord Settings</Button>
 				{#if discordEnabled}
-					<Button
-						variant="outline"
-						onclick={() => testNotification('discord')}
-						disabled={isReadOnly || isTesting}
-					>
+					<Button variant="outline" onclick={() => testNotification('discord')} disabled={isReadOnly || isTesting}>
 						<SendIcon class="mr-2 h-4 w-4" />
 						Test Discord
 					</Button>
@@ -255,12 +246,11 @@
 					<BellIcon class="h-5 w-5" />
 					<Card.Title>Email Notifications</Card.Title>
 				</div>
-				<Card.Description>
-					Send notifications via email when container updates are detected
-				</Card.Description>
+				<Card.Description>Send notifications via email when container updates are detected</Card.Description>
 			</Card.Header>
 			<Card.Content class="space-y-4">
 				<SwitchWithLabel
+					id="email-enabled"
 					bind:checked={emailEnabled}
 					disabled={isReadOnly}
 					label="Enable Email Notifications"
@@ -276,19 +266,13 @@
 								label="SMTP Host"
 								placeholder="smtp.example.com"
 								type="text"
-								helperText="SMTP server hostname"
+								helpText="SMTP server hostname"
 							/>
 
 							<div class="space-y-2">
 								<Label for="smtp-port">SMTP Port</Label>
-								<Input
-									id="smtp-port"
-									type="number"
-									bind:value={emailSmtpPort}
-									disabled={isReadOnly}
-									placeholder="587"
-								/>
-								<p class="text-sm text-muted-foreground">SMTP server port (usually 587 or 465)</p>
+								<Input id="smtp-port" type="number" bind:value={emailSmtpPort} disabled={isReadOnly} placeholder="587" />
+								<p class="text-muted-foreground text-sm">SMTP server port (usually 587 or 465)</p>
 							</div>
 						</div>
 
@@ -299,7 +283,7 @@
 								label="SMTP Username"
 								placeholder="user@example.com"
 								type="text"
-								helperText="SMTP authentication username"
+								helpText="SMTP authentication username"
 							/>
 
 							<TextInputWithLabel
@@ -308,7 +292,7 @@
 								label="SMTP Password"
 								placeholder="••••••••"
 								type="password"
-								helperText="SMTP authentication password"
+								helpText="SMTP authentication password"
 							/>
 						</div>
 
@@ -318,7 +302,7 @@
 							label="From Address"
 							placeholder="notifications@example.com"
 							type="email"
-							helperText="Email address to send notifications from"
+							helpText="Email address to send notifications from"
 						/>
 
 						<div class="space-y-2">
@@ -330,12 +314,11 @@
 								placeholder="user1@example.com, user2@example.com"
 								rows={2}
 							/>
-							<p class="text-sm text-muted-foreground">
-								Comma-separated list of email addresses to send notifications to
-							</p>
+							<p class="text-muted-foreground text-sm">Comma-separated list of email addresses to send notifications to</p>
 						</div>
 
 						<SwitchWithLabel
+							id="email-use-tls"
 							bind:checked={emailUseTls}
 							disabled={isReadOnly}
 							label="Use TLS"
@@ -345,15 +328,9 @@
 				{/if}
 			</Card.Content>
 			<Card.Footer class="flex gap-2">
-				<Button onclick={saveEmailSettings} disabled={isReadOnly || isLoading}>
-					Save Email Settings
-				</Button>
+				<Button onclick={saveEmailSettings} disabled={isReadOnly || isLoading}>Save Email Settings</Button>
 				{#if emailEnabled}
-					<Button
-						variant="outline"
-						onclick={() => testNotification('email')}
-						disabled={isReadOnly || isTesting}
-					>
+					<Button variant="outline" onclick={() => testNotification('email')} disabled={isReadOnly || isTesting}>
 						<SendIcon class="mr-2 h-4 w-4" />
 						Test Email
 					</Button>
@@ -365,7 +342,7 @@
 		<Alert.Root>
 			<Alert.Title>How Notifications Work</Alert.Title>
 			<Alert.Description>
-				<ul class="list-disc pl-4 space-y-1 mt-2">
+				<ul class="mt-2 list-disc space-y-1 pl-4">
 					<li>Notifications are sent when image updates are detected during polling</li>
 					<li>Each enabled notification provider will receive notifications independently</li>
 					<li>Test notifications help verify your configuration is working correctly</li>
@@ -374,4 +351,11 @@
 			</Alert.Description>
 		</Alert.Root>
 	</div>
-</SettingsPageLayout>
+{/snippet}
+
+<SettingsPageLayout
+	title="Notifications"
+	description="Configure notifications for container updates"
+	icon={BellIcon}
+	{mainContent}
+/>
