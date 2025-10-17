@@ -3,11 +3,10 @@
 /* Base navigation styles */
 .mobile-nav-base {
 	pointer-events: auto;
-	/* Prevent browser's default touch gestures but allow custom ones */
-	touch-action: none;
-	-webkit-overflow-scrolling: touch;
+	/* Capture vertical gestures so opening the sheet doesn't scroll the page while still allowing horizontal swipes and pinch zoom */
+	touch-action: pan-x pinch-zoom;
 	overscroll-behavior: contain;
-	/* Isolate touch interactions similar to pointer device behavior */
+	/* Isolate touch interactions */
 	isolation: isolate;
 	/* Hardware acceleration for smooth animations */
 	will-change: transform, opacity;
@@ -16,6 +15,13 @@
 	/* Smooth subpixel rendering */
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
+	/* Ensure it stays fixed to viewport, not page content */
+	position: fixed;
+	/* Prevent the nav from being affected by virtual keyboard */
+	transform: translate3d(0, 0, 0);
+	backface-visibility: hidden;
+	/* Prevent body scroll leak */
+	contain: layout style paint;
 }
 
 /* Floating navigation specific positioning */
@@ -29,8 +35,8 @@
 .mobile-nav-docked {
 	/* Safe area handling for devices with home indicators */
 	padding-bottom: env(safe-area-inset-bottom);
-	/* Ensure minimum padding even without safe area */
-	padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+	/* Keep it anchored to bottom */
+	bottom: 0;
 }
 
 /* Shared button/link styles */

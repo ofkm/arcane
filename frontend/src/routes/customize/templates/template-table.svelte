@@ -256,7 +256,7 @@
 						<TagIcon class="size-3.5 text-purple-500" />
 					</div>
 					<div class="min-w-0 flex-1">
-						<div class="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
+						<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
 							{m.common_tags()}
 						</div>
 						<div class="mt-1 flex flex-wrap gap-1">

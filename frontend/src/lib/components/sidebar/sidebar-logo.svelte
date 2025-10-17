@@ -14,14 +14,11 @@
 <div
 	class={cn(
 		'border-border/30 flex border-b transition-all duration-300',
-		isCollapsed ? 'h-16 items-center justify-center px-2' : 'h-14 items-center px-4'
+		isCollapsed ? 'h-16 items-center justify-center px-2' : 'h-14 items-center justify-center px-4'
 	)}
 >
 	<div
-		class={cn(
-			'relative flex shrink-0 items-center transition-all duration-300',
-			isCollapsed ? 'justify-center' : '-translate-y-1 flex-col items-start justify-center'
-		)}
+		class={cn('relative flex shrink-0 items-center justify-center transition-all duration-300', isCollapsed ? '' : 'flex-col')}
 	>
 		<img
 			src={logoUrl}
@@ -30,10 +27,5 @@
 			width={isCollapsed ? '24' : '160'}
 			height={isCollapsed ? '24' : '72'}
 		/>
-		{#if !isCollapsed}
-			<span class="text-muted-foreground/80 absolute bottom-[-0.35rem] left-1/2 translate-x-[20%] text-xs font-medium">
-				{m.sidebar_version({ version: versionInformation?.currentVersion ?? m.common_unknown() })}
-			</span>
-		{/if}
 	</div>
 </div>

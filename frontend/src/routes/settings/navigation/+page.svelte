@@ -9,6 +9,7 @@
 	import MousePointerClickIcon from '@lucide/svelte/icons/mouse-pointer-click';
 	import ScrollTextIcon from '@lucide/svelte/icons/scroll-text';
 	import NavigationIcon from '@lucide/svelte/icons/navigation';
+	import SidebarIcon from '@lucide/svelte/icons/sidebar';
 	import NavigationSettingControl from '$lib/components/navigation-setting-control.svelte';
 	import NavigationModeSettingControl from '$lib/components/navigation-mode-setting-control.svelte';
 	import settingsStore from '$lib/stores/config-store';
@@ -16,6 +17,8 @@
 	import { navigationSettingsOverridesStore, resetNavigationVisibility } from '$lib/utils/navigation.utils';
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
+	import { Switch } from '$lib/components/ui/switch/index.js';
+	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
 
 	let { data } = $props();
 	let currentSettings = $state(data.settings!);
@@ -33,6 +36,9 @@
 
 	// Track local override state using the shared store
 	let persistedState = $state(navigationSettingsOverridesStore.current);
+
+	const sidebar = useSidebar();
+	let sidebarHoverExpansion = $state(sidebar.hoverExpansionEnabled);
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
@@ -146,6 +152,47 @@
 >
 	{#snippet mainContent()}
 		<div class="space-y-4 sm:space-y-6">
+			<Card.Root>
+				<Card.Header icon={SidebarIcon}>
+					<div class="flex flex-col space-y-1.5">
+						<Card.Title>{m.navigation_desktop_sidebar_title()}</Card.Title>
+						<Card.Description>{m.navigation_desktop_sidebar_description()}</Card.Description>
+					</div>
+				</Card.Header>
+				<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
+					<div class="flex items-start gap-3 rounded-lg border p-3 sm:p-4">
+						<div
+							class="bg-primary/10 text-primary ring-primary/20 flex size-7 flex-shrink-0 items-center justify-center rounded-lg ring-1 sm:size-8"
+						>
+							<SidebarIcon class="size-3 sm:size-4" />
+						</div>
+						<div class="flex flex-1 flex-col gap-3">
+							<div>
+								<h4 class="mb-1 text-sm font-medium leading-tight">{m.navigation_sidebar_hover_expansion_label()}</h4>
+								<p class="text-muted-foreground text-xs leading-relaxed">
+									{m.navigation_sidebar_hover_expansion_description()}
+								</p>
+							</div>
+							<div class="flex items-center gap-2">
+								<Switch
+									id="sidebarHoverExpansion"
+									checked={sidebarHoverExpansion}
+									onCheckedChange={(checked) => {
+										sidebarHoverExpansion = checked;
+										sidebar.setHoverExpansion(checked);
+									}}
+								/>
+								<label for="sidebarHoverExpansion" class="text-xs font-medium">
+									{sidebarHoverExpansion
+										? m.navigation_sidebar_hover_expansion_enabled()
+										: m.navigation_sidebar_hover_expansion_disabled()}
+								</label>
+							</div>
+						</div>
+					</div>
+				</Card.Content>
+			</Card.Root>
+
 			<Card.Root>
 				<Card.Header icon={NavigationIcon}>
 					<div class="flex flex-col space-y-1.5">

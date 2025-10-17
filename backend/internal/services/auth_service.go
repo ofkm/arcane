@@ -18,12 +18,13 @@ import (
 )
 
 var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserNotFound       = errors.New("user not found")
-	ErrInvalidToken       = errors.New("invalid token")
-	ErrExpiredToken       = errors.New("token expired")
-	ErrLocalAuthDisabled  = errors.New("local authentication is disabled")
-	ErrOidcAuthDisabled   = errors.New("OIDC authentication is disabled")
+	ErrInvalidCredentials   = errors.New("invalid credentials")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrInvalidToken         = errors.New("invalid token")
+	ErrExpiredToken         = errors.New("token expired")
+	ErrTokenVersionMismatch = errors.New("token version mismatch")
+	ErrLocalAuthDisabled    = errors.New("local authentication is disabled")
+	ErrOidcAuthDisabled     = errors.New("OIDC authentication is disabled")
 )
 
 type TokenPair struct {
@@ -46,6 +47,7 @@ type UserClaims struct {
 	Email       string   `json:"email,omitempty"`
 	DisplayName string   `json:"display_name,omitempty"`
 	Roles       []string `json:"roles"`
+	AppVersion  string   `json:"app_version,omitempty"`
 }
 
 type AuthService struct {
@@ -479,6 +481,14 @@ func (s *AuthService) VerifyToken(ctx context.Context, accessToken string) (*mod
 		return nil, errors.New("missing user ID in token")
 	}
 
+	if claims.AppVersion != "" && claims.AppVersion != config.Version {
+		slog.InfoContext(ctx, "Token version mismatch detected",
+			"tokenVersion", claims.AppVersion,
+			"currentVersion", config.Version,
+			"user", claims.Username)
+		return nil, ErrTokenVersionMismatch
+	}
+
 	user := &models.User{
 		BaseModel: models.BaseModel{ID: claims.ID},
 		Username:  claims.Username,
@@ -531,9 +541,10 @@ func (s *AuthService) generateTokenPair(ctx context.Context, user *models.User) 
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(accessTokenExpiry),
 		},
-		UserID:   user.ID,
-		Username: user.Username,
-		Roles:    []string(user.Roles),
+		UserID:     user.ID,
+		Username:   user.Username,
+		Roles:      []string(user.Roles),
+		AppVersion: config.Version,
 	}
 
 	if user.Email != nil {
