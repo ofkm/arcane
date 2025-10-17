@@ -1,0 +1,57 @@
+package models
+
+import (
+	"time"
+)
+
+type NotificationProvider string
+
+const (
+	NotificationProviderDiscord NotificationProvider = "discord"
+	NotificationProviderEmail   NotificationProvider = "email"
+)
+
+type NotificationSettings struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	Provider  string    `json:"provider" gorm:"not null;index"`
+	Enabled   bool      `json:"enabled" gorm:"default:false"`
+	Config    JSON      `json:"config" gorm:"type:jsonb"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (NotificationSettings) TableName() string {
+	return "notification_settings"
+}
+
+type NotificationLog struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	Provider  string    `json:"provider" gorm:"not null;index"`
+	ImageRef  string    `json:"imageRef" gorm:"not null"`
+	Status    string    `json:"status" gorm:"not null"`
+	Error     *string   `json:"error,omitempty"`
+	Metadata  JSON      `json:"metadata" gorm:"type:jsonb"`
+	SentAt    time.Time `json:"sentAt" gorm:"not null;index"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+func (NotificationLog) TableName() string {
+	return "notification_logs"
+}
+
+type DiscordConfig struct {
+	WebhookURL string `json:"webhookUrl"`
+	Username   string `json:"username,omitempty"`
+	AvatarURL  string `json:"avatarUrl,omitempty"`
+}
+
+type EmailConfig struct {
+	SMTPHost     string   `json:"smtpHost"`
+	SMTPPort     int      `json:"smtpPort"`
+	SMTPUsername string   `json:"smtpUsername"`
+	SMTPPassword string   `json:"smtpPassword"`
+	FromAddress  string   `json:"fromAddress"`
+	ToAddresses  []string `json:"toAddresses"`
+	UseTLS       bool     `json:"useTls"`
+}

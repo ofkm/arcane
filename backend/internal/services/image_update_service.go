@@ -19,11 +19,12 @@ import (
 )
 
 type ImageUpdateService struct {
-	db              *database.DB
-	settingsService *SettingsService
-	registryService *ContainerRegistryService
-	dockerService   *DockerClientService
-	eventService    *EventService
+	db                  *database.DB
+	settingsService     *SettingsService
+	registryService     *ContainerRegistryService
+	dockerService       *DockerClientService
+	eventService        *EventService
+	notificationService *NotificationService
 }
 
 type ImageParts struct {
@@ -32,13 +33,14 @@ type ImageParts struct {
 	Tag        string
 }
 
-func NewImageUpdateService(db *database.DB, settingsService *SettingsService, registryService *ContainerRegistryService, dockerService *DockerClientService, eventService *EventService) *ImageUpdateService {
+func NewImageUpdateService(db *database.DB, settingsService *SettingsService, registryService *ContainerRegistryService, dockerService *DockerClientService, eventService *EventService, notificationService *NotificationService) *ImageUpdateService {
 	return &ImageUpdateService{
-		db:              db,
-		settingsService: settingsService,
-		registryService: registryService,
-		dockerService:   dockerService,
-		eventService:    eventService,
+		db:                  db,
+		settingsService:     settingsService,
+		registryService:     registryService,
+		dockerService:       dockerService,
+		eventService:        eventService,
+		notificationService: notificationService,
 	}
 }
 
@@ -102,6 +104,16 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 			slog.String("imageRef", imageRef),
 			slog.String("error", saveErr.Error()))
 	}
+	
+	// Send notification if update is available
+	if digestResult.HasUpdate && s.notificationService != nil {
+		if notifErr := s.notificationService.SendImageUpdateNotification(ctx, imageRef, digestResult); notifErr != nil {
+			slog.WarnContext(ctx, "Failed to send update notification",
+				slog.String("imageRef", imageRef),
+				slog.String("error", notifErr.Error()))
+		}
+	}
+	
 	return digestResult, nil
 }
 
