@@ -4,7 +4,7 @@ ARG VERSION="dev"
 ARG REVISION="unknown"
 
 # Stage 1: Build Frontend
-FROM node:24-alpine AS frontend-builder
+FROM node:25-alpine AS frontend-builder
 RUN corepack enable
 WORKDIR /build
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
