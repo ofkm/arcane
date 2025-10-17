@@ -13,6 +13,7 @@
 	import { Label } from '$lib/components/ui/label';
 	import { Input } from '$lib/components/ui/input';
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
+	import { m } from '$lib/paraglide/messages';
 
 	let { data } = $props();
 	let isLoading = $state(false);
@@ -95,13 +96,13 @@
 			});
 
 			if (response.ok) {
-				toast.success('Discord settings saved successfully');
+				toast.success(m.notifications_saved_success({ provider: 'Discord' }));
 			} else {
 				const error = await response.json();
-				toast.error(`Failed to save Discord settings: ${error.error || 'Unknown error'}`);
+				toast.error(m.notifications_saved_failed({ provider: 'Discord', error: error.error || m.common_unknown() }));
 			}
 		} catch (error) {
-			toast.error('Failed to save Discord settings');
+			toast.error(m.notifications_saved_failed({ provider: 'Discord', error: m.common_unknown() }));
 			console.error(error);
 		} finally {
 			isLoading = false;
@@ -135,13 +136,13 @@
 			});
 
 			if (response.ok) {
-				toast.success('Email settings saved successfully');
+				toast.success(m.notifications_saved_success({ provider: 'Email' }));
 			} else {
 				const error = await response.json();
-				toast.error(`Failed to save Email settings: ${error.error || 'Unknown error'}`);
+				toast.error(m.notifications_saved_failed({ provider: 'Email', error: error.error || m.common_unknown() }));
 			}
 		} catch (error) {
-			toast.error('Failed to save Email settings');
+			toast.error(m.notifications_saved_failed({ provider: 'Email', error: m.common_unknown() }));
 			console.error(error);
 		} finally {
 			isLoading = false;
@@ -156,13 +157,13 @@
 			});
 
 			if (response.ok) {
-				toast.success(`Test notification sent successfully via ${provider}`);
+				toast.success(m.notifications_test_success({ provider }));
 			} else {
 				const error = await response.json();
-				toast.error(`Failed to send test notification: ${error.error || 'Unknown error'}`);
+				toast.error(m.notifications_test_failed({ error: error.error || m.common_unknown() }));
 			}
 		} catch (error) {
-			toast.error('Failed to send test notification');
+			toast.error(m.notifications_test_failed({ error: m.common_unknown() }));
 			console.error(error);
 		} finally {
 			isTesting = false;
@@ -170,31 +171,38 @@
 	}
 </script>
 
-{#snippet mainContent()}
-	<div class="space-y-6">
-		{#if isReadOnly}
-			<Alert.Root variant="default">
-				<Alert.Title>Read-only Mode</Alert.Title>
-				<Alert.Description>Settings are read-only in this environment. Configuration changes are disabled.</Alert.Description>
-			</Alert.Root>
-		{/if}
+<SettingsPageLayout
+	title={m.notifications_title()}
+	description={m.notifications_description()}
+	icon={BellIcon}
+	pageType="form"
+	showReadOnlyTag={isReadOnly}
+>
+	{#snippet mainContent()}
+		<fieldset disabled={isReadOnly} class="relative">
+			<div class="space-y-4 sm:space-y-6">
+				{#if isReadOnly}
+					<Alert.Root variant="default">
+						<Alert.Title>{m.notifications_read_only_title()}</Alert.Title>
+						<Alert.Description>{m.notifications_read_only_description()}</Alert.Description>
+					</Alert.Root>
+				{/if}
 
 		<!-- Discord Notifications -->
 		<Card.Root>
-			<Card.Header>
-				<div class="flex items-center gap-2">
-					<BellIcon class="h-5 w-5" />
-					<Card.Title>Discord Notifications</Card.Title>
+			<Card.Header icon={BellIcon}>
+				<div class="flex flex-col space-y-1.5">
+					<Card.Title>{m.notifications_discord_title()}</Card.Title>
+					<Card.Description>{m.notifications_discord_description()}</Card.Description>
 				</div>
-				<Card.Description>Send notifications to Discord when container updates are detected</Card.Description>
 			</Card.Header>
-			<Card.Content class="space-y-4">
+			<Card.Content class="px-3 py-4 sm:px-6 space-y-4">
 				<SwitchWithLabel
 					id="discord-enabled"
 					bind:checked={discordEnabled}
 					disabled={isReadOnly}
-					label="Enable Discord Notifications"
-					description="Send update notifications to Discord via webhook"
+					label={m.notifications_discord_enabled_label()}
+					description={m.notifications_discord_enabled_description()}
 				/>
 
 				{#if discordEnabled}
@@ -202,38 +210,42 @@
 						<TextInputWithLabel
 							bind:value={discordWebhookUrl}
 							disabled={isReadOnly}
-							label="Webhook URL"
-							placeholder="https://discord.com/api/webhooks/..."
+							label={m.notifications_discord_webhook_url_label()}
+							placeholder={m.notifications_discord_webhook_url_placeholder()}
 							type="text"
-							helpText="Discord webhook URL for sending notifications"
+							helpText={m.notifications_discord_webhook_url_help()}
 						/>
 
 						<TextInputWithLabel
 							bind:value={discordUsername}
 							disabled={isReadOnly}
-							label="Bot Username"
-							placeholder="Arcane"
+							label={m.notifications_discord_username_label()}
+							placeholder={m.notifications_discord_username_placeholder()}
 							type="text"
-							helpText="Display name for the notification bot"
+							helpText={m.notifications_discord_username_help()}
 						/>
 
 						<TextInputWithLabel
 							bind:value={discordAvatarUrl}
 							disabled={isReadOnly}
-							label="Avatar URL (Optional)"
-							placeholder="https://..."
+							label={m.notifications_discord_avatar_url_label()}
+							placeholder={m.notifications_discord_avatar_url_placeholder()}
 							type="text"
-							helpText="Avatar image URL for the notification bot"
+							helpText={m.notifications_discord_avatar_url_help()}
 						/>
 					</div>
 				{/if}
 			</Card.Content>
 			<Card.Footer class="flex gap-2">
-				<Button onclick={saveDiscordSettings} disabled={isReadOnly || isLoading}>Save Discord Settings</Button>
+				<Button onclick={saveDiscordSettings} disabled={isReadOnly || isLoading}>{m.notifications_discord_save_button()}</Button>
 				{#if discordEnabled}
-					<Button variant="outline" onclick={() => testNotification('discord')} disabled={isReadOnly || isTesting}>
+					<Button
+						variant="outline"
+						onclick={() => testNotification('discord')}
+						disabled={isReadOnly || isTesting}
+					>
 						<SendIcon class="mr-2 h-4 w-4" />
-						Test Discord
+						{m.notifications_discord_test_button()}
 					</Button>
 				{/if}
 			</Card.Footer>
@@ -241,20 +253,19 @@
 
 		<!-- Email Notifications -->
 		<Card.Root>
-			<Card.Header>
-				<div class="flex items-center gap-2">
-					<BellIcon class="h-5 w-5" />
-					<Card.Title>Email Notifications</Card.Title>
+			<Card.Header icon={BellIcon}>
+				<div class="flex flex-col space-y-1.5">
+					<Card.Title>{m.notifications_email_title()}</Card.Title>
+					<Card.Description>{m.notifications_email_description()}</Card.Description>
 				</div>
-				<Card.Description>Send notifications via email when container updates are detected</Card.Description>
 			</Card.Header>
-			<Card.Content class="space-y-4">
+			<Card.Content class="px-3 py-4 sm:px-6 space-y-4">
 				<SwitchWithLabel
 					id="email-enabled"
 					bind:checked={emailEnabled}
 					disabled={isReadOnly}
-					label="Enable Email Notifications"
-					description="Send update notifications via email (SMTP)"
+					label={m.notifications_email_enabled_label()}
+					description={m.notifications_email_enabled_description()}
 				/>
 
 				{#if emailEnabled}
@@ -263,16 +274,22 @@
 							<TextInputWithLabel
 								bind:value={emailSmtpHost}
 								disabled={isReadOnly}
-								label="SMTP Host"
-								placeholder="smtp.example.com"
+								label={m.notifications_email_smtp_host_label()}
+								placeholder={m.notifications_email_smtp_host_placeholder()}
 								type="text"
-								helpText="SMTP server hostname"
+								helpText={m.notifications_email_smtp_host_help()}
 							/>
 
 							<div class="space-y-2">
-								<Label for="smtp-port">SMTP Port</Label>
-								<Input id="smtp-port" type="number" bind:value={emailSmtpPort} disabled={isReadOnly} placeholder="587" />
-								<p class="text-muted-foreground text-sm">SMTP server port (usually 587 or 465)</p>
+								<Label for="smtp-port">{m.notifications_email_smtp_port_label()}</Label>
+								<Input
+									id="smtp-port"
+									type="number"
+									bind:value={emailSmtpPort}
+									disabled={isReadOnly}
+									placeholder={m.notifications_email_smtp_port_placeholder()}
+								/>
+								<p class="text-muted-foreground text-sm">{m.notifications_email_smtp_port_help()}</p>
 							</div>
 						</div>
 
@@ -280,59 +297,59 @@
 							<TextInputWithLabel
 								bind:value={emailSmtpUsername}
 								disabled={isReadOnly}
-								label="SMTP Username"
-								placeholder="user@example.com"
+								label={m.notifications_email_username_label()}
+								placeholder={m.notifications_email_username_placeholder()}
 								type="text"
-								helpText="SMTP authentication username"
+								helpText={m.notifications_email_username_help()}
 							/>
 
 							<TextInputWithLabel
 								bind:value={emailSmtpPassword}
 								disabled={isReadOnly}
-								label="SMTP Password"
-								placeholder="••••••••"
+								label={m.notifications_email_password_label()}
+								placeholder={m.notifications_email_password_placeholder()}
 								type="password"
-								helpText="SMTP authentication password"
+								helpText={m.notifications_email_password_help()}
 							/>
 						</div>
 
 						<TextInputWithLabel
 							bind:value={emailFromAddress}
 							disabled={isReadOnly}
-							label="From Address"
-							placeholder="notifications@example.com"
+							label={m.notifications_email_from_address_label()}
+							placeholder={m.notifications_email_from_address_placeholder()}
 							type="email"
-							helpText="Email address to send notifications from"
+							helpText={m.notifications_email_from_address_help()}
 						/>
 
 						<div class="space-y-2">
-							<Label for="to-addresses">To Addresses</Label>
+							<Label for="to-addresses">{m.notifications_email_to_addresses_label()}</Label>
 							<Textarea
 								id="to-addresses"
 								bind:value={emailToAddresses}
 								disabled={isReadOnly}
-								placeholder="user1@example.com, user2@example.com"
+								placeholder={m.notifications_email_to_addresses_placeholder()}
 								rows={2}
 							/>
-							<p class="text-muted-foreground text-sm">Comma-separated list of email addresses to send notifications to</p>
+							<p class="text-muted-foreground text-sm">{m.notifications_email_to_addresses_help()}</p>
 						</div>
 
 						<SwitchWithLabel
 							id="email-use-tls"
 							bind:checked={emailUseTls}
 							disabled={isReadOnly}
-							label="Use TLS"
-							description="Enable TLS/SSL encryption for SMTP connection"
+							label={m.notifications_email_use_tls_label()}
+							description={m.notifications_email_use_tls_description()}
 						/>
 					</div>
 				{/if}
 			</Card.Content>
 			<Card.Footer class="flex gap-2">
-				<Button onclick={saveEmailSettings} disabled={isReadOnly || isLoading}>Save Email Settings</Button>
+				<Button onclick={saveEmailSettings} disabled={isReadOnly || isLoading}>{m.notifications_email_save_button()}</Button>
 				{#if emailEnabled}
 					<Button variant="outline" onclick={() => testNotification('email')} disabled={isReadOnly || isTesting}>
 						<SendIcon class="mr-2 h-4 w-4" />
-						Test Email
+						{m.notifications_email_test_button()}
 					</Button>
 				{/if}
 			</Card.Footer>
@@ -340,22 +357,17 @@
 
 		<!-- Information -->
 		<Alert.Root>
-			<Alert.Title>How Notifications Work</Alert.Title>
+			<Alert.Title>{m.notifications_info_title()}</Alert.Title>
 			<Alert.Description>
 				<ul class="mt-2 list-disc space-y-1 pl-4">
-					<li>Notifications are sent when image updates are detected during polling</li>
-					<li>Each enabled notification provider will receive notifications independently</li>
-					<li>Test notifications help verify your configuration is working correctly</li>
-					<li>Webhook URLs and passwords are encrypted before being stored in the database</li>
+					<li>{m.notifications_info_item1()}</li>
+					<li>{m.notifications_info_item2()}</li>
+					<li>{m.notifications_info_item3()}</li>
+					<li>{m.notifications_info_item4()}</li>
 				</ul>
 			</Alert.Description>
 		</Alert.Root>
-	</div>
+		</div>
+	</fieldset>
 {/snippet}
-
-<SettingsPageLayout
-	title="Notifications"
-	description="Configure notifications for container updates"
-	icon={BellIcon}
-	{mainContent}
-/>
+</SettingsPageLayout>
