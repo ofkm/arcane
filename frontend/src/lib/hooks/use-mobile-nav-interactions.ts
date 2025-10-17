@@ -1,5 +1,4 @@
 import { ScrollDirectionDetector } from './use-scroll-direction.svelte';
-import { TapOutsideDetector } from './use-tap-outside.svelte';
 import { SwipeGestureDetector, type SwipeDirection } from './use-swipe-gesture.svelte';
 
 export interface MobileNavInteractionOptions {
@@ -34,13 +33,11 @@ export interface MobileNavInteractionCallbacks {
 export interface MobileNavInteractionState {
 	menuOpen: boolean;
 	scrollToHideEnabled: boolean;
-	tapToHideEnabled: boolean;
 	visible: boolean;
 }
 
 export class MobileNavInteractionManager {
 	private readonly scrollDetector: ScrollDirectionDetector;
-	private readonly tapDetector: TapOutsideDetector;
 	private readonly swipeDetector: SwipeGestureDetector;
 
 	private readonly options: Required<MobileNavInteractionOptions>;
@@ -48,7 +45,6 @@ export class MobileNavInteractionManager {
 	private state: MobileNavInteractionState;
 
 	private navElement: HTMLElement | null = null;
-	private tapDebounceTimeoutId: ReturnType<typeof setTimeout> | null = null;
 	private lastGestureTime = 0;
 	private lastScrollDirection: string | null = null;
 	private lastScrollY = 0;
@@ -80,33 +76,11 @@ export class MobileNavInteractionManager {
 		this.state = {
 			menuOpen: false,
 			scrollToHideEnabled: false,
-			tapToHideEnabled: false,
 			visible: true
 		};
 
 		// Initialize detectors directly in constructor
 		this.scrollDetector = new ScrollDirectionDetector(this.options.scrollThreshold);
-
-		this.tapDetector = new TapOutsideDetector(() => {
-			if (!this.state.tapToHideEnabled) return;
-
-			// Debounce rapid taps to prevent bouncing animation
-			if (this.tapDebounceTimeoutId) {
-				clearTimeout(this.tapDebounceTimeoutId);
-				this.tapDebounceTimeoutId = null;
-				return;
-			}
-
-			// Toggle visibility - if visible, hide it; if hidden, show it
-			const newVisibility = !this.state.visible;
-			this.state.visible = newVisibility;
-			this.callbacks.onVisibilityChange(newVisibility);
-
-			// Set debounce timeout
-			this.tapDebounceTimeoutId = setTimeout(() => {
-				this.tapDebounceTimeoutId = null;
-			}, this.options.tapDebounceTimeout);
-		});
 
 		this.swipeDetector = new SwipeGestureDetector(
 			(direction: SwipeDirection) => {
@@ -139,11 +113,6 @@ export class MobileNavInteractionManager {
 		this.navElement = element;
 
 		if (!element) return;
-
-		// Setup tap detection target
-		if (this.state.tapToHideEnabled) {
-			this.tapDetector.setTargetElement(element);
-		}
 
 		// Setup swipe detection target
 		this.swipeDetector.setElement(element);
@@ -276,12 +245,6 @@ export class MobileNavInteractionManager {
 
 		// Cleanup scroll detector
 		this.scrollDetector.cleanup();
-
-		// Clear tap debounce timeout
-		if (this.tapDebounceTimeoutId) {
-			clearTimeout(this.tapDebounceTimeoutId);
-			this.tapDebounceTimeoutId = null;
-		}
 
 		// Clean up any remaining styles
 		if (document.body) {

@@ -65,6 +65,7 @@
 					<Sidebar.MenuButton
 						{...childProps}
 						size="lg"
+						tooltipContent={environmentStore.selected ? getEnvLabel(environmentStore.selected) : m.sidebar_no_environment()}
 						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 					>
 						{#if environmentStore.selected}

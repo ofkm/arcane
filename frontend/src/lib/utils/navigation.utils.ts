@@ -45,11 +45,6 @@ export function getEffectiveNavigationSettings(): MobileNavigationSettings {
 			serverSettings?.mobileNavigationScrollToHide,
 			overrides.scrollToHide,
 			defaultMobileNavigationSettings.scrollToHide
-		),
-		tapToHide: getEffectiveValue(
-			serverSettings?.mobileNavigationTapToHide,
-			overrides.tapToHide,
-			defaultMobileNavigationSettings.tapToHide
 		)
 	};
 }
