@@ -59,7 +59,7 @@
 				{#if sidebar.state === 'collapsed' && !sidebar.hoverExpansionEnabled}
 					<!-- In collapsed mode without hover expansion, show parent and children as separate icon buttons -->
 					<Sidebar.MenuItem>
-						<Sidebar.MenuButton isActive={item.isActive} tooltipContent={item.title}>
+						<Sidebar.MenuButton isActive={item.isActive} tooltipContent={sidebar.hoverExpansionEnabled ? undefined : item.title}>
 							{#snippet child({ props })}
 								{@const Icon = item.icon}
 								<a href={item.url} {...props}>
@@ -77,7 +77,10 @@
 					</div>
 					{#each item.items ?? [] as subItem (subItem.title)}
 						<Sidebar.MenuItem>
-							<Sidebar.MenuButton isActive={subItem.isActive} tooltipContent={subItem.title}>
+							<Sidebar.MenuButton
+								isActive={subItem.isActive}
+								tooltipContent={sidebar.hoverExpansionEnabled ? undefined : subItem.title}
+							>
 								{#snippet child({ props })}
 									{@const SubIcon = subItem.icon}
 									<a href={subItem.url} {...props}>
@@ -101,7 +104,10 @@
 								<Collapsible.Trigger>
 									{#snippet child({ props })}
 										{@const Icon = item.icon}
-										<Sidebar.MenuButton tooltipContent={item.title} isActive={item.isActive}>
+										<Sidebar.MenuButton
+											tooltipContent={sidebar.hoverExpansionEnabled ? undefined : item.title}
+											isActive={item.isActive}
+										>
 											{#snippet child({ props })}
 												<a href={item.url} {...props}>
 													{#if item.icon}
@@ -141,7 +147,7 @@
 				{/if}
 			{:else}
 				<Sidebar.MenuItem>
-					<Sidebar.MenuButton isActive={item.isActive} tooltipContent={item.title}>
+					<Sidebar.MenuButton isActive={item.isActive} tooltipContent={sidebar.hoverExpansionEnabled ? undefined : item.title}>
 						{#snippet child({ props })}
 							{@const Icon = item.icon}
 							<a href={item.url} {...props}>
