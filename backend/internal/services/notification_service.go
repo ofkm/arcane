@@ -135,7 +135,7 @@ func (s *NotificationService) sendDiscordNotification(ctx context.Context, image
 	}
 
 	if discordConfig.WebhookURL == "" {
-		return fmt.Errorf("Discord webhook URL not configured")
+		return fmt.Errorf("discord webhook URL not configured")
 	}
 
 	// Decrypt webhook URL if encrypted
@@ -214,7 +214,7 @@ func (s *NotificationService) sendDiscordNotification(ctx context.Context, image
 		return fmt.Errorf("failed to marshal Discord payload: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", webhookURL, bytes.NewBuffer(payloadBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		return fmt.Errorf("failed to create Discord request: %w", err)
 	}
@@ -228,7 +228,7 @@ func (s *NotificationService) sendDiscordNotification(ctx context.Context, image
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("Discord webhook returned status %d", resp.StatusCode)
+		return fmt.Errorf("discord webhook returned status %d", resp.StatusCode)
 	}
 
 	return nil
@@ -267,6 +267,17 @@ func (s *NotificationService) sendEmailNotification(ctx context.Context, imageRe
 		password = decrypted
 	}
 
+	message := s.buildEmailMessage(emailConfig, imageRef, updateInfo)
+	auth := smtp.PlainAuth("", emailConfig.SMTPUsername, password, emailConfig.SMTPHost)
+	addr := fmt.Sprintf("%s:%d", emailConfig.SMTPHost, emailConfig.SMTPPort)
+
+	if emailConfig.UseTLS {
+		return s.sendEmailWithTLS(ctx, addr, auth, emailConfig, message)
+	}
+	return s.sendEmailPlain(addr, auth, emailConfig, message)
+}
+
+func (s *NotificationService) buildEmailMessage(emailConfig models.EmailConfig, imageRef string, updateInfo *dto.ImageUpdateResponse) string {
 	subject := fmt.Sprintf("Container Update Available: %s", imageRef)
 	body := fmt.Sprintf(`Container Image Update Notification
 
@@ -286,62 +297,59 @@ Checked at: %s
 		updateInfo.CheckTime.Format(time.RFC3339),
 	)
 
-	message := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s",
+	return fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s",
 		emailConfig.FromAddress,
 		strings.Join(emailConfig.ToAddresses, ","),
 		subject,
 		body,
 	)
+}
 
-	auth := smtp.PlainAuth("", emailConfig.SMTPUsername, password, emailConfig.SMTPHost)
-	addr := fmt.Sprintf("%s:%d", emailConfig.SMTPHost, emailConfig.SMTPPort)
+func (s *NotificationService) sendEmailWithTLS(ctx context.Context, addr string, auth smtp.Auth, emailConfig models.EmailConfig, message string) error {
+	tlsConfig := &tls.Config{
+		ServerName:         emailConfig.SMTPHost,
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: false,
+	}
+	dialer := &tls.Dialer{Config: tlsConfig}
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return fmt.Errorf("failed to establish TLS connection: %w", err)
+	}
+	defer conn.Close()
 
-	if emailConfig.UseTLS {
-		tlsConfig := &tls.Config{
-			ServerName:         emailConfig.SMTPHost,
-			MinVersion:         tls.VersionTLS12,
-			InsecureSkipVerify: false,
-		}
-		conn, err := tls.Dial("tcp", addr, tlsConfig)
-		if err != nil {
-			return fmt.Errorf("failed to establish TLS connection: %w", err)
-		}
-		defer conn.Close()
+	client, err := smtp.NewClient(conn, emailConfig.SMTPHost)
+	if err != nil {
+		return fmt.Errorf("failed to create SMTP client: %w", err)
+	}
+	defer client.Close()
 
-		client, err := smtp.NewClient(conn, emailConfig.SMTPHost)
-		if err != nil {
-			return fmt.Errorf("failed to create SMTP client: %w", err)
-		}
-		defer client.Close()
-
-		if err := client.Auth(auth); err != nil {
-			return fmt.Errorf("SMTP authentication failed: %w", err)
-		}
-		if err := client.Mail(emailConfig.FromAddress); err != nil {
-			return fmt.Errorf("failed to set sender: %w", err)
-		}
-		for _, to := range emailConfig.ToAddresses {
-			if err := client.Rcpt(to); err != nil {
-				return fmt.Errorf("failed to set recipient %s: %w", to, err)
-			}
-		}
-		w, err := client.Data()
-		if err != nil {
-			return fmt.Errorf("failed to get data writer: %w", err)
-		}
-		if _, err := w.Write([]byte(message)); err != nil {
-			return fmt.Errorf("failed to write message: %w", err)
-		}
-		if err := w.Close(); err != nil {
-			return fmt.Errorf("failed to close data writer: %w", err)
-		}
-	} else {
-		err = smtp.SendMail(addr, auth, emailConfig.FromAddress, emailConfig.ToAddresses, []byte(message))
-		if err != nil {
-			return fmt.Errorf("failed to send email: %w", err)
+	if err := client.Auth(auth); err != nil {
+		return fmt.Errorf("SMTP authentication failed: %w", err)
+	}
+	if err := client.Mail(emailConfig.FromAddress); err != nil {
+		return fmt.Errorf("failed to set sender: %w", err)
+	}
+	for _, to := range emailConfig.ToAddresses {
+		if err := client.Rcpt(to); err != nil {
+			return fmt.Errorf("failed to set recipient %s: %w", to, err)
 		}
 	}
+	w, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("failed to get data writer: %w", err)
+	}
+	if _, err := w.Write([]byte(message)); err != nil {
+		return fmt.Errorf("failed to write message: %w", err)
+	}
+	return w.Close()
+}
 
+func (s *NotificationService) sendEmailPlain(addr string, auth smtp.Auth, emailConfig models.EmailConfig, message string) error {
+	err := smtp.SendMail(addr, auth, emailConfig.FromAddress, emailConfig.ToAddresses, []byte(message))
+	if err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
 	return nil
 }
 
