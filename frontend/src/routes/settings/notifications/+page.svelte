@@ -2,6 +2,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
+	import { Spinner } from '$lib/components/ui/spinner';
 	import { toast } from 'svelte-sonner';
 	import { getContext, onMount } from 'svelte';
 	import { z } from 'zod/v4';
@@ -306,7 +307,11 @@
 					<Card.Footer class="flex gap-2 px-3 py-4 sm:px-6">
 						{#if $formInputs.discordEnabled.value}
 							<Button variant="outline" onclick={() => testNotification('discord')} disabled={isReadOnly || isTesting}>
-								<SendIcon class="mr-2 h-4 w-4" />
+								{#if isTesting}
+									<Spinner class="mr-2 h-4 w-4" />
+								{:else}
+									<SendIcon class="mr-2 h-4 w-4" />
+								{/if}
 								{m.notifications_discord_test_button()}
 							</Button>
 						{/if}
@@ -414,7 +419,11 @@
 					<Card.Footer class="flex gap-2 px-3 py-4 sm:px-6">
 						{#if $formInputs.emailEnabled.value}
 							<Button variant="outline" onclick={() => testNotification('email')} disabled={isReadOnly || isTesting}>
-								<SendIcon class="mr-2 h-4 w-4" />
+								{#if isTesting}
+									<Spinner class="mr-2 h-4 w-4" />
+								{:else}
+									<SendIcon class="mr-2 h-4 w-4" />
+								{/if}
 								{m.notifications_email_test_button()}
 							</Button>
 						{/if}

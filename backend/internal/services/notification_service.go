@@ -3,14 +3,11 @@ package services
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/mail"
-	"net/smtp"
 	"net/url"
 	"strings"
 	"time"
@@ -19,27 +16,8 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/notifications"
 )
-
-// sanitizeForEmail restricts to safe characters for email (alphanumerics, dash, dot, slash, colon, at, underscore).
-// It removes any character not matching the safe set and explicitly strips CRLF characters to prevent header injection.
-func sanitizeForEmail(s string) string {
-	// First, strip out all carriage returns and newlines to prevent email header/content injection
-	s = strings.ReplaceAll(s, "\r", "")
-	s = strings.ReplaceAll(s, "\n", "")
-
-	// Allow only: letters, numbers, dot, slash, dash, colon, at, underscore
-	safe := make([]rune, 0, len(s))
-	for _, c := range s {
-		if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-			(c >= '0' && c <= '9') ||
-			c == '.' || c == '/' || c == '-' || c == ':' ||
-			c == '@' || c == '_' {
-			safe = append(safe, c)
-		}
-	}
-	return string(safe)
-}
 
 type NotificationService struct {
 	db *database.DB
@@ -282,43 +260,36 @@ func (s *NotificationService) sendEmailNotification(ctx context.Context, imageRe
 		}
 	}
 
-	message := s.buildEmailMessage(emailConfig, imageRef, updateInfo)
-
-	// Only use authentication if username is provided
-	var auth smtp.Auth
-	if emailConfig.SMTPUsername != "" {
-		// Decrypt SMTP password if encrypted
-		password := emailConfig.SMTPPassword
-		if decrypted, err := utils.Decrypt(password); err == nil {
-			password = decrypted
+	// Decrypt SMTP password if encrypted
+	if emailConfig.SMTPPassword != "" {
+		if decrypted, err := utils.Decrypt(emailConfig.SMTPPassword); err == nil {
+			emailConfig.SMTPPassword = decrypted
 		}
-		auth = smtp.PlainAuth("", emailConfig.SMTPUsername, password, emailConfig.SMTPHost)
 	}
 
-	addr := fmt.Sprintf("%s:%d", emailConfig.SMTPHost, emailConfig.SMTPPort)
+	// Build the email message
+	subject := fmt.Sprintf("Container Update Available: %s", notifications.SanitizeForEmail(imageRef))
+	body := s.buildEmailBody(imageRef, updateInfo)
+	message := notifications.BuildSimpleMessage(emailConfig.FromAddress, emailConfig.ToAddresses, subject, body)
 
-	// Default to StartTLS if not set or empty
-	tlsMode := emailConfig.TLSMode
-	if tlsMode == "" {
-		tlsMode = models.EmailTLSModeStartTLS
+	// Connect to SMTP server
+	client, err := notifications.ConnectSMTP(ctx, emailConfig)
+	if err != nil {
+		return fmt.Errorf("failed to connect to SMTP server: %w", err)
+	}
+	defer client.Close()
+
+	// Send the email
+	if err := client.SendMessage(emailConfig.FromAddress, emailConfig.ToAddresses, message); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
 	}
 
-	switch tlsMode {
-	case models.EmailTLSModeNone:
-		return s.sendEmailPlain(addr, auth, emailConfig, message)
-	case models.EmailTLSModeStartTLS:
-		return s.sendEmailStartTLS(ctx, addr, auth, emailConfig, message)
-	case models.EmailTLSModeSSL:
-		return s.sendEmailSSL(ctx, addr, auth, emailConfig, message)
-	default:
-		return fmt.Errorf("unknown TLS mode: %s", tlsMode)
-	}
+	return nil
 }
 
-func (s *NotificationService) buildEmailMessage(emailConfig models.EmailConfig, imageRef string, updateInfo *dto.ImageUpdateResponse) string {
-	safeImageRef := sanitizeForEmail(imageRef)
-	subject := fmt.Sprintf("Container Update Available: %s", safeImageRef)
-	body := fmt.Sprintf(`Container Image Update Notification
+func (s *NotificationService) buildEmailBody(imageRef string, updateInfo *dto.ImageUpdateResponse) string {
+	safeImageRef := notifications.SanitizeForEmail(imageRef)
+	return fmt.Sprintf(`Container Image Update Notification
 
 Image: %s
 Update Available: %t
@@ -335,102 +306,6 @@ Checked at: %s
 		updateInfo.LatestDigest,
 		updateInfo.CheckTime.Format(time.RFC3339),
 	)
-
-	return fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\n\r\n%s",
-		emailConfig.FromAddress,
-		strings.Join(emailConfig.ToAddresses, ","),
-		subject,
-		body,
-	)
-}
-
-// sendEmailSSL connects with immediate TLS/SSL encryption
-func (s *NotificationService) sendEmailSSL(ctx context.Context, addr string, auth smtp.Auth, emailConfig models.EmailConfig, message string) error {
-	tlsConfig := &tls.Config{
-		ServerName:         emailConfig.SMTPHost,
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: false,
-	}
-	dialer := &tls.Dialer{Config: tlsConfig}
-	conn, err := dialer.DialContext(ctx, "tcp", addr)
-	if err != nil {
-		return fmt.Errorf("failed to establish TLS connection: %w", err)
-	}
-	defer conn.Close()
-
-	client, err := smtp.NewClient(conn, emailConfig.SMTPHost)
-	if err != nil {
-		return fmt.Errorf("failed to create SMTP client: %w", err)
-	}
-	defer client.Close()
-
-	// Only authenticate if auth is provided
-	if auth != nil {
-		if err := client.Auth(auth); err != nil {
-			return fmt.Errorf("SMTP authentication failed: %w", err)
-		}
-	}
-	return s.sendSMTPMessage(client, emailConfig, message)
-}
-
-// sendEmailStartTLS connects with plain connection and upgrades to TLS
-func (s *NotificationService) sendEmailStartTLS(ctx context.Context, addr string, auth smtp.Auth, emailConfig models.EmailConfig, message string) error {
-	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", addr)
-	if err != nil {
-		return fmt.Errorf("failed to establish connection: %w", err)
-	}
-	defer conn.Close()
-
-	client, err := smtp.NewClient(conn, emailConfig.SMTPHost)
-	if err != nil {
-		return fmt.Errorf("failed to create SMTP client: %w", err)
-	}
-	defer client.Close()
-
-	tlsConfig := &tls.Config{
-		ServerName:         emailConfig.SMTPHost,
-		MinVersion:         tls.VersionTLS12,
-		InsecureSkipVerify: false,
-	}
-	if err := client.StartTLS(tlsConfig); err != nil {
-		return fmt.Errorf("failed to start TLS: %w", err)
-	}
-
-	// Only authenticate if auth is provided
-	if auth != nil {
-		if err := client.Auth(auth); err != nil {
-			return fmt.Errorf("SMTP authentication failed: %w", err)
-		}
-	}
-	return s.sendSMTPMessage(client, emailConfig, message)
-}
-
-// sendSMTPMessage sends the message via an already authenticated SMTP client
-func (s *NotificationService) sendSMTPMessage(client *smtp.Client, emailConfig models.EmailConfig, message string) error {
-	if err := client.Mail(emailConfig.FromAddress); err != nil {
-		return fmt.Errorf("failed to set sender: %w", err)
-	}
-	for _, to := range emailConfig.ToAddresses {
-		if err := client.Rcpt(to); err != nil {
-			return fmt.Errorf("failed to set recipient %s: %w", to, err)
-		}
-	}
-	w, err := client.Data()
-	if err != nil {
-		return fmt.Errorf("failed to get data writer: %w", err)
-	}
-	if _, err := w.Write([]byte(message)); err != nil {
-		return fmt.Errorf("failed to write message: %w", err)
-	}
-	return w.Close()
-}
-
-func (s *NotificationService) sendEmailPlain(addr string, auth smtp.Auth, emailConfig models.EmailConfig, message string) error {
-	err := smtp.SendMail(addr, auth, emailConfig.FromAddress, emailConfig.ToAddresses, []byte(message))
-	if err != nil {
-		return fmt.Errorf("failed to send email: %w", err)
-	}
-	return nil
 }
 
 func (s *NotificationService) TestNotification(ctx context.Context, provider string) error {
