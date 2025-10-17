@@ -31,7 +31,6 @@
 		mobileNavigationMode: z.enum(['floating', 'docked']),
 		mobileNavigationShowLabels: z.boolean(),
 		mobileNavigationScrollToHide: z.boolean(),
-		mobileNavigationTapToHide: z.boolean(),
 		sidebarHoverExpansion: z.boolean()
 	});
 
@@ -53,7 +52,6 @@
 			$formInputs.mobileNavigationMode.value !== currentSettings.mobileNavigationMode ||
 			$formInputs.mobileNavigationShowLabels.value !== currentSettings.mobileNavigationShowLabels ||
 			$formInputs.mobileNavigationScrollToHide.value !== currentSettings.mobileNavigationScrollToHide ||
-			$formInputs.mobileNavigationTapToHide.value !== currentSettings.mobileNavigationTapToHide ||
 			$formInputs.sidebarHoverExpansion.value !== currentSettings.sidebarHoverExpansion
 	);
 
@@ -65,7 +63,7 @@
 		}
 	});
 
-	function setLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide' | 'tapToHide', value: any) {
+		function setLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide', value: any) {
 		const currentOverrides = navigationSettingsOverridesStore.current;
 		navigationSettingsOverridesStore.current = {
 			...currentOverrides,
@@ -74,12 +72,12 @@
 		persistedState = navigationSettingsOverridesStore.current;
 
 		// Reset navigation bar visibility when behavior settings change
-		if (key === 'scrollToHide' || key === 'tapToHide') {
+		if (key === 'scrollToHide') {
 			resetNavigationVisibility();
 		}
 	}
 
-	function clearLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide' | 'tapToHide') {
+	function clearLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide') {
 		const currentOverrides = navigationSettingsOverridesStore.current;
 		const newOverrides = { ...currentOverrides };
 		delete newOverrides[key];
@@ -87,7 +85,7 @@
 		persistedState = navigationSettingsOverridesStore.current;
 
 		// Reset navigation bar visibility when behavior settings change
-		if (key === 'scrollToHide' || key === 'tapToHide') {
+		if (key === 'scrollToHide') {
 			resetNavigationVisibility();
 		}
 
@@ -116,8 +114,7 @@
 
 		// Check if behavior settings changed
 		const behaviorChanged =
-			formData.mobileNavigationScrollToHide !== currentSettings.mobileNavigationScrollToHide ||
-			formData.mobileNavigationTapToHide !== currentSettings.mobileNavigationTapToHide;
+			formData.mobileNavigationScrollToHide !== currentSettings.mobileNavigationScrollToHide;
 
 		await updateSettingsConfig(formData)
 			.then(() => {
@@ -139,7 +136,6 @@
 		$formInputs.mobileNavigationMode.value = currentSettings.mobileNavigationMode;
 		$formInputs.mobileNavigationShowLabels.value = currentSettings.mobileNavigationShowLabels;
 		$formInputs.mobileNavigationScrollToHide.value = currentSettings.mobileNavigationScrollToHide;
-		$formInputs.mobileNavigationTapToHide.value = currentSettings.mobileNavigationTapToHide;
 	}
 
 	onMount(() => {
@@ -270,20 +266,6 @@
 							serverDisabled={isReadOnly}
 						/>
 
-						<NavigationSettingControl
-							id="mobileNavigationTapToHide"
-							label={m.navigation_tap_to_hide_label()}
-							description={m.navigation_tap_to_hide_description()}
-							icon={MousePointerClickIcon}
-							serverValue={$formInputs.mobileNavigationTapToHide.value}
-							localOverride={persistedState.tapToHide}
-							onServerChange={(value) => {
-								$formInputs.mobileNavigationTapToHide.value = value;
-							}}
-							onLocalOverride={(value) => setLocalOverride('tapToHide', value)}
-							onClearOverride={() => clearLocalOverride('tapToHide')}
-							serverDisabled={isReadOnly}
-						/>
 					</div>
 				</Card.Content>
 			</Card.Root>

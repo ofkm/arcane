@@ -40,7 +40,6 @@ export type Settings = {
 	mobileNavigationMode: 'floating' | 'docked';
 	mobileNavigationShowLabels: boolean;
 	mobileNavigationScrollToHide: boolean;
-	mobileNavigationTapToHide: boolean;
 	sidebarHoverExpansion: boolean;
 
 	registryCredentials: RegistryCredential[];

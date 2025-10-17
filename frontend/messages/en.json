@@ -907,8 +907,6 @@
 	"navigation_show_labels_description": "Display text labels below navigation icons for better clarity and accessibility",
 	"navigation_scroll_to_hide_label": "Scroll to Hide",
 	"navigation_scroll_to_hide_description": "Automatically hide the navigation bar when scrolling down for a cleaner viewing experience",
-	"navigation_tap_to_hide_label": "Tap to Hide",
-	"navigation_tap_to_hide_description": "Allow users to tap outside the navigation area to quickly show or hide the navigation bar",
 	"navigation_settings_saved": "Navigation settings saved successfully",
 	"navigation_desktop_sidebar_title": "Desktop Sidebar",
 	"navigation_desktop_sidebar_description": "Configure desktop sidebar behavior and appearance",

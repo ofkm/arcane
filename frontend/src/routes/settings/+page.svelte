@@ -208,13 +208,6 @@
 						'minimize',
 						'collapse'
 					]
-				},
-				{
-					key: 'mobileNavigationTapToHide',
-					label: m.navigation_tap_to_hide_label(),
-					type: 'boolean',
-					description: m.navigation_tap_to_hide_description(),
-					keywords: ['tap', 'touch', 'hide', 'show', 'toggle', 'gesture', 'click', 'outside', 'dismiss', 'interact', 'control']
 				}
 			]
 		},
