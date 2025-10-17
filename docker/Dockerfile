@@ -5,7 +5,7 @@ ARG REVISION="unknown"
 
 # Stage 1: Build Frontend
 FROM node:25-alpine AS frontend-builder
-RUN corepack enable
+RUN npm install -g corepack && corepack enable
 WORKDIR /build
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY frontend/package.json ./frontend/package.json
