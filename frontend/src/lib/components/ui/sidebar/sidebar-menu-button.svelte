@@ -95,7 +95,7 @@
 	{@render Button({})}
 {:else if sidebar.state === 'collapsed'}
 	<Tooltip.Root>
-		<Tooltip.Trigger asChild>
+		<Tooltip.Trigger>
 			{#snippet child({ props })}
 				{@render Button({ props })}
 			{/snippet}
