@@ -19,7 +19,7 @@
 	import Textarea from '$lib/components/ui/textarea/textarea.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { notificationService } from '$lib/services/notification-service';
-	import type { NotificationSettings as NotificationSettingsType, EmailTLSMode } from '$lib/types/notification.type';
+	import type { EmailTLSMode } from '$lib/types/notification.type';
 
 	interface FormNotificationSettings {
 		discordEnabled: boolean;
@@ -256,7 +256,6 @@
 					</Alert.Root>
 				{/if}
 
-				<!-- Discord Notifications -->
 				<Card.Root>
 					<Card.Header icon={BellIcon}>
 						<div class="flex flex-col space-y-1.5">
@@ -429,18 +428,6 @@
 						{/if}
 					</Card.Footer>
 				</Card.Root>
-				<!-- Information -->
-				<Alert.Root>
-					<Alert.Title>{m.notifications_info_title()}</Alert.Title>
-					<Alert.Description>
-						<ul class="mt-2 list-disc space-y-1 pl-4">
-							<li>{m.notifications_info_item1()}</li>
-							<li>{m.notifications_info_item2()}</li>
-							<li>{m.notifications_info_item3()}</li>
-							<li>{m.notifications_info_item4()}</li>
-						</ul>
-					</Alert.Description>
-				</Alert.Root>
 			</div>
 		</fieldset>
 	{/snippet}
