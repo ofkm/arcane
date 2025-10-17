@@ -6,6 +6,7 @@
 	import UserIcon from '@lucide/svelte/icons/user';
 	import ShieldIcon from '@lucide/svelte/icons/shield';
 	import NavigationIcon from '@lucide/svelte/icons/navigation';
+	import BellIcon from '@lucide/svelte/icons/bell';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
@@ -215,6 +216,30 @@
 					type: 'boolean',
 					description: m.navigation_tap_to_hide_description(),
 					keywords: ['tap', 'touch', 'hide', 'show', 'toggle', 'gesture', 'click', 'outside', 'dismiss', 'interact', 'control']
+				}
+			]
+		},
+		{
+			id: 'notifications',
+			title: 'Notifications',
+			description: 'Configure notifications for container updates',
+			icon: BellIcon,
+			url: '/settings/notifications',
+			keywords: ['notifications', 'alerts', 'discord', 'email', 'webhook', 'updates', 'notify'],
+			settings: [
+				{
+					key: 'discordEnabled',
+					label: 'Discord Notifications',
+					type: 'boolean',
+					description: 'Send notifications to Discord when updates are detected',
+					keywords: ['discord', 'webhook', 'chat', 'message', 'bot']
+				},
+				{
+					key: 'emailEnabled',
+					label: 'Email Notifications',
+					type: 'boolean',
+					description: 'Send email notifications when updates are detected',
+					keywords: ['email', 'smtp', 'mail', 'message', 'alert']
 				}
 			]
 		},
