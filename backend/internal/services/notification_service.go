@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/mail"
 	"net/smtp"
+	"net/url"
 	"strings"
 	"time"
 
@@ -142,6 +144,11 @@ func (s *NotificationService) sendDiscordNotification(ctx context.Context, image
 		webhookURL = decrypted
 	}
 
+	// Validate webhook URL to prevent SSRF
+	if err := validateWebhookURL(webhookURL); err != nil {
+		return fmt.Errorf("invalid webhook URL: %w", err)
+	}
+
 	username := discordConfig.Username
 	if username == "" {
 		username = "Arcane"
@@ -244,6 +251,16 @@ func (s *NotificationService) sendEmailNotification(ctx context.Context, imageRe
 		return fmt.Errorf("no recipient email addresses configured")
 	}
 
+	// Validate email addresses
+	if _, err := mail.ParseAddress(emailConfig.FromAddress); err != nil {
+		return fmt.Errorf("invalid from address: %w", err)
+	}
+	for _, addr := range emailConfig.ToAddresses {
+		if _, err := mail.ParseAddress(addr); err != nil {
+			return fmt.Errorf("invalid to address %s: %w", addr, err)
+		}
+	}
+
 	// Decrypt SMTP password if encrypted
 	password := emailConfig.SMTPPassword
 	if decrypted, err := utils.Decrypt(password); err == nil {
@@ -281,7 +298,9 @@ Checked at: %s
 
 	if emailConfig.UseTLS {
 		tlsConfig := &tls.Config{
-			ServerName: emailConfig.SMTPHost,
+			ServerName:         emailConfig.SMTPHost,
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: false,
 		}
 		conn, err := tls.Dial("tcp", addr, tlsConfig)
 		if err != nil {
@@ -373,4 +392,43 @@ func truncateDigest(digest string) string {
 		return digest[:19] + "..."
 	}
 	return digest
+}
+
+// validateWebhookURL validates that the webhook URL is a valid Discord webhook URL
+// This prevents SSRF attacks by ensuring the URL points to Discord's API
+func validateWebhookURL(webhookURL string) error {
+	parsedURL, err := url.Parse(webhookURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse webhook URL: %w", err)
+	}
+
+	// Ensure it's HTTPS
+	if parsedURL.Scheme != "https" {
+		return fmt.Errorf("webhook URL must use HTTPS")
+	}
+
+	// Validate it's a Discord webhook URL
+	validHosts := []string{
+		"discord.com",
+		"discordapp.com",
+	}
+	
+	isValid := false
+	for _, validHost := range validHosts {
+		if parsedURL.Host == validHost || strings.HasSuffix(parsedURL.Host, "."+validHost) {
+			isValid = true
+			break
+		}
+	}
+
+	if !isValid {
+		return fmt.Errorf("webhook URL must be a Discord webhook URL")
+	}
+
+	// Validate it's a webhook path
+	if !strings.HasPrefix(parsedURL.Path, "/api/webhooks/") {
+		return fmt.Errorf("invalid Discord webhook path")
+	}
+
+	return nil
 }
