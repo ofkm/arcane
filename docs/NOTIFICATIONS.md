@@ -52,7 +52,12 @@ Arcane can send notifications when it detects that container images have updates
 - SMTP Host: `smtp.gmail.com`
 - SMTP Port: `587`
 - Use TLS: Yes
-- Note: You may need to use an App Password instead of your regular password
+- **Important Security Note**: You must use an App Password, not your regular Gmail password. Regular passwords will not work and should never be used for security reasons. To create an App Password:
+  1. Go to your Google Account settings
+  2. Navigate to Security → 2-Step Verification
+  3. Scroll down to "App passwords"
+  4. Generate a new app password for "Mail"
+  5. Use this generated password in Arcane
 
 **Outlook/Office 365**
 - SMTP Host: `smtp.office365.com`
