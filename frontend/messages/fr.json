@@ -883,8 +883,6 @@
 	"navigation_show_labels_description": "Afficher les libellés du texte sous les icônes de navigation pour plus de clarté et d'accessibilité",
 	"navigation_scroll_to_hide_label": "Faites défiler pour masquer",
 	"navigation_scroll_to_hide_description": "Masquer automatiquement la barre de navigation lors du défilement vers le bas pour une expérience de visualisation plus propre",
-	"navigation_tap_to_hide_label": "Appuyer pour masquer",
-	"navigation_tap_to_hide_description": "Permettre aux utilisateurs d'appuyer en dehors de la zone de navigation pour afficher ou masquer rapidement la barre de navigation",
 	"navigation_settings_saved": "Paramètres de navigation enregistrés avec succès",
 	"navigation_desktop_sidebar_title": "Desktop Sidebar",
 	"navigation_desktop_sidebar_description": "Configurer le comportement et l'apparence de la barre latérale du bureau",
