@@ -68,17 +68,17 @@ func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClie
 }
 
 type SystemStats struct {
-	CPUUsage     float64               `json:"cpuUsage"`
-	MemoryUsage  uint64                `json:"memoryUsage"`
-	MemoryTotal  uint64                `json:"memoryTotal"`
-	DiskUsage    uint64                `json:"diskUsage,omitempty"`
-	DiskTotal    uint64                `json:"diskTotal,omitempty"`
-	CPUCount     int                   `json:"cpuCount"`
-	Architecture string                `json:"architecture"`
-	Platform     string                `json:"platform"`
-	Hostname     string                `json:"hostname,omitempty"`
-	GPUCount     int                   `json:"gpuCount"`
-	GPUs         []services.GPUStats   `json:"gpus,omitempty"`
+	CPUUsage     float64             `json:"cpuUsage"`
+	MemoryUsage  uint64              `json:"memoryUsage"`
+	MemoryTotal  uint64              `json:"memoryTotal"`
+	DiskUsage    uint64              `json:"diskUsage,omitempty"`
+	DiskTotal    uint64              `json:"diskTotal,omitempty"`
+	CPUCount     int                 `json:"cpuCount"`
+	Architecture string              `json:"architecture"`
+	Platform     string              `json:"platform"`
+	Hostname     string              `json:"hostname,omitempty"`
+	GPUCount     int                 `json:"gpuCount"`
+	GPUs         []services.GPUStats `json:"gpus,omitempty"`
 }
 
 func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
