@@ -58,16 +58,33 @@ func NewUpdaterService(
 }
 
 //nolint:gocognit
-func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool) (*dto.UpdaterRunResult, error) {
+func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool, forceApply ...bool) (*dto.UpdaterRunResult, error) {
 	start := time.Now()
 	out := &dto.UpdaterRunResult{Items: []dto.UpdaterItem{}}
+
+	bypassSchedule := len(forceApply) > 0 && forceApply[0]
+
+	if !bypassSchedule {
+		withinWindow, err := s.IsWithinUpdateWindow(ctx, nil)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to check update window, proceeding anyway", "error", err)
+		} else if !withinWindow {
+			nextWindow, _ := s.GetNextUpdateWindow(ctx, nil)
+			var nextStr string
+			if nextWindow != nil {
+				nextStr = nextWindow.Format(time.RFC3339)
+			}
+			slog.InfoContext(ctx, "Not within update window, skipping automatic update", "nextWindow", nextStr)
+			out.Duration = time.Since(start).String()
+			return out, nil
+		}
+	}
 
 	var records []models.ImageUpdateRecord
 	if err := s.db.WithContext(ctx).Where("has_update = ?", true).Find(&records).Error; err != nil {
 		return nil, fmt.Errorf("query pending image updates: %w", err)
 	}
-	// debug: how many pending records and dryRun flag
-	slog.DebugContext(ctx, "ApplyPending: found pending image update records", "records", len(records), "dryRun", dryRun)
+	slog.DebugContext(ctx, "ApplyPending: found pending image update records", "records", len(records), "dryRun", dryRun, "bypassSchedule", bypassSchedule)
 
 	if len(records) == 0 {
 		out.Duration = time.Since(start).String()
@@ -911,4 +928,113 @@ func (s *UpdaterService) parseRepoAndTag(ref string) (string, string) {
 	}
 	// Keep registry in repository as stored in records (they store Repository without tag)
 	return ref, tag
+}
+
+func (s *UpdaterService) IsWithinUpdateWindow(ctx context.Context, project *models.Project) (bool, error) {
+	resolved, err := s.settingsService.ResolveProjectSettings(ctx, project)
+	if err != nil {
+		return false, fmt.Errorf("failed to resolve project settings: %w", err)
+	}
+
+	if !resolved.UpdateScheduleEnabled {
+		return true, nil
+	}
+
+	if resolved.UpdateScheduleWindows == nil || !resolved.UpdateScheduleWindows.Enabled || len(resolved.UpdateScheduleWindows.Windows) == 0 {
+		return false, nil
+	}
+
+	loc, err := time.LoadLocation(resolved.UpdateScheduleTimezone)
+	if err != nil {
+		slog.WarnContext(ctx, "Failed to load timezone, using UTC", "timezone", resolved.UpdateScheduleTimezone, "error", err)
+		loc = time.UTC
+	}
+
+	now := time.Now().In(loc)
+	currentDay := strings.ToLower(now.Weekday().String())
+	currentTime := now.Format("15:04")
+
+	for _, window := range resolved.UpdateScheduleWindows.Windows {
+		dayMatch := false
+		for _, day := range window.Days {
+			if strings.ToLower(day) == currentDay {
+				dayMatch = true
+				break
+			}
+		}
+		if !dayMatch {
+			continue
+		}
+
+		if window.EndTime < window.StartTime {
+			if currentTime >= window.StartTime || currentTime <= window.EndTime {
+				return true, nil
+			}
+		} else {
+			if currentTime >= window.StartTime && currentTime <= window.EndTime {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
+func (s *UpdaterService) GetNextUpdateWindow(ctx context.Context, project *models.Project) (*time.Time, error) {
+	resolved, err := s.settingsService.ResolveProjectSettings(ctx, project)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve project settings: %w", err)
+	}
+
+	if !resolved.UpdateScheduleEnabled {
+		return nil, nil
+	}
+
+	if resolved.UpdateScheduleWindows == nil || !resolved.UpdateScheduleWindows.Enabled || len(resolved.UpdateScheduleWindows.Windows) == 0 {
+		return nil, nil
+	}
+
+	loc, err := time.LoadLocation(resolved.UpdateScheduleTimezone)
+	if err != nil {
+		loc = time.UTC
+	}
+
+	now := time.Now().In(loc)
+	var nextWindow *time.Time
+
+	for dayOffset := 0; dayOffset < 7; dayOffset++ {
+		checkDate := now.AddDate(0, 0, dayOffset)
+		checkDay := strings.ToLower(checkDate.Weekday().String())
+
+		for _, window := range resolved.UpdateScheduleWindows.Windows {
+			dayMatch := false
+			for _, day := range window.Days {
+				if strings.ToLower(day) == checkDay {
+					dayMatch = true
+					break
+				}
+			}
+			if !dayMatch {
+				continue
+			}
+
+			startTime, err := time.Parse("15:04", window.StartTime)
+			if err != nil {
+				continue
+			}
+
+			windowStart := time.Date(
+				checkDate.Year(), checkDate.Month(), checkDate.Day(),
+				startTime.Hour(), startTime.Minute(), 0, 0, loc,
+			)
+
+			if windowStart.After(now) {
+				if nextWindow == nil || windowStart.Before(*nextWindow) {
+					nextWindow = &windowStart
+				}
+			}
+		}
+	}
+
+	return nextWindow, nil
 }

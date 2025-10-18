@@ -3,7 +3,7 @@
 	import ZapIcon from '@lucide/svelte/icons/zap';
 	import * as Alert from '$lib/components/ui/alert';
 	import { toast } from 'svelte-sonner';
-	import type { Settings } from '$lib/types/settings.type';
+	import type { Settings, UpdateScheduleConfig, UpdateScheduleWindow } from '$lib/types/settings.type';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
@@ -11,14 +11,15 @@
 	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import ActivityIcon from '@lucide/svelte/icons/activity';
-	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import TrashIcon from '@lucide/svelte/icons/trash';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
+	import ClockIcon from '@lucide/svelte/icons/clock';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
+	import UpdateScheduleEditor from '$lib/components/update-schedule-editor.svelte';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings!);
@@ -31,12 +32,36 @@
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
-		autoUpdateInterval: z.number().int(),
+		updateScheduleEnabled: z.boolean(),
+		updateScheduleWindows: z.any(),
+		updateScheduleTimezone: z.string(),
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		defaultShell: z.string()
 	});
 
 	let pruneMode = $derived(currentSettings.dockerPruneMode);
+
+	// Local state for schedule editor (synced with form inputs)
+	let localAutoUpdate = $state(false);
+	let localScheduleEnabled = $state(false);
+	let localScheduleWindows = $state<UpdateScheduleWindow[]>([]);
+	let localScheduleTimezone = $state('UTC');
+
+	// Sync local state with form inputs
+	$effect(() => {
+		localAutoUpdate = $formInputs.autoUpdate.value;
+		localScheduleEnabled = $formInputs.updateScheduleEnabled.value;
+		localScheduleWindows = $formInputs.updateScheduleWindows.value;
+		localScheduleTimezone = $formInputs.updateScheduleTimezone.value;
+	});
+
+	// Sync changes back to form inputs
+	$effect(() => {
+		$formInputs.autoUpdate.value = localAutoUpdate;
+		$formInputs.updateScheduleEnabled.value = localScheduleEnabled;
+		$formInputs.updateScheduleWindows.value = localScheduleWindows;
+		$formInputs.updateScheduleTimezone.value = localScheduleTimezone;
+	});
 
 	type PollingIntervalMode = 'hourly' | 'daily' | 'weekly' | 'custom';
 
@@ -112,9 +137,12 @@
 			$formInputs.pollingEnabled.value !== currentSettings.pollingEnabled ||
 			$formInputs.pollingInterval.value !== currentSettings.pollingInterval ||
 			$formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
-			$formInputs.autoUpdateInterval.value != currentSettings.autoUpdateInterval ||
 			$formInputs.dockerPruneMode.value != currentSettings.dockerPruneMode ||
-			$formInputs.defaultShell.value != currentSettings.defaultShell
+			$formInputs.defaultShell.value != currentSettings.defaultShell ||
+			$formInputs.updateScheduleEnabled.value !== currentSettings.updateScheduleEnabled ||
+			JSON.stringify($formInputs.updateScheduleWindows.value) !==
+				JSON.stringify(currentSettings.updateScheduleWindows?.windows || []) ||
+			$formInputs.updateScheduleTimezone.value !== currentSettings.updateScheduleTimezone
 	);
 
 	$effect(() => {
@@ -157,7 +185,16 @@
 		}
 		isLoading = true;
 
-		await updateSettingsConfig(formData)
+		// Add schedule data to form submission
+		const settingsToUpdate = {
+			...formData,
+			updateScheduleWindows: {
+				enabled: formData.updateScheduleEnabled,
+				windows: formData.updateScheduleWindows
+			} as UpdateScheduleConfig
+		};
+
+		await updateSettingsConfig(settingsToUpdate)
 			.then(() => toast.success(m.general_settings_saved()))
 			.catch((error) => {
 				console.error('Failed to save settings:', error);
@@ -170,9 +207,11 @@
 		$formInputs.pollingEnabled.value = currentSettings.pollingEnabled;
 		$formInputs.pollingInterval.value = currentSettings.pollingInterval;
 		$formInputs.autoUpdate.value = currentSettings.autoUpdate;
-		$formInputs.autoUpdateInterval.value = currentSettings.autoUpdateInterval;
 		$formInputs.dockerPruneMode.value = currentSettings.dockerPruneMode;
 		$formInputs.defaultShell.value = currentSettings.defaultShell;
+		$formInputs.updateScheduleEnabled.value = currentSettings.updateScheduleEnabled;
+		$formInputs.updateScheduleWindows.value = currentSettings.updateScheduleWindows?.windows || [];
+		$formInputs.updateScheduleTimezone.value = currentSettings.updateScheduleTimezone;
 	}
 
 	onMount(() => {
@@ -245,33 +284,19 @@
 
 				{#if $formInputs.pollingEnabled.value}
 					<Card.Root>
-						<Card.Header icon={RefreshCwIcon}>
+						<Card.Header icon={ClockIcon}>
 							<div class="flex flex-col space-y-1.5">
-								<Card.Title>{m.docker_auto_updates_title()}</Card.Title>
-								<Card.Description>{m.docker_auto_updates_description()}</Card.Description>
+								<Card.Title>{m.update_schedule_title()}</Card.Title>
+								<Card.Description>{m.update_schedule_description()}</Card.Description>
 							</div>
 						</Card.Header>
 						<Card.Content class="px-3 py-4 sm:px-6">
-							<div class="space-y-3">
-								<SwitchWithLabel
-									id="autoUpdateSwitch"
-									label={m.docker_auto_update_label()}
-									description={m.docker_auto_update_description()}
-									bind:checked={$formInputs.autoUpdate.value}
-								/>
-
-								{#if $formInputs.autoUpdate.value}
-									<div class="border-primary/20 border-l-2 pl-3">
-										<TextInputWithLabel
-											bind:value={$formInputs.autoUpdateInterval.value}
-											label={m.docker_auto_update_interval_label()}
-											placeholder={m.docker_auto_update_interval_placeholder()}
-											helpText={m.docker_auto_update_interval_description()}
-											type="number"
-										/>
-									</div>
-								{/if}
-							</div>
+							<UpdateScheduleEditor
+								bind:autoUpdate={localAutoUpdate}
+								bind:scheduleEnabled={localScheduleEnabled}
+								bind:windows={localScheduleWindows}
+								bind:timezone={localScheduleTimezone}
+							/>
 						</Card.Content>
 					</Card.Root>
 				{/if}

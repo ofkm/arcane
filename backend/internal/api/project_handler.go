@@ -62,6 +62,9 @@ func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectS
 		apiGroup.PUT("/:projectId", handler.UpdateProject)
 		apiGroup.POST("/:projectId/restart", handler.RestartProject)
 		apiGroup.GET("/:projectId/logs/ws", handler.GetProjectLogsWS)
+		apiGroup.PUT("/:projectId/settings", handler.UpdateProjectSettings)
+		apiGroup.DELETE("/:projectId/settings/:key", handler.ClearProjectSettingOverride)
+		apiGroup.DELETE("/:projectId/settings", handler.ClearAllProjectSettingOverrides)
 
 	}
 }
@@ -416,5 +419,66 @@ func (h *ProjectHandler) GetProjectStatusCounts(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    out,
+	})
+}
+
+func (h *ProjectHandler) UpdateProjectSettings(c *gin.Context) {
+	projectID := c.Param("projectId")
+
+	var updates dto.UpdateProjectSettingsDto
+	if err := c.ShouldBindJSON(&updates); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request body: " + err.Error(),
+		})
+		return
+	}
+
+	if err := h.projectService.UpdateProjectSettings(c.Request.Context(), projectID, updates); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to update project settings: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Project settings updated successfully",
+	})
+}
+
+func (h *ProjectHandler) ClearProjectSettingOverride(c *gin.Context) {
+	projectID := c.Param("projectId")
+	key := c.Param("key")
+
+	if err := h.projectService.ClearProjectSettingOverride(c.Request.Context(), projectID, key); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to clear project setting override: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Project setting override cleared successfully",
+	})
+}
+
+func (h *ProjectHandler) ClearAllProjectSettingOverrides(c *gin.Context) {
+	projectID := c.Param("projectId")
+
+	if err := h.projectService.ClearAllProjectSettingOverrides(c.Request.Context(), projectID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to clear all project setting overrides: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "All project setting overrides cleared successfully",
 	})
 }
