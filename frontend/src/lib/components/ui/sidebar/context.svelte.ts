@@ -27,6 +27,7 @@ class SidebarState {
 	setOpen: SidebarStateProps['setOpen'];
 	#isTablet: IsTablet;
 	#isPinnedState = new PersistedState('sidebar-pinned', true);
+	#hoverExpansionEnabled = new PersistedState('sidebar-hover-expansion', false);
 	#isHovered = $state(false);
 	#hoverTimeout: ReturnType<typeof setTimeout> | null = null;
 	state = $derived.by(() => (this.open ? 'expanded' : 'collapsed'));
@@ -67,14 +68,26 @@ class SidebarState {
 		return this.#isPinnedState.current;
 	}
 
+	// Getter for hover expansion preference
+	get hoverExpansionEnabled() {
+		return this.#hoverExpansionEnabled.current;
+	}
+
+	// Setter for hover expansion preference
+	setHoverExpansion = (enabled: boolean) => {
+		this.#hoverExpansionEnabled.current = enabled;
+	};
+
 	// Derived state that shows if sidebar should be visually expanded (either open or hovered)
 	get isExpanded() {
-		// In desktop mode: expanded if open OR (collapsed AND hovered)
+		// In desktop mode: expanded if open OR (collapsed AND hovered AND hover expansion is enabled)
 		// In tablet mode: expanded only when hovered (since it's always collapsed)
 		if (this.#isTablet.current) {
 			return this.#isHovered;
 		}
-		return this.open || (!this.open && this.#isHovered);
+		// Only consider hover state for expansion if hover expansion is enabled
+		const shouldExpandOnHover = !this.open && this.#isHovered && this.#hoverExpansionEnabled.current;
+		return this.open || shouldExpandOnHover;
 	}
 
 	// Set hover state with optional delay for clearing

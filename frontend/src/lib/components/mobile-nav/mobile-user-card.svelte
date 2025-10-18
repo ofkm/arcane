@@ -69,11 +69,11 @@
 	>
 		<div class="bg-muted/50 flex h-14 w-14 items-center justify-center rounded-2xl">
 			<span class="text-foreground text-xl font-semibold">
-				{effectiveUser.username?.charAt(0).toUpperCase() || 'U'}
+				{(effectiveUser.displayName || effectiveUser.username)?.charAt(0).toUpperCase() || 'U'}
 			</span>
 		</div>
 		<div class="flex-1">
-			<h3 class="text-foreground text-lg font-semibold">{effectiveUser.username}</h3>
+			<h3 class="text-foreground text-lg font-semibold">{effectiveUser.displayName || effectiveUser.username}</h3>
 			<p class="text-muted-foreground/80 text-sm">
 				{effectiveUser.roles?.join(', ')}
 			</p>
@@ -105,33 +105,35 @@
 		<div class="border-border/20 bg-muted/10 space-y-4 border-t p-4">
 			{#if isAdmin}
 				<div class="bg-background/50 border-border/20 rounded-2xl border p-4">
-					<div class="flex items-center gap-3">
-						<div class="bg-primary/10 text-primary flex aspect-square size-8 items-center justify-center rounded-lg">
-							{#if environmentStore.selected?.isLocal}
-								<ServerIcon class="size-4" />
-							{:else}
-								<RouterIcon class="size-4" />
-							{/if}
-						</div>
-						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground/70 text-xs font-medium tracking-widest uppercase">
-								{m.sidebar_environment_label()}
+					<div class="space-y-3">
+						<div class="flex items-start gap-3">
+							<div class="bg-primary/10 text-primary flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
+								{#if environmentStore.selected?.isLocal}
+									<ServerIcon class="size-4" />
+								{:else}
+									<RouterIcon class="size-4" />
+								{/if}
 							</div>
-							<div class="text-foreground text-sm font-medium">
-								{environmentStore.selected ? getEnvLabel(environmentStore.selected) : m.sidebar_no_environment()}
-							</div>
-							{#if environmentStore.selected}
-								<div class="text-muted-foreground/60 text-xs">
-									{getConnectionString(environmentStore.selected)}
+							<div class="min-w-0 flex-1">
+								<div class="text-muted-foreground/70 text-xs font-medium uppercase tracking-widest">
+									{m.sidebar_environment_label()}
 								</div>
-							{/if}
+								<div class="text-foreground text-sm font-medium">
+									{environmentStore.selected ? getEnvLabel(environmentStore.selected) : m.sidebar_no_environment()}
+								</div>
+								{#if environmentStore.selected}
+									<div class="text-muted-foreground/60 text-xs">
+										{getConnectionString(environmentStore.selected)}
+									</div>
+								{/if}
+							</div>
 						</div>
 						{#if environmentStore.available.length > 1}
 							<Select.Root type="single" value={selectedValue} onValueChange={handleEnvSelect}>
-								<Select.Trigger class="bg-background/50 border-border/30 text-foreground h-9 w-32 text-sm font-medium">
-									<span class="truncate">Switch</span>
+								<Select.Trigger class="bg-background/50 border-border/30 text-foreground h-9 w-full text-sm font-medium">
+									<span class="truncate">{m.sidebar_select_environment()}</span>
 								</Select.Trigger>
-								<Select.Content class="max-w-[280px] min-w-[160px]">
+								<Select.Content class="min-w-[160px] max-w-[280px]">
 									{#each environmentStore.available as env (env.id)}
 										<Select.Item value={env.id} class="text-sm">
 											{getEnvLabel(env)}
@@ -151,7 +153,9 @@
 							<LanguagesIcon class="size-4" />
 						</div>
 						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground/70 mb-1 text-xs font-medium tracking-widest uppercase">Language</div>
+							<div class="text-muted-foreground/70 mb-1 text-xs font-medium uppercase tracking-widest">
+								{m.common_select_locale()}
+							</div>
 							<div class="text-foreground text-sm font-medium"></div>
 						</div>
 						<LocalePicker
@@ -172,9 +176,11 @@
 							{/if}
 						</div>
 						<div class="flex min-w-0 flex-1 flex-col justify-center">
-							<div class="text-muted-foreground/70 mb-1 text-xs font-medium tracking-widest uppercase">Theme</div>
+							<div class="text-muted-foreground/70 mb-1 text-xs font-medium uppercase tracking-widest">
+								{m.common_toggle_theme()}
+							</div>
 							<div class="text-foreground text-sm font-medium">
-								{isDarkMode ? 'Dark' : 'Light'}
+								{isDarkMode ? m.sidebar_dark_mode() : m.sidebar_light_mode()}
 							</div>
 						</div>
 					</button>

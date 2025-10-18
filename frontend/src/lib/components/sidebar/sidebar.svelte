@@ -40,23 +40,34 @@
 	});
 	const effectiveUser = $derived(user ?? storeUser);
 
-	const isCollapsed = $derived(sidebar.state === 'collapsed' && !sidebar.isHovered);
+	const isCollapsed = $derived(sidebar.state === 'collapsed' && !(sidebar.hoverExpansionEnabled && sidebar.isHovered));
 	const isAdmin = $derived(!!effectiveUser?.roles?.includes('admin'));
 </script>
 
 <Sidebar.Root {collapsible} {variant} {...restProps}>
-	<Sidebar.Header>
+	<Sidebar.Header class={isCollapsed ? 'gap-0 p-1 pb-2' : ''}>
+		{#if isCollapsed}
+			<div class="flex justify-center">
+				<SidebarPinButton />
+			</div>
+		{/if}
 		<div class="relative">
 			<SidebarLogo {isCollapsed} {versionInformation} />
-			{#if !isCollapsed || sidebar.isHovered}
-				<div class="absolute top-0 right-0 -mt-1 -mr-1">
+			{#if !isCollapsed}
+				<div class="absolute right-0 top-0 -mr-1 -mt-1">
 					<SidebarPinButton />
 				</div>
 			{/if}
 		</div>
-		<SidebarEnvSwitcher {isAdmin} />
+		{#if isCollapsed}
+			<div class="flex justify-center px-1">
+				<SidebarEnvSwitcher {isAdmin} />
+			</div>
+		{:else}
+			<SidebarEnvSwitcher {isAdmin} />
+		{/if}
 	</Sidebar.Header>
-	<Sidebar.Content>
+	<Sidebar.Content class={!isCollapsed ? '-mt-2' : ''}>
 		<SidebarItemGroup label={m.sidebar_management()} items={navigationItems.managementItems} />
 		<SidebarItemGroup label={m.sidebar_customization()} items={navigationItems.customizationItems} />
 		{#if isAdmin}
@@ -91,5 +102,10 @@
 				</div>
 			{/if}
 		{/if}
+		<div class={`flex items-center justify-center ${isCollapsed ? 'px-1' : 'px-4'}`}>
+			<span class="text-muted-foreground/60 text-xs font-medium">
+				{m.sidebar_version({ version: versionInformation?.currentVersion ?? m.common_unknown() })}
+			</span>
+		</div>
 	</Sidebar.Footer>
 </Sidebar.Root>

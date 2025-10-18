@@ -2,6 +2,7 @@
 	import { cn, type WithElementRef } from '$lib/utils.js';
 	import type { HTMLAttributes } from 'svelte/elements';
 	import { Spinner } from '$lib/components/ui/spinner/index.js';
+	import { mode } from 'mode-watcher';
 
 	let {
 		ref = $bindable(null),
@@ -35,20 +36,29 @@
 		indigo: 'from-indigo-500 to-indigo-600 shadow-indigo-500/25',
 		pink: 'from-pink-500 to-pink-600 shadow-pink-500/25'
 	};
+
+	const isDarkMode = $derived(mode.current === 'dark');
+
+	const headerBackgroundClass = $derived(
+		isDarkMode ? 'bg-gradient-to-br from-gray-900/20 to-slate-900/10' : 'bg-gradient-to-br from-gray-50 to-slate-50/30'
+	);
+
+	const headerHoverClass = $derived(
+		isDarkMode
+			? 'group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-gray-800/40 group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-slate-800/30'
+			: 'group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-gray-100 group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-slate-100/50'
+	);
 </script>
 
 <div
 	bind:this={ref}
 	data-slot="card-header"
 	class={cn(
-		'@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6',
-		icon
-			? 'flex flex-row items-start space-y-0 bg-gradient-to-br from-gray-50 to-slate-50/30 dark:from-gray-900/20 dark:to-slate-900/10'
-			: '',
+		'@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6',
+		icon ? 'flex flex-row items-start space-y-0 transition-colors' : '',
+		icon ? headerBackgroundClass : '',
 		icon && compact ? 'gap-2 p-2' : icon ? 'gap-3 p-3.5' : '',
-		icon && enableHover
-			? 'transition-colors group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-gray-100 group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-slate-100/50 dark:group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-gray-800/40 dark:group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-slate-800/30'
-			: '',
+		icon && enableHover ? `transition-colors ${headerHoverClass}` : '',
 		className
 	)}
 	{...restProps}

@@ -116,6 +116,7 @@
 
 <ModeWatcher disableTransitions={false} />
 <Toaster
+	position={isMobile.current || isTablet.current ? 'top-center' : 'bottom-right'}
 	toastOptions={{
 		classes: {
 			toast: 'border border-primary/30!',

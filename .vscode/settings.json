@@ -10,5 +10,7 @@
   "go.buildTags": "playwright",
   "prettier.documentSelectors": ["**/*.svelte"],
   "tasks.statusbar.default.hide": true,
-  "tasks.statusbar.limit": 8
+  "tasks.statusbar.limit": 8,
+  "findUnusedExports.detectCircularImports": true,
+  "github.copilot.chat.summarizeAgentConversationHistory.enabled": false
 }
