@@ -38,7 +38,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 \
 
 # Stage 3: Production Image
 FROM alpine:3 AS runner
-RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl shadow su-exec
+RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl shadow su-exec gcompat
 RUN delgroup ping && apk del iputils || true
 
 ENV DOCKER_GID=998 PUID=2000 PGID=2000
