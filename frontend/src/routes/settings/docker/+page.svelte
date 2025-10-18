@@ -3,7 +3,7 @@
 	import ZapIcon from '@lucide/svelte/icons/zap';
 	import * as Alert from '$lib/components/ui/alert';
 	import { toast } from 'svelte-sonner';
-	import type { Settings, UpdateScheduleWindow } from '$lib/types/settings.type';
+	import type { Settings } from '$lib/types/settings.type';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
@@ -39,25 +39,6 @@
 	});
 
 	let pruneMode = $derived(currentSettings.dockerPruneMode);
-
-	// Local state for schedule editor (synced with form inputs)
-	let localAutoUpdate = $state(false);
-	let localScheduleEnabled = $state(false);
-	let localScheduleWindows = $state<UpdateScheduleWindow[]>([]);
-
-	// Sync local state with form inputs
-	$effect(() => {
-		localAutoUpdate = $formInputs.autoUpdate.value;
-		localScheduleEnabled = $formInputs.updateScheduleEnabled.value;
-		localScheduleWindows = $formInputs.updateScheduleWindows.value;
-	});
-
-	// Sync changes back to form inputs
-	$effect(() => {
-		$formInputs.autoUpdate.value = localAutoUpdate;
-		$formInputs.updateScheduleEnabled.value = localScheduleEnabled;
-		$formInputs.updateScheduleWindows.value = localScheduleWindows;
-	});
 
 	type PollingIntervalMode = 'hourly' | 'daily' | 'weekly' | 'custom';
 
@@ -276,9 +257,10 @@
 						</Card.Header>
 						<Card.Content class="px-3 py-4 sm:px-6">
 							<UpdateScheduleEditor
-								bind:autoUpdate={localAutoUpdate}
-								bind:scheduleEnabled={localScheduleEnabled}
-								bind:windows={localScheduleWindows}
+								bind:autoUpdate={$formInputs.autoUpdate.value}
+								bind:scheduleEnabled={$formInputs.updateScheduleEnabled.value}
+								bind:windows={$formInputs.updateScheduleWindows.value}
+								disabled={isReadOnly}
 							/>
 						</Card.Content>
 					</Card.Root>

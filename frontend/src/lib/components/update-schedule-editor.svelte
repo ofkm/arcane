@@ -10,30 +10,35 @@
 	import type { UpdateScheduleWindow } from '$lib/types/settings.type';
 	import { cn } from '$lib/utils';
 
-	type UpdateMode = 'never' | 'immediate' | 'scheduled';
-
 	interface Props {
-		autoUpdate?: boolean;
-		scheduleEnabled?: boolean;
+		autoUpdate: boolean;
+		scheduleEnabled: boolean;
 		windows: UpdateScheduleWindow[];
+		disabled?: boolean;
 	}
 
-	let { autoUpdate = $bindable(false), scheduleEnabled = $bindable(false), windows = $bindable([]) }: Props = $props();
+	let { autoUpdate = $bindable(), scheduleEnabled = $bindable(), windows = $bindable(), disabled = false }: Props = $props();
 
-	// Derive the mode from autoUpdate and scheduleEnabled
-	const mode = $derived<UpdateMode>(!autoUpdate ? 'never' : scheduleEnabled ? 'scheduled' : 'immediate');
+	const isNever = $derived.by(() => !autoUpdate);
+	const isImmediate = $derived.by(() => autoUpdate && !scheduleEnabled);
+	const isScheduled = $derived.by(() => autoUpdate && scheduleEnabled);
 
-	function updateMode(newMode: UpdateMode) {
-		if (newMode === 'never') {
-			autoUpdate = false;
-			scheduleEnabled = false;
-		} else if (newMode === 'immediate') {
-			autoUpdate = true;
-			scheduleEnabled = false;
-		} else if (newMode === 'scheduled') {
-			autoUpdate = true;
-			scheduleEnabled = true;
-		}
+	function setNever() {
+		if (disabled) return;
+		autoUpdate = false;
+		scheduleEnabled = false;
+	}
+
+	function setImmediate() {
+		if (disabled) return;
+		autoUpdate = true;
+		scheduleEnabled = false;
+	}
+
+	function setScheduled() {
+		if (disabled) return;
+		autoUpdate = true;
+		scheduleEnabled = true;
 	}
 
 	const allDays: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[] = [
@@ -70,6 +75,7 @@
 	];
 
 	function addWindow() {
+		if (disabled) return;
 		const newWindow: UpdateScheduleWindow = {
 			days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
 			startTime: '02:00',
@@ -80,6 +86,7 @@
 	}
 
 	function removeWindow(index: number) {
+		if (disabled) return;
 		windows = windows.filter((_, i) => i !== index);
 	}
 
@@ -87,6 +94,7 @@
 		windowIndex: number,
 		day: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'
 	) {
+		if (disabled) return;
 		const window = windows[windowIndex];
 		if (window.days.includes(day)) {
 			window.days = window.days.filter((d) => d !== day);
@@ -97,11 +105,13 @@
 	}
 
 	function updateTime(windowIndex: number, field: 'startTime' | 'endTime', value: string) {
+		if (disabled) return;
 		windows[windowIndex][field] = value;
 		windows = [...windows];
 	}
 
 	function updateWindowTimezone(windowIndex: number, newTimezone: string) {
+		if (disabled) return;
 		windows[windowIndex].timezone = newTimezone;
 		windows = [...windows];
 	}
@@ -113,11 +123,13 @@
 		<div class="grid gap-2">
 			<label
 				class={cn(
-					'hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-all',
-					mode === 'never' && 'bg-primary/5 border-primary shadow-sm'
+					'flex items-start space-x-3 rounded-lg border p-4 transition-all',
+					!disabled && 'hover:bg-accent cursor-pointer',
+					disabled && 'cursor-not-allowed opacity-50',
+					isNever && 'bg-primary/5 border-primary shadow-sm'
 				)}
 			>
-				<input type="radio" checked={mode === 'never'} onchange={() => updateMode('never')} class="accent-primary mt-1" />
+				<input type="radio" checked={isNever} onchange={setNever} {disabled} class="accent-primary mt-1" />
 				<div class="flex-1">
 					<div class="font-medium">{m.update_schedule_mode_never()}</div>
 					<div class="text-muted-foreground text-sm">
@@ -127,11 +139,13 @@
 			</label>
 			<label
 				class={cn(
-					'hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-all',
-					mode === 'immediate' && 'bg-primary/5 border-primary shadow-sm'
+					'flex items-start space-x-3 rounded-lg border p-4 transition-all',
+					!disabled && 'hover:bg-accent cursor-pointer',
+					disabled && 'cursor-not-allowed opacity-50',
+					isImmediate && 'bg-primary/5 border-primary shadow-sm'
 				)}
 			>
-				<input type="radio" checked={mode === 'immediate'} onchange={() => updateMode('immediate')} class="accent-primary mt-1" />
+				<input type="radio" checked={isImmediate} onchange={setImmediate} {disabled} class="accent-primary mt-1" />
 				<div class="flex-1">
 					<div class="font-medium">{m.update_schedule_mode_immediate()}</div>
 					<div class="text-muted-foreground text-sm">
@@ -141,11 +155,13 @@
 			</label>
 			<label
 				class={cn(
-					'hover:bg-accent flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-all',
-					mode === 'scheduled' && 'bg-primary/5 border-primary shadow-sm'
+					'flex items-start space-x-3 rounded-lg border p-4 transition-all',
+					!disabled && 'hover:bg-accent cursor-pointer',
+					disabled && 'cursor-not-allowed opacity-50',
+					isScheduled && 'bg-primary/5 border-primary shadow-sm'
 				)}
 			>
-				<input type="radio" checked={mode === 'scheduled'} onchange={() => updateMode('scheduled')} class="accent-primary mt-1" />
+				<input type="radio" checked={isScheduled} onchange={setScheduled} {disabled} class="accent-primary mt-1" />
 				<div class="flex-1">
 					<div class="font-medium">{m.update_schedule_mode_scheduled()}</div>
 					<div class="text-muted-foreground text-sm">
@@ -156,12 +172,12 @@
 		</div>
 	</div>
 
-	{#if mode === 'scheduled'}
+	{#if isScheduled}
 		<div class="border-primary/20 space-y-4 border-l-2 pl-4">
 			<div class="space-y-3">
 				<div class="flex items-center justify-between">
 					<Label>{m.update_schedule_windows_label()}</Label>
-					<Button size="sm" variant="outline" onclick={addWindow}>
+					<Button size="sm" variant="outline" onclick={addWindow} {disabled}>
 						<PlusIcon class="mr-2 size-4" />
 						{m.update_schedule_add_window()}
 					</Button>
@@ -182,8 +198,11 @@
 										<button
 											type="button"
 											onclick={() => toggleDay(index, day)}
+											{disabled}
 											class={cn(
-												'hover:bg-accent flex cursor-pointer items-center rounded-md border px-3.5 py-2 text-sm font-medium transition-all',
+												'flex items-center rounded-md border px-3.5 py-2 text-sm font-medium transition-all',
+												!disabled && 'hover:bg-accent cursor-pointer',
+												disabled && 'cursor-not-allowed opacity-50',
 												isSelected && 'bg-primary text-primary-foreground border-primary/50 shadow-sm'
 											)}
 										>
@@ -200,6 +219,7 @@
 										type="time"
 										value={window.startTime}
 										oninput={(e) => updateTime(index, 'startTime', e.currentTarget.value)}
+										{disabled}
 										class="font-mono"
 									/>
 								</div>
@@ -209,6 +229,7 @@
 										type="time"
 										value={window.endTime}
 										oninput={(e) => updateTime(index, 'endTime', e.currentTarget.value)}
+										{disabled}
 										class="font-mono"
 									/>
 								</div>
@@ -216,7 +237,12 @@
 
 							<div class="space-y-2">
 								<Label class="text-sm font-medium">{m.common_timezone()}</Label>
-								<Select.Root type="single" value={window.timezone} onValueChange={(v) => v && updateWindowTimezone(index, v)}>
+								<Select.Root
+									type="single"
+									value={window.timezone}
+									onValueChange={(v) => v && updateWindowTimezone(index, v)}
+									{disabled}
+								>
 									<Select.Trigger>
 										{commonTimezones.find((tz) => tz.value === window.timezone)?.label || window.timezone}
 									</Select.Trigger>
@@ -232,6 +258,7 @@
 								size="sm"
 								variant="outline"
 								onclick={() => removeWindow(index)}
+								{disabled}
 								class="text-muted-foreground hover:text-destructive hover:border-destructive/50 w-full transition-colors"
 							>
 								<TrashIcon class="mr-2 size-4" />

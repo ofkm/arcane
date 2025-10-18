@@ -53,7 +53,12 @@ export default class SettingsService extends BaseAPIService {
 	}
 
 	private parseValue(key: string, value: string) {
-		if (key === 'onboardingSteps' || key === 'registryCredentials' || key === 'templateRegistries') {
+		if (
+			key === 'onboardingSteps' ||
+			key === 'registryCredentials' ||
+			key === 'templateRegistries' ||
+			key === 'updateScheduleWindows'
+		) {
 			try {
 				return JSON.parse(value);
 			} catch {
