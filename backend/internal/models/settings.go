@@ -74,6 +74,9 @@ type Settings struct {
 	MobileNavigationScrollToHide SettingVariable `key:"mobileNavigationScrollToHide,public"`
 	SidebarHoverExpansion        SettingVariable `key:"sidebarHoverExpansion,public"`
 
+	// UI/UX
+	GlassEffectEnabled SettingVariable `key:"glassEffectEnabled,public"`
+
 	InstanceID SettingVariable `key:"instanceId,internal"`
 }
 

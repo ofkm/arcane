@@ -25,8 +25,8 @@
 	const currentStepIndex = $derived(steps.findIndex((step) => page.url.pathname === step.path));
 </script>
 
-<div class="flex min-h-screen flex-col">
-	<header class="border-b px-8 py-8">
+<div class="flex min-h-screen flex-col blob-floating" style="--blob-speed: 22s">
+	<header class="border-b px-8 py-8 glass glass-subtle">
 		<div class="flex items-center">
 			<img src={logoUrl} alt="Arcane" class="size-12" />
 			<h1 class="ml-4 text-2xl font-bold">Arcane Setup</h1>
@@ -53,7 +53,7 @@
 	</div>
 
 	<main class="container mx-auto flex-1 px-4 py-6">
-		<div class="bg-card rounded-lg border p-8 shadow-sm">
+		<div class="glass bubble bubble-shadow rounded-2xl border p-8">
 			{@render children()}
 		</div>
 	</main>

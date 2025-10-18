@@ -19,6 +19,7 @@
 	import { getEffectiveNavigationSettings, navigationSettingsOverridesStore } from '$lib/utils/navigation.utils';
 	import { browser, dev } from '$app/environment';
 	import { onMount } from 'svelte';
+	import settingsStore from '$lib/stores/config-store';
 
 	let {
 		data,
@@ -35,6 +36,18 @@
 	});
 
 	const { versionInformation, user, settings } = data;
+
+	// Apply glass-enabled class to body based on settings
+	$effect(() => {
+		if (browser && settings) {
+			const glassEnabled = $settingsStore?.glassEffectEnabled ?? settings.glassEffectEnabled ?? false;
+			if (glassEnabled) {
+				document.body.classList.add('glass-enabled');
+			} else {
+				document.body.classList.remove('glass-enabled');
+			}
+		}
+	});
 
 	const isMobile = new IsMobile();
 	const isTablet = new IsTablet();

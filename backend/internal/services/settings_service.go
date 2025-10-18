@@ -98,6 +98,7 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		MobileNavigationShowLabels:   models.SettingVariable{Value: "true"},
 		MobileNavigationScrollToHide: models.SettingVariable{Value: "true"},
 		SidebarHoverExpansion:        models.SettingVariable{Value: "true"},
+		GlassEffectEnabled:           models.SettingVariable{Value: "false"},
 		AccentColor:                  models.SettingVariable{Value: "oklch(0.606 0.25 292.717)"},
 
 		InstanceID: models.SettingVariable{Value: ""},

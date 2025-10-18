@@ -56,10 +56,10 @@
 				onOpenChange?.(open);
 			}}
 		>
-			<Select.Trigger {id} class="bg-background/50 border-border/30 text-foreground h-9 w-32 text-sm font-medium">
+			<Select.Trigger {id} class="text-foreground h-9 w-32 text-sm font-medium rounded-2xl border glass bubble bubble-pill bubble-shadow">
 				<span class="truncate">{locales[currentLocale]}</span>
 			</Select.Trigger>
-			<Select.Content class="max-w-[280px] min-w-[160px]">
+			<Select.Content class="max-w-[280px] min-w-[160px] rounded-xl glass glass-subtle bubble-shadow">
 				{#each Object.entries(locales) as [value, label]}
 					<Select.Item class="text-sm" {value}>{label}</Select.Item>
 				{/each}
@@ -81,10 +81,10 @@
 						onOpenChange?.(open);
 					}}
 				>
-					<Select.Trigger {id} class="h-9 w-full justify-between" aria-label={m.common_select_locale()}>
+					<Select.Trigger {id} class="h-9 w-full justify-between rounded-2xl border glass bubble bubble-pill bubble-shadow" aria-label={m.common_select_locale()}>
 						<span class="truncate">{locales[currentLocale]}</span>
 					</Select.Trigger>
-					<Select.Content>
+					<Select.Content class="rounded-xl glass glass-subtle bubble-shadow">
 						{#each Object.entries(locales) as [value, label]}
 							<Select.Item {value}>{label}</Select.Item>
 						{/each}

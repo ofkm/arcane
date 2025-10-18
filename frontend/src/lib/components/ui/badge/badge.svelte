@@ -2,14 +2,15 @@
 	import { type VariantProps, tv } from 'tailwind-variants';
 
 	export const badgeVariants = tv({
-		base: 'focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden whitespace-nowrap rounded-md border px-2 py-0.5 text-xs font-medium transition-[color,box-shadow] focus-visible:ring-[3px] [&>svg]:pointer-events-none [&>svg]:size-3',
+		base: 'focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden whitespace-nowrap rounded-lg border px-2.5 py-1 text-xs font-medium transition-all focus-visible:ring-[3px] [&>svg]:pointer-events-none [&>svg]:size-3',
 		variants: {
 			variant: {
-				default: 'bg-primary text-primary-foreground [a&]:hover:bg-primary/90 border-transparent',
-				secondary: 'bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90 border-transparent',
+				default: 'bubble-pill bg-primary text-primary-foreground [a&]:hover:bg-primary/90 [a&]:hover-lift border-transparent',
+				secondary:
+					'bubble-pill bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90 [a&]:hover-lift border-transparent',
 				destructive:
-					'bg-destructive [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/70 border-transparent text-white',
-				outline: 'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground'
+					'bubble-pill bg-destructive [a&]:hover:bg-destructive/90 [a&]:hover-lift focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/70 border-transparent text-white',
+				outline: 'glass-subtle text-foreground [a&]:hover:glass [a&]:hover:text-accent-foreground [a&]:hover-lift'
 			}
 		},
 		defaultVariants: {

@@ -17,6 +17,8 @@
 	import { SettingsPageLayout } from '$lib/layouts';
 	import AccentColorPicker from '$lib/components/accent-color/accent-color-picker.svelte';
 	import { applyAccentColor } from '$lib/utils/accent-color-util';
+	import SparklesIcon from '@lucide/svelte/icons/sparkles';
+	import { Switch } from '$lib/components/ui/switch/index.js';
 
 	let { data } = $props();
 	let hasChanges = $state(false);
@@ -29,7 +31,8 @@
 		projectsDirectory: z.string().min(1, m.general_projects_directory_required()),
 		baseServerUrl: z.string().min(1, m.general_base_url_required()),
 		enableGravatar: z.boolean(),
-		accentColor: z.string()
+		accentColor: z.string(),
+		glassEffectEnabled: z.boolean()
 	});
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
@@ -39,7 +42,8 @@
 			$formInputs.projectsDirectory.value !== currentSettings.projectsDirectory ||
 			$formInputs.baseServerUrl.value !== currentSettings.baseServerUrl ||
 			$formInputs.enableGravatar.value !== currentSettings.enableGravatar ||
-			$formInputs.accentColor.value !== currentSettings.accentColor
+			$formInputs.accentColor.value !== currentSettings.accentColor ||
+			$formInputs.glassEffectEnabled.value !== currentSettings.glassEffectEnabled
 	);
 
 	$effect(() => {
@@ -84,6 +88,7 @@
 		$formInputs.baseServerUrl.value = data.settings!.baseServerUrl;
 		$formInputs.enableGravatar.value = data.settings!.enableGravatar;
 		$formInputs.accentColor.value = data.settings!.accentColor;
+		$formInputs.glassEffectEnabled.value = data.settings!.glassEffectEnabled;
 		applyAccentColor(data.settings!.accentColor);
 	}
 
@@ -164,6 +169,45 @@
 								bind:selectedColor={$formInputs.accentColor.value}
 								disabled={isReadOnly}
 							/>
+						</div>
+					</Card.Content>
+				</Card.Root>
+
+				<Card.Root>
+					<Card.Header icon={SparklesIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.glass_effect_title()}</Card.Title>
+							<Card.Description>{m.glass_effect_description()}</Card.Description>
+						</div>
+					</Card.Header>
+					<Card.Content class="px-3 py-4 sm:px-6">
+						<div class="flex items-start gap-3 rounded-lg border p-3 sm:p-4">
+							<div
+								class="bg-primary/10 text-primary ring-primary/20 flex size-7 flex-shrink-0 items-center justify-center rounded-lg ring-1 sm:size-8"
+							>
+								<SparklesIcon class="size-3 sm:size-4" />
+							</div>
+							<div class="flex flex-1 flex-col gap-3">
+								<div>
+									<h4 class="mb-1 text-sm leading-tight font-medium">{m.glass_effect_label()}</h4>
+									<p class="text-muted-foreground text-xs leading-relaxed">
+										{m.glass_effect_description_long()}
+									</p>
+								</div>
+								<div class="flex items-center gap-2">
+									<Switch
+										id="glassEffectEnabled"
+										bind:checked={$formInputs.glassEffectEnabled.value}
+										disabled={isReadOnly}
+										onCheckedChange={(checked) => {
+											$formInputs.glassEffectEnabled.value = checked;
+										}}
+									/>
+									<label for="glassEffectEnabled" class="text-xs font-medium">
+										{$formInputs.glassEffectEnabled.value ? m.glass_effect_enabled() : m.glass_effect_disabled()}
+									</label>
+								</div>
+							</div>
 						</div>
 					</Card.Content>
 				</Card.Root>

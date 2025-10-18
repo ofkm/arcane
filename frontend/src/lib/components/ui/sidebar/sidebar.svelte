@@ -24,7 +24,8 @@
 
 {#if collapsible === 'none'}
 	<div
-		class={cn('bg-sidebar text-sidebar-foreground w-(--sidebar-width) flex h-full flex-col', className)}
+		class={cn('bg-sidebar text-sidebar-foreground flex h-full w-(--sidebar-width) flex-col', className)}
+		style="--glass-base: var(--background); --glass-tint: var(--primary); --glass-tint-mix: 12%; --glass-tint-strong-mix: 22%; --glass-tint-subtle-mix: 8%"
 		bind:this={ref}
 		{...restProps}
 	>
@@ -34,6 +35,7 @@
 	<div
 		bind:this={ref}
 		class="text-sidebar-foreground group peer hidden md:block"
+		style="--glass-base: var(--background); --glass-tint: var(--primary); --glass-tint-mix: 12%; --glass-tint-strong-mix: 22%; --glass-tint-subtle-mix: 8%"
 		data-state={sidebar.state}
 		data-collapsible={sidebar.state === 'collapsed' ? collapsible : ''}
 		data-variant={variant}
@@ -45,7 +47,7 @@
 		<div
 			data-slot="sidebar-gap"
 			class={cn(
-				'w-(--sidebar-width) relative bg-transparent transition-[width] duration-200 ease-linear',
+				'relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear',
 				'group-data-[collapsible=offcanvas]:w-0',
 				'group-data-[side=right]:rotate-180',
 				variant === 'floating' || variant === 'inset'
@@ -56,7 +58,7 @@
 		<div
 			data-slot="sidebar-container"
 			class={cn(
-				'w-(--sidebar-width) fixed inset-y-0 z-10 hidden h-svh overflow-x-hidden transition-[left,right,width] duration-200 ease-linear md:flex',
+				'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) overflow-x-hidden transition-[left,right,width] duration-200 ease-linear md:flex',
 				side === 'left'
 					? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
 					: 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',
@@ -85,7 +87,7 @@
 			<div
 				data-sidebar="sidebar"
 				data-slot="sidebar-inner"
-				class="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col overflow-x-hidden group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+				class="bg-sidebar/90 supports-[backdrop-filter]:bg-sidebar group-data-[variant=floating]:border-sidebar-border glass flex h-full w-full flex-col overflow-x-hidden backdrop-blur-md group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
 			>
 				{@render children?.()}
 			</div>

@@ -78,7 +78,7 @@
 					</Sidebar.MenuButton>
 				{/snippet}
 			</DropdownMenu.Trigger>
-			<DropdownMenu.Content class="min-w-56 rounded-lg p-0" side="right" align="end" sideOffset={12}>
+			<DropdownMenu.Content class="min-w-56 rounded-2xl p-0 bubble-shadow glass glass-subtle border border-border/20" side="right" align="end" sideOffset={12}>
 				<div
 					role="group"
 					tabindex="-1"
@@ -93,7 +93,7 @@
 						}
 					}}
 				>
-					<DropdownMenu.Label class="px-3 pt-2 pb-2 font-normal">
+					<DropdownMenu.Label class="px-4 pt-3 pb-3 font-normal border-b border-border/10">
 						<div class="flex items-center gap-3 text-left text-sm">
 							<Avatar.Root class="size-8 shrink-0 rounded-lg">
 								{#if $settingsStore.enableGravatar}
