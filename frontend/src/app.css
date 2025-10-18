@@ -269,7 +269,7 @@ body::after {
 	position: fixed;
 	inset: 0;
 	z-index: -1;
-	background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.04"/></svg>');
+	background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNDAiIGhlaWdodD0iMTQwIiB2aWV3Qm94PSIwIDAgMTQwIDE0MCI+PGZpbHRlciBpZD0ibiI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuOSIgbnVtT2N0YXZlcz0iNCIgc3RpdGNoVGlsZXM9InN0aXRjaCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNuKSIgb3BhY2l0eT0iMC4wNCIvPjwvc3ZnPg==');
 	background-size: 200px 200px;
 	opacity: var(--glass-noise-opacity);
 	pointer-events: none;
@@ -285,42 +285,6 @@ body::after {
 }
 
 @layer components {
-	.glass {
-		/* Blur */
-		backdrop-filter: blur(var(--glass-blur));
-		/* Background blend: base surface + subtle tint */
-		background: linear-gradient(
-			to bottom right,
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 68%, transparent) 0%,
-			color-mix(in oklch, var(--glass-tint, var(--primary)) var(--glass-tint-mix, 2%), transparent) 100%
-		);
-		background-color: color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-bg-alpha) * 100%), transparent);
-		/* Border + inner highlight */
-		border: 1px solid
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-border-alpha) * 100%), transparent);
-		box-shadow:
-			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 28%, transparent) inset,
-			0 10px 30px -10px var(--glass-shadow-color);
-	}
-
-	.glass-strong {
-		backdrop-filter: blur(calc(var(--glass-blur) * 1.25));
-		background: linear-gradient(
-			to bottom right,
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 62%, transparent) 0%,
-			color-mix(in oklch, var(--glass-tint, var(--primary)) var(--glass-tint-strong-mix, 6%), transparent) 100%
-		);
-	}
-
-	.glass-subtle {
-		backdrop-filter: blur(calc(var(--glass-blur) * 0.85));
-		background: linear-gradient(
-			to bottom right,
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 72%, transparent) 0%,
-			color-mix(in oklch, var(--glass-tint, var(--primary)) var(--glass-tint-subtle-mix, 1.5%), transparent) 100%
-		);
-	}
-
 	/* Convenience wrapper for content blocks */
 	.glass-card {
 		border-radius: var(--radius-lg);

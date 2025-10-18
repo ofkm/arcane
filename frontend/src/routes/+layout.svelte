@@ -40,7 +40,7 @@
 	// Apply glass-enabled class to body based on settings
 	$effect(() => {
 		if (browser && settings) {
-			const glassEnabled = $settingsStore?.glassEffectEnabled ?? settings.glassEffectEnabled ?? true;
+			const glassEnabled = $settingsStore?.glassEffectEnabled ?? settings.glassEffectEnabled ?? false;
 			if (glassEnabled) {
 				document.body.classList.add('glass-enabled');
 			} else {

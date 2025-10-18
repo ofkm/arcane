@@ -1366,5 +1366,6 @@
 	"glass_effect_label": "Glassmorphism UI",
 	"glass_effect_enabled": "Glass effects enabled",
 	"glass_effect_disabled": "Glass effects disabled (classic design)",
-	"glass_effect_description_long": "When enabled, the interface uses frosted glass effects with backdrop blur, subtle gradients, and ambient background animations. When disabled, the interface uses solid colors and traditional shadows for a classic design."
+	"glass_effect_description_long": "When enabled, the interface uses frosted glass effects with backdrop blur, subtle gradients, and ambient background animations. When disabled, the interface uses solid colors and traditional shadows for a classic design.",
+	"navigation_glass_effect_label": "Glass Effect"
 }

@@ -100,12 +100,7 @@
 	}
 </script>
 
-<Card.Root
-	variant="subtle"
-	class={className}
-	style="--glass-blur: 10px; --glass-bg-alpha: 0.07; --glass-border-alpha: 0.12; --glass-shadow-color: oklch(0 0 0 / 0.12)"
-	onclick={onclick ? () => onclick(item) : undefined}
->
+<Card.Root variant="subtle" class={className} onclick={onclick ? () => onclick(item) : undefined}>
 	<Card.Content class={cn('flex flex-col', compact ? 'gap-1.5 p-2' : 'gap-3 p-4')}>
 		<!-- Main Row -->
 		<div class="flex items-start gap-3">

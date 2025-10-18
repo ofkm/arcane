@@ -243,7 +243,7 @@
 				},
 				{
 					key: 'glassEffectEnabled',
-					label: 'Glass Effect',
+					label: m.navigation_glass_effect_label(),
 					type: 'boolean',
 					description: 'Enable modern glassmorphism design with blur, gradients, and ambient effects',
 					keywords: [
