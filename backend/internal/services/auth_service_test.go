@@ -46,6 +46,7 @@ func makeAccessToken(t *testing.T, secret []byte, subject string, id string, use
 		Roles:       roles,
 		Email:       email,
 		DisplayName: displayName,
+		AppVersion:  config.Version,
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := tok.SignedString(secret)
@@ -171,6 +172,23 @@ func TestPersistOidcTokens_SetsFields(t *testing.T) {
 	if user.OidcAccessTokenExpiresAt.Before(min) || user.OidcAccessTokenExpiresAt.After(max) {
 		t.Errorf("expiresAt %v not in [%v,%v]", user.OidcAccessTokenExpiresAt, min, max)
 	}
+}
+
+func TestVerifyToken_VersionMismatch(t *testing.T) {
+	s := newTestAuthService("")
+	exp := time.Now().Add(5 * time.Minute)
+
+	oldVersion := config.Version
+	config.Version = "1.0.0"
+	token := makeAccessToken(t, s.jwtSecret, "access", "u1", "bob", []string{"user"}, "", "", exp)
+	config.Version = "2.0.0"
+
+	_, err := s.VerifyToken(context.Background(), token)
+	if !errors.Is(err, ErrTokenVersionMismatch) {
+		t.Errorf("want ErrTokenVersionMismatch, got %v", err)
+	}
+
+	config.Version = oldVersion
 }
 
 func TestGetOidcConfigurationStatus(t *testing.T) {

@@ -66,13 +66,29 @@ elif [ -S /var/run/docker.sock ]; then
                     addgroup -g "$SOCKET_GID" docker
                 }
             fi
+            # Ensure user is in docker group
+            if ! id -nG "$APP_USER" | grep -qw "docker"; then
+                echo "Entrypoint: Adding ${APP_USER} to docker group..."
+                addgroup "$APP_USER" docker
+            fi
         else
-            echo "Entrypoint: Creating docker group with GID ${SOCKET_GID}..."
-            addgroup -g "$SOCKET_GID" docker
-        fi
-        if ! id -nG "$APP_USER" | grep -qw "docker"; then
-            echo "Entrypoint: Adding ${APP_USER} to docker group..."
-            addgroup "$APP_USER" docker
+            # Check if SOCKET_GID is already in use by another group
+            if getent group "$SOCKET_GID" >/dev/null 2>&1; then
+                EXISTING_GROUP=$(getent group "$SOCKET_GID" | cut -d: -f1)
+                echo "Entrypoint: GID ${SOCKET_GID} already used by group '${EXISTING_GROUP}'"
+                if [ "$EXISTING_GROUP" != "docker" ]; then
+                    echo "Entrypoint: Adding ${APP_USER} to ${EXISTING_GROUP} for Docker socket access..."
+                    addgroup "$APP_USER" "$EXISTING_GROUP"
+                fi
+            else
+                echo "Entrypoint: Creating docker group with GID ${SOCKET_GID}..."
+                addgroup -g "$SOCKET_GID" docker
+                # Add user to newly created docker group
+                if ! id -nG "$APP_USER" | grep -qw "docker"; then
+                    echo "Entrypoint: Adding ${APP_USER} to docker group..."
+                    addgroup "$APP_USER" docker
+                fi
+            fi
         fi
         echo "Entrypoint: Docker socket configured (GID: ${SOCKET_GID})"
     fi
