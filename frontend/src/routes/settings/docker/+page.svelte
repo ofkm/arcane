@@ -3,7 +3,7 @@
 	import ZapIcon from '@lucide/svelte/icons/zap';
 	import * as Alert from '$lib/components/ui/alert';
 	import { toast } from 'svelte-sonner';
-	import type { Settings, UpdateScheduleConfig, UpdateScheduleWindow } from '$lib/types/settings.type';
+	import type { Settings, UpdateScheduleWindow } from '$lib/types/settings.type';
 	import { z } from 'zod/v4';
 	import { getContext, onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
@@ -34,7 +34,6 @@
 		autoUpdate: z.boolean(),
 		updateScheduleEnabled: z.boolean(),
 		updateScheduleWindows: z.any(),
-		updateScheduleTimezone: z.string(),
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		defaultShell: z.string()
 	});
@@ -45,14 +44,12 @@
 	let localAutoUpdate = $state(false);
 	let localScheduleEnabled = $state(false);
 	let localScheduleWindows = $state<UpdateScheduleWindow[]>([]);
-	let localScheduleTimezone = $state('UTC');
 
 	// Sync local state with form inputs
 	$effect(() => {
 		localAutoUpdate = $formInputs.autoUpdate.value;
 		localScheduleEnabled = $formInputs.updateScheduleEnabled.value;
 		localScheduleWindows = $formInputs.updateScheduleWindows.value;
-		localScheduleTimezone = $formInputs.updateScheduleTimezone.value;
 	});
 
 	// Sync changes back to form inputs
@@ -60,7 +57,6 @@
 		$formInputs.autoUpdate.value = localAutoUpdate;
 		$formInputs.updateScheduleEnabled.value = localScheduleEnabled;
 		$formInputs.updateScheduleWindows.value = localScheduleWindows;
-		$formInputs.updateScheduleTimezone.value = localScheduleTimezone;
 	});
 
 	type PollingIntervalMode = 'hourly' | 'daily' | 'weekly' | 'custom';
@@ -140,9 +136,7 @@
 			$formInputs.dockerPruneMode.value != currentSettings.dockerPruneMode ||
 			$formInputs.defaultShell.value != currentSettings.defaultShell ||
 			$formInputs.updateScheduleEnabled.value !== currentSettings.updateScheduleEnabled ||
-			JSON.stringify($formInputs.updateScheduleWindows.value) !==
-				JSON.stringify(currentSettings.updateScheduleWindows?.windows || []) ||
-			$formInputs.updateScheduleTimezone.value !== currentSettings.updateScheduleTimezone
+			JSON.stringify($formInputs.updateScheduleWindows.value) !== JSON.stringify(currentSettings.updateScheduleWindows || [])
 	);
 
 	$effect(() => {
@@ -185,16 +179,7 @@
 		}
 		isLoading = true;
 
-		// Add schedule data to form submission
-		const settingsToUpdate = {
-			...formData,
-			updateScheduleWindows: {
-				enabled: formData.updateScheduleEnabled,
-				windows: formData.updateScheduleWindows
-			} as UpdateScheduleConfig
-		};
-
-		await updateSettingsConfig(settingsToUpdate)
+		await updateSettingsConfig(formData)
 			.then(() => toast.success(m.general_settings_saved()))
 			.catch((error) => {
 				console.error('Failed to save settings:', error);
@@ -210,8 +195,7 @@
 		$formInputs.dockerPruneMode.value = currentSettings.dockerPruneMode;
 		$formInputs.defaultShell.value = currentSettings.defaultShell;
 		$formInputs.updateScheduleEnabled.value = currentSettings.updateScheduleEnabled;
-		$formInputs.updateScheduleWindows.value = currentSettings.updateScheduleWindows?.windows || [];
-		$formInputs.updateScheduleTimezone.value = currentSettings.updateScheduleTimezone;
+		$formInputs.updateScheduleWindows.value = currentSettings.updateScheduleWindows || [];
 	}
 
 	onMount(() => {
@@ -295,7 +279,6 @@
 								bind:autoUpdate={localAutoUpdate}
 								bind:scheduleEnabled={localScheduleEnabled}
 								bind:windows={localScheduleWindows}
-								bind:timezone={localScheduleTimezone}
 							/>
 						</Card.Content>
 					</Card.Root>

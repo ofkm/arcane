@@ -16,20 +16,12 @@
 		autoUpdate?: boolean;
 		scheduleEnabled?: boolean;
 		windows: UpdateScheduleWindow[];
-		timezone: string;
 	}
 
-	let { 
-		autoUpdate = $bindable(false), 
-		scheduleEnabled = $bindable(false), 
-		windows = $bindable([]), 
-		timezone = $bindable('UTC') 
-	}: Props = $props();
+	let { autoUpdate = $bindable(false), scheduleEnabled = $bindable(false), windows = $bindable([]) }: Props = $props();
 
 	// Derive the mode from autoUpdate and scheduleEnabled
-	const mode = $derived<UpdateMode>(
-		!autoUpdate ? 'never' : scheduleEnabled ? 'scheduled' : 'immediate'
-	);
+	const mode = $derived<UpdateMode>(!autoUpdate ? 'never' : scheduleEnabled ? 'scheduled' : 'immediate');
 
 	function updateMode(newMode: UpdateMode) {
 		if (newMode === 'never') {
@@ -82,7 +74,7 @@
 			days: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
 			startTime: '02:00',
 			endTime: '06:00',
-			timezone: timezone
+			timezone: 'UTC'
 		};
 		windows = [...windows, newWindow];
 	}
@@ -109,9 +101,9 @@
 		windows = [...windows];
 	}
 
-	function updateGlobalTimezone(newTimezone: string) {
-		timezone = newTimezone;
-		windows = windows.map((w) => ({ ...w, timezone: newTimezone }));
+	function updateWindowTimezone(windowIndex: number, newTimezone: string) {
+		windows[windowIndex].timezone = newTimezone;
+		windows = [...windows];
 	}
 </script>
 
@@ -166,21 +158,6 @@
 
 	{#if mode === 'scheduled'}
 		<div class="border-primary/20 space-y-4 border-l-2 pl-4">
-			<div class="space-y-2">
-				<Label>{m.common_timezone()}</Label>
-				<Select.Root type="single" bind:value={timezone} onValueChange={(v) => v && updateGlobalTimezone(v)}>
-					<Select.Trigger>
-						{commonTimezones.find((tz) => tz.value === timezone)?.label || timezone}
-					</Select.Trigger>
-					<Select.Content>
-						{#each commonTimezones as tz}
-							<Select.Item value={tz.value}>{tz.label}</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
-				<p class="text-muted-foreground text-sm">{m.update_schedule_timezone_description()}</p>
-			</div>
-
 			<div class="space-y-3">
 				<div class="flex items-center justify-between">
 					<Label>{m.update_schedule_windows_label()}</Label>
@@ -235,6 +212,20 @@
 										class="font-mono"
 									/>
 								</div>
+							</div>
+
+							<div class="space-y-2">
+								<Label class="text-sm font-medium">{m.common_timezone()}</Label>
+								<Select.Root type="single" value={window.timezone} onValueChange={(v) => v && updateWindowTimezone(index, v)}>
+									<Select.Trigger>
+										{commonTimezones.find((tz) => tz.value === window.timezone)?.label || window.timezone}
+									</Select.Trigger>
+									<Select.Content>
+										{#each commonTimezones as tz}
+											<Select.Item value={tz.value}>{tz.label}</Select.Item>
+										{/each}
+									</Select.Content>
+								</Select.Root>
 							</div>
 
 							<Button

@@ -940,21 +940,23 @@ func (s *UpdaterService) IsWithinUpdateWindow(ctx context.Context, project *mode
 		return true, nil
 	}
 
-	if resolved.UpdateScheduleWindows == nil || !resolved.UpdateScheduleWindows.Enabled || len(resolved.UpdateScheduleWindows.Windows) == 0 {
+	if len(resolved.UpdateScheduleWindows) == 0 {
 		return false, nil
 	}
 
-	loc, err := time.LoadLocation(resolved.UpdateScheduleTimezone)
-	if err != nil {
-		slog.WarnContext(ctx, "Failed to load timezone, using UTC", "timezone", resolved.UpdateScheduleTimezone, "error", err)
-		loc = time.UTC
-	}
+	// Check each window with its own timezone
+	for _, window := range resolved.UpdateScheduleWindows {
+		loc, err := time.LoadLocation(window.Timezone)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to load timezone for window, skipping", "timezone", window.Timezone, "error", err)
+			continue
+		}
 
-	now := time.Now().In(loc)
-	currentDay := strings.ToLower(now.Weekday().String())
-	currentTime := now.Format("15:04")
+		now := time.Now().In(loc)
+		currentDay := strings.ToLower(now.Weekday().String())
+		currentTime := now.Format("15:04")
 
-	for _, window := range resolved.UpdateScheduleWindows.Windows {
+		// Check if current day matches any of the window's days
 		dayMatch := false
 		for _, day := range window.Days {
 			if strings.ToLower(day) == currentDay {
@@ -966,7 +968,9 @@ func (s *UpdaterService) IsWithinUpdateWindow(ctx context.Context, project *mode
 			continue
 		}
 
+		// Check if current time is within the window
 		if window.EndTime < window.StartTime {
+			// Window spans midnight
 			if currentTime >= window.StartTime || currentTime <= window.EndTime {
 				return true, nil
 			}
@@ -990,23 +994,28 @@ func (s *UpdaterService) GetNextUpdateWindow(ctx context.Context, project *model
 		return nil, nil
 	}
 
-	if resolved.UpdateScheduleWindows == nil || !resolved.UpdateScheduleWindows.Enabled || len(resolved.UpdateScheduleWindows.Windows) == 0 {
+	if len(resolved.UpdateScheduleWindows) == 0 {
 		return nil, nil
 	}
 
-	loc, err := time.LoadLocation(resolved.UpdateScheduleTimezone)
-	if err != nil {
-		loc = time.UTC
-	}
-
-	now := time.Now().In(loc)
 	var nextWindow *time.Time
 
-	for dayOffset := 0; dayOffset < 7; dayOffset++ {
-		checkDate := now.AddDate(0, 0, dayOffset)
-		checkDay := strings.ToLower(checkDate.Weekday().String())
+	// Check each window with its own timezone
+	for _, window := range resolved.UpdateScheduleWindows {
+		loc, err := time.LoadLocation(window.Timezone)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to load timezone for window, skipping", "timezone", window.Timezone, "error", err)
+			continue
+		}
 
-		for _, window := range resolved.UpdateScheduleWindows.Windows {
+		now := time.Now().In(loc)
+
+		// Check the next 7 days for this window
+		for dayOffset := 0; dayOffset < 7; dayOffset++ {
+			checkDate := now.AddDate(0, 0, dayOffset)
+			checkDay := strings.ToLower(checkDate.Weekday().String())
+
+			// Check if this day matches the window
 			dayMatch := false
 			for _, day := range window.Days {
 				if strings.ToLower(day) == checkDay {

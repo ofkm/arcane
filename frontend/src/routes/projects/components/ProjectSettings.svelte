@@ -36,15 +36,13 @@
 	let localAutoUpdate = $state(false);
 	let localScheduleEnabled = $state(false);
 	let localScheduleWindows = $state<UpdateScheduleWindow[]>([]);
-	let localScheduleTimezone = $state('UTC');
 
 	// Initialize local state from project/global on mount
 	$effect(() => {
 		localUpdateSettingsOverride = isUpdateSettingsOverridden ? true : null;
 		localAutoUpdate = project.autoUpdate ?? globalSettings?.autoUpdate ?? false;
 		localScheduleEnabled = project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false;
-		localScheduleWindows = project.updateScheduleWindows?.windows ?? globalSettings?.updateScheduleWindows?.windows ?? [];
-		localScheduleTimezone = project.updateScheduleTimezone ?? globalSettings?.updateScheduleTimezone ?? 'UTC';
+		localScheduleWindows = project.updateScheduleWindows ?? globalSettings?.updateScheduleWindows ?? [];
 	});
 
 	// Check for unsaved changes
@@ -54,9 +52,8 @@
 			(localUpdateSettingsOverride !== null &&
 				(localAutoUpdate !== (project.autoUpdate ?? globalSettings?.autoUpdate ?? false) ||
 					localScheduleEnabled !== (project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false) ||
-					localScheduleTimezone !== (project.updateScheduleTimezone ?? globalSettings?.updateScheduleTimezone ?? 'UTC') ||
 					JSON.stringify(localScheduleWindows) !==
-						JSON.stringify(project.updateScheduleWindows?.windows ?? globalSettings?.updateScheduleWindows?.windows ?? [])))
+						JSON.stringify(project.updateScheduleWindows ?? globalSettings?.updateScheduleWindows ?? [])))
 	);
 
 	const hasAnyChanges = $derived(hasUpdateSettingsChanges);
@@ -81,8 +78,7 @@
 		localUpdateSettingsOverride = true;
 		localAutoUpdate = globalSettings?.autoUpdate ?? false;
 		localScheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;
-		localScheduleWindows = globalSettings?.updateScheduleWindows?.windows ?? [];
-		localScheduleTimezone = globalSettings?.updateScheduleTimezone ?? 'UTC';
+		localScheduleWindows = globalSettings?.updateScheduleWindows ?? [];
 	}
 
 	async function saveSettings() {
@@ -96,8 +92,7 @@
 				clearPromises.push(
 					projectService.clearProjectSettingOverride(project.id, 'autoUpdate'),
 					projectService.clearProjectSettingOverride(project.id, 'updateScheduleEnabled'),
-					projectService.clearProjectSettingOverride(project.id, 'updateScheduleWindows'),
-					projectService.clearProjectSettingOverride(project.id, 'updateScheduleTimezone')
+					projectService.clearProjectSettingOverride(project.id, 'updateScheduleWindows')
 				);
 			}
 
@@ -113,11 +108,7 @@
 			if (localUpdateSettingsOverride !== null) {
 				updates.autoUpdate = localAutoUpdate;
 				updates.updateScheduleEnabled = localScheduleEnabled;
-				updates.updateScheduleWindows = {
-					enabled: localScheduleEnabled,
-					windows: localScheduleWindows
-				};
-				updates.updateScheduleTimezone = localScheduleTimezone;
+				updates.updateScheduleWindows = localScheduleWindows;
 			}
 
 			// Only call update if there are overrides to save
@@ -140,8 +131,7 @@
 		localUpdateSettingsOverride = isUpdateSettingsOverridden ? true : null;
 		localAutoUpdate = project.autoUpdate ?? globalSettings?.autoUpdate ?? false;
 		localScheduleEnabled = project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false;
-		localScheduleWindows = project.updateScheduleWindows?.windows ?? globalSettings?.updateScheduleWindows?.windows ?? [];
-		localScheduleTimezone = project.updateScheduleTimezone ?? globalSettings?.updateScheduleTimezone ?? 'UTC';
+		localScheduleWindows = project.updateScheduleWindows ?? globalSettings?.updateScheduleWindows ?? [];
 	}
 
 	function clearOverride() {
@@ -149,8 +139,7 @@
 		localUpdateSettingsOverride = null;
 		localAutoUpdate = globalSettings?.autoUpdate ?? false;
 		localScheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;
-		localScheduleWindows = globalSettings?.updateScheduleWindows?.windows ?? [];
-		localScheduleTimezone = globalSettings?.updateScheduleTimezone ?? 'UTC';
+		localScheduleWindows = globalSettings?.updateScheduleWindows ?? [];
 	}
 </script>
 
@@ -189,7 +178,6 @@
 							bind:autoUpdate={localAutoUpdate}
 							bind:scheduleEnabled={localScheduleEnabled}
 							bind:windows={localScheduleWindows}
-							bind:timezone={localScheduleTimezone}
 						/>
 					{/snippet}
 				</SettingsSection>

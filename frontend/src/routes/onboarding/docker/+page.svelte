@@ -13,7 +13,7 @@
 	import { z } from 'zod/v4';
 	import { m } from '$lib/paraglide/messages';
 	import settingsStore from '$lib/stores/config-store';
-	import type { Settings, UpdateScheduleWindow, UpdateScheduleConfig } from '$lib/types/settings.type';
+	import type { Settings, UpdateScheduleWindow } from '$lib/types/settings.type';
 	import { settingsService } from '$lib/services/settings-service.js';
 	import UpdateScheduleEditor from '$lib/components/update-schedule-editor.svelte';
 	import ClockIcon from '@lucide/svelte/icons/clock';
@@ -61,22 +61,19 @@
 		autoUpdate: z.boolean(),
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		updateScheduleEnabled: z.boolean(),
-		updateScheduleWindows: z.any(),
-		updateScheduleTimezone: z.string()
+		updateScheduleWindows: z.any()
 	});
 
 	// Update schedule state
 	let autoUpdate = $state<boolean>(false);
 	let scheduleEnabled = $state<boolean>(false);
 	let scheduleWindows = $state<UpdateScheduleWindow[]>([]);
-	let scheduleTimezone = $state<string>('UTC');
 
 	// Initialize from current settings
 	$effect(() => {
 		autoUpdate = currentSettings.autoUpdate ?? false;
 		scheduleEnabled = currentSettings.updateScheduleEnabled ?? false;
-		scheduleWindows = currentSettings.updateScheduleWindows?.windows ?? [];
-		scheduleTimezone = currentSettings.updateScheduleTimezone ?? 'UTC';
+		scheduleWindows = currentSettings.updateScheduleWindows ?? [];
 	});
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
@@ -98,11 +95,7 @@
 				...data,
 				autoUpdate: autoUpdate,
 				updateScheduleEnabled: scheduleEnabled,
-				updateScheduleWindows: {
-					enabled: scheduleEnabled,
-					windows: scheduleWindows
-				} as UpdateScheduleConfig,
-				updateScheduleTimezone: scheduleTimezone
+				updateScheduleWindows: scheduleWindows
 			};
 
 			const updated = {
@@ -221,12 +214,7 @@
 				<Card.Description>{m.update_schedule_description()}</Card.Description>
 			</Card.Header>
 			<Card.Content class="px-6">
-				<UpdateScheduleEditor
-					bind:autoUpdate
-					bind:scheduleEnabled
-					bind:windows={scheduleWindows}
-					bind:timezone={scheduleTimezone}
-				/>
+				<UpdateScheduleEditor bind:autoUpdate bind:scheduleEnabled bind:windows={scheduleWindows} />
 			</Card.Content>
 		</Card.Root>
 	{/if}

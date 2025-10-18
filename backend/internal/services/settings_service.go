@@ -633,19 +633,15 @@ func (s *SettingsService) ResolveProjectSettings(ctx context.Context, project *m
 	}
 
 	resolved := &dto.ResolvedProjectSettings{
-		AutoUpdate:             globalSettings.AutoUpdate.IsTrue(),
-		UpdateScheduleEnabled:  globalSettings.UpdateScheduleEnabled.IsTrue(),
-		UpdateScheduleTimezone: globalSettings.UpdateScheduleTimezone.Value,
+		AutoUpdate:            globalSettings.AutoUpdate.IsTrue(),
+		UpdateScheduleEnabled: globalSettings.UpdateScheduleEnabled.IsTrue(),
 	}
 
-	if resolved.UpdateScheduleTimezone == "" {
-		resolved.UpdateScheduleTimezone = "UTC"
-	}
-
+	// Parse global schedule windows
 	if globalSettings.UpdateScheduleWindows.Value != "" {
-		var scheduleConfig models.UpdateScheduleConfig
-		if err := json.Unmarshal([]byte(globalSettings.UpdateScheduleWindows.Value), &scheduleConfig); err == nil {
-			resolved.UpdateScheduleWindows = &scheduleConfig
+		var windows []models.UpdateScheduleWindow
+		if err := json.Unmarshal([]byte(globalSettings.UpdateScheduleWindows.Value), &windows); err == nil {
+			resolved.UpdateScheduleWindows = windows
 		}
 	}
 
@@ -653,20 +649,18 @@ func (s *SettingsService) ResolveProjectSettings(ctx context.Context, project *m
 		return resolved, nil
 	}
 
+	// Apply project-level overrides
 	if project.AutoUpdate != nil {
 		resolved.AutoUpdate = *project.AutoUpdate
 	}
 	if project.UpdateScheduleEnabled != nil {
 		resolved.UpdateScheduleEnabled = *project.UpdateScheduleEnabled
 	}
-	if project.UpdateScheduleTimezone != nil {
-		resolved.UpdateScheduleTimezone = *project.UpdateScheduleTimezone
-	}
 	if project.UpdateScheduleWindows != nil {
-		var scheduleConfig models.UpdateScheduleConfig
+		var windows []models.UpdateScheduleWindow
 		if jsonBytes, err := json.Marshal(*project.UpdateScheduleWindows); err == nil {
-			if err := json.Unmarshal(jsonBytes, &scheduleConfig); err == nil {
-				resolved.UpdateScheduleWindows = &scheduleConfig
+			if err := json.Unmarshal(jsonBytes, &windows); err == nil {
+				resolved.UpdateScheduleWindows = windows
 			}
 		}
 	}
@@ -674,24 +668,21 @@ func (s *SettingsService) ResolveProjectSettings(ctx context.Context, project *m
 	return resolved, nil
 }
 
-func (s *SettingsService) ParseUpdateScheduleConfig(jsonStr string) (*models.UpdateScheduleConfig, error) {
+func (s *SettingsService) ParseUpdateScheduleWindows(jsonStr string) ([]models.UpdateScheduleWindow, error) {
 	if jsonStr == "" {
-		return &models.UpdateScheduleConfig{
-			Enabled: false,
-			Windows: []models.UpdateScheduleWindow{},
-		}, nil
+		return []models.UpdateScheduleWindow{}, nil
 	}
 
-	var config models.UpdateScheduleConfig
-	if err := json.Unmarshal([]byte(jsonStr), &config); err != nil {
-		return nil, fmt.Errorf("failed to parse schedule config: %w", err)
+	var windows []models.UpdateScheduleWindow
+	if err := json.Unmarshal([]byte(jsonStr), &windows); err != nil {
+		return nil, fmt.Errorf("failed to parse schedule windows: %w", err)
 	}
 
-	return &config, nil
+	return windows, nil
 }
 
-func (s *SettingsService) ValidateUpdateScheduleConfig(config *models.UpdateScheduleConfig) error {
-	if config == nil {
+func (s *SettingsService) ValidateUpdateScheduleWindows(windows []models.UpdateScheduleWindow) error {
+	if len(windows) == 0 {
 		return nil
 	}
 
@@ -700,7 +691,7 @@ func (s *SettingsService) ValidateUpdateScheduleConfig(config *models.UpdateSche
 		"friday": true, "saturday": true, "sunday": true,
 	}
 
-	for i, window := range config.Windows {
+	for i, window := range windows {
 		if len(window.Days) == 0 {
 			return fmt.Errorf("window %d: must have at least one day specified", i)
 		}
@@ -717,10 +708,12 @@ func (s *SettingsService) ValidateUpdateScheduleConfig(config *models.UpdateSche
 			return fmt.Errorf("window %d: invalid end time format '%s' (expected HH:MM)", i, window.EndTime)
 		}
 
-		if window.Timezone != "" {
-			if _, err := time.LoadLocation(window.Timezone); err != nil {
-				return fmt.Errorf("window %d: invalid timezone '%s'", i, window.Timezone)
-			}
+		// Timezone is now required per window
+		if window.Timezone == "" {
+			return fmt.Errorf("window %d: timezone is required", i)
+		}
+		if _, err := time.LoadLocation(window.Timezone); err != nil {
+			return fmt.Errorf("window %d: invalid timezone '%s'", i, window.Timezone)
 		}
 	}
 

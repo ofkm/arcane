@@ -12,6 +12,5 @@ COMMIT;
 
 DELETE FROM settings WHERE key = 'updateScheduleEnabled';
 DELETE FROM settings WHERE key = 'updateScheduleWindows';
-DELETE FROM settings WHERE key = 'updateScheduleTimezone';
 
 INSERT OR IGNORE INTO settings (key, value) VALUES ('autoUpdateInterval', '5');

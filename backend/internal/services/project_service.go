@@ -942,23 +942,17 @@ func (s *ProjectService) UpdateProjectSettings(ctx context.Context, projectID st
 		updateMap["update_schedule_enabled"] = updates.UpdateScheduleEnabled
 	}
 	if updates.UpdateScheduleWindows != nil {
-		var scheduleConfig models.UpdateScheduleConfig
+		var windows []models.UpdateScheduleWindow
 
 		if jsonBytes, err := json.Marshal(*updates.UpdateScheduleWindows); err != nil {
-			return fmt.Errorf("invalid schedule config: %w", err)
-		} else if err := json.Unmarshal(jsonBytes, &scheduleConfig); err != nil {
-			return fmt.Errorf("invalid schedule config: %w", err)
+			return fmt.Errorf("invalid schedule windows: %w", err)
+		} else if err := json.Unmarshal(jsonBytes, &windows); err != nil {
+			return fmt.Errorf("invalid schedule windows: %w", err)
 		}
-		if err := s.settingsService.ValidateUpdateScheduleConfig(&scheduleConfig); err != nil {
-			return fmt.Errorf("invalid schedule config: %w", err)
+		if err := s.settingsService.ValidateUpdateScheduleWindows(windows); err != nil {
+			return fmt.Errorf("invalid schedule windows: %w", err)
 		}
 		updateMap["update_schedule_windows"] = updates.UpdateScheduleWindows
-	}
-	if updates.UpdateScheduleTimezone != nil {
-		if _, err := time.LoadLocation(*updates.UpdateScheduleTimezone); err != nil {
-			return fmt.Errorf("invalid timezone: %w", err)
-		}
-		updateMap["update_schedule_timezone"] = updates.UpdateScheduleTimezone
 	}
 
 	if len(updateMap) == 0 {
@@ -979,10 +973,9 @@ func (s *ProjectService) ClearProjectSettingOverride(ctx context.Context, projec
 	}
 
 	columnMap := map[string]string{
-		"autoUpdate":             "auto_update",
-		"updateScheduleEnabled":  "update_schedule_enabled",
-		"updateScheduleWindows":  "update_schedule_windows",
-		"updateScheduleTimezone": "update_schedule_timezone",
+		"autoUpdate":            "auto_update",
+		"updateScheduleEnabled": "update_schedule_enabled",
+		"updateScheduleWindows": "update_schedule_windows",
 	}
 
 	column, ok := columnMap[key]
@@ -1007,11 +1000,10 @@ func (s *ProjectService) ClearAllProjectSettingOverrides(ctx context.Context, pr
 		return err
 	}
 
-	updateMap := map[string]interface{}{
-		"auto_update":              nil,
-		"update_schedule_enabled":  nil,
-		"update_schedule_windows":  nil,
-		"update_schedule_timezone": nil,
+	updateMap := map[string]any{
+		"auto_update":             nil,
+		"update_schedule_enabled": nil,
+		"update_schedule_windows": nil,
 	}
 
 	if err := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", project.ID).Updates(updateMap).Error; err != nil {

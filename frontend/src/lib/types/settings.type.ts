@@ -13,8 +13,7 @@ export type Settings = {
 	autoUpdate: boolean;
 	pollingEnabled: boolean;
 	updateScheduleEnabled: boolean;
-	updateScheduleWindows: UpdateScheduleConfig;
-	updateScheduleTimezone: string;
+	updateScheduleWindows: UpdateScheduleWindow[];
 	pollingInterval: number;
 	dockerPruneMode: 'all' | 'dangling';
 	baseServerUrl: string;
@@ -74,9 +73,4 @@ export interface UpdateScheduleWindow {
 	startTime: string; // e.g., "02:00"
 	endTime: string; // e.g., "06:00"
 	timezone: string; // e.g., "UTC"
-}
-
-export interface UpdateScheduleConfig {
-	enabled: boolean;
-	windows: UpdateScheduleWindow[];
 }

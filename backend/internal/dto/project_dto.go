@@ -15,10 +15,9 @@ type UpdateProjectDto struct {
 }
 
 type UpdateProjectSettingsDto struct {
-	AutoUpdate             *bool        `json:"autoUpdate,omitempty"`
-	UpdateScheduleEnabled  *bool        `json:"updateScheduleEnabled,omitempty"`
-	UpdateScheduleWindows  *models.JSON `json:"updateScheduleWindows,omitempty"`
-	UpdateScheduleTimezone *string      `json:"updateScheduleTimezone,omitempty"`
+	AutoUpdate            *bool        `json:"autoUpdate,omitempty"`
+	UpdateScheduleEnabled *bool        `json:"updateScheduleEnabled,omitempty"`
+	UpdateScheduleWindows *models.JSON `json:"updateScheduleWindows,omitempty"`
 }
 
 type CreateProjectReponseDto struct {
@@ -49,20 +48,18 @@ type ProjectDetailsDto struct {
 	UpdatedAt      string  `json:"updatedAt"`
 	Services       []any   `json:"services,omitempty"`
 
-	AutoUpdate             *bool        `json:"autoUpdate,omitempty"`
-	UpdateScheduleEnabled  *bool        `json:"updateScheduleEnabled,omitempty"`
-	UpdateScheduleWindows  *models.JSON `json:"updateScheduleWindows,omitempty"`
-	UpdateScheduleTimezone *string      `json:"updateScheduleTimezone,omitempty"`
+	AutoUpdate            *bool        `json:"autoUpdate,omitempty"`
+	UpdateScheduleEnabled *bool        `json:"updateScheduleEnabled,omitempty"`
+	UpdateScheduleWindows *models.JSON `json:"updateScheduleWindows,omitempty"`
 
 	// Resolved effective settings (after applying overrides)
 	EffectiveSettings *ResolvedProjectSettings `json:"effectiveSettings,omitempty"`
 }
 
 type ResolvedProjectSettings struct {
-	AutoUpdate             bool                         `json:"autoUpdate"`
-	UpdateScheduleEnabled  bool                         `json:"updateScheduleEnabled"`
-	UpdateScheduleWindows  *models.UpdateScheduleConfig `json:"updateScheduleWindows,omitempty"`
-	UpdateScheduleTimezone string                       `json:"updateScheduleTimezone"`
+	AutoUpdate            bool                          `json:"autoUpdate"`
+	UpdateScheduleEnabled bool                          `json:"updateScheduleEnabled"`
+	UpdateScheduleWindows []models.UpdateScheduleWindow `json:"updateScheduleWindows,omitempty"`
 }
 
 type DestroyProjectDto struct {

@@ -1,12 +1,10 @@
 INSERT OR IGNORE INTO settings (key, value) VALUES ('updateScheduleEnabled', 'false');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('updateScheduleWindows', '{"enabled":false,"windows":[]}');
-INSERT OR IGNORE INTO settings (key, value) VALUES ('updateScheduleTimezone', 'UTC');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('updateScheduleWindows', '[]');
 
 DELETE FROM settings WHERE key = 'autoUpdateInterval';
 
 ALTER TABLE projects ADD COLUMN update_schedule_enabled BOOLEAN;
 ALTER TABLE projects ADD COLUMN update_schedule_windows TEXT;
-ALTER TABLE projects ADD COLUMN update_schedule_timezone TEXT;
 
 ALTER TABLE projects RENAME COLUMN auto_update TO auto_update_old;
 ALTER TABLE projects ADD COLUMN auto_update BOOLEAN;

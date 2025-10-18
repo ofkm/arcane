@@ -38,8 +38,7 @@ export interface Project {
 	envContent?: string;
 	autoUpdate?: boolean | null;
 	updateScheduleEnabled?: boolean | null;
-	updateScheduleWindows?: UpdateScheduleConfig | null;
-	updateScheduleTimezone?: string | null;
+	updateScheduleWindows?: UpdateScheduleWindow[] | null;
 	effectiveSettings?: ResolvedProjectSettings;
 }
 
@@ -56,21 +55,14 @@ export interface UpdateScheduleWindow {
 	timezone: string;
 }
 
-export interface UpdateScheduleConfig {
-	enabled: boolean;
-	windows: UpdateScheduleWindow[];
-}
-
 export interface ResolvedProjectSettings {
 	autoUpdate: boolean;
 	updateScheduleEnabled: boolean;
-	updateScheduleWindows?: UpdateScheduleConfig;
-	updateScheduleTimezone: string;
+	updateScheduleWindows?: UpdateScheduleWindow[];
 }
 
 export interface ProjectSettingsUpdate {
 	autoUpdate?: boolean;
 	updateScheduleEnabled?: boolean;
-	updateScheduleWindows?: UpdateScheduleConfig;
-	updateScheduleTimezone?: string;
+	updateScheduleWindows?: UpdateScheduleWindow[];
 }
