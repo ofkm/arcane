@@ -224,8 +224,9 @@
 		position: absolute;
 		width: 8px;
 		height: 8px;
-		background-color: hsl(var(--popover));
-		border: 1px solid hsl(var(--border));
+		background-color: color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-bg-alpha) * 100%), transparent);
+		border: 1px solid
+			color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-border-alpha) * 100%), transparent);
 		z-index: 1;
 	}
 
