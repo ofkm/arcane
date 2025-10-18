@@ -129,10 +129,7 @@
 					<EllipsisIcon class="size-4" />
 				</DropdownMenu.Trigger>
 
-				<DropdownMenu.Content
-					align="end"
-					class="bg-card/80 supports-[backdrop-filter]:bg-card/60 z-50 min-w-[160px] rounded-md p-1 shadow-lg backdrop-blur-sm"
-				>
+				<DropdownMenu.Content align="end" class="glass glass-strong z-50 min-w-[160px] rounded-md p-1 shadow-lg">
 					<DropdownMenu.Group>
 						<DropdownMenu.Item
 							onclick={onStartAll}
@@ -186,9 +183,9 @@
 			</div>
 		{:else}
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				<div class="group rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/0 p-[1px]">
+				<div class="group rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-500/0 p-[1px] hover-lift">
 					<button
-						class="bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-offset-background focus-visible:ring-ring flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 shadow-sm backdrop-blur transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+						class="ring-offset-background focus-visible:ring-ring glass bubble bubble-shadow flex min-h-14 w-full items-center gap-3 rounded-2xl border p-3 transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 						disabled={!dockerInfo || stoppedContainers === 0 || isLoading.starting || isLoading.stopping || isLoading.pruning}
 						onclick={onStartAll}
 						aria-busy={isLoading.starting}
@@ -214,9 +211,9 @@
 					</button>
 				</div>
 
-				<div class="group rounded-xl bg-gradient-to-br from-sky-500/20 to-sky-500/0 p-[1px]">
+				<div class="group rounded-2xl bg-gradient-to-br from-sky-500/20 to-sky-500/0 p-[1px] hover-lift">
 					<button
-						class="bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-offset-background focus-visible:ring-ring flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 shadow-sm backdrop-blur transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+						class="ring-offset-background focus-visible:ring-ring glass bubble bubble-shadow flex min-h-14 w-full items-center gap-3 rounded-2xl border p-3 transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 						disabled={!dockerInfo ||
 							(dockerInfo?.containersRunning ?? 0) === 0 ||
 							isLoading.starting ||
@@ -246,9 +243,9 @@
 					</button>
 				</div>
 
-				<div class="group rounded-xl bg-gradient-to-br from-red-500/20 to-red-500/0 p-[1px]">
+				<div class="group rounded-2xl bg-gradient-to-br from-red-500/20 to-red-500/0 p-[1px] hover-lift">
 					<button
-						class="bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-offset-background focus-visible:ring-ring flex min-h-14 w-full items-center gap-3 rounded-xl border p-3 shadow-sm backdrop-blur transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+						class="ring-offset-background focus-visible:ring-ring glass bubble bubble-shadow flex min-h-14 w-full items-center gap-3 rounded-2xl border p-3 transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
 						disabled={!dockerInfo || isLoading.starting || isLoading.stopping || isLoading.pruning}
 						onclick={onOpenPruneDialog}
 						aria-busy={isLoading.pruning}
