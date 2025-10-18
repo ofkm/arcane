@@ -42,5 +42,5 @@ type UpdateSettingsDto struct {
 	MobileNavigationShowLabels   *string `json:"mobileNavigationShowLabels,omitempty"`
 	MobileNavigationScrollToHide *string `json:"mobileNavigationScrollToHide,omitempty"`
 	SidebarHoverExpansion        *string `json:"sidebarHoverExpansion,omitempty"`
-	GlassEffectEnabled           *string `json:"glassEffectEnabled"`
+	GlassEffectEnabled           *string `json:"glassEffectEnabled,omitempty"`
 }
