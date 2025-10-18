@@ -60,17 +60,17 @@
 	--sidebar-border: oklch(0.92 0.004 286.32);
 	--sidebar-ring: oklch(0.606 0.25 292.717);
 
-	/* Surface and glass tunables */
-	--bg-surface: oklch(1 0 0); /* base surface color used for glass blending (light) */
+	--bg-surface: oklch(1 0 0);
 	--glass-base: var(--bg-surface);
 	--glass-tint: var(--primary);
-	--glass-bg-alpha: 0.18;
-	--glass-border-alpha: 0.28;
-	--glass-shadow-color: oklch(0 0 0 / 0.18);
-
-	/* Tunables for the glass effect */
-	--glass-blur: 18px;
+	--glass-bg-alpha: 0.12;
+	--glass-border-alpha: 0.2;
+	--glass-shadow-color: oklch(0 0 0 / 0.12);
+	--glass-blur: 14px;
 	--glass-noise-opacity: 0.03;
+	--glass-tint-mix: 2%;
+	--glass-tint-strong-mix: 6%;
+	--glass-tint-subtle-mix: 1.5%;
 }
 
 .dark {
@@ -110,9 +110,10 @@
 	--bg-surface: oklch(0.21 0.006 285.885);
 	--glass-base: var(--bg-surface);
 	--glass-tint: var(--primary);
-	--glass-bg-alpha: 0.14;
-	--glass-border-alpha: 0.22;
-	--glass-shadow-color: oklch(0 0 0 / 0.35);
+	/* Slightly reduce alpha and shadow in dark mode */
+	--glass-bg-alpha: 0.1;
+	--glass-border-alpha: 0.18;
+	--glass-shadow-color: oklch(0 0 0 / 0.28);
 }
 
 @theme inline {
@@ -168,19 +169,96 @@
 	}
 }
 
-/* Global colorful backdrop for glass surfaces */
-body::before {
+/* Glass effect toggle: disable all glass/blur/gradients when .glass-disabled */
+body:not(.glass-enabled) {
+	/* Make core surfaces fully opaque (classic/old background look) */
+	/* Use the base surface color for cards and sidebar instead of semi-transparent variants */
+	--card: var(--bg-surface);
+	--sidebar: var(--bg-surface);
+
+	/* Hide ambient backdrop */
+	&::before {
+		display: none;
+	}
+	/* Reduce noise opacity to minimal */
+	&::after {
+		opacity: 0.015;
+	}
+	/* Override glass classes to be solid, but keep proper card backgrounds */
+	.glass,
+	.glass-strong,
+	.glass-subtle {
+		backdrop-filter: none !important;
+		background: var(--card) !important;
+		border-color: var(--border) !important;
+		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+	}
+	/* Override bubble styles */
+	.bubble {
+		background: var(--card) !important;
+		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+	}
+	/* Override bubble shadows */
+	.bubble-shadow,
+	.bubble-shadow-lg {
+		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+	}
+	/* Disable hover lift when glass disabled */
+	.hover-lift:hover {
+		transform: none !important;
+	}
+	/* Remove bubble outline gradient */
+	.bubble-outline {
+		background: var(--card) !important;
+		border: 1px solid var(--border) !important;
+	}
+	/* Remove blob floating effects */
+	.blob-floating::before {
+		display: none;
+	}
+	/* Ensure inputs work properly without glass */
+	input[data-slot='input'],
+	textarea[data-slot='textarea'],
+	[data-slot='select-trigger'] {
+		background: var(--input) !important;
+		border: 1px solid var(--border) !important;
+	}
+	/* Restore focus states for inputs */
+	input[data-slot='input']:focus-visible,
+	textarea[data-slot='textarea']:focus-visible,
+	[data-slot='select-trigger']:focus-visible {
+		background: var(--background) !important;
+		border-color: var(--ring) !important;
+		box-shadow: 0 0 0 3px hsl(var(--ring) / 0.2) !important;
+		outline: none !important;
+	}
+
+	/* Sidebar: force solid background and remove any blur */
+	[data-sidebar='sidebar'] {
+		background: var(--bg-surface) !important;
+		backdrop-filter: none !important;
+	}
+
+	/* Neutralize any Tailwind backdrop-blur utilities when glass is disabled */
+	[class*='backdrop-blur'] {
+		-webkit-backdrop-filter: none !important;
+		backdrop-filter: none !important;
+	}
+}
+
+/* Global colorful backdrop for glass surfaces - only when glass is enabled */
+body.glass-enabled::before {
 	content: '';
 	position: fixed;
 	inset: -30vmax;
 	z-index: -2;
 	background:
-		radial-gradient(40vmax 40vmax at 15% 10%, color-mix(in oklch, var(--primary) 80%, transparent) 0%, transparent 60%),
-		radial-gradient(35vmax 35vmax at 85% 15%, color-mix(in oklch, var(--chart-2) 60%, transparent) 0%, transparent 60%),
-		radial-gradient(45vmax 45vmax at 20% 85%, color-mix(in oklch, var(--chart-4) 50%, transparent) 0%, transparent 60%),
-		radial-gradient(30vmax 30vmax at 80% 80%, color-mix(in oklch, var(--chart-5) 40%, transparent) 0%, transparent 60%);
-	filter: blur(120px) saturate(140%);
-	opacity: 0.5;
+		radial-gradient(40vmax 40vmax at 15% 10%, color-mix(in oklch, var(--primary) 55%, transparent) 0%, transparent 60%),
+		radial-gradient(35vmax 35vmax at 85% 15%, color-mix(in oklch, var(--chart-2) 40%, transparent) 0%, transparent 60%),
+		radial-gradient(45vmax 45vmax at 20% 85%, color-mix(in oklch, var(--chart-4) 35%, transparent) 0%, transparent 60%),
+		radial-gradient(30vmax 30vmax at 80% 80%, color-mix(in oklch, var(--chart-5) 30%, transparent) 0%, transparent 60%);
+	filter: blur(100px) saturate(115%);
+	opacity: 0.28;
 	animation: ambient-float 30s ease-in-out infinite alternate;
 	pointer-events: none;
 }
@@ -213,15 +291,15 @@ body::after {
 		/* Background blend: base surface + subtle tint */
 		background: linear-gradient(
 			to bottom right,
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 65%, transparent) 0%,
-			color-mix(in oklch, var(--glass-tint, var(--primary)) 12%, transparent) 100%
+			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 68%, transparent) 0%,
+			color-mix(in oklch, var(--glass-tint, var(--primary)) var(--glass-tint-mix, 2%), transparent) 100%
 		);
 		background-color: color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-bg-alpha) * 100%), transparent);
 		/* Border + inner highlight */
 		border: 1px solid
 			color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-border-alpha) * 100%), transparent);
 		box-shadow:
-			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 35%, transparent) inset,
+			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 28%, transparent) inset,
 			0 10px 30px -10px var(--glass-shadow-color);
 	}
 
@@ -229,8 +307,8 @@ body::after {
 		backdrop-filter: blur(calc(var(--glass-blur) * 1.25));
 		background: linear-gradient(
 			to bottom right,
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 60%, transparent) 0%,
-			color-mix(in oklch, var(--glass-tint, var(--primary)) 18%, transparent) 100%
+			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 62%, transparent) 0%,
+			color-mix(in oklch, var(--glass-tint, var(--primary)) var(--glass-tint-strong-mix, 6%), transparent) 100%
 		);
 	}
 
@@ -238,8 +316,8 @@ body::after {
 		backdrop-filter: blur(calc(var(--glass-blur) * 0.85));
 		background: linear-gradient(
 			to bottom right,
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 70%, transparent) 0%,
-			color-mix(in oklch, var(--glass-tint, var(--primary)) 8%, transparent) 100%
+			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 72%, transparent) 0%,
+			color-mix(in oklch, var(--glass-tint, var(--primary)) var(--glass-tint-subtle-mix, 1.5%), transparent) 100%
 		);
 	}
 
@@ -254,13 +332,21 @@ body::after {
 	/* Bubbly UI helpers */
 	.bubble {
 		background:
-			radial-gradient(120% 100% at 10% 0%, color-mix(in oklch, var(--glass-tint, var(--primary)) 14%, transparent) 0%, transparent 60%),
-			radial-gradient(120% 100% at 100% 0%, color-mix(in oklch, var(--glass-base, var(--bg-surface)) 18%, transparent) 0%, transparent 60%);
-		background-color: color-mix(in oklch, var(--glass-base, var(--bg-surface)) 85%, transparent);
+			radial-gradient(
+				120% 100% at 10% 0%,
+				color-mix(in oklch, var(--glass-tint, var(--primary)) 10%, transparent) 0%,
+				transparent 60%
+			),
+			radial-gradient(
+				120% 100% at 100% 0%,
+				color-mix(in oklch, var(--glass-base, var(--bg-surface)) 12%, transparent) 0%,
+				transparent 60%
+			);
+		background-color: color-mix(in oklch, var(--glass-base, var(--bg-surface)) 92%, transparent);
 		border-radius: var(--radius-xl);
 		box-shadow:
-			0 8px 24px -8px color-mix(in oklch, var(--glass-shadow-color) 80%, transparent),
-			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 40%, transparent) inset;
+			0 8px 24px -8px color-mix(in oklch, var(--glass-shadow-color) 70%, transparent),
+			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 30%, transparent) inset;
 	}
 
 	.bubble-pill {
@@ -271,18 +357,20 @@ body::after {
 
 	.bubble-shadow {
 		box-shadow:
-			0 8px 30px -12px color-mix(in oklch, var(--glass-shadow-color) 80%, transparent),
-			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 35%, transparent) inset;
+			0 8px 30px -12px color-mix(in oklch, var(--glass-shadow-color) 70%, transparent),
+			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 30%, transparent) inset;
 	}
 
 	.bubble-shadow-lg {
 		box-shadow:
-			0 14px 40px -14px color-mix(in oklch, var(--glass-shadow-color) 90%, transparent),
-			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 40%, transparent) inset;
+			0 14px 40px -14px color-mix(in oklch, var(--glass-shadow-color) 80%, transparent),
+			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 35%, transparent) inset;
 	}
 
 	.hover-lift {
-		transition: transform 200ms ease, box-shadow 200ms ease;
+		transition:
+			transform 200ms ease,
+			box-shadow 200ms ease;
 		will-change: transform, box-shadow;
 	}
 
@@ -293,7 +381,7 @@ body::after {
 	.bubble-outline {
 		background:
 			linear-gradient(var(--glass-base, var(--bg-surface)), var(--glass-base, var(--bg-surface))) padding-box,
-			linear-gradient(135deg, color-mix(in oklch, var(--glass-tint, var(--primary)) 40%, transparent), transparent 60%) border-box;
+			linear-gradient(135deg, color-mix(in oklch, var(--glass-tint, var(--primary)) 28%, transparent), transparent 60%) border-box;
 		border: 1px solid transparent;
 		border-radius: var(--radius-lg);
 	}
@@ -309,10 +397,14 @@ body::after {
 		inset: -20%;
 		z-index: -1;
 		background:
-			radial-gradient(40% 40% at 20% 20%, color-mix(in oklch, var(--glass-tint, var(--primary)) 30%, transparent) 0%, transparent 60%),
-			radial-gradient(40% 50% at 80% 30%, color-mix(in oklch, var(--chart-2) 20%, transparent) 0%, transparent 60%);
-		filter: blur(60px) saturate(120%);
-		opacity: 0.4;
+			radial-gradient(
+				40% 40% at 20% 20%,
+				color-mix(in oklch, var(--glass-tint, var(--primary)) 20%, transparent) 0%,
+				transparent 60%
+			),
+			radial-gradient(40% 50% at 80% 30%, color-mix(in oklch, var(--chart-2) 14%, transparent) 0%, transparent 60%);
+		filter: blur(60px) saturate(105%);
+		opacity: 0.22;
 		animation: blob-float var(--blob-speed, 18s) ease-in-out infinite alternate;
 	}
 
@@ -328,45 +420,35 @@ body::after {
 	/* Glass utilities duplicated at utilities layer for higher precedence over bg-* */
 	.glass {
 		backdrop-filter: blur(var(--glass-blur));
-		background:
-			linear-gradient(
-				to bottom right,
-				color-mix(in oklch, var(--glass-base, var(--bg-surface)) 65%, transparent) 0%,
-				color-mix(in oklch, var(--glass-tint, var(--primary)) 12%, transparent) 100%
-			);
-		background-color: color-mix(
-			in oklch,
-			var(--glass-base, var(--bg-surface)) calc(var(--glass-bg-alpha) * 100%),
-			transparent
+		background: linear-gradient(
+			to bottom right,
+			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 68%, transparent) 0%,
+			color-mix(in oklch, var(--glass-tint, var(--primary)) 8%, transparent) 100%
 		);
-		border: 1px solid color-mix(
-			in oklch,
-			var(--glass-base, var(--bg-surface)) calc(var(--glass-border-alpha) * 100%),
-			transparent
-		);
+		background-color: color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-bg-alpha) * 100%), transparent);
+		border: 1px solid
+			color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-border-alpha) * 100%), transparent);
 		box-shadow:
-			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 35%, transparent) inset,
+			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 28%, transparent) inset,
 			0 10px 30px -10px var(--glass-shadow-color);
 	}
 
 	.glass-strong {
 		backdrop-filter: blur(calc(var(--glass-blur) * 1.25));
-		background:
-			linear-gradient(
-				to bottom right,
-				color-mix(in oklch, var(--glass-base, var(--bg-surface)) 60%, transparent) 0%,
-				color-mix(in oklch, var(--glass-tint, var(--primary)) 18%, transparent) 100%
-			);
+		background: linear-gradient(
+			to bottom right,
+			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 62%, transparent) 0%,
+			color-mix(in oklch, var(--glass-tint, var(--primary)) 12%, transparent) 100%
+		);
 	}
 
 	.glass-subtle {
 		backdrop-filter: blur(calc(var(--glass-blur) * 0.85));
-		background:
-			linear-gradient(
-				to bottom right,
-				color-mix(in oklch, var(--glass-base, var(--bg-surface)) 70%, transparent) 0%,
-				color-mix(in oklch, var(--glass-tint, var(--primary)) 8%, transparent) 100%
-			);
+		background: linear-gradient(
+			to bottom right,
+			color-mix(in oklch, var(--glass-base, var(--bg-surface)) 72%, transparent) 0%,
+			color-mix(in oklch, var(--glass-tint, var(--primary)) 5%, transparent) 100%
+		);
 	}
 
 	.glass-card {

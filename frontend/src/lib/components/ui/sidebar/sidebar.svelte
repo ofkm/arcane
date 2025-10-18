@@ -25,7 +25,7 @@
 {#if collapsible === 'none'}
 	<div
 		class={cn('bg-sidebar text-sidebar-foreground flex h-full w-(--sidebar-width) flex-col', className)}
-		style="--glass-base: var(--sidebar); --glass-tint: var(--sidebar-primary)"
+		style="--glass-base: var(--background); --glass-tint: var(--primary); --glass-tint-mix: 12%; --glass-tint-strong-mix: 22%; --glass-tint-subtle-mix: 8%"
 		bind:this={ref}
 		{...restProps}
 	>
@@ -87,7 +87,7 @@
 				data-sidebar="sidebar"
 				data-slot="sidebar-inner"
 				class="bg-sidebar/90 supports-[backdrop-filter]:bg-sidebar group-data-[variant=floating]:border-sidebar-border glass flex h-full w-full flex-col overflow-x-hidden backdrop-blur-md group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
-				style="--glass-base: var(--sidebar); --glass-tint: var(--sidebar-primary)"
+				style="--glass-base: var(--background); --glass-tint: var(--primary); --glass-tint-mix: 12%; --glass-tint-strong-mix: 22%; --glass-tint-subtle-mix: 8%"
 			>
 				{@render children?.()}
 			</div>

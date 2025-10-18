@@ -240,6 +240,31 @@
 						'minimize',
 						'collapse'
 					]
+				},
+				{
+					key: 'glassEffectEnabled',
+					label: 'Glass Effect',
+					type: 'boolean',
+					description: 'Enable modern glassmorphism design with blur, gradients, and ambient effects',
+					keywords: [
+						'glass',
+						'glassmorphism',
+						'blur',
+						'backdrop',
+						'frosted',
+						'effect',
+						'gradient',
+						'ambient',
+						'design',
+						'ui',
+						'appearance',
+						'modern',
+						'visual',
+						'style',
+						'theme',
+						'transparency',
+						'translucent'
+					]
 				}
 			]
 		},
