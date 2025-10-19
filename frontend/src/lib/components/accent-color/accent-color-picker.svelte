@@ -2,7 +2,8 @@
 	import { Label } from '$lib/components/ui/label/index.js';
 	import * as RadioGroup from '$lib/components/ui/radio-group/index.js';
 	import { applyAccentColor } from '$lib/utils/accent-color-util';
-	import { Check, Plus } from '@lucide/svelte';
+	import PlusIcon from '@lucide/svelte/icons/plus';
+	import CheckIcon from '@lucide/svelte/icons/check';
 	import CustomColorDialog from './custom-color.svelte';
 
 	let {
@@ -80,11 +81,11 @@
 					<div
 						class="bg-muted absolute inset-0 flex items-center justify-center rounded-full border-2 border-dashed border-gray-300"
 					>
-						<Plus class="text-muted-foreground size-4" />
+						<PlusIcon class="text-muted-foreground size-4" />
 					</div>
 				{:else if isSelected}
 					<div class="absolute inset-0 flex items-center justify-center">
-						<Check class="size-4 text-white drop-shadow-sm" />
+						<CheckIcon class="size-4 text-white drop-shadow-sm" />
 					</div>
 				{/if}
 			</div>
