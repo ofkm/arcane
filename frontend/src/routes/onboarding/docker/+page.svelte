@@ -61,7 +61,14 @@
 		autoUpdate: z.boolean(),
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		updateScheduleEnabled: z.boolean(),
-		updateScheduleWindows: z.any()
+		updateScheduleWindows: z.array(
+			z.object({
+				days: z.array(z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])),
+				startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
+				endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
+				timezone: z.string().min(1)
+			})
+		)
 	});
 
 	let autoUpdate = $state<boolean>(data.settings.autoUpdate ?? false);
