@@ -1319,5 +1319,12 @@
 	"events_delete_failed": "Failed to delete event \"{title}\"",
 	"events_delete_success": "Event \"{title}\" deleted successfully",
 	"sidebar_dark_mode": "深色",
-	"sidebar_light_mode": "亮色的"
+	"sidebar_light_mode": "亮色的",
+	"glass_effect_title": "玻璃特效(预览)",
+	"glass_effect_description": "启用带有模糊、渐变和环境效果的现代玻璃化设计",
+	"glass_effect_label": "粒子效果界面",
+	"glass_effect_enabled": "玻璃效果已启用",
+	"glass_effect_disabled": "已禁用玻璃特效(经典设计)",
+	"glass_effect_description_long": "启用时，接口会使用背景模糊和微妙渐变的玻璃效应。 当禁用时，接口使用固态颜色和传统阴影来设计经典设计。玻璃设计正在预览中，可能会改变。",
+	"navigation_glass_effect_label": "玻璃效果"
 }
