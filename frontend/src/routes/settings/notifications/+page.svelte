@@ -1,6 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import * as Alert from '$lib/components/ui/alert';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import { toast } from 'svelte-sonner';
@@ -13,6 +14,7 @@
 	import { SettingsPageLayout } from '$lib/layouts';
 	import BellIcon from '@lucide/svelte/icons/bell';
 	import SendIcon from '@lucide/svelte/icons/send';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import settingsStore from '$lib/stores/config-store';
 	import { Label } from '$lib/components/ui/label';
 	import { Input } from '$lib/components/ui/input';
@@ -58,20 +60,90 @@
 		emailTlsMode: 'starttls'
 	});
 
-	const formSchema = z.object({
-		discordEnabled: z.boolean(),
-		discordWebhookUrl: z.string(),
-		discordUsername: z.string(),
-		discordAvatarUrl: z.string(),
-		emailEnabled: z.boolean(),
-		emailSmtpHost: z.string(),
-		emailSmtpPort: z.number().int().min(1).max(65535),
-		emailSmtpUsername: z.string(),
-		emailSmtpPassword: z.string(),
-		emailFromAddress: z.string().email().or(z.literal('')),
-		emailToAddresses: z.string(),
-		emailTlsMode: z.enum(['none', 'starttls', 'ssl'])
-	});
+	const formSchema = z
+		.object({
+			discordEnabled: z.boolean(),
+			discordWebhookUrl: z.string(),
+			discordUsername: z.string(),
+			discordAvatarUrl: z.string(),
+			emailEnabled: z.boolean(),
+			emailSmtpHost: z.string(),
+			emailSmtpPort: z.number().int().min(1).max(65535),
+			emailSmtpUsername: z.string(),
+			emailSmtpPassword: z.string(),
+			emailFromAddress: z.email(),
+			emailToAddresses: z.string(),
+			emailTlsMode: z.enum(['none', 'starttls', 'ssl'])
+		})
+		.superRefine((data, ctx) => {
+			// Validate Discord fields when Discord is enabled
+			if (data.discordEnabled && !data.discordWebhookUrl.trim()) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Webhook URL is required when Discord is enabled',
+					path: ['discordWebhookUrl']
+				});
+			}
+
+			// Validate Email fields when Email is enabled
+			if (data.emailEnabled) {
+				if (!data.emailSmtpHost.trim()) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: 'SMTP host is required when email is enabled',
+						path: ['emailSmtpHost']
+					});
+				}
+
+				if (!data.emailFromAddress.trim()) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: 'From address is required when email is enabled',
+						path: ['emailFromAddress']
+					});
+				} else {
+					// Validate email format using Zod's built-in email validator
+					const emailValidation = z.string().email().safeParse(data.emailFromAddress.trim());
+					if (!emailValidation.success) {
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							message: 'Invalid email address format',
+							path: ['emailFromAddress']
+						});
+					}
+				}
+
+				if (!data.emailToAddresses.trim()) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: 'At least one recipient address is required when email is enabled',
+						path: ['emailToAddresses']
+					});
+				} else {
+					// Validate each email in the comma-separated list
+					const addresses = data.emailToAddresses
+						.split(',')
+						.map((addr) => addr.trim())
+						.filter((addr) => addr.length > 0);
+					const invalidAddresses: string[] = [];
+
+					addresses.forEach((addr) => {
+						const emailValidation = z.string().email().safeParse(addr);
+						if (!emailValidation.success) {
+							invalidAddresses.push(addr);
+						}
+					});
+
+					if (invalidAddresses.length > 0) {
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							message: `Invalid email addresses: ${invalidAddresses.join(', ')}`,
+							path: ['emailToAddresses']
+						});
+					}
+				}
+			}
+		});
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
@@ -225,11 +297,12 @@
 		$formInputs.emailTlsMode.value = currentSettings.emailTlsMode;
 	}
 
-	async function testNotification(provider: string) {
+	async function testNotification(provider: string, type: string = 'simple') {
 		isTesting = true;
 		try {
-			await notificationService.testNotification(provider);
-			toast.success(m.notifications_test_success({ provider }));
+			await notificationService.testNotification(provider, type);
+			const typeLabel = type === 'image-update' ? 'Image Update' : 'Simple Test';
+			toast.success(`${typeLabel} notification sent successfully to ${provider}`);
 		} catch (error: any) {
 			const errorMsg = error?.response?.data?.error || error.message || m.common_unknown();
 			toast.error(m.notifications_test_failed({ error: errorMsg }));
@@ -283,6 +356,9 @@
 									autocomplete="off"
 									helpText={m.notifications_discord_webhook_url_help()}
 								/>
+								{#if $formInputs.discordWebhookUrl.error}
+									<p class="text-destructive -mt-2 text-sm">{$formInputs.discordWebhookUrl.error}</p>
+								{/if}
 
 								<TextInputWithLabel
 									bind:value={$formInputs.discordUsername.value}
@@ -348,6 +424,9 @@
 										autocomplete="off"
 										helpText={m.notifications_email_smtp_host_help()}
 									/>
+									{#if $formInputs.emailSmtpHost.error}
+										<p class="text-destructive col-span-2 -mt-2 text-sm">{$formInputs.emailSmtpHost.error}</p>
+									{/if}
 
 									<div class="space-y-2">
 										<Label for="smtp-port">{m.notifications_email_smtp_port_label()}</Label>
@@ -394,6 +473,9 @@
 									autocomplete="off"
 									helpText={m.notifications_email_from_address_help()}
 								/>
+								{#if $formInputs.emailFromAddress.error}
+									<p class="text-destructive -mt-2 text-sm">{$formInputs.emailFromAddress.error}</p>
+								{/if}
 
 								<div class="space-y-2">
 									<Label for="to-addresses">{m.notifications_email_to_addresses_label()}</Label>
@@ -405,7 +487,11 @@
 										placeholder={m.notifications_email_to_addresses_placeholder()}
 										rows={2}
 									/>
-									<p class="text-muted-foreground text-sm">{m.notifications_email_to_addresses_help()}</p>
+									{#if $formInputs.emailToAddresses.error}
+										<p class="text-destructive text-sm">{$formInputs.emailToAddresses.error}</p>
+									{:else}
+										<p class="text-muted-foreground text-sm">{m.notifications_email_to_addresses_help()}</p>
+									{/if}
 								</div>
 
 								<SelectWithLabel
@@ -426,14 +512,29 @@
 					</Card.Content>
 					<Card.Footer class="flex gap-2 px-3 py-4 sm:px-6">
 						{#if $formInputs.emailEnabled.value}
-							<Button variant="outline" onclick={() => testNotification('email')} disabled={isReadOnly || isTesting}>
-								{#if isTesting}
-									<Spinner class="mr-2 h-4 w-4" />
-								{:else}
-									<SendIcon class="mr-2 h-4 w-4" />
-								{/if}
-								{m.notifications_email_test_button()}
-							</Button>
+							<DropdownMenu.Root>
+								<DropdownMenu.Trigger>
+									<Button variant="outline" disabled={isReadOnly || isTesting}>
+										{#if isTesting}
+											<Spinner class="mr-2 h-4 w-4" />
+										{:else}
+											<SendIcon class="mr-2 h-4 w-4" />
+										{/if}
+										{m.notifications_email_test_button()}
+										<ChevronDownIcon class="ml-2 h-4 w-4" />
+									</Button>
+								</DropdownMenu.Trigger>
+								<DropdownMenu.Content align="start">
+									<DropdownMenu.Item onclick={() => testNotification('email', 'simple')}>
+										<SendIcon class="mr-2 h-4 w-4" />
+										Simple Test Email
+									</DropdownMenu.Item>
+									<DropdownMenu.Item onclick={() => testNotification('email', 'image-update')}>
+										<SendIcon class="mr-2 h-4 w-4" />
+										Image Update Email
+									</DropdownMenu.Item>
+								</DropdownMenu.Content>
+							</DropdownMenu.Root>
 						{/if}
 					</Card.Footer>
 				</Card.Root>

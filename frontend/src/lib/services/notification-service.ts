@@ -15,9 +15,9 @@ export default class NotificationService extends BaseAPIService {
 		return res.data;
 	}
 
-	async testNotification(provider: string): Promise<TestNotificationResponse> {
+	async testNotification(provider: string, type: string = 'simple'): Promise<TestNotificationResponse> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.post(`/environments/${envId}/notifications/test/${provider}`));
+		return this.handleResponse(this.api.post(`/environments/${envId}/notifications/test/${provider}?type=${type}`));
 	}
 }
 

@@ -10,22 +10,27 @@ import (
 	"net/mail"
 	"net/url"
 	"strings"
+	"text/template"
 	"time"
 
+	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
 	"github.com/ofkm/arcane-backend/internal/utils/notifications"
+	"github.com/ofkm/arcane-backend/resources"
 )
 
 type NotificationService struct {
-	db *database.DB
+	db     *database.DB
+	config *config.Config
 }
 
-func NewNotificationService(db *database.DB) *NotificationService {
+func NewNotificationService(db *database.DB, cfg *config.Config) *NotificationService {
 	return &NotificationService{
-		db: db,
+		db:     db,
+		config: cfg,
 	}
 }
 
@@ -250,7 +255,6 @@ func (s *NotificationService) sendEmailNotification(ctx context.Context, imageRe
 		return fmt.Errorf("no recipient email addresses configured")
 	}
 
-	// Validate email addresses
 	if _, err := mail.ParseAddress(emailConfig.FromAddress); err != nil {
 		return fmt.Errorf("invalid from address: %w", err)
 	}
@@ -260,26 +264,26 @@ func (s *NotificationService) sendEmailNotification(ctx context.Context, imageRe
 		}
 	}
 
-	// Decrypt SMTP password if encrypted
 	if emailConfig.SMTPPassword != "" {
 		if decrypted, err := utils.Decrypt(emailConfig.SMTPPassword); err == nil {
 			emailConfig.SMTPPassword = decrypted
 		}
 	}
 
-	// Build the email message
-	subject := fmt.Sprintf("Container Update Available: %s", notifications.SanitizeForEmail(imageRef))
-	body := s.buildEmailBody(imageRef, updateInfo)
-	message := notifications.BuildSimpleMessage(emailConfig.FromAddress, emailConfig.ToAddresses, subject, body)
+	htmlBody, textBody, err := s.renderEmailTemplate(imageRef, updateInfo)
+	if err != nil {
+		return fmt.Errorf("failed to render email template: %w", err)
+	}
 
-	// Connect to SMTP server
+	subject := fmt.Sprintf("Container Update Available: %s", notifications.SanitizeForEmail(imageRef))
+	message := notifications.BuildMultipartMessage(emailConfig.FromAddress, emailConfig.ToAddresses, subject, htmlBody, textBody)
+
 	client, err := notifications.ConnectSMTP(ctx, emailConfig)
 	if err != nil {
 		return fmt.Errorf("failed to connect to SMTP server: %w", err)
 	}
 	defer client.Close()
 
-	// Send the email
 	if err := client.SendMessage(emailConfig.FromAddress, emailConfig.ToAddresses, message); err != nil {
 		return fmt.Errorf("failed to send email: %w", err)
 	}
@@ -287,28 +291,52 @@ func (s *NotificationService) sendEmailNotification(ctx context.Context, imageRe
 	return nil
 }
 
-func (s *NotificationService) buildEmailBody(imageRef string, updateInfo *dto.ImageUpdateResponse) string {
-	safeImageRef := notifications.SanitizeForEmail(imageRef)
-	return fmt.Sprintf(`Container Image Update Notification
+func (s *NotificationService) renderEmailTemplate(imageRef string, updateInfo *dto.ImageUpdateResponse) (string, string, error) {
+	data := map[string]interface{}{
+		"LogoURL":       "https://raw.githubusercontent.com/ofkm/arcane/main/backend/resources/images/logo-full.svg",
+		"AppURL":        s.config.AppUrl,
+		"ImageRef":      imageRef,
+		"HasUpdate":     updateInfo.HasUpdate,
+		"UpdateType":    updateInfo.UpdateType,
+		"CurrentDigest": truncateDigest(updateInfo.CurrentDigest),
+		"LatestDigest":  truncateDigest(updateInfo.LatestDigest),
+		"CheckTime":     updateInfo.CheckTime.Format(time.RFC1123),
+	}
 
-Image: %s
-Update Available: %t
-Update Type: %s
-Current Digest: %s
-Latest Digest: %s
+	htmlContent, err := resources.FS.ReadFile("email-templates/image-update_html.tmpl")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read HTML template: %w", err)
+	}
 
-Checked at: %s
-`,
-		safeImageRef,
-		updateInfo.HasUpdate,
-		updateInfo.UpdateType,
-		updateInfo.CurrentDigest,
-		updateInfo.LatestDigest,
-		updateInfo.CheckTime.Format(time.RFC3339),
-	)
+	htmlTmpl, err := template.New("html").Parse(string(htmlContent))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse HTML template: %w", err)
+	}
+
+	var htmlBuf bytes.Buffer
+	if err := htmlTmpl.ExecuteTemplate(&htmlBuf, "root", data); err != nil {
+		return "", "", fmt.Errorf("failed to execute HTML template: %w", err)
+	}
+
+	textContent, err := resources.FS.ReadFile("email-templates/image-update_text.tmpl")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read text template: %w", err)
+	}
+
+	textTmpl, err := template.New("text").Parse(string(textContent))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse text template: %w", err)
+	}
+
+	var textBuf bytes.Buffer
+	if err := textTmpl.ExecuteTemplate(&textBuf, "root", data); err != nil {
+		return "", "", fmt.Errorf("failed to execute text template: %w", err)
+	}
+
+	return htmlBuf.String(), textBuf.String(), nil
 }
 
-func (s *NotificationService) TestNotification(ctx context.Context, provider string) error {
+func (s *NotificationService) TestNotification(ctx context.Context, provider string, testType string) error {
 	setting, err := s.GetSettingsByProvider(ctx, provider)
 	if err != nil {
 		return fmt.Errorf("failed to get settings for provider %s: %w", provider, err)
@@ -317,8 +345,8 @@ func (s *NotificationService) TestNotification(ctx context.Context, provider str
 	testUpdate := &dto.ImageUpdateResponse{
 		HasUpdate:      true,
 		UpdateType:     "digest",
-		CurrentDigest:  "sha256:abc123def456",
-		LatestDigest:   "sha256:xyz789ghi012",
+		CurrentDigest:  "sha256:abc123def456789012345678901234567890",
+		LatestDigest:   "sha256:xyz789ghi012345678901234567890123456",
 		CheckTime:      time.Now(),
 		ResponseTimeMs: 100,
 	}
@@ -327,10 +355,105 @@ func (s *NotificationService) TestNotification(ctx context.Context, provider str
 	case string(models.NotificationProviderDiscord):
 		return s.sendDiscordNotification(ctx, "test/image:latest", testUpdate, setting.Config)
 	case string(models.NotificationProviderEmail):
-		return s.sendEmailNotification(ctx, "test/image:latest", testUpdate, setting.Config)
+		if testType == "image-update" {
+			return s.sendEmailNotification(ctx, "nginx:latest", testUpdate, setting.Config)
+		}
+		return s.sendTestEmail(ctx, setting.Config)
 	default:
 		return fmt.Errorf("unknown provider: %s", provider)
 	}
+}
+
+func (s *NotificationService) sendTestEmail(ctx context.Context, config models.JSON) error {
+	var emailConfig models.EmailConfig
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal email config: %w", err)
+	}
+	if err := json.Unmarshal(configBytes, &emailConfig); err != nil {
+		return fmt.Errorf("failed to unmarshal email config: %w", err)
+	}
+
+	if emailConfig.SMTPHost == "" || emailConfig.SMTPPort == 0 {
+		return fmt.Errorf("SMTP host or port not configured")
+	}
+	if len(emailConfig.ToAddresses) == 0 {
+		return fmt.Errorf("no recipient email addresses configured")
+	}
+
+	if _, err := mail.ParseAddress(emailConfig.FromAddress); err != nil {
+		return fmt.Errorf("invalid from address: %w", err)
+	}
+	for _, addr := range emailConfig.ToAddresses {
+		if _, err := mail.ParseAddress(addr); err != nil {
+			return fmt.Errorf("invalid to address %s: %w", addr, err)
+		}
+	}
+
+	if emailConfig.SMTPPassword != "" {
+		if decrypted, err := utils.Decrypt(emailConfig.SMTPPassword); err == nil {
+			emailConfig.SMTPPassword = decrypted
+		}
+	}
+
+	htmlBody, textBody, err := s.renderTestEmailTemplate()
+	if err != nil {
+		return fmt.Errorf("failed to render test email template: %w", err)
+	}
+
+	subject := "Test Email from Arcane"
+	message := notifications.BuildMultipartMessage(emailConfig.FromAddress, emailConfig.ToAddresses, subject, htmlBody, textBody)
+
+	client, err := notifications.ConnectSMTP(ctx, emailConfig)
+	if err != nil {
+		return fmt.Errorf("failed to connect to SMTP server: %w", err)
+	}
+	defer client.Close()
+
+	if err := client.SendMessage(emailConfig.FromAddress, emailConfig.ToAddresses, message); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	return nil
+}
+
+func (s *NotificationService) renderTestEmailTemplate() (string, string, error) {
+	data := map[string]interface{}{
+		"LogoURL": "https://raw.githubusercontent.com/ofkm/arcane/main/backend/resources/images/logo-full.svg",
+		"AppURL":  s.config.AppUrl,
+	}
+
+	htmlContent, err := resources.FS.ReadFile("email-templates/test_html.tmpl")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read HTML template: %w", err)
+	}
+
+	htmlTmpl, err := template.New("html").Parse(string(htmlContent))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse HTML template: %w", err)
+	}
+
+	var htmlBuf bytes.Buffer
+	if err := htmlTmpl.ExecuteTemplate(&htmlBuf, "root", data); err != nil {
+		return "", "", fmt.Errorf("failed to execute HTML template: %w", err)
+	}
+
+	textContent, err := resources.FS.ReadFile("email-templates/test_text.tmpl")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read text template: %w", err)
+	}
+
+	textTmpl, err := template.New("text").Parse(string(textContent))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse text template: %w", err)
+	}
+
+	var textBuf bytes.Buffer
+	if err := textTmpl.ExecuteTemplate(&textBuf, "root", data); err != nil {
+		return "", "", fmt.Errorf("failed to execute text template: %w", err)
+	}
+
+	return htmlBuf.String(), textBuf.String(), nil
 }
 
 func (s *NotificationService) logNotification(ctx context.Context, provider, imageRef, status string, errMsg *string, metadata models.JSON) {

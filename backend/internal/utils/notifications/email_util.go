@@ -186,3 +186,39 @@ func BuildSimpleMessage(fromAddress string, toAddresses []string, subject string
 
 	return buf.String()
 }
+
+// BuildMultipartMessage constructs a MIME multipart email message with both HTML and text parts
+func BuildMultipartMessage(fromAddress string, toAddresses []string, subject string, htmlBody string, textBody string) string {
+	var buf bytes.Buffer
+	boundary := fmt.Sprintf("boundary_%d", time.Now().UnixNano())
+
+	// Add headers
+	buf.WriteString(fmt.Sprintf("From: %s\r\n", fromAddress))
+	buf.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(toAddresses, ", ")))
+	buf.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
+	buf.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
+	buf.WriteString("MIME-Version: 1.0\r\n")
+	buf.WriteString(fmt.Sprintf("Content-Type: multipart/alternative; boundary=\"%s\"\r\n", boundary))
+	buf.WriteString("\r\n")
+
+	// Add text part
+	buf.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+	buf.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
+	buf.WriteString("Content-Transfer-Encoding: 7bit\r\n")
+	buf.WriteString("\r\n")
+	buf.WriteString(textBody)
+	buf.WriteString("\r\n")
+
+	// Add HTML part
+	buf.WriteString(fmt.Sprintf("--%s\r\n", boundary))
+	buf.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
+	buf.WriteString("Content-Transfer-Encoding: 7bit\r\n")
+	buf.WriteString("\r\n")
+	buf.WriteString(htmlBody)
+	buf.WriteString("\r\n")
+
+	// End boundary
+	buf.WriteString(fmt.Sprintf("--%s--\r\n", boundary))
+
+	return buf.String()
+}

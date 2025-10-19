@@ -110,8 +110,9 @@ func (h *NotificationHandler) DeleteSettings(c *gin.Context) {
 
 func (h *NotificationHandler) TestNotification(c *gin.Context) {
 	provider := c.Param("provider")
+	testType := c.DefaultQuery("type", "simple") // "simple" or "image-update"
 
-	if err := h.notificationService.TestNotification(c.Request.Context(), provider); err != nil {
+	if err := h.notificationService.TestNotification(c.Request.Context(), provider, testType); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

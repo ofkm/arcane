@@ -1409,7 +1409,7 @@
 	"notifications_saved_success": "{provider} settings saved successfully",
 	"notifications_saved_failed": "Failed to save {provider} settings: {error}",
 	"notifications_test_success": "Test notification sent successfully via {provider}",
-	"notifications_test_failed": "Failed to send test notification: {error}"
+	"notifications_test_failed": "Failed to send test notification: {error}",
 	"glass_effect_title": "Glass Effect (Preview)",
 	"glass_effect_description": "Enable modern glassmorphism design with blur, gradients, and ambient effects",
 	"glass_effect_label": "Glassmorphism UI",
