@@ -21,10 +21,10 @@
 	import { Switch } from '$lib/components/ui/switch/index.js';
 
 	let { data } = $props();
+	let currentSettings = $state($settingsStore || data.settings!);
 	let hasChanges = $state(false);
 	let isLoading = $state(false);
 
-	let currentSettings = $state(data.settings!);
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
 	const formState = getContext('settingsFormState') as any;
 	const formSchema = z.object({
@@ -51,6 +51,13 @@
 		if (formState) {
 			formState.hasChanges = hasChanges;
 			formState.isLoading = isLoading;
+		}
+	});
+
+	// Update currentSettings when store changes
+	$effect(() => {
+		if ($settingsStore) {
+			currentSettings = $settingsStore;
 		}
 	});
 

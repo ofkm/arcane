@@ -20,7 +20,7 @@
 	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
 
 	let { data } = $props();
-	let currentSettings = $state(data.settings!);
+	let currentSettings = $state<Settings>($settingsStore || data.settings!);
 	let hasChanges = $state(false);
 	let isLoading = $state(false);
 
@@ -59,6 +59,13 @@
 		if (formState) {
 			formState.hasChanges = hasChanges;
 			formState.isLoading = isLoading;
+		}
+	});
+
+	// Update currentSettings when store changes
+	$effect(() => {
+		if ($settingsStore) {
+			currentSettings = $settingsStore;
 		}
 	});
 
