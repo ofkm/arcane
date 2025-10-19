@@ -30,7 +30,7 @@ func (h *UpdaterHandler) Run(c *gin.Context) {
 	var req dto.UpdaterRunRequest
 	_ = c.ShouldBindJSON(&req)
 
-	out, err := h.updaterService.ApplyPending(c.Request.Context(), req.DryRun, req.ForceApply)
+	out, err := h.updaterService.ApplyPending(c.Request.Context(), req.DryRun, req.BypassSchedule)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
 		return

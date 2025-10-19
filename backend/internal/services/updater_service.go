@@ -58,13 +58,13 @@ func NewUpdaterService(
 }
 
 //nolint:gocognit
-func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool, forceApply ...bool) (*dto.UpdaterRunResult, error) {
+func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool, bypassSchedule ...bool) (*dto.UpdaterRunResult, error) {
 	start := time.Now()
 	out := &dto.UpdaterRunResult{Items: []dto.UpdaterItem{}}
 
-	bypassSchedule := len(forceApply) > 0 && forceApply[0]
+	bypassScheduleCheck := len(bypassSchedule) > 0 && bypassSchedule[0]
 
-	if !bypassSchedule {
+	if !bypassScheduleCheck {
 		withinWindow, err := s.IsWithinUpdateWindow(ctx, nil)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to check update window, proceeding anyway", "error", err)
@@ -84,7 +84,7 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool, forceApp
 	if err := s.db.WithContext(ctx).Where("has_update = ?", true).Find(&records).Error; err != nil {
 		return nil, fmt.Errorf("query pending image updates: %w", err)
 	}
-	slog.DebugContext(ctx, "ApplyPending: found pending image update records", "records", len(records), "dryRun", dryRun, "bypassSchedule", bypassSchedule)
+	slog.DebugContext(ctx, "ApplyPending: found pending image update records", "records", len(records), "dryRun", dryRun, "bypassSchedule", bypassScheduleCheck)
 
 	if len(records) == 0 {
 		out.Duration = time.Since(start).String()

@@ -1,8 +1,8 @@
 package dto
 
 type UpdaterRunRequest struct {
-	DryRun     bool `json:"dryRun"`
-	ForceApply bool `json:"forceApply"`
+	DryRun         bool `json:"dryRun"`
+	BypassSchedule bool `json:"bypassSchedule"`
 }
 
 type UpdaterItem struct {

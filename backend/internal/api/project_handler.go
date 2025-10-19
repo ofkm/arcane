@@ -424,6 +424,10 @@ func (h *ProjectHandler) GetProjectStatusCounts(c *gin.Context) {
 
 func (h *ProjectHandler) UpdateProjectSettings(c *gin.Context) {
 	projectID := c.Param("projectId")
+	if projectID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		return
+	}
 
 	var updates dto.UpdateProjectSettingsDto
 	if err := c.ShouldBindJSON(&updates); err != nil {
@@ -450,6 +454,10 @@ func (h *ProjectHandler) UpdateProjectSettings(c *gin.Context) {
 
 func (h *ProjectHandler) ClearProjectSettingOverride(c *gin.Context) {
 	projectID := c.Param("projectId")
+	if projectID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		return
+	}
 	key := c.Param("key")
 
 	if err := h.projectService.ClearProjectSettingOverride(c.Request.Context(), projectID, key); err != nil {
@@ -468,6 +476,10 @@ func (h *ProjectHandler) ClearProjectSettingOverride(c *gin.Context) {
 
 func (h *ProjectHandler) ClearAllProjectSettingOverrides(c *gin.Context) {
 	projectID := c.Param("projectId")
+	if projectID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		return
+	}
 
 	if err := h.projectService.ClearAllProjectSettingOverrides(c.Request.Context(), projectID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
