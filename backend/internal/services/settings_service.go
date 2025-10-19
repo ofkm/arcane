@@ -656,12 +656,10 @@ func (s *SettingsService) ResolveProjectSettings(ctx context.Context, project *m
 	if project.UpdateScheduleEnabled != nil {
 		resolved.UpdateScheduleEnabled = *project.UpdateScheduleEnabled
 	}
-	if project.UpdateScheduleWindows != nil {
+	if project.UpdateScheduleWindows != nil && *project.UpdateScheduleWindows != "" {
 		var windows []models.UpdateScheduleWindow
-		if jsonBytes, err := json.Marshal(*project.UpdateScheduleWindows); err == nil {
-			if err := json.Unmarshal(jsonBytes, &windows); err == nil {
-				resolved.UpdateScheduleWindows = windows
-			}
+		if err := json.Unmarshal([]byte(*project.UpdateScheduleWindows), &windows); err == nil {
+			resolved.UpdateScheduleWindows = windows
 		}
 	}
 

@@ -15,9 +15,9 @@ type UpdateProjectDto struct {
 }
 
 type UpdateProjectSettingsDto struct {
-	AutoUpdate            *bool        `json:"autoUpdate,omitempty"`
-	UpdateScheduleEnabled *bool        `json:"updateScheduleEnabled,omitempty"`
-	UpdateScheduleWindows *models.JSON `json:"updateScheduleWindows,omitempty"`
+	AutoUpdate            *bool                          `json:"autoUpdate,omitempty"`
+	UpdateScheduleEnabled *bool                          `json:"updateScheduleEnabled,omitempty"`
+	UpdateScheduleWindows *[]models.UpdateScheduleWindow `json:"updateScheduleWindows,omitempty"`
 }
 
 type CreateProjectReponseDto struct {
@@ -48,9 +48,9 @@ type ProjectDetailsDto struct {
 	UpdatedAt      string  `json:"updatedAt"`
 	Services       []any   `json:"services,omitempty"`
 
-	AutoUpdate            *bool        `json:"autoUpdate,omitempty"`
-	UpdateScheduleEnabled *bool        `json:"updateScheduleEnabled,omitempty"`
-	UpdateScheduleWindows *models.JSON `json:"updateScheduleWindows,omitempty"`
+	AutoUpdate            *bool   `json:"autoUpdate,omitempty"`
+	UpdateScheduleEnabled *bool   `json:"updateScheduleEnabled,omitempty"`
+	UpdateScheduleWindows *string `json:"updateScheduleWindows,omitempty"`
 
 	// Resolved effective settings (after applying overrides)
 	EffectiveSettings *ResolvedProjectSettings `json:"effectiveSettings,omitempty"`

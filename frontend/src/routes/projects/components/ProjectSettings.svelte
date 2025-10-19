@@ -12,7 +12,8 @@
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import settingsStore from '$lib/stores/config-store';
 	import type { Project, ProjectSettingsUpdate } from '$lib/types/project.type';
-	import type { UpdateScheduleWindow } from '$lib/types/settings.type';
+	import { z } from 'zod/v4';
+	import { createForm } from '$lib/utils/form.utils';
 
 	interface Props {
 		project: Project;
@@ -21,40 +22,57 @@
 
 	let { project, onUpdate }: Props = $props();
 
-	// Global settings (true defaults without project overrides)
 	const globalSettings = $derived($settingsStore);
 
-	// Check if settings are overridden (saved in DB as project-specific)
-	// Now we check if either auto-update OR schedule settings are overridden
 	const isUpdateSettingsOverridden = $derived(
 		(project.autoUpdate !== null && project.autoUpdate !== undefined) ||
 			(project.updateScheduleEnabled !== null && project.updateScheduleEnabled !== undefined)
 	);
 
+	const currentSettings = $derived({
+		autoUpdate: project.autoUpdate ?? globalSettings?.autoUpdate ?? false,
+		updateScheduleEnabled: project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false,
+		updateScheduleWindows: project.updateScheduleWindows ?? globalSettings?.updateScheduleWindows ?? []
+	});
+
+	const formSchema = z.object({
+		autoUpdate: z.boolean(),
+		updateScheduleEnabled: z.boolean(),
+		updateScheduleWindows: z.array(
+			z.object({
+				days: z.array(z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])),
+				startTime: z.string(),
+				endTime: z.string(),
+				timezone: z.string()
+			})
+		)
+	});
+
+	let hasChanges = $state(false);
 	let isLoading = $state(false);
-	let localUpdateSettingsOverride = $state<boolean | null>(isUpdateSettingsOverridden ? true : null);
-	let localAutoUpdate = $state<boolean>(project.autoUpdate ?? globalSettings?.autoUpdate ?? false);
-	let localScheduleEnabled = $state<boolean>(project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false);
-	let localScheduleWindows = $state<UpdateScheduleWindow[]>(
-		project.updateScheduleWindows ?? globalSettings?.updateScheduleWindows ?? []
+	let isOverrideEnabled = $state(false);
+
+	// Initialize override state
+	$effect(() => {
+		isOverrideEnabled = isUpdateSettingsOverridden;
+	});
+
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
+	const formHasChanges = $derived(
+		(!isOverrideEnabled && isUpdateSettingsOverridden) ||
+			(isOverrideEnabled && !isUpdateSettingsOverridden) ||
+			(isOverrideEnabled &&
+				($formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
+					$formInputs.updateScheduleEnabled.value !== currentSettings.updateScheduleEnabled ||
+					JSON.stringify($formInputs.updateScheduleWindows.value) !== JSON.stringify(currentSettings.updateScheduleWindows)))
 	);
 
-	// Check for unsaved changes
-	const hasUpdateSettingsChanges = $derived(
-		(localUpdateSettingsOverride !== null && !isUpdateSettingsOverridden) ||
-			(localUpdateSettingsOverride === null && isUpdateSettingsOverridden) ||
-			(localUpdateSettingsOverride !== null &&
-				(localAutoUpdate !== (project.autoUpdate ?? globalSettings?.autoUpdate ?? false) ||
-					localScheduleEnabled !== (project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false) ||
-					JSON.stringify(localScheduleWindows) !==
-						JSON.stringify(project.updateScheduleWindows ?? globalSettings?.updateScheduleWindows ?? [])))
-	);
+	$effect(() => {
+		hasChanges = formHasChanges;
+	});
 
-	const hasAnyChanges = $derived(hasUpdateSettingsChanges);
-
-	// Derived description for update settings section
 	const updateSettingsDescription = $derived(() => {
-		if (localUpdateSettingsOverride !== null) {
+		if (isOverrideEnabled) {
 			return m.project_settings_overridden();
 		}
 		// Derive mode from global settings
@@ -69,18 +87,39 @@
 	});
 
 	function enableOverride() {
-		localUpdateSettingsOverride = true;
-		localAutoUpdate = globalSettings?.autoUpdate ?? false;
-		localScheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;
-		localScheduleWindows = globalSettings?.updateScheduleWindows ?? [];
+		isOverrideEnabled = true;
+		$formInputs.autoUpdate.value = globalSettings?.autoUpdate ?? false;
+		$formInputs.updateScheduleEnabled.value = globalSettings?.updateScheduleEnabled ?? false;
+		$formInputs.updateScheduleWindows.value = globalSettings?.updateScheduleWindows ?? [];
+	}
+
+	function clearOverride() {
+		isOverrideEnabled = false;
+		$formInputs.autoUpdate.value = globalSettings?.autoUpdate ?? false;
+		$formInputs.updateScheduleEnabled.value = globalSettings?.updateScheduleEnabled ?? false;
+		$formInputs.updateScheduleWindows.value = globalSettings?.updateScheduleWindows ?? [];
+	}
+
+	function resetForm() {
+		isOverrideEnabled = isUpdateSettingsOverridden;
+		$formInputs.autoUpdate.value = currentSettings.autoUpdate;
+		$formInputs.updateScheduleEnabled.value = currentSettings.updateScheduleEnabled;
+		$formInputs.updateScheduleWindows.value = currentSettings.updateScheduleWindows;
 	}
 
 	async function saveSettings() {
+		const formData = form.validate();
+		if (!formData) {
+			toast.error('Please check the form for errors');
+			return;
+		}
+
 		isLoading = true;
 		try {
-			const clearPromises: Promise<any>[] = [];
+			const clearPromises: Promise<void>[] = [];
 
-			if (localUpdateSettingsOverride === null && isUpdateSettingsOverridden) {
+			// Clear overrides if switching back to global
+			if (!isOverrideEnabled && isUpdateSettingsOverridden) {
 				clearPromises.push(
 					projectService.clearProjectSettingOverride(project.id, 'autoUpdate'),
 					projectService.clearProjectSettingOverride(project.id, 'updateScheduleEnabled'),
@@ -92,15 +131,13 @@
 				await Promise.all(clearPromises);
 			}
 
-			const updates: ProjectSettingsUpdate = {};
-
-			if (localUpdateSettingsOverride !== null) {
-				updates.autoUpdate = localAutoUpdate;
-				updates.updateScheduleEnabled = localScheduleEnabled;
-				updates.updateScheduleWindows = localScheduleWindows;
-			}
-
-			if (Object.keys(updates).length > 0) {
+			// Save new override values if enabled
+			if (isOverrideEnabled) {
+				const updates: ProjectSettingsUpdate = {
+					autoUpdate: formData.autoUpdate,
+					updateScheduleEnabled: formData.updateScheduleEnabled,
+					updateScheduleWindows: formData.updateScheduleWindows
+				};
 				await projectService.updateProjectSettings(project.id, updates);
 			}
 
@@ -113,29 +150,15 @@
 			isLoading = false;
 		}
 	}
-
-	function resetChanges() {
-		localUpdateSettingsOverride = isUpdateSettingsOverridden ? true : null;
-		localAutoUpdate = project.autoUpdate ?? globalSettings?.autoUpdate ?? false;
-		localScheduleEnabled = project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false;
-		localScheduleWindows = project.updateScheduleWindows ?? globalSettings?.updateScheduleWindows ?? [];
-	}
-
-	function clearOverride() {
-		localUpdateSettingsOverride = null;
-		localAutoUpdate = globalSettings?.autoUpdate ?? false;
-		localScheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;
-		localScheduleWindows = globalSettings?.updateScheduleWindows ?? [];
-	}
 </script>
 
 <div class="space-y-6">
 	<div class="flex justify-end gap-2">
-		<Button size="sm" variant="outline" onclick={resetChanges} disabled={isLoading || !hasAnyChanges}>
+		<Button size="sm" variant="outline" onclick={resetForm} disabled={isLoading || !hasChanges}>
 			<RotateCcwIcon class="mr-2 size-4" />
 			{m.common_reset()}
 		</Button>
-		<Button size="sm" onclick={saveSettings} disabled={isLoading || !hasAnyChanges}>
+		<Button size="sm" onclick={saveSettings} disabled={isLoading || !hasChanges}>
 			<SaveIcon class="mr-2 size-4" />
 			{m.common_save()}
 		</Button>
@@ -154,16 +177,16 @@
 					title={m.update_schedule_title()}
 					description={updateSettingsDescription()}
 					icon={ClockIcon}
-					isOverridden={localUpdateSettingsOverride !== null}
+					isOverridden={isOverrideEnabled}
 					{isLoading}
 					onClearOverride={clearOverride}
 					onEnableOverride={enableOverride}
 				>
 					{#snippet children()}
 						<UpdateScheduleEditor
-							bind:autoUpdate={localAutoUpdate}
-							bind:scheduleEnabled={localScheduleEnabled}
-							bind:windows={localScheduleWindows}
+							bind:autoUpdate={$formInputs.autoUpdate.value}
+							bind:scheduleEnabled={$formInputs.updateScheduleEnabled.value}
+							bind:windows={$formInputs.updateScheduleWindows.value}
 						/>
 					{/snippet}
 				</SettingsSection>

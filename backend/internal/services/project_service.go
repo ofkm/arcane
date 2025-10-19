@@ -942,17 +942,14 @@ func (s *ProjectService) UpdateProjectSettings(ctx context.Context, projectID st
 		updateMap["update_schedule_enabled"] = updates.UpdateScheduleEnabled
 	}
 	if updates.UpdateScheduleWindows != nil {
-		var windows []models.UpdateScheduleWindow
-
-		if jsonBytes, err := json.Marshal(*updates.UpdateScheduleWindows); err != nil {
-			return fmt.Errorf("invalid schedule windows: %w", err)
-		} else if err := json.Unmarshal(jsonBytes, &windows); err != nil {
+		if err := s.settingsService.ValidateUpdateScheduleWindows(*updates.UpdateScheduleWindows); err != nil {
 			return fmt.Errorf("invalid schedule windows: %w", err)
 		}
-		if err := s.settingsService.ValidateUpdateScheduleWindows(windows); err != nil {
-			return fmt.Errorf("invalid schedule windows: %w", err)
+		jsonBytes, err := json.Marshal(*updates.UpdateScheduleWindows)
+		if err != nil {
+			return fmt.Errorf("failed to marshal schedule windows: %w", err)
 		}
-		updateMap["update_schedule_windows"] = updates.UpdateScheduleWindows
+		updateMap["update_schedule_windows"] = string(jsonBytes)
 	}
 
 	if len(updateMap) == 0 {
