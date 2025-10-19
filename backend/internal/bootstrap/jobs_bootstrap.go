@@ -18,7 +18,7 @@ func initializeScheduler() (*job.Scheduler, error) {
 }
 
 func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices *Services, appConfig *config.Config) {
-	autoUpdateJob := job.NewAutoUpdateJob(scheduler, appServices.Updater, appServices.Settings)
+	autoUpdateJob := job.NewAutoUpdateJob(scheduler, appServices.Updater, appServices.Settings, appServices.Project)
 	if err := autoUpdateJob.Register(appCtx); err != nil {
 		slog.ErrorContext(appCtx, "Failed to register auto-update job", slog.Any("error", err))
 	}
