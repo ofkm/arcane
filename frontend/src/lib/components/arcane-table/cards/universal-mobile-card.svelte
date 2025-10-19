@@ -73,14 +73,14 @@
 
 	function getIconBgClass(variant: IconVariant): string {
 		const map: Record<IconVariant, string> = {
-			emerald: 'bg-emerald-500/10',
-			red: 'bg-red-500/10',
-			amber: 'bg-amber-500/10',
-			blue: 'bg-blue-500/10',
-			purple: 'bg-purple-500/10',
-			gray: 'bg-muted',
-			sky: 'bg-sky-500/10',
-			orange: 'bg-orange-500/10'
+			emerald: 'bg-emerald-500/8',
+			red: 'bg-red-500/8',
+			amber: 'bg-amber-500/8',
+			blue: 'bg-blue-500/8',
+			purple: 'bg-purple-500/8',
+			gray: 'bg-muted/40',
+			sky: 'bg-sky-500/8',
+			orange: 'bg-orange-500/8'
 		};
 		return map[variant];
 	}
@@ -117,7 +117,7 @@
 				</div>
 			{/if}
 			<div class="min-w-0 flex-1">
-				<h3 class={cn('truncate leading-tight font-semibold', compact ? 'text-[13px]' : 'text-base')} title={title(item)}>
+				<h3 class={cn('truncate leading-tight font-medium', compact ? 'text-[13px]' : 'text-[15px]')} title={title(item)}>
 					{title(item)}
 				</h3>
 				{#if subtitle}
@@ -152,7 +152,7 @@
 									<div
 										class={cn(
 											'flex size-7 shrink-0 items-center justify-center rounded-lg',
-											field.iconVariant ? getIconBgClass(field.iconVariant) : 'bg-muted'
+											field.iconVariant ? getIconBgClass(field.iconVariant) : 'bg-muted/40'
 										)}
 									>
 										<FieldIcon
@@ -161,7 +161,7 @@
 									</div>
 								{/if}
 								<div class="min-w-0 flex-1">
-									<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
+									<div class="text-muted-foreground/80 text-[10px] font-medium tracking-wide uppercase">
 										{field.label}
 									</div>
 									<div class="mt-0.5 text-xs font-medium">
@@ -215,7 +215,7 @@
 		{@const footerValue = footer.getValue(item)}
 		{#if footerValue}
 			{@const FooterIcon = footer.icon}
-			<Card.Footer class="flex items-center gap-2 border-t-1 py-3">
+			<Card.Footer class="border-border/50 flex items-center gap-2 border-t py-3">
 				<FooterIcon class="text-muted-foreground size-3.5" />
 				<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
 					{footer.label}
