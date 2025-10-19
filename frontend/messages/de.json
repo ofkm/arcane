@@ -1319,5 +1319,12 @@
 	"events_delete_failed": "Löschen des Termins \"{title} \" fehlgeschlagen",
 	"events_delete_success": "Ereignis \"{title}\" erfolgreich gelöscht",
 	"sidebar_dark_mode": "Dunkel",
-	"sidebar_light_mode": "Hell"
+	"sidebar_light_mode": "Hell",
+	"glass_effect_title": "Glas-Effekt (Vorschau)",
+	"glass_effect_description": "Modernes Glasmorphismus-Design mit Unschärfen, Farbverläufen und Umgebungseffekten aktivieren",
+	"glass_effect_label": "Glasmorphismus-UI",
+	"glass_effect_enabled": "Glas-Effekte aktiviert",
+	"glass_effect_disabled": "Glaseffekte deaktiviert (klassisches Design)",
+	"glass_effect_description_long": "Wenn aktiviert, verwendet die Schnittstelle gefrorene Glas-Effekte mit Hintergrundunschärfe und subtilen Farbverläufen. Wenn das Interface deaktiviert ist, verwendet die Oberfläche feste Farben und traditionelle Schatten für ein klassisches Design. Das Glasdesign ist in der Vorschau und kann geändert werden.",
+	"navigation_glass_effect_label": "Glas-Effekt"
 }
