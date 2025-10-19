@@ -13,7 +13,7 @@
 	import ActivityIcon from '@lucide/svelte/icons/activity';
 	import TrashIcon from '@lucide/svelte/icons/trash';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
-	import ClockIcon from '@lucide/svelte/icons/clock';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
@@ -256,10 +256,10 @@
 
 				{#if $formInputs.pollingEnabled.value}
 					<Card.Root>
-						<Card.Header icon={ClockIcon}>
+						<Card.Header icon={RefreshCwIcon}>
 							<div class="flex flex-col space-y-1.5">
-								<Card.Title>{m.update_schedule_title()}</Card.Title>
-								<Card.Description>{m.update_schedule_description()}</Card.Description>
+								<Card.Title>{m.docker_auto_updates_title()}</Card.Title>
+								<Card.Description>{m.docker_auto_updates_description()}</Card.Description>
 							</div>
 						</Card.Header>
 						<Card.Content class="px-3 py-4 sm:px-6">
