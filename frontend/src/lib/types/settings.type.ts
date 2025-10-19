@@ -43,6 +43,8 @@ export type Settings = {
 	mobileNavigationScrollToHide: boolean;
 	sidebarHoverExpansion: boolean;
 
+	glassEffectEnabled: boolean;
+
 	registryCredentials: RegistryCredential[];
 	templateRegistries: TemplateRegistryConfig[];
 };
