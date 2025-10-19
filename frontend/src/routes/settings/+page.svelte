@@ -200,14 +200,12 @@
 						class="border-primary mx-auto mb-3 size-8 animate-spin rounded-full border-4 border-t-transparent sm:mb-4 sm:size-12"
 					></div>
 					<p class="text-muted-foreground text-sm sm:text-base">Searching...</p>
-					<p class="text-muted-foreground mt-2 text-xs">Debug: isSearching={isSearching}, results={searchResults.length}</p>
 				</div>
 			{:else if searchResults.length === 0}
 				<div class="py-8 text-center sm:py-12">
 					<SearchIcon class="text-muted-foreground mx-auto mb-3 size-8 sm:mb-4 sm:size-12" />
 					<h3 class="mb-2 text-base font-medium sm:text-lg">No settings found</h3>
 					<p class="text-muted-foreground text-sm sm:text-base">Try adjusting your search terms or browse categories above.</p>
-					<p class="text-muted-foreground mt-2 text-xs">Debug: isSearching={isSearching}, results={searchResults.length}</p>
 				</div>
 			{:else}
 				<div class="space-y-4 sm:space-y-6">

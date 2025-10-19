@@ -23,6 +23,31 @@ func NewSettingsHandler(group *gin.RouterGroup, settingsService *services.Settin
 	apiGroup.GET("/public", handler.GetPublicSettings)
 	apiGroup.GET("", authMiddleware.WithAdminNotRequired().Add(), handler.GetSettings)
 	apiGroup.PUT("", authMiddleware.WithAdminRequired().Add(), handler.UpdateSettings)
+
+	// Also expose top-level settings search and categories endpoints under /api/settings
+	top := group.Group("/settings")
+	top.POST("/search", authMiddleware.WithAdminNotRequired().Add(), handler.Search)
+	top.GET("/categories", authMiddleware.WithAdminNotRequired().Add(), handler.GetCategories)
+}
+
+// Search delegates to the settings search service and returns relevance-scored results
+func (h *SettingsHandler) Search(c *gin.Context) {
+	var req dto.SettingsSearchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid request: " + err.Error()}})
+		return
+	}
+
+	searchSvc := services.NewSettingsSearchService()
+	results := searchSvc.Search(req.Query)
+	c.JSON(http.StatusOK, results)
+}
+
+// GetCategories returns all available settings categories with metadata
+func (h *SettingsHandler) GetCategories(c *gin.Context) {
+	searchSvc := services.NewSettingsSearchService()
+	categories := searchSvc.GetSettingsCategories()
+	c.JSON(http.StatusOK, categories)
 }
 
 func (h *SettingsHandler) GetSettings(c *gin.Context) {

@@ -1,9 +1,15 @@
 package services
 
 import (
+	"reflect"
+	"sort"
 	"strings"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/ofkm/arcane-backend/internal/dto"
+	"github.com/ofkm/arcane-backend/internal/models"
 )
 
 type SettingsSearchService struct{}
@@ -14,176 +20,104 @@ func NewSettingsSearchService() *SettingsSearchService {
 
 // GetSettingsCategories returns all available settings categories with their metadata
 func (s *SettingsSearchService) GetSettingsCategories() []dto.SettingsCategory {
-	return []dto.SettingsCategory{
-		{
-			ID:          "general",
-			Title:       "General",
-			Description: "Core application settings and configuration",
-			Icon:        "settings",
-			URL:         "/settings/general",
-			Keywords:    []string{"general", "core", "basic", "main"},
-			Settings: []dto.SettingMeta{
-				{
-					Key:         "projectsDirectory",
-					Label:       "Projects Directory",
-					Type:        "text",
-					Description: "Configure where project files are stored",
-					Keywords:    []string{"projects", "directory", "path", "folder", "location", "storage", "files", "compose", "docker-compose"},
-				},
-				{
-					Key:         "baseServerUrl",
-					Label:       "Base Server URL",
-					Type:        "text",
-					Description: "Set the base URL for the application",
-					Keywords:    []string{"base", "url", "server", "domain", "host", "endpoint", "address", "link"},
-				},
-				{
-					Key:         "enableGravatar",
-					Label:       "Enable Gravatar",
-					Type:        "boolean",
-					Description: "Enable Gravatar profile pictures for users",
-					Keywords:    []string{"gravatar", "avatar", "profile", "picture", "image", "user", "photo"},
-				},
-			},
-		},
-		{
-			ID:          "docker",
-			Title:       "Docker",
-			Description: "Configure Docker settings, polling, and auto-updates",
-			Icon:        "database",
-			URL:         "/settings/docker",
-			Keywords:    []string{"docker", "container", "image"},
-			Settings: []dto.SettingMeta{
-				{
-					Key:         "pollingEnabled",
-					Label:       "Enable Polling",
-					Type:        "boolean",
-					Description: "Enable automatic checking for image updates",
-					Keywords:    []string{"polling", "check", "monitor", "watch", "scan", "detection", "automatic"},
-				},
-				{
-					Key:         "pollingInterval",
-					Label:       "Polling Interval",
-					Type:        "number",
-					Description: "How often to check for image updates",
-					Keywords:    []string{"interval", "frequency", "schedule", "time", "minutes", "period", "delay"},
-				},
-				{
-					Key:         "autoUpdate",
-					Label:       "Auto Update",
-					Type:        "boolean",
-					Description: "Automatically update containers when new images are available",
-					Keywords:    []string{"auto", "update", "automatic", "upgrade", "refresh", "restart", "deploy"},
-				},
-				{
-					Key:         "autoUpdateInterval",
-					Label:       "Auto Update Interval",
-					Type:        "number",
-					Description: "Interval between automatic updates",
-					Keywords:    []string{"auto", "update", "interval", "frequency", "schedule", "automatic", "timing"},
-				},
-				{
-					Key:         "dockerPruneMode",
-					Label:       "Docker Prune Action",
-					Type:        "select",
-					Description: "Configure how unused Docker images are cleaned up",
-					Keywords:    []string{"prune", "cleanup", "clean", "remove", "delete", "unused", "dangling", "space", "disk"},
-				},
-			},
-		},
-		{
-			ID:          "security",
-			Title:       "Security",
-			Description: "Manage authentication and security settings",
-			Icon:        "shield",
-			URL:         "/settings/security",
-			Keywords:    []string{"security", "safety", "protection"},
-			Settings: []dto.SettingMeta{
-				{
-					Key:         "authLocalEnabled",
-					Label:       "Local Authentication",
-					Type:        "boolean",
-					Description: "Enable local username/password authentication",
-					Keywords:    []string{"local", "auth", "authentication", "username", "password", "login", "credentials"},
-				},
-				{
-					Key:         "authOidcEnabled",
-					Label:       "OIDC Authentication",
-					Type:        "boolean",
-					Description: "Enable OpenID Connect (OIDC) authentication",
-					Keywords:    []string{"oidc", "openid", "connect", "sso", "oauth", "external", "provider", "federation"},
-				},
-				{
-					Key:         "authSessionTimeout",
-					Label:       "Session Timeout",
-					Type:        "number",
-					Description: "How long user sessions remain active",
-					Keywords:    []string{"session", "timeout", "expire", "duration", "lifetime", "minutes", "logout"},
-				},
-				{
-					Key:         "authPasswordPolicy",
-					Label:       "Password Policy",
-					Type:        "select",
-					Description: "Set password strength requirements",
-					Keywords:    []string{"password", "policy", "strength", "complexity", "requirements", "security", "rules"},
-				},
-			},
-		},
-		{
-			ID:          "navigation",
-			Title:       "Navigation",
-			Description: "Customize navigation and interface behavior",
-			Icon:        "navigation",
-			URL:         "/settings/navigation",
-			Keywords:    []string{"navigation", "nav", "menu", "bar", "floating", "docked", "behavior", "mobile", "desktop", "ui", "interface", "layout", "appearance", "customize"},
-			Settings: []dto.SettingMeta{
-				{
-					Key:         "sidebarHoverExpansion",
-					Label:       "Sidebar Hover Expansion",
-					Type:        "boolean",
-					Description: "Expand sidebar on hover in desktop mode",
-					Keywords:    []string{"sidebar", "hover", "expansion", "expand", "desktop", "mouse", "over", "collapsed", "collapsible", "icon", "labels", "text", "preview", "peek", "tooltip", "overlay", "temporary", "quick", "access", "navigation", "menu", "items", "submenu", "nested"},
-				},
-				{
-					Key:         "mobileNavigationMode",
-					Label:       "Mobile Navigation Mode",
-					Type:        "select",
-					Description: "Choose between floating or docked navigation on mobile",
-					Keywords:    []string{"mode", "style", "type", "floating", "docked", "position", "layout", "design", "appearance", "bottom"},
-				},
-				{
-					Key:         "mobileNavigationShowLabels",
-					Label:       "Show Navigation Labels",
-					Type:        "boolean",
-					Description: "Display text labels alongside navigation icons",
-					Keywords:    []string{"labels", "text", "icons", "display", "show", "hide", "names", "captions", "titles", "visible", "toggle"},
-				},
-				{
-					Key:         "mobileNavigationScrollToHide",
-					Label:       "Scroll to Hide",
-					Type:        "boolean",
-					Description: "Automatically hide navigation when scrolling down",
-					Keywords:    []string{"scroll", "hide", "auto-hide", "behavior", "down", "up", "automatic", "disappear", "vanish", "minimize", "collapse"},
-				},
-				{
-					Key:         "glassEffectEnabled",
-					Label:       "Glass Effect",
-					Type:        "boolean",
-					Description: "Enable modern glassmorphism design with blur, gradients, and ambient effects",
-					Keywords:    []string{"glass", "glassmorphism", "blur", "backdrop", "frosted", "effect", "gradient", "ambient", "design", "ui", "appearance", "modern", "visual", "style", "theme", "transparency", "translucent"},
-				},
-			},
-		},
-		{
-			ID:          "users",
-			Title:       "Users",
-			Description: "Manage users and access control",
-			Icon:        "user",
-			URL:         "/settings/users",
-			Keywords:    []string{"users", "accounts", "admin", "roles", "management", "people"},
-			Settings:    []dto.SettingMeta{},
-		},
+	// Build categories from the models.Settings struct via reflection using `meta` tags.
+	return s.buildCategoriesFromModel()
+}
+
+// parseMetaTag parses a `meta` tag value formatted as `k=v;other=val;...`
+func parseMetaTag(tag string) map[string]string {
+	res := map[string]string{}
+	if tag == "" {
+		return res
 	}
+	parts := strings.Split(tag, ";")
+	for _, p := range parts {
+		if p == "" {
+			continue
+		}
+		if kv := strings.SplitN(p, "=", 2); len(kv) == 2 {
+			res[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
+		}
+	}
+	return res
+}
+
+func (s *SettingsSearchService) buildCategoriesFromModel() []dto.SettingsCategory {
+	// Basic category metadata (fallbacks)
+	catMeta := map[string]dto.SettingsCategory{
+		"general":    {ID: "general", Title: "General", Description: "Core application settings and configuration", Icon: "settings", URL: "/settings/general", Keywords: []string{"general", "core", "basic", "main"}},
+		"docker":     {ID: "docker", Title: "Docker", Description: "Configure Docker settings, polling, and auto-updates", Icon: "database", URL: "/settings/docker", Keywords: []string{"docker", "container", "image"}},
+		"security":   {ID: "security", Title: "Security", Description: "Manage authentication and security settings", Icon: "shield", URL: "/settings/security", Keywords: []string{"security", "safety", "protection"}},
+		"navigation": {ID: "navigation", Title: "Navigation", Description: "Customize navigation and interface behavior", Icon: "navigation", URL: "/settings/navigation", Keywords: []string{"navigation", "nav", "menu", "bar"}},
+		"users":      {ID: "users", Title: "Users", Description: "Manage users and access control", Icon: "user", URL: "/settings/users", Keywords: []string{"users", "accounts", "admin", "roles"}},
+		"internal":   {ID: "internal", Title: "Internal", Description: "Internal settings", Icon: "settings", URL: "/settings/internal", Keywords: []string{"internal"}},
+	}
+
+	// map category id -> list of settings
+	categories := map[string][]dto.SettingMeta{}
+
+	rt := reflect.TypeOf(models.Settings{})
+	for i := 0; i < rt.NumField(); i++ {
+		field := rt.Field(i)
+		keyTag := field.Tag.Get("key")
+		key, _, _ := strings.Cut(keyTag, ",")
+		if key == "" {
+			continue
+		}
+
+		meta := parseMetaTag(field.Tag.Get("meta"))
+		label := meta["label"]
+		if label == "" {
+			label = key
+		}
+		typ := meta["type"]
+		if typ == "" {
+			typ = "text"
+		}
+		desc := meta["description"]
+		keywords := []string{}
+		if k := strings.TrimSpace(meta["keywords"]); k != "" {
+			for _, kk := range strings.Split(k, ",") {
+				if t := strings.TrimSpace(kk); t != "" {
+					keywords = append(keywords, t)
+				}
+			}
+		}
+		categoryID := meta["category"]
+		if categoryID == "" {
+			categoryID = "general"
+		}
+
+		sm := dto.SettingMeta{
+			Key:         key,
+			Label:       label,
+			Type:        typ,
+			Description: desc,
+			Keywords:    keywords,
+		}
+
+		categories[categoryID] = append(categories[categoryID], sm)
+	}
+
+	// Build result slice in deterministic order
+	ids := make([]string, 0, len(categories))
+	for id := range categories {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+
+	var results []dto.SettingsCategory
+	for _, id := range ids {
+		cat := catMeta[id]
+		// If we don't have a default for this category, create a basic one
+		if cat.ID == "" {
+			cat = dto.SettingsCategory{ID: id, Title: cases.Title(language.Und).String(id), Description: "", Icon: "settings", URL: "/settings/" + id}
+		}
+		cat.Settings = categories[id]
+		results = append(results, cat)
+	}
+
+	return results
 }
 
 // Search performs a relevance-scored search across settings categories and individual settings
