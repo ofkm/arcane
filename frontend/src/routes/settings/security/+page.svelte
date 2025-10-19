@@ -4,6 +4,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import OidcConfigDialog from '$lib/components/dialogs/oidc-config-dialog.svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import { toast } from 'svelte-sonner';
 	import type { PageData } from './$types';
 	import { m } from '$lib/paraglide/messages';
@@ -42,7 +43,7 @@
 
 	const { bindings, values, originalValues, setupStoreSync } = settingsState.createPageSetup(
 		() => toast.success(m.security_settings_saved()),
-		(error) => {
+		(error: any) => {
 			console.error('Failed to save settings:', error);
 			toast.error(m.security_settings_save_failed());
 		}
@@ -116,12 +117,6 @@
 			toast.error('Failed to save OIDC configuration. Please try again.');
 		}
 	}
-
-	const passwordPolicyOptions = [
-		{ value: 'basic', label: m.security_password_policy_basic(), description: 'Basic password requirements' },
-		{ value: 'standard', label: m.security_password_policy_standard(), description: 'Standard password requirements' },
-		{ value: 'strong', label: m.security_password_policy_strong(), description: 'Strong password requirements' }
-	];
 </script>
 
 <SettingsPageLayout
@@ -191,41 +186,64 @@
 						/>
 					</Card.Content>
 				</Card.Root>
+				<Card.Root>
+					<Card.Header icon={KeyIcon} class="items-start">
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.security_password_policy_label()}</Card.Title>
+							<Card.Description>Set password strength requirements</Card.Description>
+						</div>
+					</Card.Header>
+					<Card.Content class="px-3 py-4 sm:px-6">
+						<Tooltip.Provider>
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3" role="group" aria-labelledby="passwordPolicyLabel">
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										<Button
+											variant={values.authPasswordPolicy === 'basic' ? 'default' : 'outline'}
+											class={values.authPasswordPolicy === 'basic'
+												? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
+												: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
+											onclick={() => bindings.textInput('authPasswordPolicy').onChange('basic')}
+											type="button"
+											>{m.common_basic()}
+										</Button>
+									</Tooltip.Trigger>
+									<Tooltip.Content side="top" align="center">{m.security_password_policy_basic_tooltip()}</Tooltip.Content>
+								</Tooltip.Root>
 
-				{#if values.authLocalEnabled}
-					<Card.Root>
-						<Card.Header icon={KeyIcon}>
-							<div class="flex flex-col space-y-1.5">
-								<Card.Title>{m.security_password_policy_label()}</Card.Title>
-								<Card.Description>Configure password requirements</Card.Description>
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										<Button
+											variant={values.authPasswordPolicy === 'standard' ? 'default' : 'outline'}
+											class={values.authPasswordPolicy === 'standard'
+												? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
+												: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
+											onclick={() => bindings.textInput('authPasswordPolicy').onChange('standard')}
+											type="button"
+											>{m.security_password_policy_standard()}
+										</Button>
+									</Tooltip.Trigger>
+									<Tooltip.Content side="top" align="center">{m.security_password_policy_standard_tooltip()}</Tooltip.Content>
+								</Tooltip.Root>
+
+								<Tooltip.Root>
+									<Tooltip.Trigger>
+										<Button
+											variant={values.authPasswordPolicy === 'strong' ? 'default' : 'outline'}
+											class={values.authPasswordPolicy === 'strong'
+												? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
+												: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
+											onclick={() => bindings.textInput('authPasswordPolicy').onChange('strong')}
+											type="button"
+											>{m.security_password_policy_strong()}
+										</Button>
+									</Tooltip.Trigger>
+									<Tooltip.Content side="top" align="center">{m.security_password_policy_strong_tooltip()}</Tooltip.Content>
+								</Tooltip.Root>
 							</div>
-						</Card.Header>
-						<Card.Content class="px-3 py-4 sm:px-6">
-							<div class="space-y-3">
-								{#each passwordPolicyOptions as option}
-									<div class="flex items-center space-x-2">
-										<input
-											type="radio"
-											id="passwordPolicy-{option.value}"
-											name="passwordPolicy"
-											bind:group={values.authPasswordPolicy}
-											value={option.value}
-											onchange={() =>
-												bindings.textInput('authPasswordPolicy').onChange(option.value as 'basic' | 'standard' | 'strong')}
-											class="text-primary h-4 w-4"
-										/>
-										<div class="flex flex-col">
-											<label for="passwordPolicy-{option.value}" class="text-sm font-medium">
-												{option.label}
-											</label>
-											<p class="text-muted-foreground text-xs">{option.description}</p>
-										</div>
-									</div>
-								{/each}
-							</div>
-						</Card.Content>
-					</Card.Root>
-				{/if}
+						</Tooltip.Provider>
+					</Card.Content>
+				</Card.Root>
 			</div>
 		</fieldset>
 	{/snippet}
