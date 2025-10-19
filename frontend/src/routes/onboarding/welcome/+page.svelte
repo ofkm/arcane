@@ -3,6 +3,7 @@
 	import CircleCheckIcon from '@lucide/svelte/icons/check-circle';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { goto } from '$app/navigation';
+	import settingsStore from '$lib/stores/config-store';
 	import { settingsService } from '$lib/services/settings-service.js';
 
 	let { data } = $props();
@@ -17,6 +18,8 @@
 				welcome: true
 			}
 		});
+
+		settingsStore.reload();
 
 		goto('/onboarding/password', { invalidateAll: true });
 	}

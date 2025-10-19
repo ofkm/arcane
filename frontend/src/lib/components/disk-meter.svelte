@@ -56,6 +56,7 @@
 
 		try {
 			await settingsService.updateSettings({ diskUsagePath: trimmedPath });
+			settingsStore.set({ ...$settingsStore, diskUsagePath: trimmedPath });
 			toast.success(m.disk_usage_save());
 			popoverOpen = false;
 		} catch (error) {

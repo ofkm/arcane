@@ -1,8 +1,6 @@
 import BaseAPIService from './api-service';
 import type { Settings, OidcStatusInfo } from '$lib/types/settings.type';
 import { environmentStore } from '$lib/stores/environment.store.svelte';
-import settingsStore from '$lib/stores/config-store';
-import { get } from 'svelte/store';
 
 type KeyValuePair = { key: string; value: string };
 
@@ -23,7 +21,7 @@ export default class SettingsService extends BaseAPIService {
 		return this.normalize(res.data);
 	}
 
-	async updateSettings(settings: Partial<Settings>): Promise<Settings> {
+	async updateSettings(settings: Partial<Settings>) {
 		const envId = await environmentStore.getCurrentEnvironmentId();
 		const payload: Record<string, string> = {};
 		for (const key in settings) {
@@ -31,11 +29,7 @@ export default class SettingsService extends BaseAPIService {
 			payload[key] = typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
 		}
 		const res = await this.api.put(`/environments/${envId}/settings`, payload);
-		const updatedSettings = this.normalize(res.data);
-		const currentSettings = get(settingsStore);
-		settingsStore.set({ ...currentSettings, ...updatedSettings });
-
-		return updatedSettings;
+		return this.normalize(res.data);
 	}
 
 	async getOidcStatus(): Promise<OidcStatusInfo> {
