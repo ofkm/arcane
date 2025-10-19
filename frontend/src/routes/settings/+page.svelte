@@ -12,6 +12,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { UiConfigDisabledTag } from '$lib/components/badges/index.js';
 	import { settingsSearchService, type SettingsCategory } from '$lib/services/settings-search';
+	import { debounced } from '$lib/utils/utils';
 
 	let { data } = $props();
 	let searchQuery = $state('');
@@ -20,7 +21,7 @@
 	let isSearching = $state(false);
 	let settingsCategories = $state<SettingsCategory[]>([]);
 	let isLoadingCategories = $state(true);
-	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let currentSearchRequest = $state(0);
 
 	const iconMap: Record<string, any> = {
 		settings: SettingsIcon,
@@ -34,30 +35,6 @@
 		loadCategories();
 	});
 
-	$effect(() => {
-		if (searchDebounceTimer) {
-			clearTimeout(searchDebounceTimer);
-		}
-
-		if (searchQuery.trim()) {
-			showSearchResults = true;
-			isSearching = true;
-			searchDebounceTimer = setTimeout(() => {
-				performSearch();
-			}, 300);
-		} else {
-			showSearchResults = false;
-			searchResults = [];
-			isSearching = false;
-		}
-
-		return () => {
-			if (searchDebounceTimer) {
-				clearTimeout(searchDebounceTimer);
-			}
-		};
-	});
-
 	async function loadCategories() {
 		try {
 			settingsCategories = await settingsSearchService.getCategories();
@@ -69,21 +46,39 @@
 		}
 	}
 
-	async function performSearch() {
-		const query = searchQuery.trim();
-		if (!query) return;
+	async function performSearch(query: string, immediate = false) {
+		const trimmedQuery = query.trim();
 
+		if (!trimmedQuery) {
+			searchResults = [];
+			showSearchResults = false;
+			isSearching = false;
+			currentSearchRequest++;
+			return;
+		}
+
+		const requestId = ++currentSearchRequest;
 		isSearching = true;
+		showSearchResults = true;
+
 		try {
-			const response = await settingsSearchService.search(query);
-			searchResults = response.results;
+			const response = await settingsSearchService.search(trimmedQuery);
+			if (requestId === currentSearchRequest) {
+				searchResults = response.results || [];
+				isSearching = false;
+			}
 		} catch (error) {
 			console.error('Search failed:', error);
-			searchResults = [];
-		} finally {
-			isSearching = false;
+			if (requestId === currentSearchRequest) {
+				searchResults = [];
+				isSearching = false;
+			}
 		}
 	}
+
+	const debouncedSearch = debounced((query: string) => {
+		void performSearch(query, false);
+	}, 300);
 
 	function navigateToCategory(categoryUrl: string) {
 		goto(categoryUrl);
@@ -92,6 +87,9 @@
 	function clearSearch() {
 		searchQuery = '';
 		showSearchResults = false;
+		isSearching = false;
+		searchResults = [];
+		currentSearchRequest++;
 	}
 
 	function getIconComponent(iconName: string) {
@@ -131,7 +129,17 @@
 					<input
 						type="text"
 						placeholder="Search settings..."
-						bind:value={searchQuery}
+						value={searchQuery}
+						oninput={(e) => {
+							searchQuery = e.currentTarget.value;
+							debouncedSearch(e.currentTarget.value);
+						}}
+						onchange={(e) => performSearch(e.currentTarget.value, true)}
+						onkeydown={(e) => {
+							if (e.key === 'Enter') {
+								performSearch((e.currentTarget as HTMLInputElement).value, true);
+							}
+						}}
 						class="bg-background/50 border-input ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 pl-10 text-sm backdrop-blur-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 					/>
 					{#if showSearchResults}
@@ -192,12 +200,14 @@
 						class="border-primary mx-auto mb-3 size-8 animate-spin rounded-full border-4 border-t-transparent sm:mb-4 sm:size-12"
 					></div>
 					<p class="text-muted-foreground text-sm sm:text-base">Searching...</p>
+					<p class="text-muted-foreground mt-2 text-xs">Debug: isSearching={isSearching}, results={searchResults.length}</p>
 				</div>
 			{:else if searchResults.length === 0}
 				<div class="py-8 text-center sm:py-12">
 					<SearchIcon class="text-muted-foreground mx-auto mb-3 size-8 sm:mb-4 sm:size-12" />
 					<h3 class="mb-2 text-base font-medium sm:text-lg">No settings found</h3>
 					<p class="text-muted-foreground text-sm sm:text-base">Try adjusting your search terms or browse categories above.</p>
+					<p class="text-muted-foreground mt-2 text-xs">Debug: isSearching={isSearching}, results={searchResults.length}</p>
 				</div>
 			{:else}
 				<div class="space-y-4 sm:space-y-6">
