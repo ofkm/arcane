@@ -1319,5 +1319,12 @@
 	"events_delete_failed": "Error al eliminar el evento \"{title}\"",
 	"events_delete_success": "Evento \"{title}\" eliminado correctamente",
 	"sidebar_dark_mode": "Oscuro",
-	"sidebar_light_mode": "Claro"
+	"sidebar_light_mode": "Claro",
+	"glass_effect_title": "Efecto de cristal (Vista previa)",
+	"glass_effect_description": "Habilita el diseño moderno de cristalmorfismo con borrosos, degradados y efectos ambientales",
+	"glass_effect_label": "IU de crassmorfismo",
+	"glass_effect_enabled": "Efectos de cristal habilitados",
+	"glass_effect_disabled": "Efectos de cristal desactivados (diseño clásico)",
+	"glass_effect_description_long": "Cuando está activado, la interfaz utiliza efectos de cristal congelado con desenfoque de fondo y gradientes sutiles. Cuando está desactivada, la interfaz utiliza colores sólidos y sombras tradicionales para un diseño clásico.",
+	"navigation_glass_effect_label": "Efecto de cristal"
 }
