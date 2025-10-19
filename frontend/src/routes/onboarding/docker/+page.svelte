@@ -64,17 +64,9 @@
 		updateScheduleWindows: z.any()
 	});
 
-	// Update schedule state
-	let autoUpdate = $state<boolean>(false);
-	let scheduleEnabled = $state<boolean>(false);
-	let scheduleWindows = $state<UpdateScheduleWindow[]>([]);
-
-	// Initialize from current settings
-	$effect(() => {
-		autoUpdate = currentSettings.autoUpdate ?? false;
-		scheduleEnabled = currentSettings.updateScheduleEnabled ?? false;
-		scheduleWindows = currentSettings.updateScheduleWindows ?? [];
-	});
+	let autoUpdate = $state<boolean>(data.settings.autoUpdate ?? false);
+	let scheduleEnabled = $state<boolean>(data.settings.updateScheduleEnabled ?? false);
+	let scheduleWindows = $state<UpdateScheduleWindow[]>(data.settings.updateScheduleWindows ?? []);
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 

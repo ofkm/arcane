@@ -32,18 +32,12 @@
 	);
 
 	let isLoading = $state(false);
-	let localUpdateSettingsOverride = $state<boolean | null>(null);
-	let localAutoUpdate = $state(false);
-	let localScheduleEnabled = $state(false);
-	let localScheduleWindows = $state<UpdateScheduleWindow[]>([]);
-
-	// Initialize local state from project/global on mount
-	$effect(() => {
-		localUpdateSettingsOverride = isUpdateSettingsOverridden ? true : null;
-		localAutoUpdate = project.autoUpdate ?? globalSettings?.autoUpdate ?? false;
-		localScheduleEnabled = project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false;
-		localScheduleWindows = project.updateScheduleWindows ?? globalSettings?.updateScheduleWindows ?? [];
-	});
+	let localUpdateSettingsOverride = $state<boolean | null>(isUpdateSettingsOverridden ? true : null);
+	let localAutoUpdate = $state<boolean>(project.autoUpdate ?? globalSettings?.autoUpdate ?? false);
+	let localScheduleEnabled = $state<boolean>(project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false);
+	let localScheduleWindows = $state<UpdateScheduleWindow[]>(
+		project.updateScheduleWindows ?? globalSettings?.updateScheduleWindows ?? []
+	);
 
 	// Check for unsaved changes
 	const hasUpdateSettingsChanges = $derived(
@@ -84,10 +78,8 @@
 	async function saveSettings() {
 		isLoading = true;
 		try {
-			// First, check if we need to clear any overrides (X button was clicked)
 			const clearPromises: Promise<any>[] = [];
 
-			// Clear update settings override if X was clicked
 			if (localUpdateSettingsOverride === null && isUpdateSettingsOverridden) {
 				clearPromises.push(
 					projectService.clearProjectSettingOverride(project.id, 'autoUpdate'),
@@ -96,22 +88,18 @@
 				);
 			}
 
-			// Wait for all clears to complete
 			if (clearPromises.length > 0) {
 				await Promise.all(clearPromises);
 			}
 
-			// Now save any active overrides (even if they match global)
 			const updates: ProjectSettingsUpdate = {};
 
-			// Save update settings if overridden
 			if (localUpdateSettingsOverride !== null) {
 				updates.autoUpdate = localAutoUpdate;
 				updates.updateScheduleEnabled = localScheduleEnabled;
 				updates.updateScheduleWindows = localScheduleWindows;
 			}
 
-			// Only call update if there are overrides to save
 			if (Object.keys(updates).length > 0) {
 				await projectService.updateProjectSettings(project.id, updates);
 			}
@@ -127,7 +115,6 @@
 	}
 
 	function resetChanges() {
-		// Reset to saved values
 		localUpdateSettingsOverride = isUpdateSettingsOverridden ? true : null;
 		localAutoUpdate = project.autoUpdate ?? globalSettings?.autoUpdate ?? false;
 		localScheduleEnabled = project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false;
@@ -135,7 +122,6 @@
 	}
 
 	function clearOverride() {
-		// Just clear local override - actual DB clear happens on Save
 		localUpdateSettingsOverride = null;
 		localAutoUpdate = globalSettings?.autoUpdate ?? false;
 		localScheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;

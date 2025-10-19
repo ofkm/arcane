@@ -13,18 +13,20 @@ type SettingDto struct {
 
 type UpdateSettingsDto struct {
 	// Core settings
-	ProjectsDirectory  *string `json:"projectsDirectory,omitempty"`
-	DiskUsagePath      *string `json:"diskUsagePath,omitempty"`
-	AutoUpdate         *string `json:"autoUpdate,omitempty"`
-	AutoUpdateInterval *string `json:"autoUpdateInterval,omitempty"`
-	PollingEnabled     *string `json:"pollingEnabled,omitempty"`
-	PollingInterval    *string `json:"pollingInterval,omitempty"`
-	PruneMode          *string `json:"dockerPruneMode,omitempty" binding:"omitempty,oneof=all dangling"`
-	BaseServerURL      *string `json:"baseServerUrl,omitempty"`
-	EnableGravatar     *string `json:"enableGravatar,omitempty"`
-	DefaultShell       *string `json:"defaultShell,omitempty"`
-	DockerHost         *string `json:"dockerHost,omitempty"`
-	AccentColor        *string `json:"accentColor,omitempty"`
+	ProjectsDirectory     *string `json:"projectsDirectory,omitempty"`
+	DiskUsagePath         *string `json:"diskUsagePath,omitempty"`
+	AutoUpdate            *string `json:"autoUpdate,omitempty"`
+	AutoUpdateInterval    *string `json:"autoUpdateInterval,omitempty"`
+	UpdateScheduleEnabled *string `json:"updateScheduleEnabled,omitempty"`
+	UpdateScheduleWindows *string `json:"updateScheduleWindows,omitempty"`
+	PollingEnabled        *string `json:"pollingEnabled,omitempty"`
+	PollingInterval       *string `json:"pollingInterval,omitempty"`
+	PruneMode             *string `json:"dockerPruneMode,omitempty" binding:"omitempty,oneof=all dangling"`
+	BaseServerURL         *string `json:"baseServerUrl,omitempty"`
+	EnableGravatar        *string `json:"enableGravatar,omitempty"`
+	DefaultShell          *string `json:"defaultShell,omitempty"`
+	DockerHost            *string `json:"dockerHost,omitempty"`
+	AccentColor           *string `json:"accentColor,omitempty"`
 
 	// Authentication settings
 	AuthLocalEnabled   *string `json:"authLocalEnabled,omitempty"`

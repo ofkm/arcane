@@ -359,7 +359,7 @@ func (s *SettingsService) UpdateSettings(ctx context.Context, updates dto.Update
 		switch key {
 		case "pollingEnabled", "pollingInterval":
 			changedPolling = true
-		case "autoUpdate", "autoUpdateInterval":
+		case "autoUpdate", "autoUpdateInterval", "updateScheduleEnabled", "updateScheduleWindows":
 			changedAutoUpdate = true
 		}
 	}
