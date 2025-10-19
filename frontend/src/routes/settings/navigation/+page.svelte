@@ -1,9 +1,6 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
-	import { z } from 'zod/v4';
-	import { getContext, onMount } from 'svelte';
-	import { createForm } from '$lib/utils/form.utils';
-	import type { Settings } from '$lib/types/settings.type';
+	import { getContext } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import ScrollTextIcon from '@lucide/svelte/icons/scroll-text';
@@ -14,60 +11,64 @@
 	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
 	import { navigationSettingsOverridesStore, resetNavigationVisibility } from '$lib/utils/navigation.utils';
-	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
+	import { createSettingsState } from '$lib/components/settings';
 
 	let { data } = $props();
-	let currentSettings = $state<Settings>($settingsStore || data.settings!);
-	let hasChanges = $state(false);
-	let isLoading = $state(false);
-
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
-	const formState = getContext('settingsFormState') as any;
-	const formSchema = z.object({
-		mobileNavigationMode: z.enum(['floating', 'docked']),
-		mobileNavigationShowLabels: z.boolean(),
-		mobileNavigationScrollToHide: z.boolean(),
-		sidebarHoverExpansion: z.boolean()
-	});
-
-	// Track local override state using the shared store
 	let persistedState = $state(navigationSettingsOverridesStore.current);
-
-	// Sidebar context is only available in desktop view
 	let sidebar: ReturnType<typeof useSidebar> | null = null;
 
 	try {
 		sidebar = useSidebar();
-	} catch (e) {
-		// Sidebar context not available (mobile view)
+	} catch {
+		// Sidebar context not available
 	}
 
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
-	const formHasChanges = $derived.by(
-		() =>
-			$formInputs.mobileNavigationMode.value !== currentSettings.mobileNavigationMode ||
-			$formInputs.mobileNavigationShowLabels.value !== currentSettings.mobileNavigationShowLabels ||
-			$formInputs.mobileNavigationScrollToHide.value !== currentSettings.mobileNavigationScrollToHide ||
-			$formInputs.sidebarHoverExpansion.value !== currentSettings.sidebarHoverExpansion
+	const settingsState = createSettingsState(
+		{
+			mobileNavigationMode: data.settings!.mobileNavigationMode,
+			mobileNavigationShowLabels: data.settings!.mobileNavigationShowLabels,
+			mobileNavigationScrollToHide: data.settings!.mobileNavigationScrollToHide,
+			sidebarHoverExpansion: data.settings!.sidebarHoverExpansion
+		},
+		[
+			{ key: 'mobileNavigationMode' },
+			{ key: 'mobileNavigationShowLabels' },
+			{ key: 'mobileNavigationScrollToHide' },
+			{
+				key: 'sidebarHoverExpansion',
+				previewFn: (enabled: boolean) => {
+					if (sidebar) {
+						sidebar.setHoverExpansion(enabled);
+					}
+				}
+			}
+		]
 	);
 
-	$effect(() => {
-		hasChanges = formHasChanges;
-		if (formState) {
-			formState.hasChanges = hasChanges;
-			formState.isLoading = isLoading;
+	const { bindings, values, originalValues, setupStoreSync } = settingsState.createPageSetup(
+		() => {
+			toast.success(m.navigation_settings_saved());
+			// Reset navigation bar visibility if behavior settings changed
+			if (values.mobileNavigationScrollToHide !== originalValues.mobileNavigationScrollToHide) {
+				resetNavigationVisibility();
+			}
+		},
+		(error) => {
+			console.error('Failed to save navigation settings:', error);
+			toast.error('Failed to save navigation settings. Please try again.');
 		}
-	});
+	);
 
-	// Update currentSettings when store changes
-	$effect(() => {
-		if ($settingsStore) {
-			currentSettings = $settingsStore;
-		}
-	});
+	setupStoreSync($settingsStore, [
+		'mobileNavigationMode',
+		'mobileNavigationShowLabels',
+		'mobileNavigationScrollToHide',
+		'sidebarHoverExpansion'
+	]);
 
 	function setLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide', value: any) {
 		const currentOverrides = navigationSettingsOverridesStore.current;
@@ -97,58 +98,6 @@
 
 		toast.success(`Local override cleared for ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
 	}
-
-	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
-		try {
-			await settingsService.updateSettings(updatedSettings as any);
-			currentSettings = { ...currentSettings, ...updatedSettings };
-			settingsStore.set(currentSettings);
-			settingsStore.reload();
-		} catch (error) {
-			console.error('Error updating navigation settings:', error);
-			throw error;
-		}
-	}
-
-	async function onSubmit() {
-		const formData = form.validate();
-		if (!formData) {
-			toast.error('Please check the form for errors');
-			return;
-		}
-		isLoading = true;
-
-		// Check if behavior settings changed
-		const behaviorChanged = formData.mobileNavigationScrollToHide !== currentSettings.mobileNavigationScrollToHide;
-
-		await updateSettingsConfig(formData)
-			.then(() => {
-				toast.success(m.navigation_settings_saved());
-
-				// Reset navigation bar visibility if behavior settings changed
-				if (behaviorChanged) {
-					resetNavigationVisibility();
-				}
-			})
-			.catch((error) => {
-				console.error('Failed to save navigation settings:', error);
-				toast.error('Failed to save navigation settings. Please try again.');
-			})
-			.finally(() => (isLoading = false));
-	}
-
-	function resetForm() {
-		$formInputs.mobileNavigationMode.value = currentSettings.mobileNavigationMode;
-		$formInputs.mobileNavigationShowLabels.value = currentSettings.mobileNavigationShowLabels;
-		$formInputs.mobileNavigationScrollToHide.value = currentSettings.mobileNavigationScrollToHide;
-	}
-
-	onMount(() => {
-		if (formState) {
-			formState.saveFunction = onSubmit;
-			formState.resetFunction = resetForm;
-		}
-	});
 </script>
 
 <SettingsPageLayout
@@ -184,18 +133,12 @@
 							<div class="flex items-center gap-2">
 								<Switch
 									id="sidebarHoverExpansion"
-									checked={$formInputs.sidebarHoverExpansion.value}
+									checked={values.sidebarHoverExpansion}
 									disabled={isReadOnly}
-									onCheckedChange={(checked) => {
-										$formInputs.sidebarHoverExpansion.value = checked;
-										// Update the sidebar immediately if context is available
-										if (sidebar) {
-											sidebar.setHoverExpansion(checked);
-										}
-									}}
+									onCheckedChange={bindings.switch('sidebarHoverExpansion').onCheckedChange}
 								/>
 								<label for="sidebarHoverExpansion" class="text-xs font-medium">
-									{$formInputs.sidebarHoverExpansion.value
+									{values.sidebarHoverExpansion
 										? m.navigation_sidebar_hover_expansion_enabled()
 										: m.navigation_sidebar_hover_expansion_disabled()}
 								</label>
@@ -219,11 +162,9 @@
 							label={m.navigation_mode_label()}
 							description={m.navigation_mode_description()}
 							icon={NavigationIcon}
-							serverValue={$formInputs.mobileNavigationMode.value}
+							serverValue={values.mobileNavigationMode}
 							localOverride={persistedState.mode}
-							onServerChange={(value) => {
-								$formInputs.mobileNavigationMode.value = value;
-							}}
+							onServerChange={bindings.switch('mobileNavigationMode').onCheckedChange}
 							onLocalOverride={(value) => setLocalOverride('mode', value)}
 							onClearOverride={() => clearLocalOverride('mode')}
 							serverDisabled={isReadOnly}
@@ -234,11 +175,9 @@
 							label={m.navigation_show_labels_label()}
 							description={m.navigation_show_labels_description()}
 							icon={EyeIcon}
-							serverValue={$formInputs.mobileNavigationShowLabels.value}
+							serverValue={values.mobileNavigationShowLabels}
 							localOverride={persistedState.showLabels}
-							onServerChange={(value) => {
-								$formInputs.mobileNavigationShowLabels.value = value;
-							}}
+							onServerChange={bindings.switch('mobileNavigationShowLabels').onCheckedChange}
 							onLocalOverride={(value) => setLocalOverride('showLabels', value)}
 							onClearOverride={() => clearLocalOverride('showLabels')}
 							serverDisabled={isReadOnly}
@@ -261,11 +200,9 @@
 							label={m.navigation_scroll_to_hide_label()}
 							description={m.navigation_scroll_to_hide_description()}
 							icon={ScrollTextIcon}
-							serverValue={$formInputs.mobileNavigationScrollToHide.value}
+							serverValue={values.mobileNavigationScrollToHide}
 							localOverride={persistedState.scrollToHide}
-							onServerChange={(value) => {
-								$formInputs.mobileNavigationScrollToHide.value = value;
-							}}
+							onServerChange={bindings.switch('mobileNavigationScrollToHide').onCheckedChange}
 							onLocalOverride={(value) => setLocalOverride('scrollToHide', value)}
 							onClearOverride={() => clearLocalOverride('scrollToHide')}
 							serverDisabled={isReadOnly}

@@ -1,9 +1,6 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
-	import { z } from 'zod/v4';
-	import { getContext, onMount } from 'svelte';
-	import { createForm } from '$lib/utils/form.utils';
-	import type { Settings } from '$lib/types/settings.type';
+	import { getContext } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -13,98 +10,44 @@
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
-	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import AccentColorPicker from '$lib/components/accent-color/accent-color-picker.svelte';
-	import { applyAccentColor } from '$lib/utils/accent-color-util';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import { Switch } from '$lib/components/ui/switch/index.js';
+	import { createSettingsState } from '$lib/components/settings';
+	import { applyAccentColor } from '$lib/utils/accent-color-util';
 
 	let { data } = $props();
-	let currentSettings = $state($settingsStore || data.settings!);
-	let hasChanges = $state(false);
-	let isLoading = $state(false);
-
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
-	const formState = getContext('settingsFormState') as any;
-	const formSchema = z.object({
-		projectsDirectory: z.string().min(1, m.general_projects_directory_required()),
-		baseServerUrl: z.string().min(1, m.general_base_url_required()),
-		enableGravatar: z.boolean(),
-		accentColor: z.string(),
-		glassEffectEnabled: z.boolean()
-	});
-
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
-
-	const formHasChanges = $derived.by(
-		() =>
-			$formInputs.projectsDirectory.value !== currentSettings.projectsDirectory ||
-			$formInputs.baseServerUrl.value !== currentSettings.baseServerUrl ||
-			$formInputs.enableGravatar.value !== currentSettings.enableGravatar ||
-			$formInputs.accentColor.value !== currentSettings.accentColor ||
-			$formInputs.glassEffectEnabled.value !== currentSettings.glassEffectEnabled
+	const settingsState = createSettingsState(
+		{
+			projectsDirectory: data.settings!.projectsDirectory,
+			baseServerUrl: data.settings!.baseServerUrl,
+			enableGravatar: data.settings!.enableGravatar,
+			accentColor: data.settings!.accentColor,
+			glassEffectEnabled: data.settings!.glassEffectEnabled
+		},
+		[
+			{ key: 'projectsDirectory' },
+			{ key: 'baseServerUrl' },
+			{ key: 'enableGravatar' },
+			{
+				key: 'accentColor',
+				previewFn: (color: string) => applyAccentColor(color)
+			},
+			{ key: 'glassEffectEnabled' }
+		]
 	);
 
-	$effect(() => {
-		hasChanges = formHasChanges;
-		if (formState) {
-			formState.hasChanges = hasChanges;
-			formState.isLoading = isLoading;
+	const { bindings, values, originalValues, setupStoreSync } = settingsState.createPageSetup(
+		() => toast.success(m.general_settings_saved()),
+		(error) => {
+			console.error('Failed to save settings:', error);
+			toast.error(m.general_settings_save_failed());
 		}
-	});
+	);
 
-	// Update currentSettings when store changes
-	$effect(() => {
-		if ($settingsStore) {
-			currentSettings = $settingsStore;
-		}
-	});
-
-	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
-		try {
-			await settingsService.updateSettings(updatedSettings as any);
-			currentSettings = { ...currentSettings, ...updatedSettings };
-			settingsStore.set(currentSettings);
-			settingsStore.reload();
-		} catch (error) {
-			console.error('Error updating settings:', error);
-			throw error;
-		}
-	}
-
-	async function onSubmit() {
-		const data = form.validate();
-		if (!data) {
-			toast.error('Please check the form for errors');
-			return;
-		}
-		isLoading = true;
-
-		await updateSettingsConfig(data)
-			.then(() => toast.success(m.general_settings_saved()))
-			.catch((error) => {
-				console.error('Failed to save settings:', error);
-				toast.error('Failed to save settings. Please try again.');
-			})
-			.finally(() => (isLoading = false));
-	}
-
-	function resetForm() {
-		$formInputs.projectsDirectory.value = data.settings!.projectsDirectory;
-		$formInputs.baseServerUrl.value = data.settings!.baseServerUrl;
-		$formInputs.enableGravatar.value = data.settings!.enableGravatar;
-		$formInputs.accentColor.value = data.settings!.accentColor;
-		$formInputs.glassEffectEnabled.value = data.settings!.glassEffectEnabled;
-		applyAccentColor(data.settings!.accentColor);
-	}
-
-	onMount(() => {
-		if (formState) {
-			formState.saveFunction = onSubmit;
-			formState.resetFunction = resetForm;
-		}
-	});
+	setupStoreSync($settingsStore, ['projectsDirectory', 'baseServerUrl', 'enableGravatar', 'accentColor', 'glassEffectEnabled']);
 </script>
 
 <SettingsPageLayout
@@ -127,19 +70,21 @@
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
 							<TextInputWithLabel
-								bind:value={$formInputs.projectsDirectory.value}
+								bind:value={values.projectsDirectory}
 								label={m.general_projects_directory_label()}
 								placeholder={m.general_projects_directory_placeholder()}
 								helpText={m.general_projects_directory_help()}
 								type="text"
+								onChange={bindings.textInput('projectsDirectory').onChange}
 							/>
 
 							<TextInputWithLabel
-								bind:value={$formInputs.baseServerUrl.value}
+								bind:value={values.baseServerUrl}
 								label={m.general_base_url_label()}
 								placeholder={m.general_base_url_placeholder()}
 								helpText={m.general_base_url_help()}
 								type="text"
+								onChange={bindings.textInput('baseServerUrl').onChange}
 							/>
 						</div>
 					</Card.Content>
@@ -157,7 +102,8 @@
 							id="enableGravatar"
 							label={m.general_enable_gravatar_label()}
 							description={m.general_enable_gravatar_description()}
-							bind:checked={$formInputs.enableGravatar.value}
+							bind:checked={values.enableGravatar}
+							onCheckedChange={bindings.switch('enableGravatar').onCheckedChange}
 						/>
 					</Card.Content>
 				</Card.Root>
@@ -172,9 +118,10 @@
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-5">
 							<AccentColorPicker
-								previousColor={currentSettings.accentColor}
-								bind:selectedColor={$formInputs.accentColor.value}
+								previousColor={originalValues.accentColor}
+								bind:selectedColor={values.accentColor}
 								disabled={isReadOnly}
+								onChange={bindings.colorPicker('accentColor').onChange}
 							/>
 						</div>
 					</Card.Content>
@@ -204,14 +151,12 @@
 								<div class="flex items-center gap-2">
 									<Switch
 										id="glassEffectEnabled"
-										bind:checked={$formInputs.glassEffectEnabled.value}
+										bind:checked={values.glassEffectEnabled}
 										disabled={isReadOnly}
-										onCheckedChange={(checked) => {
-											$formInputs.glassEffectEnabled.value = checked;
-										}}
+										onCheckedChange={bindings.switch('glassEffectEnabled').onCheckedChange}
 									/>
 									<label for="glassEffectEnabled" class="text-xs font-medium">
-										{$formInputs.glassEffectEnabled.value ? m.glass_effect_enabled() : m.glass_effect_disabled()}
+										{values.glassEffectEnabled ? m.glass_effect_enabled() : m.glass_effect_disabled()}
 									</label>
 								</div>
 							</div>

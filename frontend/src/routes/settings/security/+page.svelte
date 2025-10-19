@@ -1,53 +1,23 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
-	import { z } from 'zod/v4';
-	import { getContext, onMount } from 'svelte';
-	import { createForm } from '$lib/utils/form.utils';
+	import { getContext } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import OidcConfigDialog from '$lib/components/dialogs/oidc-config-dialog.svelte';
 	import { toast } from 'svelte-sonner';
 	import type { PageData } from './$types';
-	import type { Settings } from '$lib/types/settings.type';
-	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import { m } from '$lib/paraglide/messages';
 	import LockIcon from '@lucide/svelte/icons/lock';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import KeyIcon from '@lucide/svelte/icons/key';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
-	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
+	import { createSettingsState } from '$lib/components/settings';
 
 	let { data }: { data: PageData } = $props();
-	let currentSettings = $state<Settings>($settingsStore || data.settings!);
-	let hasChanges = $state(false);
-	let isLoading = $state(false);
 
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
-	const formState = getContext('settingsFormState') as any;
-	const formSchema = z
-		.object({
-			authLocalEnabled: z.boolean(),
-			authOidcEnabled: z.boolean(),
-			authSessionTimeout: z
-				.number(m.security_session_timeout_required())
-				.int(m.security_session_timeout_integer())
-				.min(15, m.security_session_timeout_min())
-				.max(1440, m.security_session_timeout_max()),
-			authPasswordPolicy: z.enum(['basic', 'standard', 'strong'])
-		})
-		.superRefine((formData, ctx) => {
-			// If server forces OIDC, the constraint is already satisfied
-			if (data.oidcStatus.envForced) return;
-			if (!formData.authLocalEnabled && !formData.authOidcEnabled) {
-				ctx.addIssue({
-					code: z.ZodIssueCode.custom,
-					message: m.security_enable_one_provider(),
-					path: ['authLocalEnabled']
-				});
-			}
-		});
 
 	let showOidcConfigDialog = $state(false);
 
@@ -60,95 +30,35 @@
 		adminValue: ''
 	});
 
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
-
-	const formHasChanges = $derived.by(
-		() =>
-			$formInputs.authLocalEnabled.value !== currentSettings.authLocalEnabled ||
-			$formInputs.authOidcEnabled.value !== currentSettings.authOidcEnabled ||
-			$formInputs.authSessionTimeout.value !== currentSettings.authSessionTimeout ||
-			$formInputs.authPasswordPolicy.value !== currentSettings.authPasswordPolicy
+	const settingsState = createSettingsState(
+		{
+			authLocalEnabled: data.settings!.authLocalEnabled,
+			authOidcEnabled: data.settings!.authOidcEnabled,
+			authSessionTimeout: data.settings!.authSessionTimeout,
+			authPasswordPolicy: data.settings!.authPasswordPolicy
+		},
+		[{ key: 'authLocalEnabled' }, { key: 'authOidcEnabled' }, { key: 'authSessionTimeout' }, { key: 'authPasswordPolicy' }]
 	);
 
-	$effect(() => {
-		hasChanges = formHasChanges;
-		if (formState) {
-			formState.hasChanges = hasChanges;
-			formState.isLoading = isLoading;
+	const { bindings, values, originalValues, setupStoreSync } = settingsState.createPageSetup(
+		() => toast.success(m.security_settings_saved()),
+		(error) => {
+			console.error('Failed to save settings:', error);
+			toast.error(m.security_settings_save_failed());
 		}
-	});
+	);
 
-	// Update currentSettings when store changes
-	$effect(() => {
-		if ($settingsStore) {
-			currentSettings = $settingsStore;
-		}
-	});
+	setupStoreSync($settingsStore, ['authLocalEnabled', 'authOidcEnabled', 'authSessionTimeout', 'authPasswordPolicy']);
 
 	// Helper: treat OIDC as active if forced by server or enabled in form
-	const isOidcActive = () => $formInputs.authOidcEnabled.value || data.oidcStatus.envForced;
-
-	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
-		try {
-			await settingsService.updateSettings(updatedSettings as any);
-			currentSettings = { ...currentSettings, ...updatedSettings };
-			settingsStore.set(currentSettings);
-			settingsStore.reload();
-		} catch (error) {
-			console.error('Error updating settings:', error);
-			throw error;
-		}
-	}
-
-	async function onSubmit() {
-		const formData = form.validate();
-		if (!formData) {
-			toast.error('Please check the form for errors');
-			return;
-		}
-
-		isLoading = true;
-
-		let authOidcConfig = currentSettings.authOidcConfig;
-		if (formData.authOidcEnabled && !data.oidcStatus.envForced) {
-			authOidcConfig = JSON.stringify({
-				clientId: oidcConfigForm.clientId,
-				clientSecret: oidcConfigForm.clientSecret || '',
-				issuerUrl: oidcConfigForm.issuerUrl,
-				scopes: oidcConfigForm.scopes,
-				adminClaim: oidcConfigForm.adminClaim || '',
-				adminValue: oidcConfigForm.adminValue || ''
-			});
-		}
-
-		await updateSettingsConfig({
-			authLocalEnabled: formData.authLocalEnabled,
-			authOidcEnabled: formData.authOidcEnabled,
-			authSessionTimeout: formData.authSessionTimeout,
-			authPasswordPolicy: formData.authPasswordPolicy,
-			...(formData.authOidcEnabled && !data.oidcStatus.envForced && { authOidcConfig })
-		})
-			.then(() => toast.success(m.security_settings_saved()))
-			.catch((error) => {
-				console.error('Failed to save settings:', error);
-				toast.error('Failed to save settings. Please try again.');
-			})
-			.finally(() => (isLoading = false));
-	}
-
-	function resetForm() {
-		$formInputs.authLocalEnabled.value = currentSettings.authLocalEnabled;
-		$formInputs.authOidcEnabled.value = currentSettings.authOidcEnabled;
-		$formInputs.authSessionTimeout.value = currentSettings.authSessionTimeout;
-		$formInputs.authPasswordPolicy.value = currentSettings.authPasswordPolicy;
-	}
+	const isOidcActive = () => values.authOidcEnabled || data.oidcStatus.envForced;
 
 	// Only depend on envForced; open config when enabling and not forced
 	function handleOidcSwitchChange(checked: boolean) {
-		$formInputs.authOidcEnabled.value = checked;
+		bindings.switch('authOidcEnabled').onCheckedChange(checked);
 
-		if (!checked && !$formInputs.authLocalEnabled.value && !data.oidcStatus.envForced) {
-			$formInputs.authLocalEnabled.value = true;
+		if (!checked && !values.authLocalEnabled && !data.oidcStatus.envForced) {
+			bindings.switch('authLocalEnabled').onCheckedChange(true);
 			toast.info(m.security_local_enabled_info());
 		}
 
@@ -159,16 +69,16 @@
 
 	function handleLocalSwitchChange(checked: boolean) {
 		if (!checked && !isOidcActive()) {
-			$formInputs.authLocalEnabled.value = true;
+			bindings.switch('authLocalEnabled').onCheckedChange(true);
 			toast.error(m.security_enable_one_provider_error());
 			return;
 		}
-		$formInputs.authLocalEnabled.value = checked;
+		bindings.switch('authLocalEnabled').onCheckedChange(checked);
 	}
 
 	function openOidcDialog() {
-		if (currentSettings.authOidcConfig) {
-			const cfg = JSON.parse(currentSettings.authOidcConfig);
+		if (data.settings!.authOidcConfig) {
+			const cfg = JSON.parse(data.settings!.authOidcConfig);
 			oidcConfigForm.clientId = cfg.clientId || '';
 			oidcConfigForm.issuerUrl = cfg.issuerUrl || '';
 			oidcConfigForm.scopes = cfg.scopes || 'openid email profile';
@@ -181,15 +91,6 @@
 
 	async function handleSaveOidcConfig() {
 		try {
-			isLoading = true;
-			$formInputs.authOidcEnabled.value = true;
-
-			const formData = form.validate();
-			if (!formData) {
-				isLoading = false;
-				return;
-			}
-
 			const authOidcConfig = JSON.stringify({
 				clientId: oidcConfigForm.clientId,
 				clientSecret: oidcConfigForm.clientSecret || '',
@@ -199,24 +100,28 @@
 				adminValue: oidcConfigForm.adminValue || ''
 			});
 
-			await updateSettingsConfig({
-				authOidcEnabled: true,
-				authOidcConfig
-			});
-
-			toast.success(m.security_oidc_saved());
-			showOidcConfigDialog = false;
-		} finally {
-			isLoading = false;
+			// Update the settings with OIDC config
+			await settingsState.save(
+				() => {
+					toast.success(m.security_settings_saved());
+					showOidcConfigDialog = false;
+				},
+				(error) => {
+					console.error('Failed to save OIDC config:', error);
+					toast.error('Failed to save OIDC configuration. Please try again.');
+				}
+			);
+		} catch (error) {
+			console.error('Failed to save OIDC config:', error);
+			toast.error('Failed to save OIDC configuration. Please try again.');
 		}
 	}
 
-	onMount(() => {
-		if (formState) {
-			formState.saveFunction = onSubmit;
-			formState.resetFunction = resetForm;
-		}
-	});
+	const passwordPolicyOptions = [
+		{ value: 'basic', label: m.security_password_policy_basic(), description: 'Basic password requirements' },
+		{ value: 'standard', label: m.security_password_policy_standard(), description: 'Standard password requirements' },
+		{ value: 'strong', label: m.security_password_policy_strong(), description: 'Strong password requirements' }
+	];
 </script>
 
 <SettingsPageLayout
@@ -232,146 +137,104 @@
 				<Card.Root>
 					<Card.Header icon={LockIcon}>
 						<div class="flex flex-col space-y-1.5">
-							<Card.Title>{m.security_authentication_heading()}</Card.Title>
-							<Card.Description>Configure login methods for your application</Card.Description>
+							<Card.Title>Authentication</Card.Title>
+							<Card.Description>Configure authentication methods</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
 							<SwitchWithLabel
-								id="localAuthSwitch"
+								id="authLocalEnabled"
 								label={m.security_local_auth_label()}
 								description={m.security_local_auth_description()}
-								bind:checked={$formInputs.authLocalEnabled.value}
+								bind:checked={values.authLocalEnabled}
 								onCheckedChange={handleLocalSwitchChange}
 							/>
 
-							<div class="space-y-2">
-								<SwitchWithLabel
-									id="oidcAuthSwitch"
-									label={m.security_oidc_auth_label()}
-									description={data.oidcStatus.envForced
-										? m.security_oidc_auth_description_forced()
-										: m.security_oidc_auth_description()}
-									disabled={data.oidcStatus.envForced}
-									bind:checked={$formInputs.authOidcEnabled.value}
-									onCheckedChange={handleOidcSwitchChange}
-								/>
+							<SwitchWithLabel
+								id="authOidcEnabled"
+								label={m.security_oidc_auth_label()}
+								description={m.security_oidc_auth_description()}
+								bind:checked={values.authOidcEnabled}
+								disabled={data.oidcStatus.envForced}
+								onCheckedChange={handleOidcSwitchChange}
+							/>
 
-								{#if isOidcActive()}
-									<div class="pl-8 sm:pl-11">
-										{#if data.oidcStatus.envForced}
-											{#if !data.oidcStatus.envConfigured}
-												<Button
-													variant="link"
-													class="text-destructive h-auto p-0 text-xs hover:underline"
-													onclick={openOidcDialog}
-												>
-													{m.security_server_forces_oidc_missing_env()}
-												</Button>
-											{:else}
-												<Button variant="link" class="h-auto p-0 text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
-													{m.security_oidc_configured_forced_view()}
-												</Button>
-											{/if}
-										{:else}
-											<Button variant="link" class="h-auto p-0 text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
-												{m.security_manage_oidc_config()}
-											</Button>
-										{/if}
-									</div>
-								{/if}
-							</div>
+							{#if data.oidcStatus.envForced}
+								<div class="text-muted-foreground text-xs">OIDC is forced by environment configuration</div>
+							{/if}
+
+							{#if values.authOidcEnabled && !data.oidcStatus.envForced}
+								<div class="border-primary/20 border-l-2 pl-3">
+									<Button variant="outline" size="sm" onclick={openOidcDialog}>Configure OIDC</Button>
+								</div>
+							{/if}
 						</div>
 					</Card.Content>
 				</Card.Root>
 
 				<Card.Root>
-					<Card.Header icon={ClockIcon} class="items-start">
+					<Card.Header icon={ClockIcon}>
 						<div class="flex flex-col space-y-1.5">
-							<Card.Title>{m.security_session_heading()}</Card.Title>
-							<Card.Description>Configure session timeout and duration</Card.Description>
+							<Card.Title>Session Settings</Card.Title>
+							<Card.Description>Configure session timeout and security</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<TextInputWithLabel
-							bind:value={$formInputs.authSessionTimeout.value}
+							bind:value={values.authSessionTimeout}
 							label={m.security_session_timeout_label()}
 							placeholder={m.security_session_timeout_placeholder()}
 							helpText={m.security_session_timeout_description()}
 							type="number"
+							onChange={(value) => bindings.textInput('authSessionTimeout').onChange(Number(value))}
 						/>
 					</Card.Content>
 				</Card.Root>
 
-				<Card.Root>
-					<Card.Header icon={KeyIcon} class="items-start">
-						<div class="flex flex-col space-y-1.5">
-							<Card.Title>{m.security_password_policy_label()}</Card.Title>
-							<Card.Description>Set password strength requirements</Card.Description>
-						</div>
-					</Card.Header>
-					<Card.Content class="px-3 py-4 sm:px-6">
-						<Tooltip.Provider>
-							<div class="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3" role="group" aria-labelledby="passwordPolicyLabel">
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<Button
-											variant={$formInputs.authPasswordPolicy.value === 'basic' ? 'default' : 'outline'}
-											class={$formInputs.authPasswordPolicy.value === 'basic'
-												? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
-												: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
-											onclick={() => ($formInputs.authPasswordPolicy.value = 'basic')}
-											type="button"
-											>{m.common_basic()}
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content side="top" align="center">{m.security_password_policy_basic_tooltip()}</Tooltip.Content>
-								</Tooltip.Root>
-
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<Button
-											variant={$formInputs.authPasswordPolicy.value === 'standard' ? 'default' : 'outline'}
-											class={$formInputs.authPasswordPolicy.value === 'standard'
-												? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
-												: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
-											onclick={() => ($formInputs.authPasswordPolicy.value = 'standard')}
-											type="button"
-											>{m.security_password_policy_standard()}
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content side="top" align="center">{m.security_password_policy_standard_tooltip()}</Tooltip.Content>
-								</Tooltip.Root>
-
-								<Tooltip.Root>
-									<Tooltip.Trigger>
-										<Button
-											variant={$formInputs.authPasswordPolicy.value === 'strong' ? 'default' : 'outline'}
-											class={$formInputs.authPasswordPolicy.value === 'strong'
-												? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
-												: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
-											onclick={() => ($formInputs.authPasswordPolicy.value = 'strong')}
-											type="button"
-											>{m.security_password_policy_strong()}
-										</Button>
-									</Tooltip.Trigger>
-									<Tooltip.Content side="top" align="center">{m.security_password_policy_strong_tooltip()}</Tooltip.Content>
-								</Tooltip.Root>
+				{#if values.authLocalEnabled}
+					<Card.Root>
+						<Card.Header icon={KeyIcon}>
+							<div class="flex flex-col space-y-1.5">
+								<Card.Title>{m.security_password_policy_label()}</Card.Title>
+								<Card.Description>Configure password requirements</Card.Description>
 							</div>
-						</Tooltip.Provider>
-					</Card.Content>
-				</Card.Root>
+						</Card.Header>
+						<Card.Content class="px-3 py-4 sm:px-6">
+							<div class="space-y-3">
+								{#each passwordPolicyOptions as option}
+									<div class="flex items-center space-x-2">
+										<input
+											type="radio"
+											id="passwordPolicy-{option.value}"
+											name="passwordPolicy"
+											bind:group={values.authPasswordPolicy}
+											value={option.value}
+											onchange={() =>
+												bindings.textInput('authPasswordPolicy').onChange(option.value as 'basic' | 'standard' | 'strong')}
+											class="text-primary h-4 w-4"
+										/>
+										<div class="flex flex-col">
+											<label for="passwordPolicy-{option.value}" class="text-sm font-medium">
+												{option.label}
+											</label>
+											<p class="text-muted-foreground text-xs">{option.description}</p>
+										</div>
+									</div>
+								{/each}
+							</div>
+						</Card.Content>
+					</Card.Root>
+				{/if}
 			</div>
 		</fieldset>
 	{/snippet}
-	{#snippet additionalContent()}
-		<OidcConfigDialog
-			bind:open={showOidcConfigDialog}
-			{currentSettings}
-			oidcStatus={data.oidcStatus}
-			bind:oidcForm={oidcConfigForm}
-			onSave={handleSaveOidcConfig}
-		/>
-	{/snippet}
 </SettingsPageLayout>
+
+<OidcConfigDialog
+	bind:open={showOidcConfigDialog}
+	currentSettings={data.settings!}
+	oidcStatus={data.oidcStatus}
+	bind:oidcForm={oidcConfigForm}
+	onSave={handleSaveOidcConfig}
+/>
