@@ -1,3 +1,5 @@
+import type { UpdateScheduleWindow } from "./settings.type";
+
 export interface NetworkSettings {
 	Networks: Record<
 		string,
@@ -46,13 +48,6 @@ export interface ProjectStatusCounts {
 	runningProjects: number;
 	stoppedProjects: number;
 	totalProjects: number;
-}
-
-export interface UpdateScheduleWindow {
-	days: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[];
-	startTime: string;
-	endTime: string;
-	timezone: string;
 }
 
 export interface ResolvedProjectSettings {
