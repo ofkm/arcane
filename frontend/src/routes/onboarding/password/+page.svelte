@@ -7,7 +7,6 @@
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { preventDefault } from '$lib/utils/form.utils';
 	import { goto } from '$app/navigation';
-	import settingsStore from '$lib/stores/config-store';
 	import { settingsService } from '$lib/services/settings-service.js';
 	import { userService } from '$lib/services/user-service.js';
 
@@ -15,7 +14,7 @@
 	let currentSettings = $state(data.settings);
 
 	async function continueToNextStep() {
-		const updatedSettings = await settingsService.updateSettings({
+		await settingsService.updateSettings({
 			...currentSettings,
 			onboardingCompleted: false,
 			onboardingSteps: {
@@ -23,9 +22,6 @@
 				password: true
 			}
 		});
-
-		currentSettings = updatedSettings;
-		settingsStore.set(updatedSettings);
 
 		goto('/onboarding/docker');
 	}

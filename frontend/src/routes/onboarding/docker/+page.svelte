@@ -12,7 +12,6 @@
 	import { createForm } from '$lib/utils/form.utils';
 	import { z } from 'zod/v4';
 	import { m } from '$lib/paraglide/messages';
-	import settingsStore from '$lib/stores/config-store';
 	import type { Settings } from '$lib/types/settings.type';
 	import { settingsService } from '$lib/services/settings-service.js';
 
@@ -83,9 +82,6 @@
 			} as Partial<Settings>;
 
 			await settingsService.updateSettings(updated as any);
-			currentSettings = { ...(currentSettings as Settings), ...(updated as Settings) };
-			settingsStore.set(currentSettings);
-			settingsStore.reload();
 
 			goto('/onboarding/security');
 		} catch (error) {

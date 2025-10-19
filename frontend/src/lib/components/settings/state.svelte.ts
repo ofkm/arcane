@@ -1,7 +1,5 @@
 import { type Settings } from '$lib/types/settings.type';
 import { settingsService } from '$lib/services/settings-service';
-import { get } from 'svelte/store';
-import settingsStore from '$lib/stores/config-store';
 import type { PreviewSetting, SettingDefinition } from './types';
 import { getContext } from 'svelte';
 
@@ -165,16 +163,9 @@ export class SettingsStateManager<TSchema extends Record<string, any>> {
 			// Save to server
 			await settingsService.updateSettings(changedValues as any);
 
-			// Sync original values to match current values BEFORE store reload
+			// Sync original values to match current values
 			// This ensures hasChanges becomes false immediately
 			this.#syncOriginalValues();
-
-			// Update stores - this will trigger external effects but won't cause issues
-			// because our originalValues are already synced
-			const currentSettings = get(settingsStore);
-			const updatedSettings = { ...currentSettings, ...changedValues };
-			settingsStore.set(updatedSettings);
-			await settingsStore.reload();
 
 			// Call success callback
 			if (onSuccess) {
