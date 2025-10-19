@@ -1319,5 +1319,12 @@
 	"events_delete_failed": "Impossible de supprimer l'événement \"{title}\"",
 	"events_delete_success": "L'événement \"{title}\" a été supprimé avec succès",
 	"sidebar_dark_mode": "Sombre",
-	"sidebar_light_mode": "Lumière"
+	"sidebar_light_mode": "Lumière",
+	"glass_effect_title": "Effet de verre (aperçu)",
+	"glass_effect_description": "Activer le design moderne du glassmorphisme avec des effets de flou, de dégradés et d'ambiance",
+	"glass_effect_label": "Interface de Glassmorphisme",
+	"glass_effect_enabled": "Effets de verre activés",
+	"glass_effect_disabled": "Effets de verre désactivés (design classique)",
+	"glass_effect_description_long": "Lorsqu'elle est activée, l'interface utilise des effets de verre givré avec du flou d'arrière-plan et des dégradés subtiles. Lorsqu'elle est désactivée, l'interface utilise des couleurs solides et des ombres traditionnelles pour un design classique. Le design en verre est en avant-première et peut être modifié.",
+	"navigation_glass_effect_label": "Effet de verre"
 }
