@@ -1,0 +1,45 @@
+{
+  "labels": [],
+  "comment": "**Disclaimer** Greptiles Reviews uses AI, make sure to check over its work",
+  "fixWithAI": true,
+  "strictness": 2,
+  "statusCheck": true,
+  "commentTypes": [
+    "syntax",
+    "logic",
+    "style"
+  ],
+  "instructions": "",
+  "disabledLabels": [],
+  "excludeAuthors": [
+    "dependabot[bot]",
+    "blacksmith-sh[bot]",
+    "github-actions[bot]"
+  ],
+  "ignoreKeywords": "chore(translations)",
+  "includeAuthors": [],
+  "summarySection": {
+    "included": true,
+    "collapsible": true,
+    "defaultOpen": false
+  },
+  "excludeBranches": [],
+  "includeBranches": [],
+  "includeKeywords": "",
+  "issuesTableSection": {
+    "included": true,
+    "collapsible": true,
+    "defaultOpen": false
+  },
+  "confidenceScoreSection": {
+    "included": true,
+    "collapsible": true,
+    "defaultOpen": false
+  },
+  "sequenceDiagramSection": {
+    "included": false,
+    "collapsible": false,
+    "defaultOpen": false
+  },
+  "shouldUpdateDescription": true
+}
