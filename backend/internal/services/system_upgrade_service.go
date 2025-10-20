@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
@@ -19,10 +18,10 @@ import (
 )
 
 var (
-	ErrNotRunningInDocker = errors.New("Arcane is not running in a Docker container")
+	ErrNotRunningInDocker = errors.New("arcane is not running in a Docker container")
 	ErrContainerNotFound  = errors.New("could not find Arcane container")
 	ErrUpgradeInProgress  = errors.New("an upgrade is already in progress")
-	ErrDockerSocketAccess = errors.New("Docker socket is not accessible")
+	ErrDockerSocketAccess = errors.New("docker socket is not accessible")
 )
 
 type SystemUpgradeService struct {
@@ -123,10 +122,9 @@ func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.
 	// 6. Stop current container (this will terminate Arcane)
 	// The new container is already running at this point
 	// We do this in a goroutine so the response can be sent first
-	go func() {
+	go func(ctx context.Context, containerID string) {
 		time.Sleep(2 * time.Second)
-		stopCtx := context.Background()
-		dockerClient, err := s.dockerService.CreateConnection(stopCtx)
+		dockerClient, err := s.dockerService.CreateConnection(ctx)
 		if err != nil {
 			slog.Error("Failed to create Docker client for cleanup", "error", err)
 			return
@@ -134,15 +132,15 @@ func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.
 		defer dockerClient.Close()
 
 		timeout := 10
-		if err := dockerClient.ContainerStop(stopCtx, currentContainerId, containertypes.StopOptions{Timeout: &timeout}); err != nil {
+		if err := dockerClient.ContainerStop(ctx, containerID, containertypes.StopOptions{Timeout: &timeout}); err != nil {
 			slog.Warn("Failed to stop old container", "error", err)
 		}
 
 		// Remove old container
-		if err := dockerClient.ContainerRemove(stopCtx, currentContainerId, containertypes.RemoveOptions{}); err != nil {
+		if err := dockerClient.ContainerRemove(ctx, containerID, containertypes.RemoveOptions{}); err != nil {
 			slog.Warn("Failed to remove old container", "error", err)
 		}
-	}()
+	}(ctx, currentContainerId)
 
 	return nil
 }
@@ -150,56 +148,88 @@ func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.
 // getCurrentContainerID detects if we're running in Docker and returns container ID
 func (s *SystemUpgradeService) getCurrentContainerID() (string, error) {
 	// Try reading from /proc/self/cgroup (Linux)
-	data, err := os.ReadFile("/proc/self/cgroup")
-	if err == nil {
-		lines := strings.Split(string(data), "\n")
-		for _, line := range lines {
-			// Look for docker in the cgroup path
-			if strings.Contains(line, "docker") || strings.Contains(line, "containerd") {
-				parts := strings.Split(line, "/")
-				if len(parts) > 0 {
-					id := strings.TrimSpace(parts[len(parts)-1])
-					// Container IDs are typically 64 chars but we accept anything >= 12
-					if len(id) >= 12 {
-						return id, nil
-					}
-				}
-			}
-		}
+	if id, err := s.getContainerIDFromCgroup(); err == nil {
+		return id, nil
 	}
 
 	// Try reading from /proc/self/mountinfo (alternative method)
-	data, err = os.ReadFile("/proc/self/mountinfo")
-	if err == nil {
-		lines := strings.Split(string(data), "\n")
-		for _, line := range lines {
-			if strings.Contains(line, "/docker/containers/") {
-				parts := strings.Split(line, "/docker/containers/")
-				if len(parts) > 1 {
-					idParts := strings.Split(parts[1], "/")
-					if len(idParts) > 0 && len(idParts[0]) >= 12 {
-						return idParts[0], nil
-					}
-				}
-			}
-		}
+	if id, err := s.getContainerIDFromMountinfo(); err == nil {
+		return id, nil
 	}
 
 	// Try hostname (works in many Docker setups)
-	hostname, err := os.Hostname()
-	if err == nil && len(hostname) == 12 || len(hostname) == 64 {
-		// Likely a Docker container ID
-		return hostname, nil
+	if id, err := s.getContainerIDFromHostname(); err == nil {
+		return id, nil
 	}
 
 	return "", ErrNotRunningInDocker
 }
 
+// getContainerIDFromCgroup reads container ID from /proc/self/cgroup
+func (s *SystemUpgradeService) getContainerIDFromCgroup() (string, error) {
+	data, err := os.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "docker") || strings.Contains(line, "containerd") {
+			parts := strings.Split(line, "/")
+			if len(parts) > 0 {
+				id := strings.TrimSpace(parts[len(parts)-1])
+				if len(id) >= 12 {
+					return id, nil
+				}
+			}
+		}
+	}
+
+	return "", errors.New("container ID not found in cgroup")
+}
+
+// getContainerIDFromMountinfo reads container ID from /proc/self/mountinfo
+func (s *SystemUpgradeService) getContainerIDFromMountinfo() (string, error) {
+	data, err := os.ReadFile("/proc/self/mountinfo")
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if strings.Contains(line, "/docker/containers/") {
+			parts := strings.Split(line, "/docker/containers/")
+			if len(parts) > 1 {
+				idParts := strings.Split(parts[1], "/")
+				if len(idParts) > 0 && len(idParts[0]) >= 12 {
+					return idParts[0], nil
+				}
+			}
+		}
+	}
+
+	return "", errors.New("container ID not found in mountinfo")
+}
+
+// getContainerIDFromHostname tries to get container ID from hostname
+func (s *SystemUpgradeService) getContainerIDFromHostname() (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", err
+	}
+
+	if len(hostname) == 12 || len(hostname) == 64 {
+		return hostname, nil
+	}
+
+	return "", errors.New("hostname is not a valid container ID")
+}
+
 // findArcaneContainer finds the container using the ID
-func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containerId string) (types.ContainerJSON, error) {
+func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containerId string) (containertypes.InspectResponse, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
-		return types.ContainerJSON{}, err
+		return containertypes.InspectResponse{}, err
 	}
 	defer dockerClient.Close()
 
@@ -218,7 +248,7 @@ func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containe
 		Filters: filter,
 	})
 	if err != nil {
-		return types.ContainerJSON{}, err
+		return containertypes.InspectResponse{}, err
 	}
 
 	for _, c := range containers {
@@ -230,7 +260,7 @@ func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containe
 	// Try without filter - search all containers
 	allContainers, err := dockerClient.ContainerList(ctx, containertypes.ListOptions{All: true})
 	if err != nil {
-		return types.ContainerJSON{}, err
+		return containertypes.InspectResponse{}, err
 	}
 
 	for _, c := range allContainers {
@@ -239,11 +269,11 @@ func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containe
 		}
 	}
 
-	return types.ContainerJSON{}, ErrContainerNotFound
+	return containertypes.InspectResponse{}, ErrContainerNotFound
 }
 
 // determineImageName extracts image name from container or uses default
-func (s *SystemUpgradeService) determineImageName(container types.ContainerJSON) string {
+func (s *SystemUpgradeService) determineImageName(container containertypes.InspectResponse) string {
 	imageName := container.Config.Image
 
 	// Strip digest if present
@@ -253,7 +283,7 @@ func (s *SystemUpgradeService) determineImageName(container types.ContainerJSON)
 
 	// If no tag is specified, add :latest
 	if !strings.Contains(imageName, ":") {
-		imageName = imageName + ":latest"
+		imageName += ":latest"
 	}
 
 	// Ensure it's an ofkm/arcane image
@@ -294,7 +324,7 @@ func (s *SystemUpgradeService) pullImage(ctx context.Context, imageName string) 
 // recreateContainer creates and starts a new container with the new image
 func (s *SystemUpgradeService) recreateContainer(
 	ctx context.Context,
-	oldContainer types.ContainerJSON,
+	oldContainer containertypes.InspectResponse,
 	newImage string,
 ) (string, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)

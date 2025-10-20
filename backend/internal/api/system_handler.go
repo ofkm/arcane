@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"runtime"
@@ -491,7 +492,7 @@ func (h *SystemHandler) TriggerUpgrade(c *gin.Context) {
 		slog.Error("System upgrade failed", "error", err, "user", currentUser.Username)
 
 		statusCode := http.StatusInternalServerError
-		if err == services.ErrUpgradeInProgress {
+		if errors.Is(err, services.ErrUpgradeInProgress) {
 			statusCode = http.StatusConflict
 		}
 
