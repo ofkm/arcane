@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import SearchIcon from '@lucide/svelte/icons/search';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import DatabaseIcon from '@lucide/svelte/icons/database';
@@ -31,7 +32,7 @@
 		user: UserIcon
 	};
 
-	$effect(() => {
+	onMount(() => {
 		loadCategories();
 	});
 
@@ -57,7 +58,8 @@
 			return;
 		}
 
-		const requestId = ++currentSearchRequest;
+		currentSearchRequest++;
+		const requestId = currentSearchRequest;
 		isSearching = true;
 		showSearchResults = true;
 

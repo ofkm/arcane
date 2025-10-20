@@ -12,11 +12,15 @@ import (
 )
 
 type SettingsHandler struct {
-	settingsService *services.SettingsService
+	settingsService       *services.SettingsService
+	settingsSearchService *services.SettingsSearchService
 }
 
-func NewSettingsHandler(group *gin.RouterGroup, settingsService *services.SettingsService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &SettingsHandler{settingsService: settingsService}
+func NewSettingsHandler(group *gin.RouterGroup, settingsService *services.SettingsService, settingsSearchService *services.SettingsSearchService, authMiddleware *middleware.AuthMiddleware) {
+	handler := &SettingsHandler{
+		settingsService:       settingsService,
+		settingsSearchService: settingsSearchService,
+	}
 
 	apiGroup := group.Group("/environments/:id/settings")
 
@@ -38,15 +42,13 @@ func (h *SettingsHandler) Search(c *gin.Context) {
 		return
 	}
 
-	searchSvc := services.NewSettingsSearchService()
-	results := searchSvc.Search(req.Query)
+	results := h.settingsSearchService.Search(req.Query)
 	c.JSON(http.StatusOK, results)
 }
 
 // GetCategories returns all available settings categories with metadata
 func (h *SettingsHandler) GetCategories(c *gin.Context) {
-	searchSvc := services.NewSettingsSearchService()
-	categories := searchSvc.GetSettingsCategories()
+	categories := h.settingsSearchService.GetSettingsCategories()
 	c.JSON(http.StatusOK, categories)
 }
 
