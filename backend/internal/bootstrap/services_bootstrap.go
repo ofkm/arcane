@@ -18,6 +18,7 @@ type Services struct {
 	Environment       *services.EnvironmentService
 	Settings          *services.SettingsService
 	SettingsSearch    *services.SettingsSearchService
+	CustomizeSearch   *services.CustomizeSearchService
 	Container         *services.ContainerService
 	Image             *services.ImageService
 	Volume            *services.VolumeService
@@ -43,6 +44,7 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 		return nil, nil, fmt.Errorf("failed to settings service: %w", err)
 	}
 	svcs.SettingsSearch = services.NewSettingsSearchService()
+	svcs.CustomizeSearch = services.NewCustomizeSearchService()
 	svcs.AppImages = services.NewApplicationImagesService(resources.FS, svcs.Settings)
 	dockerClient := services.NewDockerClientService(db, cfg)
 	svcs.Docker = dockerClient
