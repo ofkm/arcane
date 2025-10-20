@@ -50,7 +50,6 @@ func (s *SettingsSearchService) buildCategoriesFromModel() []dto.SettingsCategor
 		"security":   {ID: "security", Title: "Security", Description: "Manage authentication and security settings", Icon: "shield", URL: "/settings/security", Keywords: []string{"security", "safety", "protection"}},
 		"navigation": {ID: "navigation", Title: "Navigation", Description: "Customize navigation and interface behavior", Icon: "navigation", URL: "/settings/navigation", Keywords: []string{"navigation", "nav", "menu", "bar"}},
 		"users":      {ID: "users", Title: "Users", Description: "Manage users and access control", Icon: "user", URL: "/settings/users", Keywords: []string{"users", "accounts", "admin", "roles"}},
-		"internal":   {ID: "internal", Title: "Internal", Description: "Internal settings", Icon: "settings", URL: "/settings/internal", Keywords: []string{"internal"}},
 	}
 
 	// map category id -> list of settings
@@ -102,6 +101,10 @@ func (s *SettingsSearchService) buildCategoriesFromModel() []dto.SettingsCategor
 	// Build result slice in deterministic order
 	ids := make([]string, 0, len(categories))
 	for id := range categories {
+		// Skip internal category - should not be shown in UI
+		if id == "internal" {
+			continue
+		}
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
