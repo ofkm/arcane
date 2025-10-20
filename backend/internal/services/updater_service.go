@@ -520,13 +520,8 @@ func (s *UpdaterService) GetHistory(ctx context.Context, limit int) ([]models.Au
 
 //nolint:gocognit
 func (s *UpdaterService) IsWithinUpdateWindow(ctx context.Context, project *models.Project) (bool, error) {
-	globalSettings, err := s.settingsService.GetSettings(ctx)
-	if err != nil {
-		return false, fmt.Errorf("failed to load global settings: %w", err)
-	}
-
-	// Determine effective schedule enabled setting
-	scheduleEnabled := globalSettings.UpdateScheduleEnabled.IsTrue()
+	// Determine effective schedule enabled setting (project override or global)
+	scheduleEnabled := s.settingsService.GetBoolSetting(ctx, "updateScheduleEnabled", false)
 	if project != nil && project.UpdateScheduleEnabled != nil {
 		scheduleEnabled = *project.UpdateScheduleEnabled
 	}
@@ -535,12 +530,15 @@ func (s *UpdaterService) IsWithinUpdateWindow(ctx context.Context, project *mode
 		return true, nil
 	}
 
-	// Determine effective schedule windows
+	// Determine effective schedule windows (project override or global)
 	var windows []models.UpdateScheduleWindow
 	if project != nil && project.UpdateScheduleWindows != nil && *project.UpdateScheduleWindows != "" {
 		windows, _ = s.settingsService.ParseUpdateScheduleWindows(*project.UpdateScheduleWindows)
-	} else if globalSettings.UpdateScheduleWindows.Value != "" {
-		windows, _ = s.settingsService.ParseUpdateScheduleWindows(globalSettings.UpdateScheduleWindows.Value)
+	} else {
+		windowsJSON := s.settingsService.GetStringSetting(ctx, "updateScheduleWindows", "")
+		if windowsJSON != "" {
+			windows, _ = s.settingsService.ParseUpdateScheduleWindows(windowsJSON)
+		}
 	}
 
 	if len(windows) == 0 {
@@ -589,13 +587,7 @@ func (s *UpdaterService) IsWithinUpdateWindow(ctx context.Context, project *mode
 
 //nolint:gocognit
 func (s *UpdaterService) GetNextUpdateWindow(ctx context.Context, project *models.Project) (*time.Time, error) {
-	globalSettings, err := s.settingsService.GetSettings(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load global settings: %w", err)
-	}
-
-	// Determine effective schedule enabled setting
-	scheduleEnabled := globalSettings.UpdateScheduleEnabled.IsTrue()
+	scheduleEnabled := s.settingsService.GetBoolSetting(ctx, "updateScheduleEnabled", false)
 	if project != nil && project.UpdateScheduleEnabled != nil {
 		scheduleEnabled = *project.UpdateScheduleEnabled
 	}
@@ -604,12 +596,15 @@ func (s *UpdaterService) GetNextUpdateWindow(ctx context.Context, project *model
 		return nil, nil
 	}
 
-	// Determine effective schedule windows
+	// Determine effective schedule windows (project override or global)
 	var windows []models.UpdateScheduleWindow
 	if project != nil && project.UpdateScheduleWindows != nil && *project.UpdateScheduleWindows != "" {
 		windows, _ = s.settingsService.ParseUpdateScheduleWindows(*project.UpdateScheduleWindows)
-	} else if globalSettings.UpdateScheduleWindows.Value != "" {
-		windows, _ = s.settingsService.ParseUpdateScheduleWindows(globalSettings.UpdateScheduleWindows.Value)
+	} else {
+		windowsJSON := s.settingsService.GetStringSetting(ctx, "updateScheduleWindows", "")
+		if windowsJSON != "" {
+			windows, _ = s.settingsService.ParseUpdateScheduleWindows(windowsJSON)
+		}
 	}
 
 	if len(windows) == 0 {

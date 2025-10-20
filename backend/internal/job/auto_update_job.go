@@ -148,13 +148,7 @@ func (j *AutoUpdateJob) executeProjectSpecificUpdates(ctx context.Context) error
 }
 
 func (j *AutoUpdateJob) shouldUpdateProject(ctx context.Context, project *models.Project) (bool, error) {
-	globalSettings, err := j.settingsService.GetSettings(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	// Determine effective auto-update setting
-	autoUpdate := globalSettings.AutoUpdate.IsTrue()
+	autoUpdate := j.settingsService.GetBoolSetting(ctx, "autoUpdate", false)
 	if project.AutoUpdate != nil {
 		autoUpdate = *project.AutoUpdate
 	}
@@ -164,8 +158,7 @@ func (j *AutoUpdateJob) shouldUpdateProject(ctx context.Context, project *models
 		return false, nil
 	}
 
-	// Determine effective schedule enabled setting
-	scheduleEnabled := globalSettings.UpdateScheduleEnabled.IsTrue()
+	scheduleEnabled := j.settingsService.GetBoolSetting(ctx, "updateScheduleEnabled", false)
 	if project.UpdateScheduleEnabled != nil {
 		scheduleEnabled = *project.UpdateScheduleEnabled
 	}
