@@ -78,7 +78,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewAuthHandler(apiGroup, appServices.User, appServices.Auth, appServices.Oidc, authMiddleware)
 	api.NewEventHandler(apiGroup, appServices.Event, authMiddleware)
 	api.NewOidcHandler(apiGroup, appServices.Auth, appServices.Oidc, cfg)
-	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Settings, authMiddleware, cfg)
+	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Settings, appServices.SystemUpgrade, authMiddleware, cfg)
 	api.NewContainerRegistryHandler(apiGroup, appServices.ContainerRegistry, authMiddleware)
 	api.NewTemplateHandler(apiGroup, appServices.Template, authMiddleware)
 
@@ -102,7 +102,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewImageUpdateHandler(apiGroup, appServices.ImageUpdate, authMiddleware)
 	api.NewNetworkHandler(apiGroup, appServices.Docker, appServices.Network, authMiddleware)
 	api.NewProjectHandler(apiGroup, appServices.Project, authMiddleware, cfg)
-	api.NewSystemHandler(apiGroup, appServices.Docker, appServices.System, authMiddleware, cfg)
+	api.NewSystemHandler(apiGroup, appServices.Docker, appServices.System, appServices.SystemUpgrade, authMiddleware, cfg)
 	api.NewUpdaterHandler(apiGroup, appServices.Updater, authMiddleware)
 	api.NewVolumeHandler(apiGroup, appServices.Docker, appServices.Volume, authMiddleware)
 	api.NewSettingsHandler(apiGroup, appServices.Settings, authMiddleware)

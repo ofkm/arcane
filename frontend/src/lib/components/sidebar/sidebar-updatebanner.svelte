@@ -3,27 +3,139 @@
 	import * as Separator from '$lib/components/ui/separator/index.js';
 	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
+	import DownloadIcon from '@lucide/svelte/icons/download';
 	import { useSidebar } from '$lib/components/ui/sidebar/index.js';
 	import type { AppVersionInformation } from '$lib/types/application-configuration';
+	import type { User } from '$lib/types/user.type';
 	import { m } from '$lib/paraglide/messages';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import systemUpgradeService from '$lib/services/api/system-upgrade-service';
+	import UpgradeConfirmationDialog from '$lib/components/dialogs/upgrade-confirmation-dialog.svelte';
+	import { toast } from 'svelte-sonner';
+	import { onMount } from 'svelte';
 
 	let {
 		isCollapsed,
 		versionInformation,
-		updateAvailable = false
+		updateAvailable = false,
+		debug = false,
+		user
 	}: {
 		isCollapsed: boolean;
 		versionInformation?: AppVersionInformation;
 		updateAvailable?: boolean;
+		debug?: boolean;
+		user?: User | null;
 	} = $props();
 
-	console.log(versionInformation);
-
 	const sidebar = useSidebar();
+
+	let canUpgrade = $state(false);
+	let checkingUpgrade = $state(false);
+	let upgrading = $state(false);
+	let showConfirmDialog = $state(false);
+
+	const isAdmin = $derived(!!user?.roles?.includes('admin'));
+	const shouldShowUpgrade = $derived((canUpgrade && isAdmin) || debug);
+	const upgradeButtonText = $derived(
+		upgrading
+			? m.upgrade_in_progress()
+			: checkingUpgrade
+				? m.upgrade_checking()
+				: m.upgrade_to_version({ version: versionInformation?.newestVersion ?? '' })
+	);
+
+	// Debug mode: force show upgrade button
+	$effect(() => {
+		if (debug) {
+			canUpgrade = true;
+		}
+	});
+
+	// Check if self-upgrade is available
+	onMount(() => {
+		if (updateAvailable && isAdmin && !debug) {
+			checkUpgradeAvailability();
+		}
+	});
+
+	async function checkUpgradeAvailability() {
+		if (checkingUpgrade) return;
+
+		checkingUpgrade = true;
+		try {
+			const result = await systemUpgradeService.checkUpgradeAvailable();
+			canUpgrade = result.canUpgrade && !result.error;
+		} catch (error) {
+			canUpgrade = false;
+		} finally {
+			checkingUpgrade = false;
+		}
+	}
+
+	function handleUpgradeClick() {
+		showConfirmDialog = true;
+	}
+
+	async function handleConfirmUpgrade() {
+		upgrading = true;
+		try {
+			const result = await systemUpgradeService.triggerUpgrade();
+			toast.success(m.upgrade_success());
+
+			let countdown = 5;
+			const toastId = toast.info(`Reloading in ${countdown} seconds...`, {
+				duration: 5000
+			});
+
+			const interval = setInterval(() => {
+				countdown--;
+				if (countdown > 0) {
+					toast.info(`Reloading in ${countdown} seconds...`, { id: toastId });
+				}
+			}, 1000);
+
+			setTimeout(() => {
+				clearInterval(interval);
+				window.location.reload();
+			}, 5000);
+		} catch (error: any) {
+			const errorMessage = error?.response?.data?.error || error?.message || 'Unknown error';
+			toast.error(m.upgrade_failed({ error: errorMessage }));
+			upgrading = false;
+		}
+	}
 </script>
 
-{#if updateAvailable}
+{#snippet updateInfo()}
+	<div class="flex flex-col gap-1">
+		<span class="text-sm font-semibold">{m.sidebar_update_available()}</span>
+		<span class="text-xs text-blue-500/80">
+			{m.sidebar_version({ version: versionInformation?.newestVersion ?? m.common_unknown() })}
+		</span>
+	</div>
+{/snippet}
+
+{#snippet upgradeButton()}
+	<Button
+		variant="default"
+		size="sm"
+		class="bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:ring-primary/40 h-9 w-full gap-2 rounded-xl shadow-sm transition-colors focus-visible:ring-2 focus-visible:outline-none"
+		onclick={handleUpgradeClick}
+		disabled={upgrading || checkingUpgrade}
+	>
+		<DownloadIcon class="size-4" />
+		{upgradeButtonText}
+	</Button>
+{/snippet}
+
+<UpgradeConfirmationDialog
+	bind:open={showConfirmDialog}
+	version={versionInformation?.newestVersion ?? ''}
+	onConfirm={handleConfirmUpgrade}
+/>
+
+{#if updateAvailable || debug}
 	<div class={cn('pb-2', isCollapsed ? 'px-1' : 'px-4')}>
 		<Separator.Root class="mb-3 opacity-30" />
 
@@ -31,24 +143,24 @@
 			<div
 				class="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/10 to-blue-600/5 p-3 transition-all hover:scale-[1.02] hover:from-blue-500/15 hover:to-blue-600/10 hover:shadow-md"
 			>
-				<Button
-					variant="link"
-					href={versionInformation?.releaseUrl}
-					target="_blank"
-					rel="noopener noreferrer"
-					class="group flex items-center justify-between text-blue-600 transition-colors duration-200 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-				>
-					<div class="flex flex-col gap-1">
-						<span class="text-sm font-semibold">{m.sidebar_update_available()}</span>
-						<span class="text-xs text-blue-500/80"
-							>{m.sidebar_version({ version: versionInformation?.newestVersion ?? m.common_unknown() })}</span
-						>
-					</div>
-					<ExternalLink size={16} class="transition-transform duration-200 group-hover:scale-110" />
-				</Button>
+				<div class="flex flex-col gap-2">
+					<a
+						href={versionInformation?.releaseUrl}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="group flex items-center justify-between text-blue-600 transition-colors duration-200 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+					>
+						{@render updateInfo()}
+						<ExternalLink size={16} class="transition-transform duration-200 group-hover:scale-110" />
+					</a>
+
+					{#if shouldShowUpgrade}
+						{@render upgradeButton()}
+					{/if}
+				</div>
 			</div>
 		{:else}
-			<div class="flex justify-center">
+			<div class="flex flex-col items-center gap-2">
 				<Tooltip.Root>
 					<Tooltip.Trigger>
 						{#snippet child({ props })}
@@ -68,9 +180,31 @@
 						{/snippet}
 					</Tooltip.Trigger>
 					<Tooltip.Content side="right" align="center" hidden={sidebar.state !== 'collapsed' || sidebar.isHovered}>
-						{m.sidebar_update_available_tooltip({ version: versionInformation?.newestVersion ?? m.common_unknown() })}
+						{m.sidebar_update_available_tooltip({
+							version: versionInformation?.newestVersion ?? m.common_unknown()
+						})}
 					</Tooltip.Content>
 				</Tooltip.Root>
+
+				{#if shouldShowUpgrade}
+					<Tooltip.Root>
+						<Tooltip.Trigger>
+							{#snippet child({ props })}
+								<button
+									onclick={handleUpgradeClick}
+									disabled={upgrading || checkingUpgrade}
+									class="border-primary/20 bg-primary/15 text-primary hover:bg-primary/25 focus-visible:ring-primary/40 dark:text-primary flex size-8 items-center justify-center rounded-lg border transition-all hover:scale-[1.02] hover:shadow-md focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+									{...props}
+								>
+									<DownloadIcon size={14} />
+								</button>
+							{/snippet}
+						</Tooltip.Trigger>
+						<Tooltip.Content side="right" align="center" hidden={sidebar.state !== 'collapsed' || sidebar.isHovered}>
+							{upgradeButtonText}
+						</Tooltip.Content>
+					</Tooltip.Root>
+				{/if}
 			</div>
 		{/if}
 	</div>

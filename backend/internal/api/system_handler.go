@@ -28,6 +28,7 @@ import (
 type SystemHandler struct {
 	dockerService     *services.DockerClientService
 	systemService     *services.SystemService
+	upgradeService    *services.SystemUpgradeService
 	sysWsUpgrader     websocket.Upgrader
 	activeConnections sync.Map
 	cpuCache          struct {
@@ -42,10 +43,11 @@ type SystemHandler struct {
 	}
 }
 
-func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, systemService *services.SystemService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
+func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, systemService *services.SystemService, upgradeService *services.SystemUpgradeService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
 	handler := &SystemHandler{
-		dockerService: dockerService,
-		systemService: systemService,
+		dockerService:  dockerService,
+		systemService:  systemService,
+		upgradeService: upgradeService,
 		sysWsUpgrader: websocket.Upgrader{
 			CheckOrigin: httputil.ValidateWebSocketOrigin(cfg.AppUrl),
 		},
@@ -61,7 +63,6 @@ func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClie
 		apiGroup.POST("/containers/start-stopped", handler.StartAllStoppedContainers)
 		apiGroup.POST("/containers/stop-all", handler.StopAllContainers)
 		apiGroup.POST("/convert", handler.ConvertDockerRun)
-
 	}
 }
 

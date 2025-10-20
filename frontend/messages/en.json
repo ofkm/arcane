@@ -1367,5 +1367,23 @@
 	"glass_effect_enabled": "Glass effects enabled",
 	"glass_effect_disabled": "Glass effects disabled (classic design)",
 	"glass_effect_description_long": "When enabled, the interface uses frosted glass effects with backdrop blur and subtle gradients. When disabled, the interface uses solid colors and traditional shadows for a classic design. The glass design is in preview, and is subject to change.",
-	"navigation_glass_effect_label": "Glass Effect"
+	"navigation_glass_effect_label": "Glass Effect",
+
+	"_comment_system_upgrade": "=== SYSTEM UPGRADE ===",
+	"upgrade_available": "Update Available",
+	"upgrade_to_version": "Update to {version}",
+	"upgrade_confirm_title": "Confirm System Upgrade",
+	"upgrade_confirm_description": "You are about to upgrade Arcane to version {version}.",
+	"upgrade_confirm_what_happens": "This upgrade will:",
+	"upgrade_step_pull": "Pull the latest Arcane Docker image",
+	"upgrade_step_stop": "Stop the current Arcane container",
+	"upgrade_step_start": "Start a new container with the updated image",
+	"upgrade_step_preserve": "Preserve all your data and settings",
+	"upgrade_warning_interruption": "This will cause a brief service interruption (~30 seconds)",
+	"upgrade_now": "Upgrade Now",
+	"upgrade_in_progress": "Upgrading...",
+	"upgrade_success": "Upgrade initiated successfully. Arcane will restart shortly.",
+	"upgrade_failed": "Failed to initiate upgrade: {error}",
+	"upgrade_checking": "Checking...",
+	"upgrade_not_available": "Running in latest version"
 }
