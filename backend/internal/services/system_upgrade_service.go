@@ -373,23 +373,22 @@ func (s *SystemUpgradeService) recreateContainer(
 		nil,
 		newName,
 	)
-	if err != nil {
-		// If name conflict, try with a timestamp suffix
-		if strings.Contains(err.Error(), "already in use") {
-			newName = fmt.Sprintf("%s-new", oldName)
-			resp, err = dockerClient.ContainerCreate(
-				ctx,
-				&config,
-				hostConfig,
-				networkConfig,
-				nil,
-				newName,
-			)
-		}
 
-		if err != nil {
-			return "", fmt.Errorf("create container: %w", err)
-		}
+	// If name conflict, try with a suffix
+	if err != nil && strings.Contains(err.Error(), "already in use") {
+		newName = fmt.Sprintf("%s-new", oldName)
+		resp, err = dockerClient.ContainerCreate(
+			ctx,
+			&config,
+			hostConfig,
+			networkConfig,
+			nil,
+			newName,
+		)
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("create container: %w", err)
 	}
 
 	slog.Info("New container created", "id", resp.ID, "name", newName)

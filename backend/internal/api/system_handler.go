@@ -461,20 +461,21 @@ func (h *SystemHandler) ConvertDockerRun(c *gin.Context) {
 func (h *SystemHandler) CheckUpgradeAvailable(c *gin.Context) {
 	canUpgrade, err := h.upgradeService.CanUpgrade(c.Request.Context())
 
-	response := gin.H{
-		"canUpgrade": canUpgrade && err == nil,
-	}
-
 	if err != nil {
-		response["error"] = true
-		response["message"] = err.Error()
+		c.JSON(http.StatusOK, gin.H{
+			"canUpgrade": false,
+			"error":      true,
+			"message":    err.Error(),
+		})
 		slog.Debug("System upgrade check failed", "error", err)
-	} else {
-		response["error"] = false
-		response["message"] = "System can be upgraded"
+		return
 	}
 
-	c.JSON(http.StatusOK, response)
+	c.JSON(http.StatusOK, gin.H{
+		"canUpgrade": canUpgrade,
+		"error":      false,
+		"message":    "System can be upgraded",
+	})
 }
 
 // TriggerUpgrade triggers a system self-upgrade
