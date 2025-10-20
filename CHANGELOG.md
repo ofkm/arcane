@@ -1,3 +1,64 @@
+## v1.6.0
+
+### New features
+
+* redeisgned templates pages ([#648](https://github.com/ofkm/arcane/pull/648) by @cabaucom376)
+* show project status reason ([#708](https://github.com/ofkm/arcane/pull/708) by @kmendell)
+* configurable hover and pinned states for sidebar ([#720](https://github.com/ofkm/arcane/pull/720) by @kmendell)
+* add glass effect ui preview (disabled by default) ([#733](https://github.com/ofkm/arcane/pull/733) by @kmendell)
+
+### Bug fixes
+
+* mobile navigation glitches and scrolling issues ([#709](https://github.com/ofkm/arcane/pull/709) by @kmendell)
+* show users full name instead of username in mobile user card([0086f31](https://github.com/ofkm/arcane/commit/0086f314fecacd4f37794992f42d299b85b46502) by @kmendell)
+* display toast at the top on mobile and tablet devices([80decef](https://github.com/ofkm/arcane/commit/80decefdf27621a8373a0b009da1cbed0736bc8b) by @kmendell)
+* save button showing behind mobile nav bar([574e22c](https://github.com/ofkm/arcane/commit/574e22c6ec0ab2c6f6eb2df4cb8d2fff34df6ba4) by @kmendell)
+* environment hostname text showing under select input on mobile sheet([ac0f1fa](https://github.com/ofkm/arcane/commit/ac0f1fa671a045aecd4792825d44b6af7eda16ff) by @kmendell)
+* card headers not reactive to mode-watchers theme([6aad161](https://github.com/ofkm/arcane/commit/6aad16113316fbcea28c14785074f620fe363ae9) by @kmendell)
+* display full image sha256 on image details page([2f0bab5](https://github.com/ofkm/arcane/commit/2f0bab53a9089f23ed00b4975109231e1b825f3c) by @kmendell)
+* show customization sub routes in mobile navigation([07713ce](https://github.com/ofkm/arcane/commit/07713ced938195def6852ac8dc35d8f9d1b5f009) by @kmendell)
+* mobile nav sheet not working on small desktop screens([14bd338](https://github.com/ofkm/arcane/commit/14bd338107b2e8136599599116fe88cd0fee015d) by @kmendell)
+* velocity to open nav sheet in mobile view([3d436a1](https://github.com/ofkm/arcane/commit/3d436a13ff78f48d9922affdfd4d7e9d0e6deda6) by @kmendell)
+* sub nav items now showing in hover mode([c60e954](https://github.com/ofkm/arcane/commit/c60e954a7ffd92319bd028111fccc3bd035c34d9) by @kmendell)
+* include version in jwt for auth sessions after updaing the server ([#724](https://github.com/ofkm/arcane/pull/724) by @kmendell)
+* update file permissions to 0644 for project and templatye file creations([ca66f44](https://github.com/ofkm/arcane/commit/ca66f44df33f8f5520776371b3c2303f4b9ff42e) by @kmendell)
+* handle Docker socket GID conflict in entrypoint  ([#735](https://github.com/ofkm/arcane/pull/735) by @jae-jae)
+* hidden table coumns data still showing even if the column is hidden([aced2a6](https://github.com/ofkm/arcane/commit/aced2a6eefaaba89525b8cbfd180e826fac92891) by @kmendell)
+* update icon import ([#737](https://github.com/ofkm/arcane/pull/737) by @cabaucom376)
+* z-index of search icons on settings and customize pages([87af81c](https://github.com/ofkm/arcane/commit/87af81c68475c84acdfe46c62ae97e34370320a5) by @kmendell)
+* sidebar items not expanding in non hover mode([515d442](https://github.com/ofkm/arcane/commit/515d4420ff3ef5e231b0175b9f388165a7929295) by @kmendell)
+
+### Other
+
+* add Deutsch files([31dfa46](https://github.com/ofkm/arcane/commit/31dfa46d96e254f3bc72d48e7b56d24da4fc20c4) by @kmendell)
+* bump github.com/go-co-op/gocron/v2 from 2.16.6 to 2.17.0 in /backend in the backend-dependencies group ([#701](https://github.com/ofkm/arcane/pull/701) by @dependabot[bot])
+* bump the prod-dependencies group with 3 updates ([#699](https://github.com/ofkm/arcane/pull/699) by @dependabot[bot])
+* bump @types/node from 24.7.1 to 24.7.2 in the dev-dependencies group ([#700](https://github.com/ofkm/arcane/pull/700) by @dependabot[bot])
+* restructure scripts directory([9cd3333](https://github.com/ofkm/arcane/commit/9cd3333f2744ef7f391a31f7049e8980e4ff0617) by @kmendell)
+* service worker caching tweaks([86057f1](https://github.com/ofkm/arcane/commit/86057f1c96976e8237122c2734c5451a360b9b4e) by @kmendell)
+* update runner tags([c04af97](https://github.com/ofkm/arcane/commit/c04af97593922143035586f499df9524d00d1a9b) by @kmendell)
+* upgrade deps([614130a](https://github.com/ofkm/arcane/commit/614130aace9470669acc4c4af5da9f6a0099a225) by @kmendell)
+* remove docker build cloud from ci/cd([3063dc1](https://github.com/ofkm/arcane/commit/3063dc161fa9a72f31cdbad2a7064cf0cdeb3b32) by @kmendell)
+* pin runed to 0.34.0([2946ad7](https://github.com/ofkm/arcane/commit/2946ad79d0a40596be020cef2c4b431778ebb982) by @kmendell)
+* fix linter([d6290b6](https://github.com/ofkm/arcane/commit/d6290b67823c29713ab3b2a6674f5c202b98f41c) by @kmendell)
+* fix after last merge([4a73728](https://github.com/ofkm/arcane/commit/4a73728f12eb8410f3547a93b6cc58491fb4f275) by @kmendell)
+* bump the dev-dependencies group with 2 updates ([#716](https://github.com/ofkm/arcane/pull/716) by @dependabot[bot])
+* bump the prod-dependencies group across 1 directory with 3 updates ([#717](https://github.com/ofkm/arcane/pull/717) by @dependabot[bot])
+* pin setup-node to latest commit hash of v5([4851729](https://github.com/ofkm/arcane/commit/48517296c3650059a0e5d705e7a0235541b5f652) by @kmendell)
+* bump sveltekit-superforms from 2.27.3 to 2.27.4 in the npm_and_yarn group across 1 directory ([#719](https://github.com/ofkm/arcane/pull/719) by @dependabot[bot])
+* consolidate build next workflows using matrix([5e4229b](https://github.com/ofkm/arcane/commit/5e4229b39bce53e1cb452505c4d80e7eb3fa8270) by @kmendell)
+* build next images one after another([d06ec48](https://github.com/ofkm/arcane/commit/d06ec48070012393f59f547b1d14d28008f334b0) by @kmendell)
+* use ubuntu-latest for workflow builds([e2e62b6](https://github.com/ofkm/arcane/commit/e2e62b6048ca75be27f9cfe1ebe9ba8abda59ec7) by @kmendell)
+* unify project, env, and template file writing logic ([#725](https://github.com/ofkm/arcane/pull/725) by @kmendell)
+* bump the dev-dependencies group with 2 updates ([#728](https://github.com/ofkm/arcane/pull/728) by @dependabot[bot])
+* bump the prod-dependencies group with 5 updates ([#727](https://github.com/ofkm/arcane/pull/727) by @dependabot[bot])
+* replace custom sheet with drawer component ([#726](https://github.com/ofkm/arcane/pull/726) by @kmendell)
+* tweak dockerfile([e640439](https://github.com/ofkm/arcane/commit/e6404392c811bbf7dadd2c773f7f184c011c5360) by @kmendell)
+
+
+
+**Full Changelog**: https://github.com/ofkm/arcane/compare/v1.5.2...v1.6.0
+
 ## v1.5.2
 
 ### Bug fixes
