@@ -206,6 +206,7 @@
 								id="pollingEnabled"
 								label={m.docker_enable_polling_label()}
 								description={m.docker_enable_polling_description()}
+								error={$formInputs.pollingEnabled.error}
 								bind:checked={$formInputs.pollingEnabled.value}
 							/>
 
@@ -223,6 +224,7 @@
 									{#if pollingIntervalMode === 'custom'}
 										<TextInputWithLabel
 											bind:value={$formInputs.pollingInterval.value}
+											error={$formInputs.pollingInterval.error}
 											label={m.custom_polling_interval()}
 											placeholder={m.docker_polling_interval_placeholder()}
 											helpText={m.docker_polling_interval_description()}
@@ -257,6 +259,7 @@
 									id="autoUpdateSwitch"
 									label={m.docker_auto_update_label()}
 									description={m.docker_auto_update_description()}
+									error={$formInputs.autoUpdate.error}
 									bind:checked={$formInputs.autoUpdate.value}
 								/>
 
@@ -264,6 +267,7 @@
 									<div class="border-primary/20 border-l-2 pl-3">
 										<TextInputWithLabel
 											bind:value={$formInputs.autoUpdateInterval.value}
+											error={$formInputs.autoUpdateInterval.error}
 											label={m.docker_auto_update_interval_label()}
 											placeholder={m.docker_auto_update_interval_placeholder()}
 											helpText={m.docker_auto_update_interval_description()}
@@ -288,6 +292,7 @@
 							id="dockerPruneMode"
 							name="pruneMode"
 							bind:value={$formInputs.dockerPruneMode.value}
+							error={$formInputs.dockerPruneMode.error}
 							label={m.docker_prune_action_label()}
 							description={pruneModeDescription}
 							placeholder={m.docker_prune_placeholder()}
@@ -323,6 +328,7 @@
 								<div class="border-primary/20 border-l-2 pl-3">
 									<TextInputWithLabel
 										bind:value={$formInputs.defaultShell.value}
+										error={$formInputs.defaultShell.error}
 										label={m.custom()}
 										placeholder={m.docker_shell_custom_path_placeholder()}
 										helpText={m.docker_shell_custom_path_help()}
