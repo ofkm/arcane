@@ -4,38 +4,33 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
-type CustomizeSearchService struct{}
+type CustomizeSearchService struct {
+	categories []dto.CustomizeCategory
+	once       sync.Once
+}
 
 func NewCustomizeSearchService() *CustomizeSearchService {
-	return &CustomizeSearchService{}
+	s := &CustomizeSearchService{}
+	s.initCategories()
+	return s
+}
+
+func (s *CustomizeSearchService) initCategories() {
+	s.once.Do(func() {
+		s.categories = s.buildCategoriesFromModel()
+	})
 }
 
 // GetCustomizeCategories returns all available customization categories with their metadata
 func (s *CustomizeSearchService) GetCustomizeCategories() []dto.CustomizeCategory {
-	return s.buildCategoriesFromModel()
-}
-
-// parseMetaTag parses a `meta` tag value formatted as `k=v;other=val;...`
-func parseCustomizeMetaTag(tag string) map[string]string {
-	res := map[string]string{}
-	if tag == "" {
-		return res
-	}
-	parts := strings.Split(tag, ";")
-	for _, p := range parts {
-		if p == "" {
-			continue
-		}
-		if kv := strings.SplitN(p, "=", 2); len(kv) == 2 {
-			res[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
-		}
-	}
-	return res
+	return s.categories
 }
 
 func (s *CustomizeSearchService) buildCategoriesFromModel() []dto.CustomizeCategory {
@@ -66,7 +61,7 @@ func (s *CustomizeSearchService) buildCategoriesFromModel() []dto.CustomizeCateg
 			continue
 		}
 
-		meta := parseCustomizeMetaTag(field.Tag.Get("meta"))
+		meta := utils.ParseMetaTag(field.Tag.Get("meta"))
 		label := meta["label"]
 		if label == "" {
 			label = key
@@ -76,14 +71,7 @@ func (s *CustomizeSearchService) buildCategoriesFromModel() []dto.CustomizeCateg
 			typ = "text"
 		}
 		desc := meta["description"]
-		keywords := []string{}
-		if k := strings.TrimSpace(meta["keywords"]); k != "" {
-			for _, kk := range strings.Split(k, ",") {
-				if t := strings.TrimSpace(kk); t != "" {
-					keywords = append(keywords, t)
-				}
-			}
-		}
+		keywords := utils.ParseKeywords(meta["keywords"])
 		categoryID := meta["category"]
 		if categoryID == "" {
 			categoryID = "defaults"

@@ -4,42 +4,36 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/ofkm/arcane-backend/internal/utils"
 )
 
-type SettingsSearchService struct{}
+type SettingsSearchService struct {
+	categories []dto.SettingsCategory
+	once       sync.Once
+}
 
 func NewSettingsSearchService() *SettingsSearchService {
-	return &SettingsSearchService{}
+	s := &SettingsSearchService{}
+	s.initCategories()
+	return s
+}
+
+func (s *SettingsSearchService) initCategories() {
+	s.once.Do(func() {
+		s.categories = s.buildCategoriesFromModel()
+	})
 }
 
 // GetSettingsCategories returns all available settings categories with their metadata
 func (s *SettingsSearchService) GetSettingsCategories() []dto.SettingsCategory {
-	// Build categories from the models.Settings struct via reflection using `meta` tags.
-	return s.buildCategoriesFromModel()
-}
-
-// parseMetaTag parses a `meta` tag value formatted as `k=v;other=val;...`
-func parseMetaTag(tag string) map[string]string {
-	res := map[string]string{}
-	if tag == "" {
-		return res
-	}
-	parts := strings.Split(tag, ";")
-	for _, p := range parts {
-		if p == "" {
-			continue
-		}
-		if kv := strings.SplitN(p, "=", 2); len(kv) == 2 {
-			res[strings.TrimSpace(kv[0])] = strings.TrimSpace(kv[1])
-		}
-	}
-	return res
+	return s.categories
 }
 
 func (s *SettingsSearchService) buildCategoriesFromModel() []dto.SettingsCategory {
@@ -64,7 +58,7 @@ func (s *SettingsSearchService) buildCategoriesFromModel() []dto.SettingsCategor
 			continue
 		}
 
-		meta := parseMetaTag(field.Tag.Get("meta"))
+		meta := utils.ParseMetaTag(field.Tag.Get("meta"))
 		label := meta["label"]
 		if label == "" {
 			label = key
@@ -74,14 +68,7 @@ func (s *SettingsSearchService) buildCategoriesFromModel() []dto.SettingsCategor
 			typ = "text"
 		}
 		desc := meta["description"]
-		keywords := []string{}
-		if k := strings.TrimSpace(meta["keywords"]); k != "" {
-			for _, kk := range strings.Split(k, ",") {
-				if t := strings.TrimSpace(kk); t != "" {
-					keywords = append(keywords, t)
-				}
-			}
-		}
+		keywords := utils.ParseKeywords(meta["keywords"])
 		categoryID := meta["category"]
 		if categoryID == "" {
 			categoryID = "general"
