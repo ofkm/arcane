@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	containertypes "github.com/docker/docker/api/types/container"
@@ -25,10 +26,11 @@ var (
 )
 
 type SystemUpgradeService struct {
+	mu             sync.Mutex
+	upgrading      bool
 	dockerService  *DockerClientService
 	versionService *VersionService
 	eventService   *EventService
-	upgrading      bool
 }
 
 func NewSystemUpgradeService(
@@ -69,11 +71,19 @@ func (s *SystemUpgradeService) CanUpgrade(ctx context.Context) (bool, error) {
 
 // UpgradeToLatest performs the self-upgrade
 func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.User) error {
+	s.mu.Lock()
 	if s.upgrading {
+		s.mu.Unlock()
 		return ErrUpgradeInProgress
 	}
 	s.upgrading = true
-	defer func() { s.upgrading = false }()
+	s.mu.Unlock()
+
+	defer func() {
+		s.mu.Lock()
+		s.upgrading = false
+		s.mu.Unlock()
+	}()
 
 	// 1. Get current container ID
 	currentContainerId, err := s.getCurrentContainerID()
