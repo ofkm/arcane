@@ -41,7 +41,7 @@ func (h *SettingsHandler) Search(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Invalid request format"},
+			"data":    dto.MessageDto{Message: "Invalid request format"},
 		})
 		return
 	}
@@ -49,7 +49,7 @@ func (h *SettingsHandler) Search(c *gin.Context) {
 	if strings.TrimSpace(req.Query) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Query parameter is required"},
+			"data":    dto.MessageDto{Message: "Query parameter is required"},
 		})
 		return
 	}
@@ -75,7 +75,7 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to map settings",
+			"data":    dto.MessageDto{Message: "Failed to map settings"},
 		})
 		return
 	}
@@ -97,7 +97,7 @@ func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
 		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to map settings",
+			"data":    dto.MessageDto{Message: "Failed to map settings"},
 		})
 		return
 	}
@@ -118,7 +118,7 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid request format",
+			"data":    dto.MessageDto{Message: "Invalid request format"},
 		})
 		return
 	}
@@ -129,7 +129,7 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 			req.AuthOidcConfig != nil {
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
-				"error":   "Authentication settings can only be updated from the main environment",
+				"data":    dto.MessageDto{Message: "Authentication settings can only be updated from the main environment"},
 			})
 			return
 		}
@@ -139,7 +139,7 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to update settings",
+			"data":    dto.MessageDto{Message: "Failed to update settings"},
 		})
 		return
 	}

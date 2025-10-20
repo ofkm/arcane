@@ -12,7 +12,8 @@
 	import { Card } from '$lib/components/ui/card';
 	import { m } from '$lib/paraglide/messages';
 	import { UiConfigDisabledTag } from '$lib/components/badges/index.js';
-	import { settingsSearchService, type SettingsCategory } from '$lib/services/settings-search';
+	import { settingsSearchService } from '$lib/services/settings-search';
+	import type { SettingsCategory } from '$lib/types/settings-search.type';
 	import { debounced } from '$lib/utils/utils';
 
 	let { data } = $props();
@@ -21,7 +22,6 @@
 	let searchResults = $state<SettingsCategory[]>([]);
 	let isSearching = $state(false);
 	let settingsCategories = $state<SettingsCategory[]>([]);
-	let isLoadingCategories = $state(true);
 	let currentSearchRequest = $state(0);
 
 	const iconMap: Record<string, any> = {
@@ -32,20 +32,13 @@
 		user: UserIcon
 	};
 
-	onMount(() => {
-		loadCategories();
-	});
-
-	async function loadCategories() {
+	onMount(async () => {
 		try {
 			settingsCategories = await settingsSearchService.getCategories();
 		} catch (error) {
 			console.error('Failed to load categories:', error);
-			settingsCategories = [];
-		} finally {
-			isLoadingCategories = false;
 		}
-	}
+	});
 
 	async function performSearch(query: string, immediate = false) {
 		const trimmedQuery = query.trim();
@@ -136,7 +129,6 @@
 							searchQuery = e.currentTarget.value;
 							debouncedSearch(e.currentTarget.value);
 						}}
-						onchange={(e) => performSearch(e.currentTarget.value, true)}
 						onkeydown={(e) => {
 							if (e.key === 'Enter') {
 								performSearch((e.currentTarget as HTMLInputElement).value, true);
@@ -155,38 +147,31 @@
 	</div>
 
 	{#if !showSearchResults}
-		{#if isLoadingCategories}
-			<div class="py-12 text-center">
-				<div class="border-primary mx-auto mb-4 size-12 animate-spin rounded-full border-4 border-t-transparent"></div>
-				<p class="text-muted-foreground">Loading settings categories...</p>
-			</div>
-		{:else}
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
-				{#each settingsCategories as category}
-					{@const Icon = getIconComponent(category.icon)}
-					<Card class="hover:border-primary/20 group cursor-pointer transition-all duration-200 hover:shadow-md">
-						<button onclick={() => navigateToCategory(category.url)} class="w-full p-4 text-left sm:p-6">
-							<div class="flex items-start justify-between gap-3">
-								<div class="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
-									<div
-										class="bg-primary/5 text-primary ring-primary/10 group-hover:bg-primary/10 flex size-10 shrink-0 items-center justify-center rounded-lg ring-1 transition-colors sm:size-12"
-									>
-										<Icon class="size-5 sm:size-6" />
-									</div>
-									<div class="min-w-0 flex-1">
-										<h3 class="text-sm leading-tight font-semibold sm:text-base">{category.title}</h3>
-										<p class="text-muted-foreground mt-1 text-xs leading-relaxed sm:text-sm">{category.description}</p>
-									</div>
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
+			{#each settingsCategories as category}
+				{@const Icon = getIconComponent(category.icon)}
+				<Card class="hover:border-primary/20 group cursor-pointer transition-all duration-200 hover:shadow-md">
+					<button onclick={() => navigateToCategory(category.url)} class="w-full p-4 text-left sm:p-6">
+						<div class="flex items-start justify-between gap-3">
+							<div class="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
+								<div
+									class="bg-primary/5 text-primary ring-primary/10 group-hover:bg-primary/10 flex size-10 shrink-0 items-center justify-center rounded-lg ring-1 transition-colors sm:size-12"
+								>
+									<Icon class="size-5 sm:size-6" />
 								</div>
-								<ChevronRightIcon
-									class="text-muted-foreground group-hover:text-foreground mt-1 size-4 shrink-0 transition-colors"
-								/>
+								<div class="min-w-0 flex-1">
+									<h3 class="text-sm leading-tight font-semibold sm:text-base">{category.title}</h3>
+									<p class="text-muted-foreground mt-1 text-xs leading-relaxed sm:text-sm">{category.description}</p>
+								</div>
 							</div>
-						</button>
-					</Card>
-				{/each}
-			</div>
-		{/if}
+							<ChevronRightIcon
+								class="text-muted-foreground group-hover:text-foreground mt-1 size-4 shrink-0 transition-colors"
+							/>
+						</div>
+					</button>
+				</Card>
+			{/each}
+		</div>
 	{:else}
 		<div class="space-y-6 sm:space-y-8">
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

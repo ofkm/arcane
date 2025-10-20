@@ -66,7 +66,7 @@ type Settings struct {
 
 	// Onboarding
 	OnboardingCompleted SettingVariable `key:"onboardingCompleted,public" meta:"label=Onboarding Completed;type=boolean;keywords=onboarding,completed,setup,first-run;tcategory=general;description=Whether onboarding has been completed"`
-	OnboardingSteps     SettingVariable `key:"onboardingSteps" meta:"label=Onboarding Steps;type=text;keywords=onboarding,steps,progress,guide;tcategory=general;description=Serialized onboarding steps"`
+	OnboardingSteps     SettingVariable `key:"onboardingSteps" meta:"label=Onboarding Steps;type=text;keywords=onboarding,steps,progress,guide;category=general;description=Serialized onboarding steps"`
 
 	// Navigation
 	MobileNavigationMode         SettingVariable `key:"mobileNavigationMode,public" meta:"label=Mobile Navigation Mode;type=select;keywords=mode,style,type,floating,docked,position,layout,design,appearance,bottom;category=navigation;description=Choose between floating or docked navigation on mobile"`
