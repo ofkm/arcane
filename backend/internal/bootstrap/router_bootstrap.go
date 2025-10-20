@@ -78,7 +78,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewAuthHandler(apiGroup, appServices.User, appServices.Auth, appServices.Oidc, authMiddleware)
 	api.NewEventHandler(apiGroup, appServices.Event, authMiddleware)
 	api.NewOidcHandler(apiGroup, appServices.Auth, appServices.Oidc, cfg)
-	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Settings, appServices.SystemUpgrade, authMiddleware, cfg)
+	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Settings, authMiddleware, cfg)
 	api.NewContainerRegistryHandler(apiGroup, appServices.ContainerRegistry, authMiddleware)
 	api.NewTemplateHandler(apiGroup, appServices.Template, authMiddleware)
 

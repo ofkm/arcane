@@ -1,12 +1,8 @@
 package api
 
 import (
-	"bytes"
-	"encoding/json"
-	"io"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -24,7 +20,6 @@ const LOCAL_DOCKER_ENVIRONMENT_ID = "0"
 type EnvironmentHandler struct {
 	environmentService *services.EnvironmentService
 	settingsService    *services.SettingsService
-	upgradeService     *services.SystemUpgradeService
 	cfg                *config.Config
 	httpClient         *http.Client
 }
@@ -32,15 +27,13 @@ type EnvironmentHandler struct {
 func NewEnvironmentHandler(
 	group *gin.RouterGroup,
 	environmentService *services.EnvironmentService,
-	settingsService *services.SettingsService,
-	upgradeService *services.SystemUpgradeService,
+	settingsService    *services.SettingsService,
 	authMiddleware *middleware.AuthMiddleware,
 	cfg *config.Config,
 ) {
 	h := &EnvironmentHandler{
 		environmentService: environmentService,
 		settingsService:    settingsService,
-		upgradeService:     upgradeService,
 		cfg:                cfg,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
@@ -58,10 +51,6 @@ func NewEnvironmentHandler(
 		apiGroup.POST("/:id/test", h.TestConnection)
 		apiGroup.POST("/:id/heartbeat", h.UpdateHeartbeat)
 		apiGroup.POST("/:id/agent/pair", h.PairAgent)
-
-		// Environment upgrade endpoints (admin required)
-		apiGroup.GET("/:id/upgrade/check", authMiddleware.WithAdminRequired().Add(), h.CheckEnvironmentUpgrade)
-		apiGroup.POST("/:id/upgrade", authMiddleware.WithAdminRequired().Add(), h.TriggerEnvironmentUpgrade)
 	}
 }
 
@@ -297,224 +286,4 @@ func (h *EnvironmentHandler) UpdateHeartbeat(c *gin.Context) {
 		"success": true,
 		"message": "Heartbeat updated successfully",
 	})
-}
-
-// CheckEnvironmentUpgrade checks if an environment can be upgraded
-// For environment ID "0" (local), uses local upgrade service
-// For remote environments, proxies the request to the remote agent
-func (h *EnvironmentHandler) CheckEnvironmentUpgrade(c *gin.Context) {
-	environmentID := c.Param("id")
-
-	// Handle local environment (ID "0")
-	if environmentID == LOCAL_DOCKER_ENVIRONMENT_ID {
-		canUpgrade, err := h.upgradeService.CanUpgrade(c.Request.Context())
-
-		response := gin.H{
-			"canUpgrade": canUpgrade && err == nil,
-		}
-
-		if err != nil {
-			response["error"] = true
-			response["message"] = err.Error()
-			slog.Debug("Local system upgrade check failed", "error", err)
-		} else {
-			response["error"] = false
-			response["message"] = "System can be upgraded"
-		}
-
-		c.JSON(http.StatusOK, response)
-		return
-	}
-
-	// Handle remote environment
-	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), environmentID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   "Environment not found",
-		})
-		return
-	}
-
-	// Build URL for remote agent's upgrade check endpoint
-	targetURL := strings.TrimRight(environment.ApiUrl, "/") + "/api/environments/0/system/upgrade/check"
-
-	// Create request to remote agent
-	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodGet, targetURL, nil)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to create request: " + err.Error(),
-		})
-		return
-	}
-
-	// Add agent token if available
-	if environment.AccessToken != nil && *environment.AccessToken != "" {
-		req.Header.Set("X-Arcane-Agent-Token", *environment.AccessToken)
-	}
-
-	// Forward request to remote agent
-	resp, err := h.httpClient.Do(req)
-	if err != nil {
-		slog.WarnContext(c.Request.Context(), "Failed to check upgrade on remote environment",
-			"environmentId", environmentID,
-			"error", err)
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"success":    false,
-			"error":      "Failed to connect to remote environment",
-			"canUpgrade": false,
-		})
-		return
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to read response from remote environment",
-		})
-		return
-	}
-
-	// Parse response
-	var upgradeCheck map[string]interface{}
-	if err := json.Unmarshal(body, &upgradeCheck); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to parse response from remote environment",
-		})
-		return
-	}
-
-	// Return the remote agent's response
-	c.JSON(resp.StatusCode, upgradeCheck)
-}
-
-// TriggerEnvironmentUpgrade triggers an upgrade on an environment
-// For environment ID "0" (local), uses local upgrade service
-// For remote environments, proxies the request to the remote agent
-func (h *EnvironmentHandler) TriggerEnvironmentUpgrade(c *gin.Context) {
-	environmentID := c.Param("id")
-
-	currentUser, ok := middleware.RequireAuthentication(c)
-	if !ok {
-		return
-	}
-
-	// Handle local environment (ID "0")
-	if environmentID == LOCAL_DOCKER_ENVIRONMENT_ID {
-		slog.Info("Local system upgrade triggered", "user", currentUser.Username, "userId", currentUser.ID)
-
-		err := h.upgradeService.UpgradeToLatest(c.Request.Context(), *currentUser)
-		if err != nil {
-			slog.Error("Local system upgrade failed", "error", err, "user", currentUser.Username)
-
-			statusCode := http.StatusInternalServerError
-			if err == services.ErrUpgradeInProgress {
-				statusCode = http.StatusConflict
-			}
-
-			c.JSON(statusCode, gin.H{
-				"error":   err.Error(),
-				"message": "Failed to initiate upgrade",
-			})
-			return
-		}
-
-		c.JSON(http.StatusAccepted, gin.H{
-			"message": "Upgrade initiated successfully. Arcane will restart shortly.",
-			"success": true,
-		})
-		return
-	}
-
-	// Handle remote environment
-	environment, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), environmentID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"success": false,
-			"error":   "Environment not found",
-		})
-		return
-	}
-
-	slog.Info("Remote environment upgrade triggered",
-		"user", currentUser.Username,
-		"userId", currentUser.ID,
-		"environmentId", environmentID,
-		"environmentName", environment.Name)
-
-	// Build URL for remote agent's upgrade endpoint
-	targetURL := strings.TrimRight(environment.ApiUrl, "/") + "/api/environments/0/system/upgrade"
-
-	// Create request to remote agent
-	req, err := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, targetURL, bytes.NewReader([]byte("{}")))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to create request: " + err.Error(),
-		})
-		return
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	// Add agent token if available
-	if environment.AccessToken != nil && *environment.AccessToken != "" {
-		req.Header.Set("X-Arcane-Agent-Token", *environment.AccessToken)
-	}
-
-	// Forward request to remote agent
-	resp, err := h.httpClient.Do(req)
-	if err != nil {
-		slog.ErrorContext(c.Request.Context(), "Failed to trigger upgrade on remote environment",
-			"environmentId", environmentID,
-			"error", err)
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"success": false,
-			"error":   "Failed to connect to remote environment: " + err.Error(),
-		})
-		return
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to read response from remote environment",
-		})
-		return
-	}
-
-	// Parse response
-	var upgradeResponse map[string]interface{}
-	if err := json.Unmarshal(body, &upgradeResponse); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"success": false,
-			"error":   "Failed to parse response from remote environment",
-		})
-		return
-	}
-
-	// Log the result
-	if resp.StatusCode == http.StatusAccepted {
-		slog.Info("Remote environment upgrade initiated successfully",
-			"environmentId", environmentID,
-			"environmentName", environment.Name)
-	} else {
-		slog.Error("Remote environment upgrade failed",
-			"environmentId", environmentID,
-			"environmentName", environment.Name,
-			"statusCode", resp.StatusCode,
-			"response", string(body))
-	}
-
-	// Return the remote agent's response with success indicator
-	upgradeResponse["success"] = resp.StatusCode == http.StatusAccepted
-	c.JSON(resp.StatusCode, upgradeResponse)
 }

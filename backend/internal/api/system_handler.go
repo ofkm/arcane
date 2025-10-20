@@ -63,6 +63,10 @@ func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClie
 		apiGroup.POST("/containers/start-stopped", handler.StartAllStoppedContainers)
 		apiGroup.POST("/containers/stop-all", handler.StopAllContainers)
 		apiGroup.POST("/convert", handler.ConvertDockerRun)
+		
+		// Upgrade endpoints (admin required)
+		apiGroup.GET("/upgrade/check", authMiddleware.WithAdminRequired().Add(), handler.CheckUpgradeAvailable)
+		apiGroup.POST("/upgrade", authMiddleware.WithAdminRequired().Add(), handler.TriggerUpgrade)
 	}
 }
 
@@ -448,5 +452,58 @@ func (h *SystemHandler) ConvertDockerRun(c *gin.Context) {
 		DockerCompose: dockerCompose,
 		EnvVars:       envVars,
 		ServiceName:   serviceName,
+	})
+}
+
+// CheckUpgradeAvailable checks if the local system can be upgraded
+// Remote environments are handled by the proxy middleware
+func (h *SystemHandler) CheckUpgradeAvailable(c *gin.Context) {
+	canUpgrade, err := h.upgradeService.CanUpgrade(c.Request.Context())
+
+	response := gin.H{
+		"canUpgrade": canUpgrade && err == nil,
+	}
+
+	if err != nil {
+		response["error"] = true
+		response["message"] = err.Error()
+		slog.Debug("System upgrade check failed", "error", err)
+	} else {
+		response["error"] = false
+		response["message"] = "System can be upgraded"
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// TriggerUpgrade triggers a system self-upgrade
+// Remote environments are handled by the proxy middleware
+func (h *SystemHandler) TriggerUpgrade(c *gin.Context) {
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
+		return
+	}
+
+	slog.Info("System upgrade triggered", "user", currentUser.Username, "userId", currentUser.ID)
+
+	err := h.upgradeService.UpgradeToLatest(c.Request.Context(), *currentUser)
+	if err != nil {
+		slog.Error("System upgrade failed", "error", err, "user", currentUser.Username)
+
+		statusCode := http.StatusInternalServerError
+		if err == services.ErrUpgradeInProgress {
+			statusCode = http.StatusConflict
+		}
+
+		c.JSON(statusCode, gin.H{
+			"error":   err.Error(),
+			"message": "Failed to initiate upgrade",
+		})
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"message": "Upgrade initiated successfully. Arcane will restart shortly.",
+		"success": true,
 	})
 }
