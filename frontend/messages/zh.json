@@ -883,8 +883,6 @@
 	"navigation_show_labels_description": "在导航图标下方显示文字标签以提高清晰度和可访问性",
 	"navigation_scroll_to_hide_label": "滚动以隐藏",
 	"navigation_scroll_to_hide_description": "在向下滚动时自动隐藏导航栏以获取更简洁的视图体验",
-	"navigation_tap_to_hide_label": "点击隐藏",
-	"navigation_tap_to_hide_description": "允许用户点击导航区域外面快速显示或隐藏导航栏",
 	"navigation_settings_saved": "导航设置保存成功",
 	"navigation_desktop_sidebar_title": "Desktop Sidebar",
 	"navigation_desktop_sidebar_description": "配置桌面侧边栏行为和外观",
@@ -1321,5 +1319,12 @@
 	"events_delete_failed": "Failed to delete event \"{title}\"",
 	"events_delete_success": "Event \"{title}\" deleted successfully",
 	"sidebar_dark_mode": "深色",
-	"sidebar_light_mode": "亮色的"
+	"sidebar_light_mode": "亮色的",
+	"glass_effect_title": "玻璃特效(预览)",
+	"glass_effect_description": "启用带有模糊、渐变和环境效果的现代玻璃化设计",
+	"glass_effect_label": "粒子效果界面",
+	"glass_effect_enabled": "玻璃效果已启用",
+	"glass_effect_disabled": "已禁用玻璃特效(经典设计)",
+	"glass_effect_description_long": "启用时，接口会使用背景模糊和微妙渐变的玻璃效应。 当禁用时，接口使用固态颜色和传统阴影来设计经典设计。玻璃设计正在预览中，可能会改变。",
+	"navigation_glass_effect_label": "玻璃效果"
 }

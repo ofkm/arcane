@@ -33,6 +33,8 @@
 		return items?.some((child) => isActiveItem(child.url)) ?? false;
 	}
 
+	let openStates = $state<Record<string, boolean>>({});
+
 	const enhancedItems = $derived(
 		items.map((item) => {
 			const isItemActive = isActiveItem(item.url);
@@ -49,6 +51,16 @@
 			};
 		})
 	);
+
+	function getIsOpen(itemTitle: string, isActive: boolean): boolean {
+		if (sidebar.hoverExpansionEnabled) {
+			return isActive;
+		}
+		if (openStates[itemTitle] === undefined) {
+			return isActive;
+		}
+		return openStates[itemTitle];
+	}
 </script>
 
 <Sidebar.Group>
@@ -94,8 +106,15 @@
 						</Sidebar.MenuItem>
 					{/each}
 				{:else}
-					<!-- Normal collapsible behavior when expanded or hover expansion is enabled -->
-					<Collapsible.Root open={item.isActive && sidebar.hoverExpansionEnabled} class="group/collapsible">
+					<Collapsible.Root
+						open={getIsOpen(item.title, item.isActive)}
+						onOpenChange={(open) => {
+							if (!sidebar.hoverExpansionEnabled) {
+								openStates[item.title] = open;
+							}
+						}}
+						class="group/collapsible"
+					>
 						{#snippet child({ props })}
 							<Sidebar.MenuItem {...props}>
 								<Collapsible.Trigger>

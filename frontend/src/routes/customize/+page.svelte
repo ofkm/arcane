@@ -276,7 +276,7 @@
 				</div>
 
 				<div class="relative mt-4 w-full sm:mt-6 sm:max-w-md">
-					<SearchIcon class="text-muted-foreground absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2" />
+					<SearchIcon class="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
 					<input
 						type="text"
 						placeholder={m.customize_search_placeholder()}
@@ -284,7 +284,7 @@
 						class="bg-background/50 border-input ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 pl-10 text-sm backdrop-blur-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 					/>
 					{#if showSearchResults}
-						<Button variant="ghost" size="sm" onclick={clearSearch} class="absolute top-1/2 right-2 h-6 w-6 -translate-y-1/2 p-0">
+						<Button variant="ghost" size="sm" onclick={clearSearch} class="absolute top-1/2 right-2 size-6 -translate-y-1/2 p-0">
 							×
 						</Button>
 					{/if}
