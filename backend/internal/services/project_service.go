@@ -226,11 +226,6 @@ func (s *ProjectService) GetProjectDetails(ctx context.Context, projectID string
 		resp.Services = raw
 	}
 
-	// Include resolved effective settings
-	if effectiveSettings, err := s.settingsService.ResolveProjectSettings(ctx, proj); err == nil {
-		resp.EffectiveSettings = effectiveSettings
-	}
-
 	return resp, nil
 }
 

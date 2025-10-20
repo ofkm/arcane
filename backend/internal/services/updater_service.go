@@ -518,22 +518,37 @@ func (s *UpdaterService) GetHistory(ctx context.Context, limit int) ([]models.Au
 	return rec, nil
 }
 
+//nolint:gocognit
 func (s *UpdaterService) IsWithinUpdateWindow(ctx context.Context, project *models.Project) (bool, error) {
-	resolved, err := s.settingsService.ResolveProjectSettings(ctx, project)
+	globalSettings, err := s.settingsService.GetSettings(ctx)
 	if err != nil {
-		return false, fmt.Errorf("failed to resolve project settings: %w", err)
+		return false, fmt.Errorf("failed to load global settings: %w", err)
 	}
 
-	if !resolved.UpdateScheduleEnabled {
+	// Determine effective schedule enabled setting
+	scheduleEnabled := globalSettings.UpdateScheduleEnabled.IsTrue()
+	if project != nil && project.UpdateScheduleEnabled != nil {
+		scheduleEnabled = *project.UpdateScheduleEnabled
+	}
+
+	if !scheduleEnabled {
 		return true, nil
 	}
 
-	if len(resolved.UpdateScheduleWindows) == 0 {
+	// Determine effective schedule windows
+	var windows []models.UpdateScheduleWindow
+	if project != nil && project.UpdateScheduleWindows != nil && *project.UpdateScheduleWindows != "" {
+		windows, _ = s.settingsService.ParseUpdateScheduleWindows(*project.UpdateScheduleWindows)
+	} else if globalSettings.UpdateScheduleWindows.Value != "" {
+		windows, _ = s.settingsService.ParseUpdateScheduleWindows(globalSettings.UpdateScheduleWindows.Value)
+	}
+
+	if len(windows) == 0 {
 		return false, nil
 	}
 
 	// Check each window with its own timezone
-	for _, window := range resolved.UpdateScheduleWindows {
+	for _, window := range windows {
 		loc, err := time.LoadLocation(window.Timezone)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to load timezone for window, skipping", "timezone", window.Timezone, "error", err)
@@ -572,24 +587,39 @@ func (s *UpdaterService) IsWithinUpdateWindow(ctx context.Context, project *mode
 	return false, nil
 }
 
+//nolint:gocognit
 func (s *UpdaterService) GetNextUpdateWindow(ctx context.Context, project *models.Project) (*time.Time, error) {
-	resolved, err := s.settingsService.ResolveProjectSettings(ctx, project)
+	globalSettings, err := s.settingsService.GetSettings(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve project settings: %w", err)
+		return nil, fmt.Errorf("failed to load global settings: %w", err)
 	}
 
-	if !resolved.UpdateScheduleEnabled {
+	// Determine effective schedule enabled setting
+	scheduleEnabled := globalSettings.UpdateScheduleEnabled.IsTrue()
+	if project != nil && project.UpdateScheduleEnabled != nil {
+		scheduleEnabled = *project.UpdateScheduleEnabled
+	}
+
+	if !scheduleEnabled {
 		return nil, nil
 	}
 
-	if len(resolved.UpdateScheduleWindows) == 0 {
+	// Determine effective schedule windows
+	var windows []models.UpdateScheduleWindow
+	if project != nil && project.UpdateScheduleWindows != nil && *project.UpdateScheduleWindows != "" {
+		windows, _ = s.settingsService.ParseUpdateScheduleWindows(*project.UpdateScheduleWindows)
+	} else if globalSettings.UpdateScheduleWindows.Value != "" {
+		windows, _ = s.settingsService.ParseUpdateScheduleWindows(globalSettings.UpdateScheduleWindows.Value)
+	}
+
+	if len(windows) == 0 {
 		return nil, nil
 	}
 
 	var nextWindow *time.Time
 
 	// Check each window with its own timezone
-	for _, window := range resolved.UpdateScheduleWindows {
+	for _, window := range windows {
 		loc, err := time.LoadLocation(window.Timezone)
 		if err != nil {
 			slog.WarnContext(ctx, "Failed to load timezone for window, skipping", "timezone", window.Timezone, "error", err)

@@ -627,46 +627,6 @@ func (s *SettingsService) EnsureEncryptionKey(ctx context.Context) (string, erro
 	return key, nil
 }
 
-func (s *SettingsService) ResolveProjectSettings(ctx context.Context, project *models.Project) (*dto.ResolvedProjectSettings, error) {
-	globalSettings, err := s.GetSettings(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load global settings: %w", err)
-	}
-
-	resolved := &dto.ResolvedProjectSettings{
-		AutoUpdate:            globalSettings.AutoUpdate.IsTrue(),
-		UpdateScheduleEnabled: globalSettings.UpdateScheduleEnabled.IsTrue(),
-	}
-
-	// Parse global schedule windows
-	if globalSettings.UpdateScheduleWindows.Value != "" {
-		var windows []models.UpdateScheduleWindow
-		if err := json.Unmarshal([]byte(globalSettings.UpdateScheduleWindows.Value), &windows); err == nil {
-			resolved.UpdateScheduleWindows = windows
-		}
-	}
-
-	if project == nil {
-		return resolved, nil
-	}
-
-	// Apply project-level overrides
-	if project.AutoUpdate != nil {
-		resolved.AutoUpdate = *project.AutoUpdate
-	}
-	if project.UpdateScheduleEnabled != nil {
-		resolved.UpdateScheduleEnabled = *project.UpdateScheduleEnabled
-	}
-	if project.UpdateScheduleWindows != nil && *project.UpdateScheduleWindows != "" {
-		var windows []models.UpdateScheduleWindow
-		if err := json.Unmarshal([]byte(*project.UpdateScheduleWindows), &windows); err == nil {
-			resolved.UpdateScheduleWindows = windows
-		}
-	}
-
-	return resolved, nil
-}
-
 func (s *SettingsService) ParseUpdateScheduleWindows(jsonStr string) ([]models.UpdateScheduleWindow, error) {
 	if jsonStr == "" {
 		return []models.UpdateScheduleWindow{}, nil

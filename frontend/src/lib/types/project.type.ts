@@ -41,19 +41,12 @@ export interface Project {
 	autoUpdate?: boolean | null;
 	updateScheduleEnabled?: boolean | null;
 	updateScheduleWindows?: UpdateScheduleWindow[] | null;
-	effectiveSettings?: ResolvedProjectSettings;
 }
 
 export interface ProjectStatusCounts {
 	runningProjects: number;
 	stoppedProjects: number;
 	totalProjects: number;
-}
-
-export interface ResolvedProjectSettings {
-	autoUpdate: boolean;
-	updateScheduleEnabled: boolean;
-	updateScheduleWindows?: UpdateScheduleWindow[];
 }
 
 export interface ProjectSettingsUpdate {
