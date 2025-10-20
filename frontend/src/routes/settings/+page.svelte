@@ -386,7 +386,7 @@
 				</div>
 
 				<div class="relative mt-4 w-full sm:mt-6 sm:max-w-md">
-					<SearchIcon class="text-muted-foreground absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2" />
+					<SearchIcon class="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
 					<input
 						type="text"
 						placeholder="Search settings..."

@@ -883,8 +883,6 @@
 	"navigation_show_labels_description": "Toon tekst labels onder navigatiepictogrammen voor meer duidelijkheid en toegankelijkheid",
 	"navigation_scroll_to_hide_label": "Naar verbergen scrollen",
 	"navigation_scroll_to_hide_description": "Automatisch de navigatiebalk verbergen bij het naar beneden scrollen voor een schonere weergavaring",
-	"navigation_tap_to_hide_label": "Tik om te verbergen",
-	"navigation_tap_to_hide_description": "Sta gebruikers toe om buiten het navigatiegebied te tikken om de navigatiebalk snel te tonen of te verbergen",
 	"navigation_settings_saved": "Navigatie instellingen succesvol opgeslagen",
 	"navigation_desktop_sidebar_title": "Desktop Sidebar",
 	"navigation_desktop_sidebar_description": "Configureer gedrag en uiterlijk van de zijbalk op het bureaublad",
@@ -1321,5 +1319,12 @@
 	"events_delete_failed": "Verwijderen van gebeurtenis \"{title} \" mislukt",
 	"events_delete_success": "Gebeurtenis \"{title}\" succesvol verwijderd",
 	"sidebar_dark_mode": "Donker",
-	"sidebar_light_mode": "Licht"
+	"sidebar_light_mode": "Licht",
+	"glass_effect_title": "Glazen Effect (Preview)",
+	"glass_effect_description": "Schakel modern glazuur ontwerp in met vervaging, gradiënten en omgevingseffecten",
+	"glass_effect_label": "Glassmorphisme UI",
+	"glass_effect_enabled": "Glazen effecten ingeschakeld",
+	"glass_effect_disabled": "Glazen effecten uitgeschakeld (klassiek design)",
+	"glass_effect_description_long": "Wanneer ingeschakeld, gebruikt de interface bevroren glazen effecten met achtergrond vervagen en subtiele verloopen. Wanneer uitgeschakeld, gebruikt de interface solide kleuren en traditionele schaduwen voor een klassiek ontwerp. Het glazen ontwerp is in het voorbeeld, en is onderworpen aan verandering.",
+	"navigation_glass_effect_label": "Glazen Effect"
 }
