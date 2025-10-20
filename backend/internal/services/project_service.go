@@ -3,6 +3,7 @@ package services
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -919,4 +920,87 @@ func (s *ProjectService) calculateProjectStatus(services []ProjectServiceInfo) m
 		return models.ProjectStatusStopped
 	}
 	return models.ProjectStatusUnknown
+}
+
+func (s *ProjectService) UpdateProjectSettings(ctx context.Context, projectID string, updates dto.UpdateProjectSettingsDto) error {
+	project, err := s.GetProjectFromDatabaseByID(ctx, projectID)
+	if err != nil {
+		return err
+	}
+
+	updateMap := make(map[string]interface{})
+
+	if updates.AutoUpdate != nil {
+		updateMap["auto_update"] = updates.AutoUpdate
+	}
+	if updates.UpdateScheduleEnabled != nil {
+		updateMap["update_schedule_enabled"] = updates.UpdateScheduleEnabled
+	}
+	if updates.UpdateScheduleWindows != nil {
+		if err := s.settingsService.ValidateUpdateScheduleWindows(*updates.UpdateScheduleWindows); err != nil {
+			return fmt.Errorf("invalid schedule windows: %w", err)
+		}
+		jsonBytes, err := json.Marshal(*updates.UpdateScheduleWindows)
+		if err != nil {
+			return fmt.Errorf("failed to marshal schedule windows: %w", err)
+		}
+		updateMap["update_schedule_windows"] = string(jsonBytes)
+	}
+
+	if len(updateMap) == 0 {
+		return nil
+	}
+
+	if err := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", project.ID).Updates(updateMap).Error; err != nil {
+		return fmt.Errorf("failed to update project settings: %w", err)
+	}
+
+	return nil
+}
+
+func (s *ProjectService) ClearProjectSettingOverride(ctx context.Context, projectID string, key string) error {
+	project, err := s.GetProjectFromDatabaseByID(ctx, projectID)
+	if err != nil {
+		return err
+	}
+
+	columnMap := map[string]string{
+		"autoUpdate":            "auto_update",
+		"updateScheduleEnabled": "update_schedule_enabled",
+		"updateScheduleWindows": "update_schedule_windows",
+	}
+
+	column, ok := columnMap[key]
+	if !ok {
+		return fmt.Errorf("unknown setting key: %s", key)
+	}
+
+	updateMap := map[string]interface{}{
+		column: nil,
+	}
+
+	if err := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", project.ID).Updates(updateMap).Error; err != nil {
+		return fmt.Errorf("failed to clear project setting: %w", err)
+	}
+
+	return nil
+}
+
+func (s *ProjectService) ClearAllProjectSettingOverrides(ctx context.Context, projectID string) error {
+	project, err := s.GetProjectFromDatabaseByID(ctx, projectID)
+	if err != nil {
+		return err
+	}
+
+	updateMap := map[string]any{
+		"auto_update":             nil,
+		"update_schedule_enabled": nil,
+		"update_schedule_windows": nil,
+	}
+
+	if err := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", project.ID).Updates(updateMap).Error; err != nil {
+		return fmt.Errorf("failed to clear project settings: %w", err)
+	}
+
+	return nil
 }

@@ -261,12 +261,6 @@
 													/>
 												</div>
 											</div>
-											{#if settings.autoUpdate}
-												<div>
-													<Label class="text-muted-foreground text-sm font-medium">{m.docker_auto_update_interval_label()}</Label>
-													<div class="mt-1 text-sm">{settings.autoUpdateInterval} min</div>
-												</div>
-											{/if}
 											<div>
 												<Label class="text-muted-foreground text-sm font-medium">{m.docker_prune_action_label()}</Label>
 												<div class="mt-1 text-sm capitalize">{settings.dockerPruneMode || 'dangling'}</div>

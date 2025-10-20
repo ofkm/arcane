@@ -1,3 +1,5 @@
+import type { UpdateScheduleWindow } from "./settings.type";
+
 export interface NetworkSettings {
 	Networks: Record<
 		string,
@@ -36,10 +38,19 @@ export interface Project {
 	services?: ProjectService[];
 	composeContent?: string;
 	envContent?: string;
+	autoUpdate?: boolean | null;
+	updateScheduleEnabled?: boolean | null;
+	updateScheduleWindows?: UpdateScheduleWindow[] | null;
 }
 
 export interface ProjectStatusCounts {
 	runningProjects: number;
 	stoppedProjects: number;
 	totalProjects: number;
+}
+
+export interface ProjectSettingsUpdate {
+	autoUpdate?: boolean;
+	updateScheduleEnabled?: boolean;
+	updateScheduleWindows?: UpdateScheduleWindow[];
 }

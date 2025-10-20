@@ -79,7 +79,6 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		ProjectsDirectory:            models.SettingVariable{Value: "data/projects"},
 		DiskUsagePath:                models.SettingVariable{Value: "data/projects"},
 		AutoUpdate:                   models.SettingVariable{Value: "false"},
-		AutoUpdateInterval:           models.SettingVariable{Value: "1440"},
 		PollingEnabled:               models.SettingVariable{Value: "true"},
 		PollingInterval:              models.SettingVariable{Value: "60"},
 		PruneMode:                    models.SettingVariable{Value: "dangling"},
@@ -361,7 +360,7 @@ func (s *SettingsService) UpdateSettings(ctx context.Context, updates dto.Update
 		switch key {
 		case "pollingEnabled", "pollingInterval":
 			changedPolling = true
-		case "autoUpdate", "autoUpdateInterval":
+		case "autoUpdate", "autoUpdateInterval", "updateScheduleEnabled", "updateScheduleWindows":
 			changedAutoUpdate = true
 		}
 	}
@@ -626,4 +625,56 @@ func (s *SettingsService) EnsureEncryptionKey(ctx context.Context) (string, erro
 	}
 
 	return key, nil
+}
+
+func (s *SettingsService) ParseUpdateScheduleWindows(jsonStr string) ([]models.UpdateScheduleWindow, error) {
+	if jsonStr == "" {
+		return []models.UpdateScheduleWindow{}, nil
+	}
+
+	var windows []models.UpdateScheduleWindow
+	if err := json.Unmarshal([]byte(jsonStr), &windows); err != nil {
+		return nil, fmt.Errorf("failed to parse schedule windows: %w", err)
+	}
+
+	return windows, nil
+}
+
+func (s *SettingsService) ValidateUpdateScheduleWindows(windows []models.UpdateScheduleWindow) error {
+	if len(windows) == 0 {
+		return nil
+	}
+
+	validDays := map[string]bool{
+		"monday": true, "tuesday": true, "wednesday": true, "thursday": true,
+		"friday": true, "saturday": true, "sunday": true,
+	}
+
+	for i, window := range windows {
+		if len(window.Days) == 0 {
+			return fmt.Errorf("window %d: must have at least one day specified", i)
+		}
+		for _, day := range window.Days {
+			if !validDays[strings.ToLower(day)] {
+				return fmt.Errorf("window %d: invalid day '%s'", i, day)
+			}
+		}
+
+		if _, err := time.Parse("15:04", window.StartTime); err != nil {
+			return fmt.Errorf("window %d: invalid start time format '%s' (expected HH:MM)", i, window.StartTime)
+		}
+		if _, err := time.Parse("15:04", window.EndTime); err != nil {
+			return fmt.Errorf("window %d: invalid end time format '%s' (expected HH:MM)", i, window.EndTime)
+		}
+
+		// Timezone is now required per window
+		if window.Timezone == "" {
+			return fmt.Errorf("window %d: timezone is required", i)
+		}
+		if _, err := time.LoadLocation(window.Timezone); err != nil {
+			return fmt.Errorf("window %d: invalid timezone '%s'", i, window.Timezone)
+		}
+	}
+
+	return nil
 }

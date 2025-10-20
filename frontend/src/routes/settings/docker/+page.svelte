@@ -11,14 +11,15 @@
 	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import ActivityIcon from '@lucide/svelte/icons/activity';
-	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import TrashIcon from '@lucide/svelte/icons/trash';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
+	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
+	import UpdateScheduleEditor from '$lib/components/update-schedule-editor.svelte';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings!);
@@ -31,7 +32,15 @@
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
-		autoUpdateInterval: z.number().int(),
+		updateScheduleEnabled: z.boolean(),
+		updateScheduleWindows: z.array(
+			z.object({
+				days: z.array(z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])),
+				startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
+				endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
+				timezone: z.string().min(1)
+			})
+		),
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		defaultShell: z.string()
 	});
@@ -112,9 +121,10 @@
 			$formInputs.pollingEnabled.value !== currentSettings.pollingEnabled ||
 			$formInputs.pollingInterval.value !== currentSettings.pollingInterval ||
 			$formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
-			$formInputs.autoUpdateInterval.value != currentSettings.autoUpdateInterval ||
 			$formInputs.dockerPruneMode.value != currentSettings.dockerPruneMode ||
-			$formInputs.defaultShell.value != currentSettings.defaultShell
+			$formInputs.defaultShell.value != currentSettings.defaultShell ||
+			$formInputs.updateScheduleEnabled.value !== currentSettings.updateScheduleEnabled ||
+			JSON.stringify($formInputs.updateScheduleWindows.value) !== JSON.stringify(currentSettings.updateScheduleWindows || [])
 	);
 
 	$effect(() => {
@@ -170,9 +180,10 @@
 		$formInputs.pollingEnabled.value = currentSettings.pollingEnabled;
 		$formInputs.pollingInterval.value = currentSettings.pollingInterval;
 		$formInputs.autoUpdate.value = currentSettings.autoUpdate;
-		$formInputs.autoUpdateInterval.value = currentSettings.autoUpdateInterval;
 		$formInputs.dockerPruneMode.value = currentSettings.dockerPruneMode;
 		$formInputs.defaultShell.value = currentSettings.defaultShell;
+		$formInputs.updateScheduleEnabled.value = currentSettings.updateScheduleEnabled;
+		$formInputs.updateScheduleWindows.value = currentSettings.updateScheduleWindows || [];
 	}
 
 	onMount(() => {
@@ -252,26 +263,12 @@
 							</div>
 						</Card.Header>
 						<Card.Content class="px-3 py-4 sm:px-6">
-							<div class="space-y-3">
-								<SwitchWithLabel
-									id="autoUpdateSwitch"
-									label={m.docker_auto_update_label()}
-									description={m.docker_auto_update_description()}
-									bind:checked={$formInputs.autoUpdate.value}
-								/>
-
-								{#if $formInputs.autoUpdate.value}
-									<div class="border-primary/20 border-l-2 pl-3">
-										<TextInputWithLabel
-											bind:value={$formInputs.autoUpdateInterval.value}
-											label={m.docker_auto_update_interval_label()}
-											placeholder={m.docker_auto_update_interval_placeholder()}
-											helpText={m.docker_auto_update_interval_description()}
-											type="number"
-										/>
-									</div>
-								{/if}
-							</div>
+							<UpdateScheduleEditor
+								bind:autoUpdate={$formInputs.autoUpdate.value}
+								bind:scheduleEnabled={$formInputs.updateScheduleEnabled.value}
+								bind:windows={$formInputs.updateScheduleWindows.value}
+								disabled={isReadOnly}
+							/>
 						</Card.Content>
 					</Card.Root>
 				{/if}

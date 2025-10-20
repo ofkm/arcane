@@ -73,10 +73,10 @@
 		{
 			id: 'docker',
 			title: m.docker_title(),
-			description: 'Configure Docker settings, polling, and auto-updates',
+			description: 'Configure Docker settings, polling, auto-updates, and maintenance windows',
 			icon: DatabaseIcon,
 			url: '/settings/docker',
-			keywords: ['docker', 'container', 'image'],
+			keywords: ['docker', 'container', 'image', 'polling', 'auto-update', 'schedule', 'maintenance', 'windows', 'timezone', 'shell', 'terminal'],
 			settings: [
 				{
 					key: 'pollingEnabled',
@@ -95,16 +95,9 @@
 				{
 					key: 'autoUpdate',
 					label: m.docker_auto_update_label(),
-					type: 'boolean',
-					description: 'Automatically update containers when new images are available',
-					keywords: ['auto', 'update', 'automatic', 'upgrade', 'refresh', 'restart', 'deploy']
-				},
-				{
-					key: 'autoUpdateInterval',
-					label: m.docker_auto_update_interval_label(),
-					type: 'number',
-					description: 'Interval between automatic updates',
-					keywords: ['auto', 'update', 'interval', 'frequency', 'schedule', 'automatic', 'timing']
+					type: 'component',
+					description: 'Configure automatic container updates with scheduling and maintenance windows',
+					keywords: ['auto', 'update', 'automatic', 'upgrade', 'refresh', 'restart', 'deploy', 'schedule', 'window', 'time', 'maintenance', 'hours', 'days', 'timezone', 'planned', 'off-hours', 'periods', 'intervals', 'slots']
 				},
 				{
 					key: 'dockerPruneMode',
@@ -112,6 +105,13 @@
 					type: 'select',
 					description: 'Configure how unused Docker images are cleaned up',
 					keywords: ['prune', 'cleanup', 'clean', 'remove', 'delete', 'unused', 'dangling', 'space', 'disk']
+				},
+				{
+					key: 'defaultShell',
+					label: m.docker_default_shell_label(),
+					type: 'select',
+					description: 'Set the default shell for Docker container terminals',
+					keywords: ['shell', 'terminal', 'bash', 'sh', 'ash', 'zsh', 'command', 'console', 'cli']
 				}
 			]
 		},

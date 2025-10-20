@@ -13,8 +13,10 @@
 	import { z } from 'zod/v4';
 	import { m } from '$lib/paraglide/messages';
 	import settingsStore from '$lib/stores/config-store';
-	import type { Settings } from '$lib/types/settings.type';
+	import type { Settings, UpdateScheduleWindow } from '$lib/types/settings.type';
 	import { settingsService } from '$lib/services/settings-service.js';
+	import UpdateScheduleEditor from '$lib/components/update-schedule-editor.svelte';
+	import ClockIcon from '@lucide/svelte/icons/clock';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings);
@@ -57,9 +59,21 @@
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
-		autoUpdateInterval: z.number().int(),
-		dockerPruneMode: z.enum(['all', 'dangling'])
+		dockerPruneMode: z.enum(['all', 'dangling']),
+		updateScheduleEnabled: z.boolean(),
+		updateScheduleWindows: z.array(
+			z.object({
+				days: z.array(z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])),
+				startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
+				endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
+				timezone: z.string().min(1)
+			})
+		)
 	});
+
+	let autoUpdate = $state<boolean>(data.settings.autoUpdate ?? false);
+	let scheduleEnabled = $state<boolean>(data.settings.updateScheduleEnabled ?? false);
+	let scheduleWindows = $state<UpdateScheduleWindow[]>(data.settings.updateScheduleWindows ?? []);
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
@@ -75,9 +89,17 @@
 		isLoading = true;
 
 		try {
+			// Add schedule and auto-update data to settings
+			const settingsToUpdate = {
+				...data,
+				autoUpdate: autoUpdate,
+				updateScheduleEnabled: scheduleEnabled,
+				updateScheduleWindows: scheduleWindows
+			};
+
 			const updated = {
 				...currentSettings,
-				...data,
+				...settingsToUpdate,
 				onboardingCompleted: false,
 				onboardingSteps: { ...currentSettings.onboardingSteps, docker: true }
 			} as Partial<Settings>;
@@ -106,15 +128,29 @@
 		<p class="text-muted-foreground mt-2">Configure how Arcane checks Docker and auto-updates</p>
 	</div>
 
-	{#if $formInputs.autoUpdate.value && $formInputs.pollingEnabled.value}
-		<Alert.Root variant="warning">
-			<ZapIcon class="size-4" />
-			<Alert.Title>{m.docker_auto_update_alert_title()}</Alert.Title>
-			<Alert.Description>{m.docker_auto_update_alert_description()}</Alert.Description>
-		</Alert.Root>
-	{/if}
-
 	<div class="grid gap-6 md:grid-cols-2">
+		<Card.Root class="flex flex-col gap-6 py-3">
+			<Card.Header
+				class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+			>
+				<Card.Title>{m.docker_prune_action_label()}</Card.Title>
+				<Card.Description>{pruneModeDescription}</Card.Description>
+			</Card.Header>
+			<Card.Content class="px-6">
+				<SelectWithLabel
+					id="dockerPruneMode"
+					name="pruneMode"
+					bind:value={$formInputs.dockerPruneMode.value}
+					label={m.docker_prune_action_label()}
+					description={pruneModeDescription}
+					placeholder={m.docker_prune_placeholder()}
+					options={pruneModeOptions}
+					groupLabel={m.docker_prune_group_label()}
+					onValueChange={(v) => (pruneMode = v as 'all' | 'dangling')}
+				/>
+			</Card.Content>
+		</Card.Root>
+
 		<Card.Root class="flex flex-col gap-6 py-3">
 			<Card.Header
 				class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
@@ -159,51 +195,28 @@
 								<Alert.Description>{m.docker_rate_limit_warning_description()}</Alert.Description>
 							</Alert.Root>
 						{/if}
-
-						<SwitchWithLabel
-							id="autoUpdateSwitch"
-							label={m.docker_auto_update_label()}
-							description={m.docker_auto_update_description()}
-							bind:checked={$formInputs.autoUpdate.value}
-						/>
-
-						{#if $formInputs.autoUpdate.value}
-							<FormInput
-								bind:input={$formInputs.autoUpdateInterval}
-								type="number"
-								id="autoUpdateInterval"
-								label={m.docker_auto_update_interval_label()}
-								placeholder={m.docker_auto_update_interval_placeholder()}
-								description={m.docker_auto_update_interval_description()}
-							/>
-						{/if}
 					</div>
 				{/if}
 			</Card.Content>
 		</Card.Root>
+	</div>
 
+	{#if $formInputs.pollingEnabled.value}
 		<Card.Root class="flex flex-col gap-6 py-3">
 			<Card.Header
 				class="@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
 			>
-				<Card.Title>{m.docker_prune_action_label()}</Card.Title>
-				<Card.Description>{pruneModeDescription}</Card.Description>
+				<div class="flex items-center gap-2">
+					<ClockIcon class="size-5" />
+					<Card.Title>{m.update_schedule_title()}</Card.Title>
+				</div>
+				<Card.Description>{m.update_schedule_description()}</Card.Description>
 			</Card.Header>
 			<Card.Content class="px-6">
-				<SelectWithLabel
-					id="dockerPruneMode"
-					name="pruneMode"
-					bind:value={$formInputs.dockerPruneMode.value}
-					label={m.docker_prune_action_label()}
-					description={pruneModeDescription}
-					placeholder={m.docker_prune_placeholder()}
-					options={pruneModeOptions}
-					groupLabel={m.docker_prune_group_label()}
-					onValueChange={(v) => (pruneMode = v as 'all' | 'dangling')}
-				/>
+				<UpdateScheduleEditor bind:autoUpdate bind:scheduleEnabled bind:windows={scheduleWindows} />
 			</Card.Content>
 		</Card.Root>
-	</div>
+	{/if}
 
 	<div class="flex justify-between">
 		<Button variant="outline" onclick={() => goto('/onboarding/password')}>Back</Button>

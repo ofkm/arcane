@@ -14,36 +14,39 @@ type ImagePollingJob struct {
 	imageUpdateService *services.ImageUpdateService
 	settingsService    *services.SettingsService
 	environmentService *services.EnvironmentService
+	projectService     *services.ProjectService
 	scheduler          *Scheduler
 }
 
-func NewImagePollingJob(scheduler *Scheduler, imageUpdateService *services.ImageUpdateService, settingsService *services.SettingsService, environmentService *services.EnvironmentService) *ImagePollingJob {
+func NewImagePollingJob(scheduler *Scheduler, imageUpdateService *services.ImageUpdateService, settingsService *services.SettingsService, environmentService *services.EnvironmentService, projectService *services.ProjectService) *ImagePollingJob {
 	return &ImagePollingJob{
 		imageUpdateService: imageUpdateService,
 		settingsService:    settingsService,
 		environmentService: environmentService,
+		projectService:     projectService,
 		scheduler:          scheduler,
 	}
 }
 
 func (j *ImagePollingJob) Register(ctx context.Context) error {
-	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
-	pollingInterval := j.settingsService.GetIntSetting(ctx, "pollingInterval", 60)
+	globalEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
+	globalInterval := j.settingsService.GetIntSetting(ctx, "pollingInterval", 60)
 
-	if !pollingEnabled {
-		slog.InfoContext(ctx, "polling disabled; job not registered")
+	if !globalEnabled {
+		slog.InfoContext(ctx, "polling disabled globally; job not registered")
 		return nil
 	}
 
-	interval := time.Duration(pollingInterval) * time.Minute
+	interval := time.Duration(globalInterval) * time.Minute
 	if interval < 5*time.Minute {
-		slog.WarnContext(ctx, "polling interval too low; using default",
-			slog.Int("requested_minutes", pollingInterval),
-			slog.String("effective_interval", "60m"))
-		interval = 60 * time.Minute
+		slog.WarnContext(ctx, "polling interval too low; using minimum",
+			slog.String("requested_interval", interval.String()),
+			slog.String("effective_interval", "5m"))
+		interval = 5 * time.Minute
 	}
 
-	slog.InfoContext(ctx, "registering image polling job", slog.String("interval", interval.String()))
+	slog.InfoContext(ctx, "registering image polling job",
+		slog.String("interval", interval.String()))
 
 	j.scheduler.RemoveJobByName("image-polling")
 
@@ -59,6 +62,12 @@ func (j *ImagePollingJob) Register(ctx context.Context) error {
 
 func (j *ImagePollingJob) Execute(ctx context.Context) error {
 	slog.InfoContext(ctx, "image scan run started")
+
+	globalEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
+	if !globalEnabled {
+		slog.InfoContext(ctx, "polling disabled globally; skipping")
+		return nil
+	}
 
 	creds, err := j.loadRegistryCredentials(ctx)
 	if err != nil {
@@ -102,20 +111,22 @@ func (j *ImagePollingJob) loadRegistryCredentials(ctx context.Context) ([]dto.Co
 }
 
 func (j *ImagePollingJob) Reschedule(ctx context.Context) error {
-	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
-	pollingInterval := j.settingsService.GetIntSetting(ctx, "pollingInterval", 60)
+	globalEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
+	globalInterval := j.settingsService.GetIntSetting(ctx, "pollingInterval", 60)
 
-	if !pollingEnabled {
+	if !globalEnabled {
 		j.scheduler.RemoveJobByName("image-polling")
 		slog.InfoContext(ctx, "polling disabled; removed image-polling job if present")
 		return nil
 	}
 
-	interval := time.Duration(pollingInterval) * time.Minute
+	interval := time.Duration(globalInterval) * time.Minute
 	if interval < 5*time.Minute {
-		interval = 60 * time.Minute
+		interval = 5 * time.Minute
 	}
-	slog.InfoContext(ctx, "polling settings changed; rescheduling", slog.String("interval", interval.String()))
+
+	slog.InfoContext(ctx, "polling settings changed; rescheduling",
+		slog.String("interval", interval.String()))
 
 	return j.scheduler.RescheduleDurationJobByName(ctx, "image-polling", interval, j.Execute, false)
 }
