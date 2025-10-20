@@ -42,13 +42,11 @@
 </script>
 
 <Drawer.Root bind:open shouldScaleBackground direction="bottom" modal={true}>
-	<Drawer.Overlay class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" />
+	<Drawer.Overlay class="fixed inset-0 z-40 bg-black/40 backdrop-blur-xl" />
 	<Drawer.Content
 		data-testid="mobile-nav-sheet"
-		class={cn(
-			'bg-background/60 border-border/30 rounded-t-3xl border-t shadow-sm backdrop-blur-xl',
-			'z-50 flex max-h-[85vh] flex-col'
-		)}
+		class={cn('glass glass-strong rounded-t-3xl border-t shadow-sm', 'z-50 flex max-h-[85vh] flex-col')}
+		style="--glass-base: var(--background); --glass-tint: var(--primary)"
 	>
 		<div class="px-6 pt-4">
 			{#if memoizedUser}

@@ -159,8 +159,8 @@
 
 {#if isSubPage}
 	<div
-		class="border-border/50 bg-background/80 fixed top-4 z-[5] rounded-lg border shadow-lg backdrop-blur-md transition-all duration-200"
-		style="left: {leftPosition()}; right: 1rem;"
+		class="glass glass-strong fixed top-4 z-[5] rounded-lg border shadow-lg transition-all duration-200"
+		style="left: {leftPosition()}; right: 1rem; --glass-base: var(--background); --glass-tint: var(--primary)"
 	>
 		<div class="px-4 py-3">
 			<div class="flex items-center justify-between gap-4">
@@ -278,7 +278,7 @@
 
 		<!-- Status indicator for mobile -->
 		{#if formState.hasChanges}
-			<div class="absolute -left-2 -top-2 size-3 animate-pulse rounded-full bg-orange-500"></div>
+			<div class="absolute -top-2 -left-2 size-3 animate-pulse rounded-full bg-orange-500"></div>
 		{/if}
 	</div>
 {/if}

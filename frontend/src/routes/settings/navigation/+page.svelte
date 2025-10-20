@@ -6,7 +6,6 @@
 	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import EyeIcon from '@lucide/svelte/icons/eye';
-	import MousePointerClickIcon from '@lucide/svelte/icons/mouse-pointer-click';
 	import ScrollTextIcon from '@lucide/svelte/icons/scroll-text';
 	import NavigationIcon from '@lucide/svelte/icons/navigation';
 	import SidebarIcon from '@lucide/svelte/icons/sidebar';
@@ -63,7 +62,7 @@
 		}
 	});
 
-		function setLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide', value: any) {
+	function setLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide', value: any) {
 		const currentOverrides = navigationSettingsOverridesStore.current;
 		navigationSettingsOverridesStore.current = {
 			...currentOverrides,
@@ -113,8 +112,7 @@
 		isLoading = true;
 
 		// Check if behavior settings changed
-		const behaviorChanged =
-			formData.mobileNavigationScrollToHide !== currentSettings.mobileNavigationScrollToHide;
+		const behaviorChanged = formData.mobileNavigationScrollToHide !== currentSettings.mobileNavigationScrollToHide;
 
 		await updateSettingsConfig(formData)
 			.then(() => {
@@ -171,7 +169,7 @@
 						</div>
 						<div class="flex flex-1 flex-col gap-3">
 							<div>
-								<h4 class="mb-1 text-sm font-medium leading-tight">{m.navigation_sidebar_hover_expansion_label()}</h4>
+								<h4 class="mb-1 text-sm leading-tight font-medium">{m.navigation_sidebar_hover_expansion_label()}</h4>
 								<p class="text-muted-foreground text-xs leading-relaxed">
 									{m.navigation_sidebar_hover_expansion_description()}
 								</p>
@@ -265,7 +263,6 @@
 							onClearOverride={() => clearLocalOverride('scrollToHide')}
 							serverDisabled={isReadOnly}
 						/>
-
 					</div>
 				</Card.Content>
 			</Card.Root>

@@ -240,6 +240,31 @@
 						'minimize',
 						'collapse'
 					]
+				},
+				{
+					key: 'glassEffectEnabled',
+					label: m.navigation_glass_effect_label(),
+					type: 'boolean',
+					description: 'Enable modern glassmorphism design with blur, gradients, and ambient effects',
+					keywords: [
+						'glass',
+						'glassmorphism',
+						'blur',
+						'backdrop',
+						'frosted',
+						'effect',
+						'gradient',
+						'ambient',
+						'design',
+						'ui',
+						'appearance',
+						'modern',
+						'visual',
+						'style',
+						'theme',
+						'transparency',
+						'translucent'
+					]
 				}
 			]
 		},
@@ -361,7 +386,7 @@
 				</div>
 
 				<div class="relative mt-4 w-full sm:mt-6 sm:max-w-md">
-					<SearchIcon class="text-muted-foreground absolute top-1/2 left-3 z-10 size-4 -translate-y-1/2" />
+					<SearchIcon class="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
 					<input
 						type="text"
 						placeholder="Search settings..."

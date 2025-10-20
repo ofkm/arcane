@@ -114,7 +114,9 @@
 		if (!enablePersist) return;
 		const snapshot = extractPersistedPreferences(prefs?.current, getDefaultLimit());
 
-		applyHiddenPatch(columnVisibility, snapshot.hiddenColumns);
+		const patchedVisibility = { ...columnVisibility };
+		applyHiddenPatch(patchedVisibility, snapshot.hiddenColumns);
+		columnVisibility = patchedVisibility;
 
 		let shouldRefresh = false;
 		const { restoredFilters, filtersMap } = snapshot;

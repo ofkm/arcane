@@ -1360,5 +1360,12 @@
 	"events_delete_failed": "Failed to delete event \"{title}\"",
 	"events_delete_success": "Event \"{title}\" deleted successfully",
 	"sidebar_dark_mode": "Dark",
-	"sidebar_light_mode": "Light"
+	"sidebar_light_mode": "Light",
+	"glass_effect_title": "Glass Effect (Preview)",
+	"glass_effect_description": "Enable modern glassmorphism design with blur, gradients, and ambient effects",
+	"glass_effect_label": "Glassmorphism UI",
+	"glass_effect_enabled": "Glass effects enabled",
+	"glass_effect_disabled": "Glass effects disabled (classic design)",
+	"glass_effect_description_long": "When enabled, the interface uses frosted glass effects with backdrop blur and subtle gradients. When disabled, the interface uses solid colors and traditional shadows for a classic design. The glass design is in preview, and is subject to change.",
+	"navigation_glass_effect_label": "Glass Effect"
 }

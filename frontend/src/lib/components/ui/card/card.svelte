@@ -28,11 +28,11 @@
 	function getVariantClasses(variant: 'default' | 'subtle' | 'outlined') {
 		switch (variant) {
 			case 'default':
-				return 'bg-card/80 supports-[backdrop-filter]:bg-card/60 ring-border/40 shadow-sm backdrop-blur-sm dark:shadow-none';
+				return 'glass glass-subtle ring-border/30 shadow-sm dark:shadow-none';
 			case 'subtle':
-				return 'bg-muted/30 border-transparent';
+				return 'glass-subtle border-transparent';
 			case 'outlined':
-				return 'bg-card/80 supports-[backdrop-filter]:bg-card/60 border-border/50';
+				return 'glass glass-strong border-border/50';
 		}
 	}
 </script>
