@@ -77,7 +77,7 @@ test.describe('Projects Page', () => {
   test('should allow searching/filtering projects', async ({ page }) => {
     test.skip(!realProjects.length, 'No projects available for search test');
 
-    const searchInput = page.getByPlaceholder('Search...');
+    const searchInput = page.getByPlaceholder('Search…');
     await expect(searchInput).toBeVisible();
 
     const firstProject = realProjects[0];

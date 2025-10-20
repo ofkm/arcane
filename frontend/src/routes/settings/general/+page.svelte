@@ -121,6 +121,7 @@
 						<div class="space-y-3">
 							<TextInputWithLabel
 								bind:value={$formInputs.projectsDirectory.value}
+								error={$formInputs.projectsDirectory.error}
 								label={m.general_projects_directory_label()}
 								placeholder={m.general_projects_directory_placeholder()}
 								helpText={m.general_projects_directory_help()}
@@ -129,6 +130,7 @@
 
 							<TextInputWithLabel
 								bind:value={$formInputs.baseServerUrl.value}
+								error={$formInputs.baseServerUrl.error}
 								label={m.general_base_url_label()}
 								placeholder={m.general_base_url_placeholder()}
 								helpText={m.general_base_url_help()}
@@ -150,6 +152,7 @@
 							id="enableGravatar"
 							label={m.general_enable_gravatar_label()}
 							description={m.general_enable_gravatar_description()}
+							error={$formInputs.enableGravatar.error}
 							bind:checked={$formInputs.enableGravatar.value}
 						/>
 					</Card.Content>

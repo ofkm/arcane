@@ -176,6 +176,7 @@
 						id="localAuthSwitch"
 						label={m.security_local_auth_label()}
 						description={m.security_local_auth_description()}
+						error={$formInputs.authLocalEnabled.error}
 						bind:checked={$formInputs.authLocalEnabled.value}
 						onCheckedChange={handleLocalSwitchChange}
 					/>
@@ -187,6 +188,7 @@
 							description={data.oidcStatus.envForced
 								? m.security_oidc_auth_description_forced()
 								: m.security_oidc_auth_description()}
+							error={$formInputs.authOidcEnabled.error}
 							disabled={data.oidcStatus.envForced}
 							checked={$formInputs.authOidcEnabled.value}
 							onCheckedChange={handleOidcSwitchChange}
