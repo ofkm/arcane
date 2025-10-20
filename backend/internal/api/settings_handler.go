@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/config"
@@ -38,7 +39,18 @@ func NewSettingsHandler(group *gin.RouterGroup, settingsService *services.Settin
 func (h *SettingsHandler) Search(c *gin.Context) {
 	var req dto.SettingsSearchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Invalid request: " + err.Error()}})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Invalid request format"},
+		})
+		return
+	}
+
+	if strings.TrimSpace(req.Query) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Query parameter is required"},
+		})
 		return
 	}
 

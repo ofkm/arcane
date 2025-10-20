@@ -267,12 +267,7 @@ func (s *SettingsSearchService) calculateRelevance(category dto.SettingsCategory
 }
 
 func (s *SettingsSearchService) sortByRelevance(results []dto.SettingsCategory) {
-	// Bubble sort by relevance score (descending)
-	for i := 0; i < len(results)-1; i++ {
-		for j := 0; j < len(results)-i-1; j++ {
-			if results[j].RelevanceScore < results[j+1].RelevanceScore {
-				results[j], results[j+1] = results[j+1], results[j]
-			}
-		}
-	}
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].RelevanceScore > results[j].RelevanceScore
+	})
 }

@@ -21,7 +21,7 @@ type SettingsCategory struct {
 }
 
 type SettingsSearchRequest struct {
-	Query string `json:"query" binding:"required"`
+	Query string `json:"query" binding:"required,min=1"`
 }
 
 type SettingsSearchResponse struct {
