@@ -122,12 +122,11 @@ func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.
 	// 6. Stop current container (this will terminate Arcane)
 	// The new container is already running at this point
 	// We do this in a goroutine so the response can be sent first
-	go func(containerID string) {
-		// Use background context to ensure cleanup completes even if request is canceled
-		cleanupCtx := context.Background()
-
+	// Use WithoutCancel to ensure cleanup completes even if request is canceled
+	cleanupCtx := context.WithoutCancel(ctx)
+	go func(ctx context.Context, containerID string) {
 		time.Sleep(2 * time.Second)
-		dockerClient, err := s.dockerService.CreateConnection(cleanupCtx)
+		dockerClient, err := s.dockerService.CreateConnection(ctx)
 		if err != nil {
 			slog.Error("Failed to create Docker client for cleanup", "error", err)
 			return
@@ -135,15 +134,15 @@ func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.
 		defer dockerClient.Close()
 
 		timeout := 10
-		if err := dockerClient.ContainerStop(cleanupCtx, containerID, containertypes.StopOptions{Timeout: &timeout}); err != nil {
+		if err := dockerClient.ContainerStop(ctx, containerID, containertypes.StopOptions{Timeout: &timeout}); err != nil {
 			slog.Warn("Failed to stop old container", "error", err)
 		}
 
 		// Remove old container
-		if err := dockerClient.ContainerRemove(cleanupCtx, containerID, containertypes.RemoveOptions{}); err != nil {
+		if err := dockerClient.ContainerRemove(ctx, containerID, containertypes.RemoveOptions{}); err != nil {
 			slog.Warn("Failed to remove old container", "error", err)
 		}
-	}(currentContainerId)
+	}(cleanupCtx, currentContainerId)
 
 	return nil
 }
