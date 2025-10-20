@@ -94,6 +94,7 @@
 						id="enableGravatar"
 						label={m.general_enable_gravatar_label()}
 						description={m.general_enable_gravatar_description()}
+						error={$formInputs.enableGravatar.error}
 						bind:checked={$formInputs.enableGravatar.value}
 					/>
 				</div>
