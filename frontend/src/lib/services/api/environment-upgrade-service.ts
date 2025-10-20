@@ -17,12 +17,8 @@ export interface EnvironmentUpgradeResponse {
  * @param environmentId - The ID of the environment to check
  * @returns Promise with upgrade availability status
  */
-async function checkEnvironmentUpgradeAvailable(
-	environmentId: string
-): Promise<EnvironmentUpgradeCheckResponse> {
-	const res = await axios.get<EnvironmentUpgradeCheckResponse>(
-		`/api/environments/${environmentId}/system/upgrade/check`
-	);
+async function checkEnvironmentUpgradeAvailable(environmentId: string): Promise<EnvironmentUpgradeCheckResponse> {
+	const res = await axios.get<EnvironmentUpgradeCheckResponse>(`/api/environments/${environmentId}/system/upgrade/check`);
 	return res.data;
 }
 
@@ -31,12 +27,8 @@ async function checkEnvironmentUpgradeAvailable(
  * @param environmentId - The ID of the environment to upgrade
  * @returns Promise with upgrade initiation result
  */
-async function triggerEnvironmentUpgrade(
-	environmentId: string
-): Promise<EnvironmentUpgradeResponse> {
-	const res = await axios.post<EnvironmentUpgradeResponse>(
-		`/api/environments/${environmentId}/system/upgrade`
-	);
+async function triggerEnvironmentUpgrade(environmentId: string): Promise<EnvironmentUpgradeResponse> {
+	const res = await axios.post<EnvironmentUpgradeResponse>(`/api/environments/${environmentId}/system/upgrade`);
 	return res.data;
 }
 

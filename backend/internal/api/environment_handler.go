@@ -58,7 +58,7 @@ func NewEnvironmentHandler(
 		apiGroup.POST("/:id/test", h.TestConnection)
 		apiGroup.POST("/:id/heartbeat", h.UpdateHeartbeat)
 		apiGroup.POST("/:id/agent/pair", h.PairAgent)
-		
+
 		// Environment upgrade endpoints (admin required)
 		apiGroup.GET("/:id/upgrade/check", authMiddleware.WithAdminRequired().Add(), h.CheckEnvironmentUpgrade)
 		apiGroup.POST("/:id/upgrade", authMiddleware.WithAdminRequired().Add(), h.TriggerEnvironmentUpgrade)

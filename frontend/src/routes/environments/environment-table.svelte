@@ -41,7 +41,7 @@
 	let showUpgradeDialog = $state(false);
 	let selectedEnvironmentForUpgrade = $state<Environment | null>(null);
 	let user = $state<any>(null);
-	
+
 	$effect(() => {
 		const unsub = userStore.subscribe((u) => {
 			user = u;

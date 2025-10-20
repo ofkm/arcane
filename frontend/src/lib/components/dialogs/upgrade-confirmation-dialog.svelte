@@ -17,11 +17,7 @@
 	} = $props();
 
 	const isRemoteEnvironment = $derived(!!environmentName);
-	const targetDescription = $derived(
-		isRemoteEnvironment 
-			? `remote environment "${environmentName}"` 
-			: 'this system'
-	);
+	const targetDescription = $derived(isRemoteEnvironment ? `remote environment "${environmentName}"` : 'this system');
 </script>
 
 <Dialog.Root bind:open>
