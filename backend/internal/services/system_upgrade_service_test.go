@@ -119,33 +119,16 @@ func TestSystemUpgradeService_Initialization(t *testing.T) {
 // TestSystemUpgradeService_ErrorVariables tests that error variables are properly defined
 func TestSystemUpgradeService_ErrorVariables(t *testing.T) {
 	// Test that all expected errors exist and are not nil
-	require.NotNil(t, ErrNotRunningInDocker)
-	require.NotNil(t, ErrContainerNotFound)
-	require.NotNil(t, ErrUpgradeInProgress)
-	require.NotNil(t, ErrDockerSocketAccess)
+	require.Error(t, ErrNotRunningInDocker)
+	require.Error(t, ErrContainerNotFound)
+	require.Error(t, ErrUpgradeInProgress)
+	require.Error(t, ErrDockerSocketAccess)
 
 	// Test error messages
 	require.Equal(t, "arcane is not running in a Docker container", ErrNotRunningInDocker.Error())
 	require.Equal(t, "could not find Arcane container", ErrContainerNotFound.Error())
 	require.Equal(t, "an upgrade is already in progress", ErrUpgradeInProgress.Error())
 	require.Equal(t, "docker socket is not accessible", ErrDockerSocketAccess.Error())
-}
-
-// TestGetContainerIDFromHostname_ValidContainerID tests hostname extraction
-func TestGetContainerIDFromHostname_ValidContainerID(t *testing.T) {
-	// Mock hostname of 64 characters (valid container ID length)
-	// In a real scenario, os.Hostname() would be called, but we're testing the logic
-	containerID := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-	require.Equal(t, 64, len(containerID))
-}
-
-// TestSystemUpgradeService_CanUpgrade_NotRunningInDocker tests CanUpgrade error handling
-func TestSystemUpgradeService_CanUpgrade_NotRunningInDocker(t *testing.T) {
-	// When not in Docker, CanUpgrade should return false with an error
-	// This is an integration test that would only work in Docker
-	// So we just verify the error variable exists
-	require.NotNil(t, ErrNotRunningInDocker)
-	require.Equal(t, "arcane is not running in a Docker container", ErrNotRunningInDocker.Error())
 }
 
 // TestSystemUpgradeService_ImageNameValidation tests image name edge cases
@@ -207,7 +190,7 @@ func TestSystemUpgradeService_ImageNameValidation(t *testing.T) {
 func TestSystemUpgradeService_ErrorComparison(t *testing.T) {
 	// Test that errors can be compared properly with errors.Is
 	err := ErrUpgradeInProgress
-	
+
 	// This simulates how the handler uses errors.Is
 	// It should work with wrapped errors
 	require.Error(t, err)
@@ -253,14 +236,9 @@ func TestSystemUpgradeService_Services(t *testing.T) {
 func TestSystemUpgradeService_UpgradeInProgressError(t *testing.T) {
 	// This tests the specific error that the handler checks for
 	// The handler uses: if errors.Is(err, services.ErrUpgradeInProgress)
-	
-	require.Equal(t, ErrUpgradeInProgress.Error(), "an upgrade is already in progress")
-	
-	// Test that the error is not nil
-	require.NotNil(t, ErrUpgradeInProgress)
-	
-	// Test comparison
-	var upgradeErr error = ErrUpgradeInProgress
-	require.True(t, upgradeErr == ErrUpgradeInProgress)
-}
 
+	require.Equal(t, "an upgrade is already in progress", ErrUpgradeInProgress.Error())
+
+	// Test that the error is not nil
+	require.Error(t, ErrUpgradeInProgress)
+}
