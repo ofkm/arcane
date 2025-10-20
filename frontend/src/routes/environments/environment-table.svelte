@@ -23,7 +23,6 @@
 	import { environmentManagementService } from '$lib/services/env-mgmt-service';
 	import CloudIcon from '@lucide/svelte/icons/cloud';
 	import environmentUpgradeService from '$lib/services/api/environment-upgrade-service';
-	import userStore from '$lib/stores/user-store';
 	import UpgradeConfirmationDialog from '$lib/components/dialogs/upgrade-confirmation-dialog.svelte';
 
 	let {
@@ -40,16 +39,6 @@
 	let upgradingEnvironmentId = $state<string | null>(null);
 	let showUpgradeDialog = $state(false);
 	let selectedEnvironmentForUpgrade = $state<Environment | null>(null);
-	let user = $state<any>(null);
-
-	$effect(() => {
-		const unsub = userStore.subscribe((u) => {
-			user = u;
-		});
-		return unsub;
-	});
-
-	const isAdmin = $derived(!!user?.roles?.includes('admin'));
 
 	async function handleDeleteSelected(ids: string[]) {
 		if (!ids?.length) return;
@@ -286,7 +275,7 @@
 					<EyeIcon class="size-4" />
 					{m.common_view_details()}
 				</DropdownMenu.Item>
-				{#if isAdmin && item.status === 'online'}
+				{#if item.status === 'online'}
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item
 						onclick={() => handleUpgradeClick(item)}

@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	containertypes "github.com/docker/docker/api/types/container"
@@ -26,8 +26,7 @@ var (
 )
 
 type SystemUpgradeService struct {
-	mu             sync.Mutex
-	upgrading      bool
+	upgrading      atomic.Bool
 	dockerService  *DockerClientService
 	versionService *VersionService
 	eventService   *EventService
@@ -42,7 +41,6 @@ func NewSystemUpgradeService(
 		dockerService:  dockerService,
 		versionService: versionService,
 		eventService:   eventService,
-		upgrading:      false,
 	}
 }
 
@@ -71,19 +69,11 @@ func (s *SystemUpgradeService) CanUpgrade(ctx context.Context) (bool, error) {
 
 // UpgradeToLatest performs the self-upgrade
 func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.User) error {
-	s.mu.Lock()
-	if s.upgrading {
-		s.mu.Unlock()
+	if !s.upgrading.CompareAndSwap(false, true) {
 		return ErrUpgradeInProgress
 	}
-	s.upgrading = true
-	s.mu.Unlock()
 
-	defer func() {
-		s.mu.Lock()
-		s.upgrading = false
-		s.mu.Unlock()
-	}()
+	defer s.upgrading.Store(false)
 
 	// 1. Get current container ID
 	currentContainerId, err := s.getCurrentContainerID()
@@ -132,9 +122,12 @@ func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.
 	// 6. Stop current container (this will terminate Arcane)
 	// The new container is already running at this point
 	// We do this in a goroutine so the response can be sent first
-	go func(ctx context.Context, containerID string) {
+	go func(containerID string) {
+		// Use background context to ensure cleanup completes even if request is canceled
+		cleanupCtx := context.Background()
+
 		time.Sleep(2 * time.Second)
-		dockerClient, err := s.dockerService.CreateConnection(ctx)
+		dockerClient, err := s.dockerService.CreateConnection(cleanupCtx)
 		if err != nil {
 			slog.Error("Failed to create Docker client for cleanup", "error", err)
 			return
@@ -142,15 +135,15 @@ func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.
 		defer dockerClient.Close()
 
 		timeout := 10
-		if err := dockerClient.ContainerStop(ctx, containerID, containertypes.StopOptions{Timeout: &timeout}); err != nil {
+		if err := dockerClient.ContainerStop(cleanupCtx, containerID, containertypes.StopOptions{Timeout: &timeout}); err != nil {
 			slog.Warn("Failed to stop old container", "error", err)
 		}
 
 		// Remove old container
-		if err := dockerClient.ContainerRemove(ctx, containerID, containertypes.RemoveOptions{}); err != nil {
+		if err := dockerClient.ContainerRemove(cleanupCtx, containerID, containertypes.RemoveOptions{}); err != nil {
 			slog.Warn("Failed to remove old container", "error", err)
 		}
-	}(ctx, currentContainerId)
+	}(currentContainerId)
 
 	return nil
 }
@@ -343,8 +336,8 @@ func (s *SystemUpgradeService) recreateContainer(
 	}
 	defer dockerClient.Close()
 
-	// Create new container config based on old one
-	config := oldContainer.Config
+	// Create new container config based on old one (copy to avoid mutation)
+	config := *oldContainer.Config
 	config.Image = newImage
 
 	hostConfig := oldContainer.HostConfig
@@ -357,8 +350,7 @@ func (s *SystemUpgradeService) recreateContainer(
 	// Copy network settings from old container
 	for networkName, networkSettings := range oldContainer.NetworkSettings.Networks {
 		networkConfig.EndpointsConfig[networkName] = &network.EndpointSettings{
-			Aliases:   networkSettings.Aliases,
-			IPAddress: networkSettings.IPAddress,
+			Aliases: networkSettings.Aliases,
 		}
 	}
 
@@ -376,7 +368,7 @@ func (s *SystemUpgradeService) recreateContainer(
 	// Create container
 	resp, err := dockerClient.ContainerCreate(
 		ctx,
-		config,
+		&config,
 		hostConfig,
 		networkConfig,
 		nil,
@@ -388,7 +380,7 @@ func (s *SystemUpgradeService) recreateContainer(
 			newName = fmt.Sprintf("%s-new", oldName)
 			resp, err = dockerClient.ContainerCreate(
 				ctx,
-				config,
+				&config,
 				hostConfig,
 				networkConfig,
 				nil,

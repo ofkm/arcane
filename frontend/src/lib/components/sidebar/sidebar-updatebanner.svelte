@@ -37,13 +37,11 @@
 
 	const isAdmin = $derived(!!user?.roles?.includes('admin'));
 	const shouldShowUpgrade = $derived((canUpgrade && isAdmin) || debug);
-	const upgradeButtonText = $derived(
-		upgrading
-			? m.upgrade_in_progress()
-			: checkingUpgrade
-				? m.upgrade_checking()
-				: m.upgrade_to_version({ version: versionInformation?.newestVersion ?? '' })
-	);
+	const upgradeButtonText = $derived.by(() => {
+		if (upgrading) return m.upgrade_in_progress();
+		if (checkingUpgrade) return m.upgrade_checking();
+		return m.upgrade_to_version({ version: versionInformation?.newestVersion ?? '' });
+	});
 
 	// Debug mode: force show upgrade button
 	$effect(() => {
@@ -91,12 +89,16 @@
 			const interval = setInterval(() => {
 				countdown--;
 				if (countdown > 0) {
-					toast.info(`Reloading in ${countdown} seconds...`, { id: toastId });
+					toast.info(`Reloading in ${countdown} seconds...`, {
+						id: toastId,
+						duration: 5000
+					});
 				}
 			}, 1000);
 
 			setTimeout(() => {
 				clearInterval(interval);
+				upgrading = false;
 				window.location.reload();
 			}, 5000);
 		} catch (error: any) {
