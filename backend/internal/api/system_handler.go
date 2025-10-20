@@ -63,7 +63,7 @@ func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClie
 		apiGroup.POST("/containers/start-stopped", handler.StartAllStoppedContainers)
 		apiGroup.POST("/containers/stop-all", handler.StopAllContainers)
 		apiGroup.POST("/convert", handler.ConvertDockerRun)
-		
+
 		// Upgrade endpoints (admin required)
 		apiGroup.GET("/upgrade/check", authMiddleware.WithAdminRequired().Add(), handler.CheckUpgradeAvailable)
 		apiGroup.POST("/upgrade", authMiddleware.WithAdminRequired().Add(), handler.TriggerUpgrade)

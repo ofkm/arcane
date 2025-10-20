@@ -27,7 +27,7 @@ type EnvironmentHandler struct {
 func NewEnvironmentHandler(
 	group *gin.RouterGroup,
 	environmentService *services.EnvironmentService,
-	settingsService    *services.SettingsService,
+	settingsService *services.SettingsService,
 	authMiddleware *middleware.AuthMiddleware,
 	cfg *config.Config,
 ) {
