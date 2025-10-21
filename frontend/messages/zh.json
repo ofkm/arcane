@@ -1326,5 +1326,19 @@
 	"glass_effect_enabled": "玻璃效果已启用",
 	"glass_effect_disabled": "已禁用玻璃特效(经典设计)",
 	"glass_effect_description_long": "启用时，接口会使用背景模糊和微妙渐变的玻璃效应。 当禁用时，接口使用固态颜色和传统阴影来设计经典设计。玻璃设计正在预览中，可能会改变。",
-	"navigation_glass_effect_label": "玻璃效果"
+	"navigation_glass_effect_label": "玻璃效果",
+	"first_login_title": "更改默认密码",
+	"first_login_description": "出于安全原因，您必须在继续之前更改默认密码。",
+	"first_login_current_password": "当前密码",
+	"first_login_current_password_placeholder": "输入当前密码",
+	"first_login_new_password": "新密码",
+	"first_login_new_password_placeholder": "输入新密码 (最小8 个字符)",
+	"first_login_confirm_password": "确认新密码",
+	"first_login_confirm_password_placeholder": "确认新密码",
+	"first_login_submit": "更改密码",
+	"first_login_submitting": "正在更改…",
+	"first_login_error_mismatch": "密码不匹配",
+	"first_login_error_length": "密码必须至少 8 个字符",
+	"first_login_error_failed": "更改密码失败",
+	"first_login_success": "密码修改成功"
 }
