@@ -84,7 +84,7 @@
 	});
 	const navigationMode = $derived(navigationSettings.mode);
 
-	const redirectPath = getAuthRedirectPath(page.url.pathname, user, settings);
+	const redirectPath = getAuthRedirectPath(page.url.pathname, user);
 	if (redirectPath) {
 		goto(redirectPath);
 	}

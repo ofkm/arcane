@@ -1,5 +1,4 @@
 import type { User } from '$lib/types/user.type';
-import type { Settings } from '$lib/types/settings.type';
 
 const PROTECTED_PREFIXES = [
 	'dashboard',
@@ -22,7 +21,7 @@ const isProtectedPath = (path: string) => {
 	return result;
 };
 
-export function getAuthRedirectPath(path: string, user: User | null, settings: Settings | null) {
+export function getAuthRedirectPath(path: string, user: User | null) {
 	const isSignedIn = !!user;
 
 	const isUnauthenticatedOnlyPath =
