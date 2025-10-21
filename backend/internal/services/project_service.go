@@ -402,29 +402,71 @@ func (s *ProjectService) GetProjectStatusCounts(ctx context.Context) (folderCoun
 		return 0, 0, 0, 0, fmt.Errorf("unable to access projects directory %s: %w", projectsDir, statErr)
 	}
 
-	// Get all projects and calculate live status
-	var projects []models.Project
-	if err := s.db.WithContext(ctx).Find(&projects).Error; err != nil {
+	var projectsList []models.Project
+	if err := s.db.WithContext(ctx).Find(&projectsList).Error; err != nil {
 		return folderCount, 0, 0, 0, fmt.Errorf("failed to list projects: %w", err)
 	}
 
-	totalProjects = len(projects)
+	totalProjects = len(projectsList)
+
+	// Fetch live status concurrently
+	type statusResult struct {
+		status models.ProjectStatus
+		err    error
+	}
+
+	resultChan := make(chan statusResult, len(projectsList))
+	semaphore := make(chan struct{}, 10)
+
+	queryCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	for _, proj := range projectsList {
+		go func(p models.Project) {
+			semaphore <- struct{}{}
+			defer func() { <-semaphore }()
+
+			projectCtx, projectCancel := context.WithTimeout(queryCtx, 2*time.Second)
+			defer projectCancel()
+
+			services, serr := s.getProjectServicesWithTimeout(projectCtx, p.ID)
+			if serr != nil {
+				// On error, use cached status
+				resultChan <- statusResult{status: p.Status, err: serr}
+				return
+			}
+
+			status := s.calculateProjectStatus(services)
+			resultChan <- statusResult{status: status, err: nil}
+		}(proj)
+	}
+
+	// Collect results
 	runningProjects = 0
 	stoppedProjects = 0
 
-	for _, proj := range projects {
-		services, serr := s.GetProjectServices(ctx, proj.ID)
-		if serr != nil {
-			continue
-		}
-
-		status := s.calculateProjectStatus(services)
-		switch status {
-		case models.ProjectStatusRunning, models.ProjectStatusPartiallyRunning, models.ProjectStatusDeploying, models.ProjectStatusRestarting:
-			runningProjects++
-		case models.ProjectStatusStopped, models.ProjectStatusStopping:
-			stoppedProjects++
-		case models.ProjectStatusUnknown:
+	for i := 0; i < len(projectsList); i++ {
+		select {
+		case res := <-resultChan:
+			switch res.status {
+			case models.ProjectStatusRunning, models.ProjectStatusPartiallyRunning, models.ProjectStatusDeploying, models.ProjectStatusRestarting:
+				runningProjects++
+			case models.ProjectStatusStopped, models.ProjectStatusStopping:
+				stoppedProjects++
+			case models.ProjectStatusUnknown:
+				// Don't count unknown
+			}
+		case <-queryCtx.Done():
+			// Timeout - use cached data for remaining
+			for j := i; j < len(projectsList); j++ {
+				switch projectsList[j].Status {
+				case models.ProjectStatusRunning, models.ProjectStatusPartiallyRunning, models.ProjectStatusDeploying, models.ProjectStatusRestarting:
+					runningProjects++
+				case models.ProjectStatusStopped, models.ProjectStatusStopping:
+					stoppedProjects++
+				}
+			}
+			return folderCount, runningProjects, stoppedProjects, totalProjects, nil
 		}
 	}
 
@@ -824,69 +866,201 @@ func (s *ProjectService) ListProjects(ctx context.Context, params pagination.Que
 		return nil, pagination.Response{}, fmt.Errorf("failed to paginate projects: %w", err)
 	}
 
-	var result []dto.ProjectDetailsDto
-	for _, project := range projectsArray {
-		displayServiceCount := project.ServiceCount
-		displayRunningCount := project.RunningCount
-		var displayStatus string
-		var statusReason *string
+	slog.DebugContext(ctx, "Retrieved projects from database",
+		"count", len(projectsArray))
 
-		// Get live status from Docker
-		if services, serr := s.GetProjectServices(ctx, project.ID); serr == nil {
-			displayServiceCount = len(services)
-			_, displayRunningCount = s.getServiceCounts(services)
-			displayStatus = string(s.calculateProjectStatus(services))
+	// Fetch live status concurrently for all projects
+	result := s.fetchProjectStatusConcurrently(ctx, projectsArray)
 
-			// If status is unknown, set reason
-			if displayStatus == string(models.ProjectStatusUnknown) && len(services) == 0 {
-				reason := "No services found in project"
-				statusReason = &reason
-				slog.WarnContext(ctx, "Project has unknown status",
-					"project_id", project.ID,
-					"project_name", project.Name,
-					"reason", reason)
-			}
-		} else {
-			// Error getting services - set status to unknown with reason
-			displayStatus = string(models.ProjectStatusUnknown)
-			reason := fmt.Sprintf("Failed to load project services: %v", serr)
-			statusReason = &reason
-			slog.WarnContext(ctx, "Project has unknown status due to error",
-				"project_id", project.ID,
-				"project_name", project.Name,
-				"reason", reason,
-				"error", serr)
+	slog.DebugContext(ctx, "Completed ListProjects request",
+		"result_count", len(result))
 
-			// Fallback: try to detect service count from compose file
-			if displayServiceCount == 0 {
-				if _, derr := projects.DetectComposeFile(project.Path); derr == nil {
-					// Get configured projects directory from settings
-					projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
-					projectsDirectory, pdErr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
-					if pdErr != nil {
-						projectsDirectory = "data/projects"
+	return result, paginationResp, nil
+}
+
+// fetchProjectStatusConcurrently fetches live Docker status for multiple projects in parallel
+func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, projects []models.Project) []dto.ProjectDetailsDto {
+	type projectResult struct {
+		index int
+		dto   dto.ProjectDetailsDto
+	}
+
+	resultChan := make(chan projectResult, len(projects))
+	semaphore := make(chan struct{}, 10) // Limit concurrent Docker queries to 10
+
+	// Create a context with timeout for all operations
+	queryCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	// Launch goroutine for each project
+	for i, project := range projects {
+		go func(idx int, proj models.Project) {
+			slog.DebugContext(ctx, "Starting concurrent status query for project",
+				"project_id", proj.ID,
+				"project_name", proj.Name,
+				"index", idx)
+
+			semaphore <- struct{}{} // Acquire semaphore
+			slog.DebugContext(ctx, "Acquired semaphore for project",
+				"project_id", proj.ID,
+				"project_name", proj.Name)
+			defer func() {
+				<-semaphore // Release semaphore
+				slog.DebugContext(ctx, "Released semaphore for project",
+					"project_id", proj.ID,
+					"project_name", proj.Name)
+			}()
+
+			// Create per-project timeout
+			projectCtx, projectCancel := context.WithTimeout(queryCtx, 3*time.Second)
+			defer projectCancel()
+
+			displayServiceCount := proj.ServiceCount
+			displayRunningCount := proj.RunningCount
+			displayStatus := string(proj.Status)
+			var statusReason *string
+
+			// Try to get live status from Docker
+			startTime := time.Now()
+			slog.DebugContext(projectCtx, "Querying Docker for project status",
+				"project_id", proj.ID,
+				"project_name", proj.Name)
+
+			if services, serr := s.getProjectServicesWithTimeout(projectCtx, proj.ID); serr == nil {
+				queryDuration := time.Since(startTime)
+				displayServiceCount = len(services)
+				_, displayRunningCount = s.getServiceCounts(services)
+				displayStatus = string(s.calculateProjectStatus(services))
+
+				slog.DebugContext(projectCtx, "Successfully retrieved live project status",
+					"project_id", proj.ID,
+					"project_name", proj.Name,
+					"status", displayStatus,
+					"service_count", displayServiceCount,
+					"running_count", displayRunningCount,
+					"query_duration_ms", queryDuration.Milliseconds())
+
+				if displayStatus == string(models.ProjectStatusUnknown) && len(services) == 0 {
+					reason := "No services found in project"
+					statusReason = &reason
+					slog.DebugContext(projectCtx, "Project has unknown status - no services found",
+						"project_id", proj.ID,
+						"project_name", proj.Name)
+				}
+			} else {
+				queryDuration := time.Since(startTime)
+				// On timeout or error, use cached values but log the issue
+				if errors.Is(serr, context.DeadlineExceeded) {
+					reason := "Status query timed out, showing cached status"
+					statusReason = &reason
+					displayStatus = string(proj.Status)
+					slog.DebugContext(projectCtx, "Project status query timed out, using cached status",
+						"project_id", proj.ID,
+						"project_name", proj.Name,
+						"cached_status", displayStatus,
+						"query_duration_ms", queryDuration.Milliseconds())
+				} else if !errors.Is(serr, context.Canceled) {
+					// Use cached status on error
+					displayStatus = string(proj.Status)
+					if proj.StatusReason != nil {
+						statusReason = proj.StatusReason
 					}
-					if proj, _, perr := projects.LoadComposeProjectFromDir(ctx, project.Path, project.Name, projectsDirectory); perr == nil {
-						displayServiceCount = len(proj.Services)
-					}
+					slog.WarnContext(projectCtx, "Failed to get live project status, using cached",
+						"project_id", proj.ID,
+						"project_name", proj.Name,
+						"cached_status", displayStatus,
+						"query_duration_ms", queryDuration.Milliseconds(),
+						"error", serr)
+				} else {
+					slog.DebugContext(projectCtx, "Project status query canceled",
+						"project_id", proj.ID,
+						"project_name", proj.Name,
+						"query_duration_ms", queryDuration.Milliseconds())
 				}
 			}
-		}
 
-		result = append(result, dto.ProjectDetailsDto{
-			ID:           project.ID,
-			Name:         project.Name,
-			DirName:      utils.DerefString(project.DirName),
-			Path:         project.Path,
-			Status:       displayStatus,
-			StatusReason: statusReason,
-			ServiceCount: displayServiceCount,
-			RunningCount: displayRunningCount,
-			CreatedAt:    project.CreatedAt.Format(time.RFC3339),
-			UpdatedAt:    project.UpdatedAt.Format(time.RFC3339),
-		})
+			slog.DebugContext(ctx, "Sending result to channel for project",
+				"project_id", proj.ID,
+				"project_name", proj.Name,
+				"index", idx,
+				"status", displayStatus)
+
+			resultChan <- projectResult{
+				index: idx,
+				dto: dto.ProjectDetailsDto{
+					ID:           proj.ID,
+					Name:         proj.Name,
+					DirName:      utils.DerefString(proj.DirName),
+					Path:         proj.Path,
+					Status:       displayStatus,
+					StatusReason: statusReason,
+					ServiceCount: displayServiceCount,
+					RunningCount: displayRunningCount,
+					CreatedAt:    proj.CreatedAt.Format(time.RFC3339),
+					UpdatedAt:    proj.UpdatedAt.Format(time.RFC3339),
+				},
+			}
+		}(i, project)
 	}
-	return result, paginationResp, nil
+
+	// Collect results
+	slog.DebugContext(ctx, "Starting to collect results from concurrent project queries",
+		"total_projects", len(projects),
+		"timeout_seconds", 15)
+
+	results := make([]dto.ProjectDetailsDto, len(projects))
+	for i := 0; i < len(projects); i++ {
+		select {
+		case res := <-resultChan:
+			slog.DebugContext(ctx, "Received result from channel",
+				"result_number", i+1,
+				"total_expected", len(projects),
+				"project_index", res.index,
+				"project_id", res.dto.ID,
+				"project_name", res.dto.Name,
+				"status", res.dto.Status)
+			results[res.index] = res.dto
+		case <-queryCtx.Done():
+			// Timeout - fill remaining with cached data
+			remainingCount := len(projects) - i
+			slog.WarnContext(ctx, "Project list query timed out, using cached data for remaining projects",
+				"completed_count", i,
+				"remaining_count", remainingCount,
+				"total_projects", len(projects))
+
+			for j := i; j < len(projects); j++ {
+				proj := projects[j]
+				slog.DebugContext(ctx, "Using cached data for timed-out project",
+					"project_id", proj.ID,
+					"project_name", proj.Name,
+					"cached_status", proj.Status)
+
+				results[j] = dto.ProjectDetailsDto{
+					ID:           proj.ID,
+					Name:         proj.Name,
+					DirName:      utils.DerefString(proj.DirName),
+					Path:         proj.Path,
+					Status:       string(proj.Status),
+					StatusReason: proj.StatusReason,
+					ServiceCount: proj.ServiceCount,
+					RunningCount: proj.RunningCount,
+					CreatedAt:    proj.CreatedAt.Format(time.RFC3339),
+					UpdatedAt:    proj.UpdatedAt.Format(time.RFC3339),
+				}
+			}
+			return results
+		}
+	}
+
+	slog.DebugContext(ctx, "Successfully collected all project status results",
+		"total_projects", len(projects))
+
+	return results
+}
+
+// getProjectServicesWithTimeout is a wrapper that respects context timeout
+func (s *ProjectService) getProjectServicesWithTimeout(ctx context.Context, projectID string) ([]ProjectServiceInfo, error) {
+	return s.GetProjectServices(ctx, projectID)
 }
 
 // End Table Functions
