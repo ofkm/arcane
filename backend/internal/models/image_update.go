@@ -6,22 +6,22 @@ import (
 
 type ImageUpdateRecord struct {
 	ID             string    `json:"id" gorm:"primaryKey;type:text"`
-	Repository     string    `json:"repository" gorm:"not null;index"`
-	Tag            string    `json:"tag" gorm:"not null;index"`
-	HasUpdate      bool      `json:"hasUpdate" gorm:"column:has_update;default:false"`
+	Repository     string    `json:"repository"`
+	Tag            string    `json:"tag"`
+	HasUpdate      bool      `json:"hasUpdate" gorm:"column:has_update"`
 	UpdateType     string    `json:"updateType" gorm:"column:update_type"`
 	CurrentVersion string    `json:"currentVersion" gorm:"column:current_version"`
 	LatestVersion  *string   `json:"latestVersion,omitempty" gorm:"column:latest_version"`
 	CurrentDigest  *string   `json:"currentDigest,omitempty" gorm:"column:current_digest"`
 	LatestDigest   *string   `json:"latestDigest,omitempty" gorm:"column:latest_digest"`
-	CheckTime      time.Time `json:"checkTime" gorm:"column:check_time;not null"`
+	CheckTime      time.Time `json:"checkTime" gorm:"column:check_time"`
 	ResponseTimeMs int       `json:"responseTimeMs" gorm:"column:response_time_ms"`
 	LastError      *string   `json:"lastError,omitempty" gorm:"column:last_error"`
 
 	AuthMethod     *string `json:"authMethod,omitempty" gorm:"column:auth_method"`
 	AuthUsername   *string `json:"authUsername,omitempty" gorm:"column:auth_username"`
 	AuthRegistry   *string `json:"authRegistry,omitempty" gorm:"column:auth_registry"`
-	UsedCredential bool    `json:"usedCredential,omitempty" gorm:"column:used_credential;default:false"`
+	UsedCredential bool    `json:"usedCredential,omitempty" gorm:"column:used_credential"`
 
 	BaseModel
 }

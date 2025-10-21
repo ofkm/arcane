@@ -11,5 +11,11 @@ setup('authenticate', async ({ page }) => {
 
   await page.waitForURL('/dashboard');
 
+  // Handle first-login password change if dialog appears
+  // const passwordDialog = page.getByRole('dialog', { name: 'Change Default Password' });
+  // const isPasswordChangeRequired = await passwordDialog.isVisible().catch(() => false);
+
+  await authUtil.changeDefaultPassword(page, 'test-password-123');
+
   await page.context().storageState({ path: authFile });
 });

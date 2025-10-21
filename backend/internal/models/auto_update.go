@@ -16,14 +16,14 @@ const (
 )
 
 type AutoUpdateRecord struct {
-	ResourceID       string           `json:"resourceId" gorm:"index;not null"`
-	ResourceType     string           `json:"resourceType" gorm:"not null"`
-	ResourceName     string           `json:"resourceName" gorm:"not null"`
-	Status           AutoUpdateStatus `json:"status" gorm:"not null"`
-	StartTime        time.Time        `json:"startTime" gorm:"not null"`
+	ResourceID       string           `json:"resourceId"`
+	ResourceType     string           `json:"resourceType"`
+	ResourceName     string           `json:"resourceName"`
+	Status           AutoUpdateStatus `json:"status"`
+	StartTime        time.Time        `json:"startTime"`
 	EndTime          *time.Time       `json:"endTime,omitempty"`
-	UpdateAvailable  bool             `json:"updateAvailable" gorm:"default:false"`
-	UpdateApplied    bool             `json:"updateApplied" gorm:"default:false"`
+	UpdateAvailable  bool             `json:"updateAvailable"`
+	UpdateApplied    bool             `json:"updateApplied"`
 	OldImageVersions JSON             `json:"oldImageVersions,omitempty" gorm:"type:text"`
 	NewImageVersions JSON             `json:"newImageVersions,omitempty" gorm:"type:text"`
 	Error            *string          `json:"error,omitempty"`

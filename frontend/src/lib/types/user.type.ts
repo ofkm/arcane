@@ -12,6 +12,7 @@ export type User = {
 	updatedAt?: string;
 	oidcSubjectId?: string;
 	locale?: Locale;
+	requiresPasswordChange?: boolean;
 };
 
 export type CreateUser = Omit<

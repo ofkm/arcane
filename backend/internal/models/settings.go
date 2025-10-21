@@ -17,7 +17,7 @@ const (
 )
 
 type SettingVariable struct {
-	Key   string `gorm:"primaryKey;not null"`
+	Key   string `gorm:"primaryKey"`
 	Value string
 }
 

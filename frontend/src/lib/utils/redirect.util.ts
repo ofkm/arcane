@@ -36,19 +36,11 @@ export function getAuthRedirectPath(path: string, user: User | null, settings: S
 		path.startsWith('/img') ||
 		path === '/favicon.ico';
 
-	const isOnboardingPath = path === '/onboarding' || path.startsWith('/onboarding');
-
 	if (!isSignedIn && isProtectedPath(path)) {
 		return '/auth/login';
 	}
 
-	if (isSignedIn && settings && !settings.onboardingCompleted) {
-		if (!isOnboardingPath) {
-			return '/onboarding/welcome';
-		}
-	}
-
-	if (isUnauthenticatedOnlyPath && isSignedIn && settings?.onboardingCompleted) {
+	if (isUnauthenticatedOnlyPath && isSignedIn) {
 		return '/dashboard';
 	}
 

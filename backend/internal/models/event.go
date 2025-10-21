@@ -47,18 +47,18 @@ const (
 )
 
 type Event struct {
-	Type          EventType     `json:"type" gorm:"not null" sortable:"true"`
-	Severity      EventSeverity `json:"severity" gorm:"not null" sortable:"true"`
-	Title         string        `json:"title" gorm:"not null" sortable:"true"`
+	Type          EventType     `json:"type" sortable:"true"`
+	Severity      EventSeverity `json:"severity" sortable:"true"`
+	Title         string        `json:"title" sortable:"true"`
 	Description   string        `json:"description"`
-	ResourceType  *string       `json:"resourceType,omitempty" gorm:"index" sortable:"true"`
-	ResourceID    *string       `json:"resourceId,omitempty" gorm:"index" sortable:"true"`
+	ResourceType  *string       `json:"resourceType,omitempty" sortable:"true"`
+	ResourceID    *string       `json:"resourceId,omitempty" sortable:"true"`
 	ResourceName  *string       `json:"resourceName,omitempty" sortable:"true"`
-	UserID        *string       `json:"userId,omitempty" gorm:"index" sortable:"true"`
+	UserID        *string       `json:"userId,omitempty" sortable:"true"`
 	Username      *string       `json:"username,omitempty" sortable:"true"`
-	EnvironmentID *string       `json:"environmentId,omitempty" gorm:"index"`
+	EnvironmentID *string       `json:"environmentId,omitempty"`
 	Metadata      JSON          `json:"metadata,omitempty" gorm:"type:text"`
-	Timestamp     time.Time     `json:"timestamp" gorm:"not null;index" sortable:"true"`
+	Timestamp     time.Time     `json:"timestamp" sortable:"true"`
 	BaseModel
 }
 

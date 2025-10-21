@@ -54,6 +54,15 @@ export class AuthService extends BaseAPIService {
 	async getStatus(): Promise<OidcStatusInfo> {
 		return this.handleResponse(this.api.get('/oidc/status'));
 	}
+
+	async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+		await this.handleResponse(
+			this.api.post('/auth/password', {
+				currentPassword,
+				newPassword
+			})
+		);
+	}
 }
 
 export const authService = new AuthService();
