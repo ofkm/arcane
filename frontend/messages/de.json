@@ -1326,5 +1326,19 @@
 	"glass_effect_enabled": "Glas-Effekte aktiviert",
 	"glass_effect_disabled": "Glaseffekte deaktiviert (klassisches Design)",
 	"glass_effect_description_long": "Wenn aktiviert, verwendet die Schnittstelle gefrorene Glas-Effekte mit Hintergrundunschärfe und subtilen Farbverläufen. Wenn das Interface deaktiviert ist, verwendet die Oberfläche feste Farben und traditionelle Schatten für ein klassisches Design. Das Glasdesign ist in der Vorschau und kann geändert werden.",
-	"navigation_glass_effect_label": "Glas-Effekt"
+	"navigation_glass_effect_label": "Glas-Effekt",
+	"first_login_title": "Standardpasswort ändern",
+	"first_login_description": "Aus Sicherheitsgründen müssen Sie das Standardpasswort ändern, bevor Sie fortfahren.",
+	"first_login_current_password": "Aktuelles Passwort",
+	"first_login_current_password_placeholder": "Aktuelles Passwort eingeben",
+	"first_login_new_password": "Neues Passwort",
+	"first_login_new_password_placeholder": "Neues Passwort eingeben (mindestens 8 Zeichen)",
+	"first_login_confirm_password": "Neues Passwort bestätigen",
+	"first_login_confirm_password_placeholder": "Neues Passwort bestätigen",
+	"first_login_submit": "Passwort ändern",
+	"first_login_submitting": "Ändern…",
+	"first_login_error_mismatch": "Passwörter stimmen nicht überein",
+	"first_login_error_length": "Passwort muss mindestens 8 Zeichen lang sein",
+	"first_login_error_failed": "Fehler beim Ändern des Passworts",
+	"first_login_success": "Passwort erfolgreich geändert"
 }
