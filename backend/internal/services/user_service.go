@@ -216,15 +216,21 @@ func (s *UserService) CreateDefaultAdmin() error {
 		return nil
 	}
 
-	_, err = s.CreateUserWithPassword("arcane", "arcane-admin", "admin@localhost", "admin", "Arcane Admin")
+	user, err := s.CreateUserWithPassword("arcane", "arcane-admin", "admin@localhost", "admin", "Arcane Admin")
 	if err != nil {
 		return fmt.Errorf("failed to create default admin user: %w", err)
+	}
+
+	// Mark this user as requiring password change on first login
+	user.RequiresPasswordChange = true
+	if err := s.db.Save(user).Error; err != nil {
+		slog.Warn("Failed to mark default admin for password change", "error", err)
 	}
 
 	slog.Info("👑 Default admin user created!")
 	slog.Info("🔑 Username: arcane")
 	slog.Info("🔑 Password: arcane-admin")
-	slog.Info("⚠️  Please change this password after first login!")
+	slog.Info("⚠️  User will be prompted to change password on first login")
 
 	return nil
 }
