@@ -1326,5 +1326,19 @@
 	"glass_effect_enabled": "Efectos de cristal habilitados",
 	"glass_effect_disabled": "Efectos de cristal desactivados (diseño clásico)",
 	"glass_effect_description_long": "Cuando está activado, la interfaz utiliza efectos de cristal congelado con desenfoque de fondo y gradientes sutiles. Cuando está desactivada, la interfaz utiliza colores sólidos y sombras tradicionales para un diseño clásico.",
-	"navigation_glass_effect_label": "Efecto de cristal"
+	"navigation_glass_effect_label": "Efecto de cristal",
+	"first_login_title": "Cambiar contraseña por defecto",
+	"first_login_description": "Por razones de seguridad, debe cambiar la contraseña predeterminada antes de continuar.",
+	"first_login_current_password": "Contraseña actual",
+	"first_login_current_password_placeholder": "Introduzca la contraseña actual",
+	"first_login_new_password": "Nueva contraseña",
+	"first_login_new_password_placeholder": "Introduzca nueva contraseña (mínimo 8 caracteres)",
+	"first_login_confirm_password": "Confirmar nueva contraseña",
+	"first_login_confirm_password_placeholder": "Confirmar nueva contraseña",
+	"first_login_submit": "Cambiar contraseña",
+	"first_login_submitting": "Cambiando…",
+	"first_login_error_mismatch": "Las contraseñas no coinciden",
+	"first_login_error_length": "La contraseña debe tener al menos 8 caracteres",
+	"first_login_error_failed": "Error al cambiar la contraseña",
+	"first_login_success": "Contraseña cambiada correctamente"
 }
