@@ -464,6 +464,8 @@ func (s *ProjectService) GetProjectStatusCounts(ctx context.Context) (folderCoun
 					runningProjects++
 				case models.ProjectStatusStopped, models.ProjectStatusStopping:
 					stoppedProjects++
+				case models.ProjectStatusUnknown:
+					// Don't count unknown
 				}
 			}
 			return folderCount, runningProjects, stoppedProjects, totalProjects, nil
