@@ -4,9 +4,9 @@ import "time"
 
 type Environment struct {
 	Name        string     `json:"name" sortable:"true"`
-	ApiUrl      string     `json:"apiUrl" gorm:"column:api_url;not null" sortable:"true"`
-	Status      string     `json:"status" gorm:"default:offline" sortable:"true"`
-	Enabled     bool       `json:"enabled" gorm:"default:true" sortable:"true"`
+	ApiUrl      string     `json:"apiUrl" gorm:"column:api_url" sortable:"true"`
+	Status      string     `json:"status" sortable:"true"`
+	Enabled     bool       `json:"enabled" sortable:"true"`
 	LastSeen    *time.Time `json:"lastSeen" gorm:"column:last_seen"`
 	AccessToken *string    `json:"-" gorm:"column:access_token"`
 

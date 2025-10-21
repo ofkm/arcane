@@ -374,33 +374,57 @@ func formatPorts(publishers []api.PortPublisher) []string {
 	return ports
 }
 
-func (s *ProjectService) GetProjectStatusCounts(ctx context.Context) (folderCount, runningProjects, stoppedProjects, totalProjects int, err error) {
+func (s *ProjectService) countProjectFolders(ctx context.Context) (int, error) {
 	projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
-	projectsDir, derr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
-	if derr != nil {
-		return 0, 0, 0, 0, fmt.Errorf("could not determine projects directory: %w", derr)
+	projectsDir, err := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
+	if err != nil {
+		return 0, fmt.Errorf("could not determine projects directory: %w", err)
 	}
 	projectsDir = filepath.Clean(projectsDir)
 
-	if info, statErr := os.Stat(projectsDir); statErr == nil && info.IsDir() {
-		entries, readErr := os.ReadDir(projectsDir)
-		if readErr != nil {
-			return 0, 0, 0, 0, fmt.Errorf("failed to read projects directory %s: %w", projectsDir, readErr)
-		}
-		for _, e := range entries {
-			if !e.IsDir() {
-				continue
-			}
-			dirPath := filepath.Join(projectsDir, e.Name())
-			if _, err := projects.DetectComposeFile(dirPath); err == nil {
-				folderCount++
-			}
-		}
-	} else if os.IsNotExist(statErr) {
-		// Directory missing
-	} else if statErr != nil {
-		return 0, 0, 0, 0, fmt.Errorf("unable to access projects directory %s: %w", projectsDir, statErr)
+	info, statErr := os.Stat(projectsDir)
+	if os.IsNotExist(statErr) {
+		// Directory missing, treat as zero
+		return 0, nil
 	}
+	if statErr != nil {
+		return 0, fmt.Errorf("unable to access projects directory %s: %w", projectsDir, statErr)
+	}
+	if !info.IsDir() {
+		return 0, nil
+	}
+
+	entries, readErr := os.ReadDir(projectsDir)
+	if readErr != nil {
+		return 0, fmt.Errorf("failed to read projects directory %s: %w", projectsDir, readErr)
+	}
+
+	count := 0
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		dirPath := filepath.Join(projectsDir, e.Name())
+		if _, err := projects.DetectComposeFile(dirPath); err == nil {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (s *ProjectService) incrementStatusCounts(status models.ProjectStatus, running, stopped *int) {
+	switch status {
+	case models.ProjectStatusRunning, models.ProjectStatusPartiallyRunning, models.ProjectStatusDeploying, models.ProjectStatusRestarting:
+		*running++
+	case models.ProjectStatusStopped, models.ProjectStatusStopping:
+		*stopped++
+	case models.ProjectStatusUnknown:
+		// Don't count unknown
+	}
+}
+
+func (s *ProjectService) GetProjectStatusCounts(ctx context.Context) (folderCount, runningProjects, stoppedProjects, totalProjects int, err error) {
+	folderCount, _ = s.countProjectFolders(ctx)
 
 	var projectsList []models.Project
 	if err := s.db.WithContext(ctx).Find(&projectsList).Error; err != nil {
@@ -409,15 +433,12 @@ func (s *ProjectService) GetProjectStatusCounts(ctx context.Context) (folderCoun
 
 	totalProjects = len(projectsList)
 
-	// Fetch live status concurrently
 	type statusResult struct {
 		status models.ProjectStatus
-		err    error
 	}
 
-	resultChan := make(chan statusResult, len(projectsList))
+	resultChan := make(chan statusResult, totalProjects)
 	semaphore := make(chan struct{}, 10)
-
 	queryCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
@@ -431,42 +452,24 @@ func (s *ProjectService) GetProjectStatusCounts(ctx context.Context) (folderCoun
 
 			services, serr := s.getProjectServicesWithTimeout(projectCtx, p.ID)
 			if serr != nil {
-				// On error, use cached status
-				resultChan <- statusResult{status: p.Status, err: serr}
+				resultChan <- statusResult{status: p.Status}
 				return
 			}
 
-			status := s.calculateProjectStatus(services)
-			resultChan <- statusResult{status: status, err: nil}
+			resultChan <- statusResult{status: s.calculateProjectStatus(services)}
 		}(proj)
 	}
 
-	// Collect results
 	runningProjects = 0
 	stoppedProjects = 0
 
-	for i := 0; i < len(projectsList); i++ {
+	for i := 0; i < totalProjects; i++ {
 		select {
 		case res := <-resultChan:
-			switch res.status {
-			case models.ProjectStatusRunning, models.ProjectStatusPartiallyRunning, models.ProjectStatusDeploying, models.ProjectStatusRestarting:
-				runningProjects++
-			case models.ProjectStatusStopped, models.ProjectStatusStopping:
-				stoppedProjects++
-			case models.ProjectStatusUnknown:
-				// Don't count unknown
-			}
+			s.incrementStatusCounts(res.status, &runningProjects, &stoppedProjects)
 		case <-queryCtx.Done():
-			// Timeout - use cached data for remaining
-			for j := i; j < len(projectsList); j++ {
-				switch projectsList[j].Status {
-				case models.ProjectStatusRunning, models.ProjectStatusPartiallyRunning, models.ProjectStatusDeploying, models.ProjectStatusRestarting:
-					runningProjects++
-				case models.ProjectStatusStopped, models.ProjectStatusStopping:
-					stoppedProjects++
-				case models.ProjectStatusUnknown:
-					// Don't count unknown
-				}
+			for j := i; j < totalProjects; j++ {
+				s.incrementStatusCounts(projectsList[j].Status, &runningProjects, &stoppedProjects)
 			}
 			return folderCount, runningProjects, stoppedProjects, totalProjects, nil
 		}
