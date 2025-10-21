@@ -32,18 +32,9 @@
 	const isValid = $derived(currentPassword.length > 0 && newPassword.length >= 8 && confirmPassword === newPassword);
 
 	async function handleSubmit() {
+		if (!isValid) return;
+
 		error = '';
-
-		if (newPassword !== confirmPassword) {
-			error = m.first_login_error_mismatch();
-			return;
-		}
-
-		if (newPassword.length < 8) {
-			error = m.first_login_error_length();
-			return;
-		}
-
 		isLoading = true;
 
 		try {
@@ -53,7 +44,6 @@
 			onSuccess?.();
 		} catch (err: any) {
 			error = err.message || m.first_login_error_failed();
-			toast.error(error);
 		} finally {
 			isLoading = false;
 		}

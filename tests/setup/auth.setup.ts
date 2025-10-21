@@ -5,15 +5,11 @@ import authUtil from '../utils/auth.util';
 const authFile = '.auth/login.json';
 
 setup('authenticate', async ({ page }) => {
-  await skipOnboarding();
+  await skipOnboarding(); // Deprecated
 
   await authUtil.login(page);
 
   await page.waitForURL('/dashboard');
-
-  // Handle first-login password change if dialog appears
-  // const passwordDialog = page.getByRole('dialog', { name: 'Change Default Password' });
-  // const isPasswordChangeRequired = await passwordDialog.isVisible().catch(() => false);
 
   await authUtil.changeDefaultPassword(page, 'test-password-123');
 

@@ -73,6 +73,10 @@
 		}
 	});
 
+	function handlePasswordChangeSuccess() {
+		invalidateAll();
+	}
+
 	const navigationSettings = $derived.by(() => {
 		settings;
 		navigationSettingsOverridesStore.current;
@@ -155,4 +159,4 @@
 />
 <ConfirmDialog />
 <LoadingIndicator active={isNavigating} thickness="h-1.5" />
-<FirstLoginPasswordDialog bind:open={showPasswordChangeDialog} onSuccess={() => invalidateAll()} />
+<FirstLoginPasswordDialog bind:open={showPasswordChangeDialog} onSuccess={handlePasswordChangeSuccess} />
