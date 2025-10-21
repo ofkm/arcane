@@ -29,6 +29,7 @@ require (
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/samber/slog-gin v1.17.2
 	github.com/shirou/gopsutil/v3 v3.24.5
+	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.43.0
 	golang.org/x/oauth2 v0.32.0
@@ -199,7 +200,6 @@ require (
 	github.com/shoenig/go-m1cpu v0.1.7 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
-	github.com/spf13/cobra v1.10.1 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/theupdateframework/notary v0.7.0 // indirect
 	github.com/tilt-dev/fsnotify v1.4.8-0.20220602155310-fff9c274a375 // indirect
