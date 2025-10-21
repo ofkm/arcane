@@ -127,6 +127,7 @@
 					id="pollingEnabled"
 					label={m.docker_enable_polling_label()}
 					description={m.docker_enable_polling_description()}
+					error={$formInputs.pollingEnabled.error}
 					bind:checked={$formInputs.pollingEnabled.value}
 				/>
 
@@ -164,6 +165,7 @@
 							id="autoUpdateSwitch"
 							label={m.docker_auto_update_label()}
 							description={m.docker_auto_update_description()}
+							error={$formInputs.autoUpdate.error}
 							bind:checked={$formInputs.autoUpdate.value}
 						/>
 
@@ -194,6 +196,7 @@
 					id="dockerPruneMode"
 					name="pruneMode"
 					bind:value={$formInputs.dockerPruneMode.value}
+					error={$formInputs.dockerPruneMode.error}
 					label={m.docker_prune_action_label()}
 					description={pruneModeDescription}
 					placeholder={m.docker_prune_placeholder()}

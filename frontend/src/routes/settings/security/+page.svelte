@@ -226,7 +226,6 @@
 					<Card.Header icon={LockIcon}>
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.security_authentication_heading()}</Card.Title>
-							<Card.Description>Configure login methods for your application</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
@@ -235,6 +234,7 @@
 								id="localAuthSwitch"
 								label={m.security_local_auth_label()}
 								description={m.security_local_auth_description()}
+								error={$formInputs.authLocalEnabled.error}
 								bind:checked={$formInputs.authLocalEnabled.value}
 								onCheckedChange={handleLocalSwitchChange}
 							/>
@@ -246,6 +246,7 @@
 									description={data.oidcStatus.envForced
 										? m.security_oidc_auth_description_forced()
 										: m.security_oidc_auth_description()}
+									error={$formInputs.authOidcEnabled.error}
 									disabled={data.oidcStatus.envForced}
 									bind:checked={$formInputs.authOidcEnabled.value}
 									onCheckedChange={handleOidcSwitchChange}
@@ -283,12 +284,12 @@
 					<Card.Header icon={ClockIcon} class="items-start">
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>{m.security_session_heading()}</Card.Title>
-							<Card.Description>Configure session timeout and duration</Card.Description>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<TextInputWithLabel
 							bind:value={$formInputs.authSessionTimeout.value}
+							error={$formInputs.authSessionTimeout.error}
 							label={m.security_session_timeout_label()}
 							placeholder={m.security_session_timeout_placeholder()}
 							helpText={m.security_session_timeout_description()}
