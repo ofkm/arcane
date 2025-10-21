@@ -886,33 +886,40 @@ func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, pro
 	}
 
 	resultChan := make(chan projectResult, len(projects))
-	semaphore := make(chan struct{}, 10) // Limit concurrent Docker queries to 10
 
-	// Create a context with timeout for all operations
-	queryCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	const (
+		concurrency       = 10
+		perProjectTimeout = 3 * time.Second
+		minGlobalTimeout  = 30 * time.Second
+	)
+
+	// Calculate dynamic timeout: (projects / concurrency) * per-project-timeout * 1.5 buffer
+	projectBatches := (len(projects) + concurrency - 1) / concurrency // Ceiling division
+	calculatedTimeout := time.Duration(projectBatches) * perProjectTimeout * 3 / 2
+	globalTimeout := minGlobalTimeout
+	if calculatedTimeout > globalTimeout {
+		globalTimeout = calculatedTimeout
+	}
+
+	semaphore := make(chan struct{}, concurrency)
+
+	queryCtx, cancel := context.WithTimeout(ctx, globalTimeout)
 	defer cancel()
+
+	slog.DebugContext(ctx, "Starting concurrent project status queries",
+		"project_count", len(projects),
+		"concurrency", concurrency,
+		"per_project_timeout_sec", perProjectTimeout.Seconds(),
+		"global_timeout_sec", globalTimeout.Seconds())
 
 	// Launch goroutine for each project
 	for i, project := range projects {
 		go func(idx int, proj models.Project) {
-			slog.DebugContext(ctx, "Starting concurrent status query for project",
-				"project_id", proj.ID,
-				"project_name", proj.Name,
-				"index", idx)
-
-			semaphore <- struct{}{} // Acquire semaphore
-			slog.DebugContext(ctx, "Acquired semaphore for project",
-				"project_id", proj.ID,
-				"project_name", proj.Name)
-			defer func() {
-				<-semaphore // Release semaphore
-				slog.DebugContext(ctx, "Released semaphore for project",
-					"project_id", proj.ID,
-					"project_name", proj.Name)
-			}()
+			semaphore <- struct{}{}        // Acquire semaphore
+			defer func() { <-semaphore }() // Release semaphore
 
 			// Create per-project timeout
-			projectCtx, projectCancel := context.WithTimeout(queryCtx, 3*time.Second)
+			projectCtx, projectCancel := context.WithTimeout(queryCtx, perProjectTimeout)
 			defer projectCancel()
 
 			displayServiceCount := proj.ServiceCount
@@ -921,46 +928,22 @@ func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, pro
 			var statusReason *string
 
 			// Try to get live status from Docker
-			startTime := time.Now()
-			slog.DebugContext(projectCtx, "Querying Docker for project status",
-				"project_id", proj.ID,
-				"project_name", proj.Name)
-
 			if services, serr := s.getProjectServicesWithTimeout(projectCtx, proj.ID); serr == nil {
-				queryDuration := time.Since(startTime)
 				displayServiceCount = len(services)
 				_, displayRunningCount = s.getServiceCounts(services)
 				displayStatus = string(s.calculateProjectStatus(services))
 
-				slog.DebugContext(projectCtx, "Successfully retrieved live project status",
-					"project_id", proj.ID,
-					"project_name", proj.Name,
-					"status", displayStatus,
-					"service_count", displayServiceCount,
-					"running_count", displayRunningCount,
-					"query_duration_ms", queryDuration.Milliseconds())
-
 				if displayStatus == string(models.ProjectStatusUnknown) && len(services) == 0 {
 					reason := "No services found in project"
 					statusReason = &reason
-					slog.DebugContext(projectCtx, "Project has unknown status - no services found",
-						"project_id", proj.ID,
-						"project_name", proj.Name)
 				}
 			} else {
-				queryDuration := time.Since(startTime)
-				// On timeout or error, use cached values but log the issue
+				// On timeout or error, use cached values
 				if errors.Is(serr, context.DeadlineExceeded) {
 					reason := "Status query timed out, showing cached status"
 					statusReason = &reason
 					displayStatus = string(proj.Status)
-					slog.DebugContext(projectCtx, "Project status query timed out, using cached status",
-						"project_id", proj.ID,
-						"project_name", proj.Name,
-						"cached_status", displayStatus,
-						"query_duration_ms", queryDuration.Milliseconds())
 				} else if !errors.Is(serr, context.Canceled) {
-					// Use cached status on error
 					displayStatus = string(proj.Status)
 					if proj.StatusReason != nil {
 						statusReason = proj.StatusReason
@@ -968,22 +951,9 @@ func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, pro
 					slog.WarnContext(projectCtx, "Failed to get live project status, using cached",
 						"project_id", proj.ID,
 						"project_name", proj.Name,
-						"cached_status", displayStatus,
-						"query_duration_ms", queryDuration.Milliseconds(),
 						"error", serr)
-				} else {
-					slog.DebugContext(projectCtx, "Project status query canceled",
-						"project_id", proj.ID,
-						"project_name", proj.Name,
-						"query_duration_ms", queryDuration.Milliseconds())
 				}
 			}
-
-			slog.DebugContext(ctx, "Sending result to channel for project",
-				"project_id", proj.ID,
-				"project_name", proj.Name,
-				"index", idx,
-				"status", displayStatus)
 
 			resultChan <- projectResult{
 				index: idx,
@@ -1004,21 +974,10 @@ func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, pro
 	}
 
 	// Collect results
-	slog.DebugContext(ctx, "Starting to collect results from concurrent project queries",
-		"total_projects", len(projects),
-		"timeout_seconds", 15)
-
 	results := make([]dto.ProjectDetailsDto, len(projects))
 	for i := 0; i < len(projects); i++ {
 		select {
 		case res := <-resultChan:
-			slog.DebugContext(ctx, "Received result from channel",
-				"result_number", i+1,
-				"total_expected", len(projects),
-				"project_index", res.index,
-				"project_id", res.dto.ID,
-				"project_name", res.dto.Name,
-				"status", res.dto.Status)
 			results[res.index] = res.dto
 		case <-queryCtx.Done():
 			// Timeout - fill remaining with cached data
@@ -1030,11 +989,6 @@ func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, pro
 
 			for j := i; j < len(projects); j++ {
 				proj := projects[j]
-				slog.DebugContext(ctx, "Using cached data for timed-out project",
-					"project_id", proj.ID,
-					"project_name", proj.Name,
-					"cached_status", proj.Status)
-
 				results[j] = dto.ProjectDetailsDto{
 					ID:           proj.ID,
 					Name:         proj.Name,
@@ -1051,9 +1005,6 @@ func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, pro
 			return results
 		}
 	}
-
-	slog.DebugContext(ctx, "Successfully collected all project status results",
-		"total_projects", len(projects))
 
 	return results
 }
