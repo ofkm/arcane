@@ -2,20 +2,20 @@ package models
 
 type TemplateRegistry struct {
 	BaseModel
-	Name        string `json:"name" gorm:"not null"`
-	URL         string `json:"url" gorm:"not null;unique"`
-	Enabled     bool   `json:"enabled" gorm:"default:true"`
+	Name        string `json:"name"`
+	URL         string `json:"url"`
+	Enabled     bool   `json:"enabled"`
 	Description string `json:"description"`
 }
 
 type ComposeTemplate struct {
 	BaseModel
-	Name        string                   `json:"name" gorm:"not null"`
+	Name        string                   `json:"name"`
 	Description string                   `json:"description"`
 	Content     string                   `json:"content" gorm:"type:text"`
 	EnvContent  *string                  `json:"envContent,omitempty" gorm:"type:text"`
-	IsCustom    bool                     `json:"isCustom" gorm:"default:true"`
-	IsRemote    bool                     `json:"isRemote" gorm:"default:false"`
+	IsCustom    bool                     `json:"isCustom"`
+	IsRemote    bool                     `json:"isRemote"`
 	RegistryID  *string                  `json:"registryId,omitempty"`
 	Registry    *TemplateRegistry        `json:"registry,omitempty" gorm:"foreignKey:RegistryID;references:ID"`
 	Metadata    *ComposeTemplateMetadata `json:"metadata,omitempty" gorm:"embedded;embeddedPrefix:meta_"`

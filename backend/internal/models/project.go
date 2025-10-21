@@ -13,9 +13,9 @@ const (
 )
 
 type Project struct {
-	Name         string        `json:"name" gorm:"not null" sortable:"true"`
-	DirName      *string       `json:"dir_name" gorm:"unique"`
-	Path         string        `json:"path" gorm:"not null"`
+	Name         string        `json:"name" sortable:"true"`
+	DirName      *string       `json:"dir_name"`
+	Path         string        `json:"path"`
 	Status       ProjectStatus `json:"status" sortable:"true"`
 	StatusReason *string       `json:"status_reason"`
 	ServiceCount int           `json:"service_count" sortable:"true"`

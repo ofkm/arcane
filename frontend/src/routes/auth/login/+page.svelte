@@ -52,11 +52,8 @@
 		try {
 			const user = await authService.login({ username, password });
 			userStore.setUser(user);
-			// Load settings to determine onboarding redirect
-			const settings = await settingsService.getSettings();
-			settingsStore.set(settings);
 			const redirectTo = data.redirectTo || '/dashboard';
-			goto(!settings.onboardingCompleted ? '/onboarding/welcome' : redirectTo, { replaceState: true });
+			goto(redirectTo, { replaceState: true });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Login failed';
 		} finally {

@@ -17,7 +17,7 @@ const (
 )
 
 type SettingVariable struct {
-	Key   string `gorm:"primaryKey;not null"`
+	Key   string `gorm:"primaryKey"`
 	Value string
 }
 
@@ -44,14 +44,22 @@ func (s SettingVariable) AsDurationSeconds() time.Duration {
 
 type Settings struct {
 	// General category
-	ProjectsDirectory   SettingVariable `key:"projectsDirectory" meta:"label=Projects Directory;type=text;keywords=projects,directory,path,folder,location,storage,files,compose,docker-compose;category=general;description=Configure where project files are stored" catmeta:"id=general;title=General;icon=settings;url=/settings/general;description=Core application settings and configuration"`
-	DiskUsagePath       SettingVariable `key:"diskUsagePath" meta:"label=Disk Usage Path;type=text;keywords=disk,usage,path,storage,folder,files;category=general;description=Path used for disk usage calculations"`
-	BaseServerURL       SettingVariable `key:"baseServerUrl" meta:"label=Base Server URL;type=text;keywords=base,url,server,domain,host,endpoint,address,link;category=general;description=Set the base URL for the application"`
-	EnableGravatar      SettingVariable `key:"enableGravatar" meta:"label=Enable Gravatar;type=boolean;keywords=gravatar,avatar,profile,picture,image,user,photo;category=general;description=Enable Gravatar profile pictures for users"`
-	DefaultShell        SettingVariable `key:"defaultShell" meta:"label=Default Shell;type=text;keywords=shell,default,shellpath,path,login;category=general;description=Default shell to use for commands"`
-	AccentColor         SettingVariable `key:"accentColor,public" meta:"label=Accent Color;type=text;keywords=color,accent,theme,css,appearance,ui;category=general;description=Primary accent color for UI"`
+	ProjectsDirectory SettingVariable `key:"projectsDirectory" meta:"label=Projects Directory;type=text;keywords=projects,directory,path,folder,location,storage,files,compose,docker-compose;category=general;description=Configure where project files are stored" catmeta:"id=general;title=General;icon=settings;url=/settings/general;description=Core application settings and configuration"`
+	DiskUsagePath     SettingVariable `key:"diskUsagePath" meta:"label=Disk Usage Path;type=text;keywords=disk,usage,path,storage,folder,files;category=general;description=Path used for disk usage calculations"`
+	BaseServerURL     SettingVariable `key:"baseServerUrl" meta:"label=Base Server URL;type=text;keywords=base,url,server,domain,host,endpoint,address,link;category=general;description=Set the base URL for the application"`
+	EnableGravatar    SettingVariable `key:"enableGravatar" meta:"label=Enable Gravatar;type=boolean;keywords=gravatar,avatar,profile,picture,image,user,photo;category=general;description=Enable Gravatar profile pictures for users"`
+	DefaultShell      SettingVariable `key:"defaultShell" meta:"label=Default Shell;type=text;keywords=shell,default,shellpath,path,login;category=general;description=Default shell to use for commands"`
+	AccentColor       SettingVariable `key:"accentColor,public" meta:"label=Accent Color;type=text;keywords=color,accent,theme,css,appearance,ui;category=general;description=Primary accent color for UI"`
+
+	// Deprecated: OnboardingCompleted is no longer used as of the onboarding removal.
+	// This field is kept for backward compatibility and is automatically set to true on startup.
+	// This will be removed in a future release.
 	OnboardingCompleted SettingVariable `key:"onboardingCompleted,public" meta:"label=Onboarding Completed;type=boolean;keywords=onboarding,completed,setup,first-run;category=general;description=Whether onboarding has been completed"`
-	OnboardingSteps     SettingVariable `key:"onboardingSteps" meta:"label=Onboarding Steps;type=text;keywords=onboarding,steps,progress,guide;category=general;description=Serialized onboarding steps"`
+
+	// Deprecated: OnboardingSteps is no longer used as of the onboarding removal.
+	// This field is kept for backward compatibility only.
+	// This will be removed in a future release.
+	OnboardingSteps SettingVariable `key:"onboardingSteps" meta:"label=Onboarding Steps;type=text;keywords=onboarding,steps,progress,guide;category=general;description=Serialized onboarding steps"`
 
 	// Docker category
 	AutoUpdate         SettingVariable `key:"autoUpdate" meta:"label=Auto Update;type=boolean;keywords=auto,update,automatic,upgrade,refresh,restart,deploy;category=docker;description=Automatically update containers when new images are available" catmeta:"id=docker;title=Docker;icon=database;url=/settings/docker;description=Configure Docker settings, polling, and auto-updates"`
