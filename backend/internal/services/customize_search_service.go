@@ -144,8 +144,6 @@ func (s *CustomizeSearchService) Search(query string) dto.CustomizeSearchRespons
 			resultCategory := category
 			if len(matchingCustomizations) > 0 {
 				resultCategory.MatchingCustomizations = matchingCustomizations
-			} else {
-				resultCategory.MatchingCustomizations = category.Customizations
 			}
 			resultCategory.RelevanceScore = relevanceScore
 

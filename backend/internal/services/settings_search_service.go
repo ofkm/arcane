@@ -153,8 +153,6 @@ func (s *SettingsSearchService) Search(query string) dto.SettingsSearchResponse 
 
 			if len(matchingSettings) > 0 {
 				categoryResult.MatchingSettings = matchingSettings
-			} else {
-				categoryResult.MatchingSettings = category.Settings
 			}
 
 			results = append(results, categoryResult)
