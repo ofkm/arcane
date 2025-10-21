@@ -44,12 +44,12 @@ func (s SettingVariable) AsDurationSeconds() time.Duration {
 
 type Settings struct {
 	// General category
-	ProjectsDirectory  SettingVariable `key:"projectsDirectory" meta:"label=Projects Directory;type=text;keywords=projects,directory,path,folder,location,storage,files,compose,docker-compose;category=general;description=Configure where project files are stored" catmeta:"id=general;title=General;icon=settings;url=/settings/general;description=Core application settings and configuration"`
-	DiskUsagePath      SettingVariable `key:"diskUsagePath" meta:"label=Disk Usage Path;type=text;keywords=disk,usage,path,storage,folder,files;category=general;description=Path used for disk usage calculations"`
-	BaseServerURL      SettingVariable `key:"baseServerUrl" meta:"label=Base Server URL;type=text;keywords=base,url,server,domain,host,endpoint,address,link;category=general;description=Set the base URL for the application"`
-	EnableGravatar     SettingVariable `key:"enableGravatar" meta:"label=Enable Gravatar;type=boolean;keywords=gravatar,avatar,profile,picture,image,user,photo;category=general;description=Enable Gravatar profile pictures for users"`
-	DefaultShell       SettingVariable `key:"defaultShell" meta:"label=Default Shell;type=text;keywords=shell,default,shellpath,path,login;category=general;description=Default shell to use for commands"`
-	AccentColor        SettingVariable `key:"accentColor,public" meta:"label=Accent Color;type=text;keywords=color,accent,theme,css,appearance,ui;category=general;description=Primary accent color for UI"`
+	ProjectsDirectory   SettingVariable `key:"projectsDirectory" meta:"label=Projects Directory;type=text;keywords=projects,directory,path,folder,location,storage,files,compose,docker-compose;category=general;description=Configure where project files are stored" catmeta:"id=general;title=General;icon=settings;url=/settings/general;description=Core application settings and configuration"`
+	DiskUsagePath       SettingVariable `key:"diskUsagePath" meta:"label=Disk Usage Path;type=text;keywords=disk,usage,path,storage,folder,files;category=general;description=Path used for disk usage calculations"`
+	BaseServerURL       SettingVariable `key:"baseServerUrl" meta:"label=Base Server URL;type=text;keywords=base,url,server,domain,host,endpoint,address,link;category=general;description=Set the base URL for the application"`
+	EnableGravatar      SettingVariable `key:"enableGravatar" meta:"label=Enable Gravatar;type=boolean;keywords=gravatar,avatar,profile,picture,image,user,photo;category=general;description=Enable Gravatar profile pictures for users"`
+	DefaultShell        SettingVariable `key:"defaultShell" meta:"label=Default Shell;type=text;keywords=shell,default,shellpath,path,login;category=general;description=Default shell to use for commands"`
+	AccentColor         SettingVariable `key:"accentColor,public" meta:"label=Accent Color;type=text;keywords=color,accent,theme,css,appearance,ui;category=general;description=Primary accent color for UI"`
 	OnboardingCompleted SettingVariable `key:"onboardingCompleted,public" meta:"label=Onboarding Completed;type=boolean;keywords=onboarding,completed,setup,first-run;category=general;description=Whether onboarding has been completed"`
 	OnboardingSteps     SettingVariable `key:"onboardingSteps" meta:"label=Onboarding Steps;type=text;keywords=onboarding,steps,progress,guide;category=general;description=Serialized onboarding steps"`
 
@@ -73,7 +73,7 @@ type Settings struct {
 	MobileNavigationShowLabels   SettingVariable `key:"mobileNavigationShowLabels,public" meta:"label=Show Navigation Labels;type=boolean;keywords=labels,text,icons,display,show,hide,names,captions,titles,visible,toggle;category=navigation;description=Display text labels alongside navigation icons"`
 	MobileNavigationScrollToHide SettingVariable `key:"mobileNavigationScrollToHide,public" meta:"label=Scroll to Hide;type=boolean;keywords=scroll,hide,auto-hide,behavior,down,up,automatic,disappear,vanish,minimize,collapse;category=navigation;description=Automatically hide navigation when scrolling down"`
 	SidebarHoverExpansion        SettingVariable `key:"sidebarHoverExpansion,public" meta:"label=Sidebar Hover Expansion;type=boolean;keywords=sidebar,hover,expansion,expand,desktop,mouse,over,collapsed,collapsible,icon,labels,text,preview,peek,tooltip,overlay,temporary,quick,access,navigation,menu,items,submenu,nested;category=navigation;description=Expand sidebar on hover in desktop mode"`
-	GlassEffectEnabled SettingVariable `key:"glassEffectEnabled,public" meta:"label=Glass Effect;type=boolean;keywords=glass,glassmorphism,blur,backdrop,frosted,effect,gradient,ambient,design,ui,appearance,modern,visual,style,theme,transparency,translucent;category=navigation;description=Enable modern glassmorphism design with blur, gradients, and ambient effects"`
+	GlassEffectEnabled           SettingVariable `key:"glassEffectEnabled,public" meta:"label=Glass Effect;type=boolean;keywords=glass,glassmorphism,blur,backdrop,frosted,effect,gradient,ambient,design,ui,appearance,modern,visual,style,theme,transparency,translucent;category=navigation;description=Enable modern glassmorphism design with blur, gradients, and ambient effects"`
 
 	InstanceID SettingVariable `key:"instanceId,internal" meta:"label=Instance ID;type=text;keywords=instance,id,uuid,identifier;category=internal;description=Unique instance identifier"`
 }

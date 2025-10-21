@@ -102,13 +102,13 @@ func (s *SettingsSearchService) buildCategoriesFromModel() []dto.SettingsCategor
 		}
 
 		results = append(results, dto.SettingsCategory{
-			ID:           catMeta["id"],
-			Title:        catMeta["title"],
+			ID:          catMeta["id"],
+			Title:       catMeta["title"],
 			Description: catMeta["description"],
-			Icon:         catMeta["icon"],
-			URL:          catMeta["url"],
-			Keywords:     keywords,
-			Settings:     categories[catID],
+			Icon:        catMeta["icon"],
+			URL:         catMeta["url"],
+			Keywords:    keywords,
+			Settings:    categories[catID],
 		})
 	}
 
