@@ -34,23 +34,12 @@ func (s *CustomizeSearchService) GetCustomizeCategories() []dto.CustomizeCategor
 }
 
 func (s *CustomizeSearchService) buildCategoriesFromModel() []dto.CustomizeCategory {
-	// Basic category metadata (icons and URLs)
-	catMeta := map[string]struct {
-		ID          string
-		Title       string
-		Description string
-		Icon        string
-		URL         string
-		Keywords    []string
-	}{
-		"defaults":   {ID: "defaults", Title: "Defaults", Description: "Configure default templates and settings for new projects", Icon: "file-text", URL: "/customize/defaults", Keywords: []string{"defaults", "templates", "presets", "configuration", "initial"}},
-		"templates":  {ID: "templates", Title: "Templates", Description: "Manage project templates and compose file configurations", Icon: "layers", URL: "/customize/templates", Keywords: []string{"templates", "stacks", "compose", "docker-compose", "yaml", "custom"}},
-		"registries": {ID: "registries", Title: "Registries", Description: "Configure container registries and authentication", Icon: "package", URL: "/customize/registries", Keywords: []string{"registries", "docker", "images", "authentication", "credentials", "private"}},
-		"variables":  {ID: "variables", Title: "Variables", Description: "Manage global variables and environment configuration", Icon: "code", URL: "/customize/variables", Keywords: []string{"variables", "environment", "config", "settings", "secrets", "parameters"}},
-	}
+	// Extract category metadata from struct tags (catmeta)
+	catMetaMap := utils.ExtractCategoryMetadata(models.CustomizeItem{}, nil)
 
 	// map category id -> list of customizations
 	categories := map[string][]dto.CustomizationMeta{}
+	categoryOrder := []string{} // Track order from first appearance in struct
 
 	rt := reflect.TypeOf(models.CustomizeItem{})
 	for i := 0; i < rt.NumField(); i++ {
@@ -77,6 +66,11 @@ func (s *CustomizeSearchService) buildCategoriesFromModel() []dto.CustomizeCateg
 			categoryID = "defaults"
 		}
 
+		// Track category order from first appearance
+		if len(categories[categoryID]) == 0 && !utils.Contains(categoryOrder, categoryID) {
+			categoryOrder = append(categoryOrder, categoryID)
+		}
+
 		cm := dto.CustomizationMeta{
 			Key:         key,
 			Label:       label,
@@ -88,29 +82,30 @@ func (s *CustomizeSearchService) buildCategoriesFromModel() []dto.CustomizeCateg
 		categories[categoryID] = append(categories[categoryID], cm)
 	}
 
-	// Build final category list
+	// Build final category list in struct order
 	result := []dto.CustomizeCategory{}
-	for catID, cat := range catMeta {
-		customizations := categories[catID]
-		if customizations == nil {
-			customizations = []dto.CustomizationMeta{}
+	for _, catID := range categoryOrder {
+		catMeta := catMetaMap[catID]
+		if catMeta == nil {
+			continue
 		}
+
+		// Parse keywords from catmeta
+		keywords := utils.ParseKeywords(catMeta["keywords"])
+		if keywords == nil {
+			keywords = []string{}
+		}
+
 		result = append(result, dto.CustomizeCategory{
-			ID:             cat.ID,
-			Title:          cat.Title,
-			Description:    cat.Description,
-			Icon:           cat.Icon,
-			URL:            cat.URL,
-			Keywords:       cat.Keywords,
-			Customizations: customizations,
+			ID:             catMeta["id"],
+			Title:          catMeta["title"],
+			Description:    catMeta["description"],
+			Icon:           catMeta["icon"],
+			URL:            catMeta["url"],
+			Keywords:       keywords,
+			Customizations: categories[catID],
 		})
 	}
-
-	// Sort by ID for consistent ordering
-	sort.Slice(result, func(i, j int) bool {
-		order := map[string]int{"defaults": 0, "templates": 1, "registries": 2, "variables": 3}
-		return order[result[i].ID] < order[result[j].ID]
-	})
 
 	return result
 }

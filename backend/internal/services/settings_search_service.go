@@ -6,9 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
@@ -37,17 +34,12 @@ func (s *SettingsSearchService) GetSettingsCategories() []dto.SettingsCategory {
 }
 
 func (s *SettingsSearchService) buildCategoriesFromModel() []dto.SettingsCategory {
-	// Basic category metadata (fallbacks)
-	catMeta := map[string]dto.SettingsCategory{
-		"general":    {ID: "general", Title: "General", Description: "Core application settings and configuration", Icon: "settings", URL: "/settings/general", Keywords: []string{"general", "core", "basic", "main"}},
-		"docker":     {ID: "docker", Title: "Docker", Description: "Configure Docker settings, polling, and auto-updates", Icon: "database", URL: "/settings/docker", Keywords: []string{"docker", "container", "image"}},
-		"security":   {ID: "security", Title: "Security", Description: "Manage authentication and security settings", Icon: "shield", URL: "/settings/security", Keywords: []string{"security", "safety", "protection"}},
-		"navigation": {ID: "navigation", Title: "Navigation", Description: "Customize navigation and interface behavior", Icon: "navigation", URL: "/settings/navigation", Keywords: []string{"navigation", "nav", "menu", "bar"}},
-		"users":      {ID: "users", Title: "Users", Description: "Manage users and access control", Icon: "user", URL: "/settings/users", Keywords: []string{"users", "accounts", "admin", "roles"}},
-	}
+	// Extract category metadata from struct tags (catmeta)
+	catMetaMap := utils.ExtractCategoryMetadata(models.Settings{}, nil)
 
 	// map category id -> list of settings
 	categories := map[string][]dto.SettingMeta{}
+	categoryOrder := []string{} // Track order from first appearance in struct
 
 	rt := reflect.TypeOf(models.Settings{})
 	for i := 0; i < rt.NumField(); i++ {
@@ -74,6 +66,16 @@ func (s *SettingsSearchService) buildCategoriesFromModel() []dto.SettingsCategor
 			categoryID = "general"
 		}
 
+		// Skip internal category
+		if categoryID == "internal" {
+			continue
+		}
+
+		// Track category order from first appearance
+		if len(categories[categoryID]) == 0 && !utils.Contains(categoryOrder, categoryID) {
+			categoryOrder = append(categoryOrder, categoryID)
+		}
+
 		sm := dto.SettingMeta{
 			Key:         key,
 			Label:       label,
@@ -85,26 +87,29 @@ func (s *SettingsSearchService) buildCategoriesFromModel() []dto.SettingsCategor
 		categories[categoryID] = append(categories[categoryID], sm)
 	}
 
-	// Build result slice in deterministic order
-	ids := make([]string, 0, len(categories))
-	for id := range categories {
-		// Skip internal category - should not be shown in UI
-		if id == "internal" {
+	// Build final category list in struct order
+	results := []dto.SettingsCategory{}
+	for _, catID := range categoryOrder {
+		catMeta := catMetaMap[catID]
+		if catMeta == nil {
 			continue
 		}
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
 
-	var results []dto.SettingsCategory
-	for _, id := range ids {
-		cat := catMeta[id]
-		// If we don't have a default for this category, create a basic one
-		if cat.ID == "" {
-			cat = dto.SettingsCategory{ID: id, Title: cases.Title(language.Und).String(id), Description: "", Icon: "settings", URL: "/settings/" + id}
+		// Parse keywords from catmeta
+		keywords := utils.ParseKeywords(catMeta["keywords"])
+		if keywords == nil {
+			keywords = []string{}
 		}
-		cat.Settings = categories[id]
-		results = append(results, cat)
+
+		results = append(results, dto.SettingsCategory{
+			ID:           catMeta["id"],
+			Title:        catMeta["title"],
+			Description: catMeta["description"],
+			Icon:         catMeta["icon"],
+			URL:          catMeta["url"],
+			Keywords:     keywords,
+			Settings:     categories[catID],
+		})
 	}
 
 	return results
