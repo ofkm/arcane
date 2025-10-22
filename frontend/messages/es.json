@@ -425,7 +425,7 @@
 	"container": "Contenedor",
 	"container_name_required": "El nombre del contenedor es obligatorio",
 	"container_image_required": "Imagen requerida",
-	"create_container_title": "Crear Contenedor",
+	"create_container_title": "Crear contenedor",
 	"create_container_description": "Configurar y crear un nuevo contenedor Docker",
 	"container_name_label": "Nombre del Contenedor",
 	"container_name_placeholder": "mi-contenedor",
