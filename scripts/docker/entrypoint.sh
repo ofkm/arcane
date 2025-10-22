@@ -6,7 +6,24 @@ if [ "$(id -u)" -ne 0 ]; then
     exec "$@"
 fi
 
-echo "Entrypoint: Setting up user and permissions..."
+# Check if running a CLI subcommand (anything other than bare "arcane" or "/app/arcane")
+QUIET_MODE=false
+case "$1" in
+    */arcane|arcane)
+        # Check if there's a second argument (subcommand)
+        if [ -n "$2" ] && [ "$2" != "" ]; then
+            QUIET_MODE=true
+        fi
+        ;;
+esac
+
+log_entrypoint() {
+    if [ "$QUIET_MODE" = "false" ]; then
+        echo "$@"
+    fi
+}
+
+log_entrypoint "Entrypoint: Setting up user and permissions..."
 
 PUID=${PUID:-2000}
 PGID=${PGID:-2000}
@@ -16,17 +33,17 @@ APP_GROUP="arcane"
 DATA_DIR="/app/data"
 PROJECTS_DIR="${PROJECTS_DIR:-$DATA_DIR/projects}"
 
-echo "Entrypoint: Using PUID=${PUID}, PGID=${PGID}, DOCKER_GID=${DOCKER_GID}"
+log_entrypoint "Entrypoint: Using PUID=${PUID}, PGID=${PGID}, DOCKER_GID=${DOCKER_GID}"
 
 # Create or update the arcane group
 if getent group "$PGID" >/dev/null 2>&1; then
     EXISTING_GROUP=$(getent group "$PGID" | cut -d: -f1)
     if [ "$EXISTING_GROUP" != "$APP_GROUP" ]; then
-        echo "Entrypoint: Group with GID ${PGID} exists as '${EXISTING_GROUP}', using it..."
+        log_entrypoint "Entrypoint: Group with GID ${PGID} exists as '${EXISTING_GROUP}', using it..."
         APP_GROUP="$EXISTING_GROUP"
     fi
 else
-    echo "Entrypoint: Creating group ${APP_GROUP} with GID ${PGID}..."
+    log_entrypoint "Entrypoint: Creating group ${APP_GROUP} with GID ${PGID}..."
     addgroup -g "$PGID" "$APP_GROUP"
 fi
 
@@ -34,33 +51,33 @@ fi
 if getent passwd "$PUID" >/dev/null 2>&1; then
     EXISTING_USER=$(getent passwd "$PUID" | cut -d: -f1)
     if [ "$EXISTING_USER" != "$APP_USER" ] && [ "$EXISTING_USER" != "root" ]; then
-        echo "Entrypoint: Renaming user ${EXISTING_USER} to ${APP_USER}..."
+        log_entrypoint "Entrypoint: Renaming user ${EXISTING_USER} to ${APP_USER}..."
         usermod -l "$APP_USER" -g "$PGID" "$EXISTING_USER" 2>/dev/null || true
     elif [ "$EXISTING_USER" = "$APP_USER" ]; then
-        echo "Entrypoint: User ${APP_USER} already exists with UID ${PUID}"
+        log_entrypoint "Entrypoint: User ${APP_USER} already exists with UID ${PUID}"
         usermod -g "$PGID" "$APP_USER" 2>/dev/null || true
     fi
 else
-    echo "Entrypoint: Creating user ${APP_USER} with UID ${PUID}..."
+    log_entrypoint "Entrypoint: Creating user ${APP_USER} with UID ${PUID}..."
     adduser -D -u "$PUID" -G "$APP_GROUP" "$APP_USER"
 fi
 
 # Handle Docker socket and group
 # Skip socket configuration if using TCP proxy (DOCKER_HOST with tcp://)
 if [ -n "$DOCKER_HOST" ] && echo "$DOCKER_HOST" | grep -q "^tcp://"; then
-    echo "Entrypoint: Docker proxy mode detected (DOCKER_HOST=${DOCKER_HOST}), skipping socket setup"
+    log_entrypoint "Entrypoint: Docker proxy mode detected (DOCKER_HOST=${DOCKER_HOST}), skipping socket setup"
 elif [ -S /var/run/docker.sock ]; then
     SOCKET_GID=$(stat -c '%g' /var/run/docker.sock)
-    echo "Entrypoint: Docker socket found with GID ${SOCKET_GID}"
+    log_entrypoint "Entrypoint: Docker socket found with GID ${SOCKET_GID}"
     if [ "$SOCKET_GID" = "0" ]; then
-        echo "Entrypoint: Docker socket owned by root group (GID 0), adding ${APP_USER} to root group..."
+        log_entrypoint "Entrypoint: Docker socket owned by root group (GID 0), adding ${APP_USER} to root group..."
         addgroup "$APP_USER" root
-        echo "Entrypoint: Docker socket configured (using root group)"
+        log_entrypoint "Entrypoint: Docker socket configured (using root group)"
     else
         if getent group docker >/dev/null 2>&1; then
             CURRENT_DOCKER_GID=$(getent group docker | cut -d: -f3)
             if [ "$CURRENT_DOCKER_GID" != "$SOCKET_GID" ]; then
-                echo "Entrypoint: Updating docker group GID from ${CURRENT_DOCKER_GID} to ${SOCKET_GID}..."
+                log_entrypoint "Entrypoint: Updating docker group GID from ${CURRENT_DOCKER_GID} to ${SOCKET_GID}..."
                 groupmod -g "$SOCKET_GID" docker 2>/dev/null || {
                     delgroup docker 2>/dev/null || true
                     addgroup -g "$SOCKET_GID" docker
@@ -68,34 +85,34 @@ elif [ -S /var/run/docker.sock ]; then
             fi
             # Ensure user is in docker group
             if ! id -nG "$APP_USER" | grep -qw "docker"; then
-                echo "Entrypoint: Adding ${APP_USER} to docker group..."
+                log_entrypoint "Entrypoint: Adding ${APP_USER} to docker group..."
                 addgroup "$APP_USER" docker
             fi
         else
             # Check if SOCKET_GID is already in use by another group
             if getent group "$SOCKET_GID" >/dev/null 2>&1; then
                 EXISTING_GROUP=$(getent group "$SOCKET_GID" | cut -d: -f1)
-                echo "Entrypoint: GID ${SOCKET_GID} already used by group '${EXISTING_GROUP}'"
+                log_entrypoint "Entrypoint: GID ${SOCKET_GID} already used by group '${EXISTING_GROUP}'"
                 if [ "$EXISTING_GROUP" != "docker" ]; then
-                    echo "Entrypoint: Adding ${APP_USER} to ${EXISTING_GROUP} for Docker socket access..."
+                    log_entrypoint "Entrypoint: Adding ${APP_USER} to ${EXISTING_GROUP} for Docker socket access..."
                     addgroup "$APP_USER" "$EXISTING_GROUP"
                 fi
             else
-                echo "Entrypoint: Creating docker group with GID ${SOCKET_GID}..."
+                log_entrypoint "Entrypoint: Creating docker group with GID ${SOCKET_GID}..."
                 addgroup -g "$SOCKET_GID" docker
                 # Add user to newly created docker group
                 if ! id -nG "$APP_USER" | grep -qw "docker"; then
-                    echo "Entrypoint: Adding ${APP_USER} to docker group..."
+                    log_entrypoint "Entrypoint: Adding ${APP_USER} to docker group..."
                     addgroup "$APP_USER" docker
                 fi
             fi
         fi
-        echo "Entrypoint: Docker socket configured (GID: ${SOCKET_GID})"
+        log_entrypoint "Entrypoint: Docker socket configured (GID: ${SOCKET_GID})"
     fi
 else
     echo "WARNING: Docker socket not found at /var/run/docker.sock"
     if ! getent group docker >/dev/null 2>&1; then
-        echo "Entrypoint: Creating docker group with default GID ${DOCKER_GID}..."
+        log_entrypoint "Entrypoint: Creating docker group with default GID ${DOCKER_GID}..."
         addgroup -g "$DOCKER_GID" docker
         addgroup "$APP_USER" docker
     fi
@@ -114,13 +131,13 @@ is_mountpoint() {
     [ -n "$dev_self" ] && [ -n "$dev_parent" ] && [ "$dev_self" != "$dev_parent" ]
 }
 
-echo "Entrypoint: Setting up data directory..."
+log_entrypoint "Entrypoint: Setting up data directory..."
 mkdir -p "$DATA_DIR"
 
 # If projects dir exists and is a separate mount, do not chown it recursively.
 SKIP_PROJECTS_CHOWN=false
 if [ -d "$PROJECTS_DIR" ] && is_mountpoint "$PROJECTS_DIR"; then
-    echo "Entrypoint: Detected bind-mounted projects at $PROJECTS_DIR; skipping recursive chown"
+    log_entrypoint "Entrypoint: Detected bind-mounted projects at $PROJECTS_DIR; skipping recursive chown"
     SKIP_PROJECTS_CHOWN=true
 fi
 
@@ -151,17 +168,17 @@ if [ -d "$PROJECTS_DIR" ]; then
     PRJ_UID="$(stat -c '%u' "$PRJ_PATH" 2>/dev/null || echo "")"
     PRJ_GID="$(stat -c '%g' "$PRJ_PATH" 2>/dev/null || echo "")"
 
-    echo "Entrypoint: Projects path used for GID detection: $PRJ_PATH (uid:$PRJ_UID gid:$PRJ_GID)"
+    log_entrypoint "Entrypoint: Projects path used for GID detection: $PRJ_PATH (uid:$PRJ_UID gid:$PRJ_GID)"
     if [ -n "$PRJ_GID" ]; then
         if getent group "$PRJ_GID" >/dev/null 2>&1; then
             HOST_GROUP=$(getent group "$PRJ_GID" | cut -d: -f1)
         else
             HOST_GROUP="hostgid_${PRJ_GID}"
-            echo "Entrypoint: Creating group ${HOST_GROUP} with GID ${PRJ_GID} for projects access"
+            log_entrypoint "Entrypoint: Creating group ${HOST_GROUP} with GID ${PRJ_GID} for projects access"
             addgroup -g "$PRJ_GID" "$HOST_GROUP"
         fi
         if ! id -nG "$APP_USER" | grep -qw "$HOST_GROUP"; then
-            echo "Entrypoint: Adding ${APP_USER} to ${HOST_GROUP} (GID ${PRJ_GID})"
+            log_entrypoint "Entrypoint: Adding ${APP_USER} to ${HOST_GROUP} (GID ${PRJ_GID})"
             addgroup "$APP_USER" "$HOST_GROUP"
         fi
 
@@ -185,5 +202,5 @@ chown "${PUID}:${PGID}" /app
 # Favor group-writable files created by the app
 umask 002
 
-echo "Entrypoint: Setup complete. Starting as ${APP_USER} (UID: ${PUID}, GID: ${PGID})"
+log_entrypoint "Entrypoint: Setup complete. Starting as ${APP_USER} (UID: ${PUID}, GID: ${PGID})"
 exec su-exec "$APP_USER" "$@"
