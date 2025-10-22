@@ -25,7 +25,7 @@ var secretCmd = &cobra.Command{
 
 func init() {
 	GenerateCmd.AddCommand(secretCmd)
-	secretCmd.Flags().StringVarP(&secretFormat, "format", "f", "base64", "output format: raw, base64, hex, env, docker, all")
+	secretCmd.Flags().StringVarP(&secretFormat, "format", "f", "base64", "output format: base64, hex, env, docker, all")
 	secretCmd.Flags().IntVarP(&secretLength, "length", "l", 32, "secret length in bytes (default: 32 for AES-256)")
 }
 
@@ -41,8 +41,6 @@ func generateSecrets() error {
 	}
 
 	switch secretFormat {
-	case "raw":
-		printRawFormat(encryptionKey, jwtSecret)
 	case "base64":
 		printBase64Format(encryptionKey, jwtSecret)
 	case "hex":
@@ -54,16 +52,10 @@ func generateSecrets() error {
 	case "all":
 		printAllFormats(encryptionKey, jwtSecret)
 	default:
-		return fmt.Errorf("unknown format: %s (supported: raw, base64, hex, env, docker, all)", secretFormat)
+		return fmt.Errorf("unknown format: %s (supported: base64, hex, env, docker, all)", secretFormat)
 	}
 
 	return nil
-}
-
-func printRawFormat(encKey, jwtKey []byte) {
-	fmt.Println("Raw format (32 bytes):")
-	fmt.Printf("ENCRYPTION_KEY=%s\n", string(encKey))
-	fmt.Printf("JWT_SECRET=%s\n", string(jwtKey))
 }
 
 func printBase64Format(encKey, jwtKey []byte) {

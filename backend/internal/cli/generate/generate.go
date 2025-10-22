@@ -7,6 +7,5 @@ import (
 var GenerateCmd = &cobra.Command{
 	Use:     "generate",
 	Aliases: []string{"gen", "g"},
-	Short:   "Generate configuration files and templates",
-	Long:    `Generate various configuration files, Docker Compose templates, and other resources.`,
+	Short:   "Generate secrets for arcanes backend",
 }

@@ -14,7 +14,7 @@ https://github.com/kubernetes-sigs/controller-runtime/blob/8499b67e316a03b260c73
 Copyright 2017 The Kubernetes Authors.
 License: Apache2 (https://github.com/kubernetes-sigs/controller-runtime/blob/8499b67e316a03b260c73f92d0380de8cd2e97a1/LICENSE)
 
-Alos referenced from pocket-id/pocket-id
+Also referenced from pocket-id/pocket-id
 */
 
 var onlyOneSignalHandler = make(chan struct{})

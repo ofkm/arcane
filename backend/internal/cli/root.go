@@ -13,15 +13,9 @@ import (
 	"github.com/ofkm/arcane-backend/internal/utils/signals"
 )
 
-var (
-	cfgFile string
-	verbose bool
-)
-
 var rootCmd = &cobra.Command{
-	Use: "arcane",
-	Long: `Arcane - Modern Docker Management, Designed for Everyone. 
-	By default, this command starts the Arcane server.`,
+	Use:     "arcane",
+	Long:    "Arcane - Modern Docker Management, Designed for Everyone.",
 	Version: getVersion(),
 	Run: func(cmd *cobra.Command, args []string) {
 		err := bootstrap.Bootstrap(cmd.Context())
@@ -30,6 +24,7 @@ var rootCmd = &cobra.Command{
 			os.Exit(1)
 		}
 	},
+	CompletionOptions: cobra.CompletionOptions{DisableDefaultCmd: true},
 }
 
 func Execute() {
@@ -42,9 +37,6 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is .env)")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enable verbose output")
-
 	rootCmd.AddCommand(generate.GenerateCmd)
 }
 
