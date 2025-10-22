@@ -1009,7 +1009,7 @@
 	"templates_validation_error": "Por favor, corrija los errores de validación antes de guardar",
 	"templates_save_failed": "Error al guardar las plantillas por defecto",
 	"templates_save_success": "Plantillas por defecto guardadas correctamente",
-	"templates_reset_success": "Cambios restablecido",
+	"templates_reset_success": "Cambios restablecidos",
 	"default_templates": "Plantillas por defecto",
 	"_comment_customize_registries": "=== PERSONALIZACIÓN - REGISTROS ===",
 	"registries_title": "Registros de Contenedores",
