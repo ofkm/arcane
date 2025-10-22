@@ -107,6 +107,8 @@
 			upgrading = false;
 		}
 	}
+
+	const shouldShowBanner = $derived(updateAvailable && versionInformation?.isSemverVersion || debug);
 </script>
 
 {#snippet updateInfo()}
@@ -137,7 +139,7 @@
 	onConfirm={handleConfirmUpgrade}
 />
 
-{#if updateAvailable || debug}
+{#if shouldShowBanner}
 	<div class={cn('pb-2', isCollapsed ? 'px-1' : 'px-4')}>
 		<Separator.Root class="mb-3 opacity-30" />
 

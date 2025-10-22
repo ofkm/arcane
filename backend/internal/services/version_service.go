@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/utils/cache"
 )
 
@@ -23,9 +24,11 @@ type VersionService struct {
 	httpClient *http.Client
 	cache      *cache.Cache[string]
 	disabled   bool
+	version    string
+	revision   string
 }
 
-func NewVersionService(httpClient *http.Client, disabled bool) *VersionService {
+func NewVersionService(httpClient *http.Client, disabled bool, version string, revision string) *VersionService {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
@@ -33,6 +36,8 @@ func NewVersionService(httpClient *http.Client, disabled bool) *VersionService {
 		httpClient: httpClient,
 		cache:      cache.New[string](versionTTL),
 		disabled:   disabled,
+		version:    version,
+		revision:   revision,
 	}
 }
 
@@ -137,6 +142,86 @@ func (s *VersionService) GetVersionInformation(ctx context.Context, currentVersi
 		UpdateAvailable: s.IsNewer(latest, cur),
 		ReleaseURL:      s.ReleaseURL(latest),
 	}, nil
+}
+
+// isSemverVersion checks if a version string is semver-based (e.g., v1.0.0)
+func (s *VersionService) isSemverVersion() bool {
+	version := strings.TrimPrefix(strings.TrimSpace(s.version), "v")
+	parts := strings.Split(version, ".")
+	if len(parts) < 3 {
+		return false
+	}
+	for i := 0; i < 3; i++ {
+		// Extract just the numeric part (ignoring suffixes like -alpha, +build)
+		numPart := parts[i]
+		if i == len(parts)-1 {
+			// Last part might have additional info like "0-alpha" or "0+build"
+			numPart = strings.FieldsFunc(numPart, func(r rune) bool {
+				return r == '-' || r == '+'
+			})[0]
+		}
+		if numPart == "" {
+			return false
+		}
+		for _, c := range numPart {
+			if c < '0' || c > '9' {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// getDisplayVersion formats the version for display purposes
+// If version contains "next", it returns "next-<revision>"
+// Otherwise returns the version as-is
+func (s *VersionService) getDisplayVersion() string {
+	version := strings.TrimPrefix(strings.TrimSpace(s.version), "v")
+	if strings.Contains(strings.ToLower(version), "next") && s.revision != "" && s.revision != "unknown" {
+		return fmt.Sprintf("next-%s", s.revision)
+	}
+	return version
+}
+
+// GetAppVersionInfo returns application version information including display version
+func (s *VersionService) GetAppVersionInfo(ctx context.Context) *dto.VersionInfoDto {
+	version := strings.TrimPrefix(strings.TrimSpace(s.version), "v")
+	displayVersion := s.getDisplayVersion()
+	isSemver := s.isSemverVersion()
+
+	if s.disabled {
+		return &dto.VersionInfoDto{
+			CurrentVersion:  version,
+			DisplayVersion:  displayVersion,
+			Revision:        s.revision,
+			IsSemverVersion: isSemver,
+			UpdateAvailable: false,
+		}
+	}
+
+	latest, err := s.GetLatestVersion(ctx)
+	if err != nil {
+		var staleErr *cache.ErrStale
+		if !errors.As(err, &staleErr) {
+			return &dto.VersionInfoDto{
+				CurrentVersion:  version,
+				DisplayVersion:  displayVersion,
+				Revision:        s.revision,
+				IsSemverVersion: isSemver,
+			}
+		}
+		slog.Warn("Failed to refresh latest version; using stale cache", "error", staleErr.Err)
+	}
+
+	return &dto.VersionInfoDto{
+		CurrentVersion:  version,
+		DisplayVersion:  displayVersion,
+		Revision:        s.revision,
+		IsSemverVersion: isSemver,
+		NewestVersion:   latest,
+		UpdateAvailable: s.IsNewer(latest, version) && isSemver,
+		ReleaseURL:      s.ReleaseURL(latest),
+	}
 }
 
 func parseSemver(s string) [3]int {

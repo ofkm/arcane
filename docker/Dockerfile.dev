@@ -22,7 +22,7 @@ EXPOSE 3000
 # Start frontend development server with hot reload
 CMD ["pnpm", "-C", "frontend", "dev", "--host", "0.0.0.0"]
 
-# Stage 2: Backend Development  
+# Stage 2: Backend Development
 FROM golang:${GO_VERSION}-alpine AS backend-dev
 
 # Install development tools and dependencies

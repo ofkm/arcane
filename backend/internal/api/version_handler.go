@@ -16,6 +16,7 @@ type VersionHandler struct {
 func NewVersionHandler(api *gin.RouterGroup, version *services.VersionService) *VersionHandler {
 	h := &VersionHandler{version: version}
 	api.GET("/version", h.Get)
+	api.GET("/app-version", h.GetAppVersion)
 	return h
 }
 
@@ -26,5 +27,10 @@ func (h *VersionHandler) Get(c *gin.Context) {
 	if err != nil {
 		slog.Warn("version information fetch error", "error", err)
 	}
+	c.JSON(http.StatusOK, info)
+}
+
+func (h *VersionHandler) GetAppVersion(c *gin.Context) {
+	info := h.version.GetAppVersionInfo(c.Request.Context())
 	c.JSON(http.StatusOK, info)
 }

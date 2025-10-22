@@ -110,7 +110,9 @@
 		{/if}
 		<div class={`flex items-center justify-center ${isCollapsed ? 'px-1' : 'px-4'}`}>
 			<span class="text-muted-foreground/60 text-xs font-medium">
-				{m.sidebar_version({ version: versionInformation?.currentVersion ?? m.common_unknown() })}
+				{m.sidebar_version({
+					version: versionInformation?.displayVersion ?? versionInformation?.currentVersion ?? m.common_unknown()
+				})}
 			</span>
 		</div>
 	</Sidebar.Footer>
