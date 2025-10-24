@@ -7,6 +7,7 @@
 	import UserIcon from '@lucide/svelte/icons/user';
 	import ShieldIcon from '@lucide/svelte/icons/shield';
 	import NavigationIcon from '@lucide/svelte/icons/navigation';
+	import BellIcon from '@lucide/svelte/icons/bell';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';

@@ -16,6 +16,7 @@ import LockKeyholeIcon from '@lucide/svelte/icons/lock-keyhole';
 import AlarmClockIcon from '@lucide/svelte/icons/alarm-clock';
 import NavigationIcon from '@lucide/svelte/icons/navigation';
 import FileTextIcon from '@lucide/svelte/icons/file-text';
+import BellIcon from '@lucide/svelte/icons/bell';
 import { m } from '$lib/paraglide/messages';
 
 export type NavigationItem = {
@@ -68,7 +69,8 @@ export const navigationItems: Record<string, NavigationItem[]> = {
 				{ title: m.docker_title(), url: '/settings/docker', icon: DatabaseIcon },
 				{ title: m.security_title(), url: '/settings/security', icon: ShieldIcon },
 				{ title: m.navigation_title(), url: '/settings/navigation', icon: NavigationIcon },
-				{ title: m.users_title(), url: '/settings/users', icon: UserIcon }
+				{ title: m.users_title(), url: '/settings/users', icon: UserIcon },
+				{ title: m.notifications_title(), url: '/settings/notifications', icon: BellIcon }
 			]
 		}
 	]
@@ -92,7 +94,6 @@ export function getAvailableMobileNavItems(): NavigationItem[] {
 	const flatItems: NavigationItem[] = [];
 
 	flatItems.push(...navigationItems.managementItems);
-	// Flatten customization children so individual pages can be pinned/selected
 	for (const item of navigationItems.customizationItems) {
 		if (item.items && item.items.length > 0) {
 			flatItems.push(...item.items);

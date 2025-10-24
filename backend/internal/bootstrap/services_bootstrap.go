@@ -33,6 +33,7 @@ type Services struct {
 	Updater           *services.UpdaterService
 	Event             *services.EventService
 	Version           *services.VersionService
+	Notification      *services.NotificationService
 }
 
 func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config, httpClient *http.Client) (svcs *Services, dockerSrvice *services.DockerClientService, err error) {
@@ -50,7 +51,8 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs.Docker = dockerClient
 	svcs.User = services.NewUserService(db)
 	svcs.ContainerRegistry = services.NewContainerRegistryService(db)
-	svcs.ImageUpdate = services.NewImageUpdateService(db, svcs.Settings, svcs.ContainerRegistry, svcs.Docker, svcs.Event)
+	svcs.Notification = services.NewNotificationService(db, cfg)
+	svcs.ImageUpdate = services.NewImageUpdateService(db, svcs.Settings, svcs.ContainerRegistry, svcs.Docker, svcs.Event, svcs.Notification)
 	svcs.Image = services.NewImageService(db, svcs.Docker, svcs.ContainerRegistry, svcs.ImageUpdate, svcs.Event)
 	svcs.Project = services.NewProjectService(db, svcs.Settings, svcs.Event, svcs.Image)
 	svcs.Environment = services.NewEnvironmentService(db, httpClient)

@@ -1,6 +1,7 @@
 packages:
   - frontend
   - tests
+  - email-templates
 
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
