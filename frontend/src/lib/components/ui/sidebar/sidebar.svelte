@@ -47,7 +47,7 @@
 		<div
 			data-slot="sidebar-gap"
 			class={cn(
-				'relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear',
+				'relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-out',
 				'group-data-[collapsible=offcanvas]:w-0',
 				'group-data-[side=right]:rotate-180',
 				variant === 'floating' || variant === 'inset'
@@ -58,7 +58,7 @@
 		<div
 			data-slot="sidebar-container"
 			class={cn(
-				'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) overflow-x-hidden transition-[left,right,width] duration-200 ease-linear md:flex',
+				'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) overflow-x-hidden transition-[left,right,width] duration-200 ease-out md:flex',
 				side === 'left'
 					? 'left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]'
 					: 'right-0 group-data-[collapsible=offcanvas]:right-[calc(var(--sidebar-width)*-1)]',
@@ -67,10 +67,7 @@
 					? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'
 					: 'group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-r group-data-[side=right]:border-l',
 				// Conditionally apply hover expansion if enabled
-				sidebar.hoverExpansionEnabled && [
-					'group-data-[collapsible=icon]:group-data-[hovered=true]:w-(--sidebar-width)',
-					'group-data-[collapsible=icon]:group-data-[hovered=true]:shadow-lg'
-				],
+				sidebar.hoverExpansionEnabled && ['group-data-[collapsible=icon]:group-data-[hovered=true]:w-(--sidebar-width)'],
 				className
 			)}
 			onmouseenter={() => {
@@ -87,7 +84,8 @@
 			<div
 				data-sidebar="sidebar"
 				data-slot="sidebar-inner"
-				class="bg-sidebar/90 supports-[backdrop-filter]:bg-sidebar group-data-[variant=floating]:border-sidebar-border glass flex h-full w-full flex-col overflow-x-hidden backdrop-blur-md group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+				class="bg-sidebar/90 supports-[backdrop-filter]:bg-sidebar group-data-[variant=floating]:border-sidebar-border glass flex h-full w-full flex-col overflow-x-hidden group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
+				style="--glass-blur: 10px; --glass-saturation: 160%;"
 			>
 				{@render children?.()}
 			</div>

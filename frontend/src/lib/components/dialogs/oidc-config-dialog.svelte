@@ -84,7 +84,7 @@
 
 <Dialog.Root bind:open>
 	<Dialog.Content class="flex max-h-[90vh] flex-col sm:max-w-[860px]">
-		<Dialog.Header class="flex-shrink-0 space-y-3">
+		<Dialog.Header class="shrink-0 space-y-3">
 			<Dialog.Title class="flex items-center gap-2">
 				<span class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-md ring-1">
 					<KeyIcon class="size-4" />
@@ -112,7 +112,7 @@
 			</div>
 		</div>
 
-		<Dialog.Footer class="flex flex-shrink-0 gap-3 border-t pt-4">
+		<Dialog.Footer class="flex shrink-0 gap-3 border-t pt-4">
 			<Button variant="outline" onclick={handleClose} class="flex-1 sm:flex-none">
 				{m.common_close()}
 			</Button>
@@ -127,7 +127,7 @@
 </Dialog.Root>
 
 {#snippet viewModeContent()}
-	<div class="bg-card/50 rounded-lg border p-4">
+	<div class="glass-light rounded-lg border p-4">
 		<h3 class="text-base font-semibold">{m.oidc_server_env_config_title()}</h3>
 		<p class="text-muted-foreground mt-1 mb-4 text-sm">{m.oidc_server_env_config_description()}</p>
 
@@ -164,7 +164,7 @@
 {/snippet}
 
 {#snippet editModeContent()}
-	<div class="bg-card/50 rounded-lg border p-4">
+	<div class="glass-light rounded-lg border p-4">
 		<h3 class="text-base font-semibold">{m.oidc_basic_configuration_title()}</h3>
 		<p class="text-muted-foreground mt-1 mb-4 text-sm">{m.oidc_basic_description()}</p>
 
@@ -258,7 +258,7 @@
 {/snippet}
 
 {#snippet redirectUriSection()}
-	<div class="bg-card/50 rounded-lg border p-4">
+	<div class="glass-light rounded-lg border p-4">
 		<div class="mb-3 flex items-center gap-2">
 			<InfoIcon class="size-4 text-blue-600" />
 			<h3 class="text-base font-semibold">{m.oidc_redirect_uri_title()}</h3>
@@ -266,7 +266,7 @@
 		<p class="text-muted-foreground mb-3 text-sm">{m.oidc_redirect_uri_description()}</p>
 		<div class="flex items-center gap-2">
 			<code class="bg-muted flex-1 rounded p-2 font-mono text-xs break-all">{redirectUri}</code>
-			<Button size="sm" variant="outline" onclick={() => handleCopy(redirectUri)} class="flex-shrink-0" title={m.common_copy()}>
+			<Button size="sm" variant="outline" onclick={() => handleCopy(redirectUri)} class="shrink-0" title={m.common_copy()}>
 				<CopyIcon class="size-3" />
 			</Button>
 		</div>

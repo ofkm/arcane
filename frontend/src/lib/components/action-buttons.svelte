@@ -481,10 +481,7 @@
 				<EllipsisIcon />
 			</DropdownMenu.Trigger>
 
-			<DropdownMenu.Content
-				align="end"
-				class="bg-card/80 supports-[backdrop-filter]:bg-card/60 z-50 min-w-[180px] rounded-md p-1 shadow-lg backdrop-blur-sm supports-[backdrop-filter]:backdrop-blur-sm"
-			>
+			<DropdownMenu.Content align="end" class="glass-light z-50 min-w-[180px] rounded-xl border p-1 shadow-lg">
 				<DropdownMenu.Group>
 					{#if !isRunning}
 						{#if type === 'container'}

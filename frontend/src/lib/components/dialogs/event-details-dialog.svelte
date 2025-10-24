@@ -71,8 +71,8 @@
 </script>
 
 <Dialog.Root bind:open>
-	<Dialog.Content class="bg-card flex max-h-[90vh] flex-col rounded-xl border shadow-xl sm:max-w-[980px]">
-		<Dialog.Header class="flex-shrink-0 border-b p-4">
+	<Dialog.Content class="glass flex max-h-[90vh] flex-col rounded-xl border shadow-xl sm:max-w-[980px]">
+		<Dialog.Header class="shrink-0 border-b p-4">
 			{@render headerContent()}
 		</Dialog.Header>
 
@@ -82,7 +82,7 @@
 			{@render rawEventSection()}
 		</div>
 
-		<Dialog.Footer class="flex flex-shrink-0 items-center justify-end gap-2 border-t p-3">
+		<Dialog.Footer class="flex shrink-0 items-center justify-end gap-2 border-t p-3">
 			<Button variant="outline" onclick={handleClose}>
 				{m.common_close()}
 			</Button>
