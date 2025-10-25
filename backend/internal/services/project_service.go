@@ -42,12 +42,13 @@ func NewProjectService(db *database.DB, settingsService *SettingsService, eventS
 // Helpers
 
 type ProjectServiceInfo struct {
-	Name        string   `json:"name"`
-	Image       string   `json:"image"`
-	Status      string   `json:"status"`
-	ContainerID string   `json:"container_id"`
-	Ports       []string `json:"ports"`
-	Health      *string  `json:"health,omitempty"`
+	Name          string   `json:"name"`
+	Image         string   `json:"image"`
+	Status        string   `json:"status"`
+	ContainerID   string   `json:"container_id"`
+	ContainerName string   `json:"container_name"`
+	Ports         []string `json:"ports"`
+	Health        *string  `json:"health,omitempty"`
 }
 
 func (s *ProjectService) GetProjectFromDatabaseByID(ctx context.Context, id string) (*models.Project, error) {
@@ -150,12 +151,13 @@ func (s *ProjectService) GetProjectServices(ctx context.Context, projectID strin
 		}
 
 		services = append(services, ProjectServiceInfo{
-			Name:        c.Service,
-			Image:       c.Image,
-			Status:      c.State,
-			ContainerID: c.ID,
-			Ports:       formatPorts(c.Publishers),
-			Health:      health,
+			Name:          c.Service,
+			Image:         c.Image,
+			Status:        c.State,
+			ContainerID:   c.ID,
+			ContainerName: c.Name,
+			Ports:         formatPorts(c.Publishers),
+			Health:        health,
 		})
 		have[c.Service] = true
 	}
