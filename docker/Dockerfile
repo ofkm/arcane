@@ -37,7 +37,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 \
 FROM alpine:3 AS runner
 ARG VERSION="dev"
 ARG REVISION="unknown"
-RUN apk upgrade && apk --no-cache add ca-certificates curl shadow su-exec tzdata
+RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl shadow su-exec gcompat
 RUN delgroup ping && apk del iputils || true
 ENV DOCKER_GID=998 PUID=2000 PGID=2000
 ENV GIN_MODE=release
