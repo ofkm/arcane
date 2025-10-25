@@ -90,7 +90,7 @@
 	"common_restart": "重启",
 	"common_stop": "停止",
 	"common_up": "上移",
-	"common_down": "向下",
+	"common_down": "停止",
 	"common_retry": "重试",
 	"common_autoscroll": "自动滚动",
 	"common_live": "实时显示",
