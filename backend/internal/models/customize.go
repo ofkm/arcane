@@ -5,7 +5,7 @@ package models
 // Categories must be grouped together and use `catmeta` tag for category-level metadata
 type CustomizeItem struct {
 	// Defaults category
-	DefaultProjectTemplate   CustomizeVariable `key:"defaultProjectTemplate" meta:"label=Default Project Template;type=select;keywords=template,default,project,scaffold,boilerplate,starter;category=defaults;description=Set the default template for new projects" catmeta:"id=defaults;title=Defaults;icon=file-text;url=/customize/defaults;description=Configure default templates and settings for new projects"`
+	DefaultProjectTemplate   CustomizeVariable `key:"defaultProjectTemplate" meta:"label=Default Project Template;type=select;keywords=template,default,project,scaffold,boilerplate,starter;category=defaults;description=Set the default template for new projects"`
 	DefaultContainerSettings CustomizeVariable `key:"defaultContainerSettings" meta:"label=Default Container Settings;type=object;keywords=container,default,settings,docker,configuration,runtime;category=defaults;description=Configure default container runtime settings"`
 	DefaultNetworkMode       CustomizeVariable `key:"defaultNetworkMode" meta:"label=Default Network Mode;type=select;keywords=network,default,mode,bridge,host,none,container;category=defaults;description=Set the default network mode for containers"`
 
