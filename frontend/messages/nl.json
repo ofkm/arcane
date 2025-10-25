@@ -1326,5 +1326,19 @@
 	"glass_effect_enabled": "Glazen effecten ingeschakeld",
 	"glass_effect_disabled": "Glazen effecten uitgeschakeld (klassiek design)",
 	"glass_effect_description_long": "Wanneer ingeschakeld, gebruikt de interface bevroren glazen effecten met achtergrond vervagen en subtiele verloopen. Wanneer uitgeschakeld, gebruikt de interface solide kleuren en traditionele schaduwen voor een klassiek ontwerp. Het glazen ontwerp is in het voorbeeld, en is onderworpen aan verandering.",
-	"navigation_glass_effect_label": "Glazen Effect"
+	"navigation_glass_effect_label": "Glazen Effect",
+	"first_login_title": "Wijzig standaard wachtwoord",
+	"first_login_description": "Om veiligheidsredenen moet u het standaard wachtwoord wijzigen voordat u verder gaat.",
+	"first_login_current_password": "Huidig wachtwoord",
+	"first_login_current_password_placeholder": "Voer het huidige wachtwoord in",
+	"first_login_new_password": "Nieuw wachtwoord",
+	"first_login_new_password_placeholder": "Voer nieuw wachtwoord in (min 8 tekens)",
+	"first_login_confirm_password": "Bevestig nieuw wachtwoord",
+	"first_login_confirm_password_placeholder": "Bevestig nieuw wachtwoord",
+	"first_login_submit": "Wachtwoord wijzigen",
+	"first_login_submitting": "Changing…",
+	"first_login_error_mismatch": "Wachtwoorden komen niet overeen",
+	"first_login_error_length": "Wachtwoord moet ten minste 8 tekens bevatten",
+	"first_login_error_failed": "Wachtwoord wijzigen mislukt",
+	"first_login_success": "Wachtwoord succesvol gewijzigd"
 }

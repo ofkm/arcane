@@ -1326,5 +1326,19 @@
 	"glass_effect_enabled": "Effets de verre activés",
 	"glass_effect_disabled": "Effets de verre désactivés (design classique)",
 	"glass_effect_description_long": "Lorsqu'elle est activée, l'interface utilise des effets de verre givré avec du flou d'arrière-plan et des dégradés subtiles. Lorsqu'elle est désactivée, l'interface utilise des couleurs solides et des ombres traditionnelles pour un design classique. Le design en verre est en avant-première et peut être modifié.",
-	"navigation_glass_effect_label": "Effet de verre"
+	"navigation_glass_effect_label": "Effet de verre",
+	"first_login_title": "Changer le mot de passe par défaut",
+	"first_login_description": "Pour des raisons de sécurité, vous devez modifier le mot de passe par défaut avant de continuer.",
+	"first_login_current_password": "Mot de passe actuel",
+	"first_login_current_password_placeholder": "Entrez le mot de passe actuel",
+	"first_login_new_password": "Nouveau mot de passe",
+	"first_login_new_password_placeholder": "Entrez le nouveau mot de passe (minimum 8 caractères)",
+	"first_login_confirm_password": "Confirmer le nouveau mot de passe",
+	"first_login_confirm_password_placeholder": "Confirmer le nouveau mot de passe",
+	"first_login_submit": "Changer le mot de passe",
+	"first_login_submitting": "Changement de…",
+	"first_login_error_mismatch": "Les mots de passe ne correspondent pas",
+	"first_login_error_length": "Le mot de passe doit comporter au moins 8 caractères",
+	"first_login_error_failed": "Impossible de changer le mot de passe",
+	"first_login_success": "Mot de passe modifié avec succès"
 }
