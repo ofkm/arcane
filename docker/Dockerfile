@@ -1,8 +1,10 @@
 # Tags passed to "go build"
 ARG BUILD_TAGS=""
+ARG BASE_PATH=""
 
 # Stage 1: Build Frontend
 FROM node:24-alpine AS frontend-builder
+ARG BASE_PATH
 RUN corepack enable
 WORKDIR /build
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
@@ -11,6 +13,7 @@ COPY frontend ./frontend
 RUN --mount=type=cache,target=/root/.pnpm-store pnpm -C frontend install --frozen-lockfile
 
 ENV BUILD_PATH=dist
+ENV BASE_PATH=${BASE_PATH}
 RUN pnpm -C frontend build
 
 # Stage 2: Build Backend

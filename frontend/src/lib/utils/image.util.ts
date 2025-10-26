@@ -5,19 +5,21 @@ type SkipCacheUntil = {
 	[key: string]: number;
 };
 
+const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 export function getApplicationLogo(full = false): string {
 	const settings = get(settingsStore);
 	const accentColor = settings?.accentColor || 'default';
 
 	// Add accent color as query param to bust cache when color changes
-	const baseUrl = full ? '/api/app-images/logo?full=true' : '/api/app-images/logo';
+	const baseUrl = full ? `${basePath}/api/app-images/logo?full=true` : `${basePath}/api/app-images/logo`;
 	const separator = full ? '&' : '?';
 	const urlWithColor = `${baseUrl}${separator}color=${encodeURIComponent(accentColor)}`;
 
 	return getCachedImageUrl(urlWithColor);
 }
 export function getDefaultProfilePicture(): string {
-	return getCachedImageUrl('/api/app-images/profile');
+	return getCachedImageUrl(`${basePath}/api/app-images/profile`);
 }
 
 function getCachedImageUrl(url: string) {

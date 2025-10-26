@@ -1,6 +1,8 @@
 import axios, { type AxiosResponse } from 'axios';
 import { toast } from 'svelte-sonner';
 
+const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 function extractServerMessage(data: any, includeErrors = false): string | undefined {
 	const inner = (data && typeof data === 'object' ? ((data as any).data ?? data) : data) as any;
 	if (typeof inner === 'string') {
@@ -18,7 +20,7 @@ function extractServerMessage(data: any, includeErrors = false): string | undefi
 
 abstract class BaseAPIService {
 	api = axios.create({
-		baseURL: '/api',
+		baseURL: `${basePath}/api`,
 		withCredentials: true
 	});
 
@@ -50,7 +52,10 @@ abstract class BaseAPIService {
 						// ignore URL parse errors and fall back to raw reqUrl
 					}
 
-					if (reqUrl.startsWith('/api')) {
+					const apiPrefix = `${basePath}/api`;
+					if (reqUrl.startsWith(apiPrefix)) {
+						reqUrl = reqUrl.slice(apiPrefix.length) || '/';
+					} else if (reqUrl.startsWith('/api')) {
 						reqUrl = reqUrl.slice(4) || '/';
 					}
 
@@ -65,14 +70,15 @@ abstract class BaseAPIService {
 					const isAuthApi = skipAuthPaths.some((p) => reqUrl.startsWith(p));
 
 					const pathname = window.location.pathname || '/';
-					const isOnAuthPage = pathname.startsWith('/auth');
+					const authPath = `${basePath}/auth`;
+					const isOnAuthPage = pathname.startsWith(authPath);
 
 					if (!isAuthApi && !isOnAuthPage) {
 						if (isVersionMismatch) {
 							toast.info('Application has been updated. Please log in again.');
 						}
 						const redirectTo = encodeURIComponent(pathname);
-						window.location.replace(`/auth/login?redirect=${redirectTo}`);
+						window.location.replace(`${basePath}/auth/login?redirect=${redirectTo}`);
 						return new Promise(() => {});
 					}
 				}

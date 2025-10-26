@@ -1,8 +1,10 @@
 import axios from 'axios';
 import type { CustomizeSearchResponse, CustomizeCategory } from '$lib/types/customize-search.type';
 
+const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 export class CustomizeSearchService {
-	private baseUrl = '/api/customize';
+	private baseUrl = `${basePath}/api/customize`;
 
 	async search(query: string): Promise<CustomizeSearchResponse> {
 		const response = await axios.post<CustomizeSearchResponse>(`${this.baseUrl}/search`, {

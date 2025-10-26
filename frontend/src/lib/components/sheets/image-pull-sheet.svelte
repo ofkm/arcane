@@ -10,6 +10,8 @@
 	import { environmentStore, LOCAL_DOCKER_ENVIRONMENT_ID } from '$lib/stores/environment.store.svelte';
 	import { m } from '$lib/paraglide/messages';
 
+	const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 	type ImagePullFormProps = {
 		open: boolean;
 		onPullFinished?: (success: boolean, imageName?: string, error?: string) => void;
@@ -95,7 +97,7 @@
 		pullStatusText = `${m.common_action_pulling()} ${fullImageName}`;
 
 		try {
-			const response = await fetch(`/api/environments/${envId}/images/pull`, {
+			const response = await fetch(`${basePath}/api/environments/${envId}/images/pull`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'

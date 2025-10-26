@@ -17,19 +17,24 @@ import (
 //go:embed all:dist/*
 var frontendFS embed.FS
 
-func RegisterFrontend(router *gin.Engine) error {
+func RegisterFrontend(router *gin.Engine, basePath string) error {
 	distFS, err := fs.Sub(frontendFS, "dist")
 	if err != nil {
 		return fmt.Errorf("failed to create sub FS: %w", err)
 	}
 
 	cacheMaxAge := time.Hour * 24
-	fileServer := NewFileServerWithCaching(http.FS(distFS), int(cacheMaxAge.Seconds()))
+	fileServer := NewFileServerWithCaching(http.FS(distFS), int(cacheMaxAge.Seconds()), basePath)
 
 	router.NoRoute(func(c *gin.Context) {
 		path := c.Request.URL.Path
 
-		if strings.HasPrefix(path, "/api/") {
+		apiPrefix := "/api/"
+		if basePath != "" {
+			apiPrefix = basePath + "/api/"
+		}
+
+		if strings.HasPrefix(path, apiPrefix) {
 			c.JSON(http.StatusNotFound, gin.H{
 				"success": false,
 				"error":   fmt.Sprintf("API endpoint not found: %s", path),
@@ -37,13 +42,18 @@ func RegisterFrontend(router *gin.Engine) error {
 			return
 		}
 
-		requestedPath := strings.TrimPrefix(path, "/")
+		requestedPath := strings.TrimPrefix(path, basePath)
+		requestedPath = strings.TrimPrefix(requestedPath, "/")
 		if requestedPath == "" {
 			requestedPath = "index.html"
 		}
 
 		if _, err := fs.Stat(distFS, requestedPath); os.IsNotExist(err) {
-			c.Request.URL.Path = "/"
+			if basePath != "" {
+				c.Request.URL.Path = basePath + "/"
+			} else {
+				c.Request.URL.Path = "/"
+			}
 		}
 
 		fileServer.ServeHTTP(c.Writer, c.Request)
@@ -54,15 +64,17 @@ func RegisterFrontend(router *gin.Engine) error {
 
 type FileServerWithCaching struct {
 	root                    http.FileSystem
+	basePath                string
 	lastModified            time.Time
 	cacheMaxAge             int
 	lastModifiedHeaderValue string
 	cacheControlHeaderValue string
 }
 
-func NewFileServerWithCaching(root http.FileSystem, maxAge int) *FileServerWithCaching {
+func NewFileServerWithCaching(root http.FileSystem, maxAge int, basePath string) *FileServerWithCaching {
 	return &FileServerWithCaching{
 		root:                    root,
+		basePath:                basePath,
 		lastModified:            time.Now(),
 		cacheMaxAge:             maxAge,
 		lastModifiedHeaderValue: time.Now().UTC().Format(http.TimeFormat),
@@ -71,7 +83,8 @@ func NewFileServerWithCaching(root http.FileSystem, maxAge int) *FileServerWithC
 }
 
 func (f *FileServerWithCaching) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/")
+	path := strings.TrimPrefix(r.URL.Path, f.basePath)
+	path = strings.TrimPrefix(path, "/")
 	if path == "" {
 		path = "index.html"
 	}

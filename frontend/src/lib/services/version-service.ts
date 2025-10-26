@@ -2,13 +2,15 @@ import { version as currentVersion } from '$app/environment';
 import axios from 'axios';
 import type { AppVersionInformation } from '$lib/types/application-configuration';
 
+const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 function getCurrentVersion() {
 	return currentVersion;
 }
 
 async function getVersionInformation(): Promise<AppVersionInformation> {
 	try {
-		const res = await axios.get('/api/app-version', {
+		const res = await axios.get(`${basePath}/api/app-version`, {
 			timeout: 2000
 		});
 		const data = res.data as {

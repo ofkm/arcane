@@ -4,6 +4,8 @@ import type { Project, ProjectStatusCounts } from '$lib/types/project.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import { transformPaginationParams } from '$lib/utils/params.util';
 
+const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 export class ProjectService extends BaseAPIService {
 	async getProjects(options?: SearchPaginationSortRequest): Promise<Paginated<Project>> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
@@ -82,7 +84,7 @@ export class ProjectService extends BaseAPIService {
 
 	private async streamProjectPull(projectId: string, onLine?: (data: any) => void): Promise<boolean> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		const url = `/api/environments/${envId}/projects/${projectId}/pull`;
+		const url = `${basePath}/api/environments/${envId}/projects/${projectId}/pull`;
 
 		const res = await fetch(url, { method: 'POST' });
 		if (!res.ok || !res.body) {

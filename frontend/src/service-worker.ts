@@ -7,6 +7,8 @@ import { build, files, version } from '$service-worker';
 
 const self = globalThis.self as unknown as ServiceWorkerGlobalScope;
 
+const base = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 const DATA_CACHE = `data-cache-${version}`;
 const CACHE = `cache-${version}`;
 
@@ -49,7 +51,8 @@ self.addEventListener('fetch', (event) => {
 	if (event.request.method !== 'GET') return;
 
 	const url = new URL(event.request.url);
-	const isApiRequest = url.pathname.startsWith('/api/');
+	const apiPath = `${base}/api/`;
+	const isApiRequest = url.pathname.startsWith(apiPath);
 
 	async function respond() {
 		if (isApiRequest) {

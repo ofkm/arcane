@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ const (
 
 type Config struct {
 	AppUrl        string
+	BasePath      string
 	DatabaseURL   string
 	Port          string
 	Environment   string
@@ -38,8 +40,12 @@ type Config struct {
 }
 
 func Load() *Config {
+	appUrl := getEnvOrDefault("APP_URL", "http://localhost:3552")
+	basePath := extractBasePath(appUrl)
+
 	return &Config{
-		AppUrl:        getEnvOrDefault("APP_URL", "http://localhost:3552"),
+		AppUrl:        appUrl,
+		BasePath:      basePath,
 		DatabaseURL:   getEnvOrDefault("DATABASE_URL", defaultSqliteString),
 		Port:          getEnvOrDefault("PORT", "3552"),
 		Environment:   getEnvOrDefault("ENVIRONMENT", "production"),
@@ -85,4 +91,27 @@ func getBoolEnvOrDefault(key string, defaultValue bool) bool {
 		}
 	}
 	return defaultValue
+}
+
+func extractBasePath(appUrl string) string {
+	if appUrl == "" {
+		return ""
+	}
+
+	parsedURL, err := url.Parse(appUrl)
+	if err != nil {
+		return ""
+	}
+
+	// Only extract path if we have a valid scheme (http/https)
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return ""
+	}
+
+	path := strings.TrimSuffix(parsedURL.Path, "/")
+	if path == "" {
+		return ""
+	}
+
+	return path
 }

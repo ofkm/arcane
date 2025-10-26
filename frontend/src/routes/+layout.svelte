@@ -23,6 +23,8 @@
 	import FirstLoginPasswordDialog from '$lib/components/dialogs/first-login-password-dialog.svelte';
 	import { invalidateAll } from '$app/navigation';
 
+	const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 	let {
 		data,
 		children
@@ -32,8 +34,14 @@
 	} = $props();
 
 	onMount(() => {
+		// Set favicon with base path
+		const favicon = document.getElementById('favicon');
+		if (favicon) {
+			favicon.setAttribute('href', `${basePath}/api/app-images/favicon`);
+		}
+
 		if (!dev && browser && 'serviceWorker' in navigator) {
-			navigator.serviceWorker.register('/service-worker.js');
+			navigator.serviceWorker.register(`${basePath}/service-worker.js`);
 		}
 	});
 

@@ -6,6 +6,8 @@
 	import { cn } from '$lib/utils';
 	import { onDestroy } from 'svelte';
 
+	const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 	interface LogEntry {
 		id: number;
 		timestamp: string;
@@ -144,11 +146,11 @@
 	async function buildLogWsEndpoint(): Promise<string> {
 		const currentEnv = environmentStore.selected;
 		const envId = currentEnv?.id || 'local';
-		const basePath =
+		const apiPath =
 			type === 'project'
-				? `/api/environments/${envId}/projects/${projectId}/logs/ws`
-				: `/api/environments/${envId}/containers/${containerId}/logs/ws`;
-		return buildWebSocketEndpoint(`${basePath}?follow=true&tail=${tailLines}&timestamps=true&format=json&batched=true`);
+				? `${basePath}/api/environments/${envId}/projects/${projectId}/logs/ws`
+				: `${basePath}/api/environments/${envId}/containers/${containerId}/logs/ws`;
+		return buildWebSocketEndpoint(`${apiPath}?follow=true&tail=${tailLines}&timestamps=true&format=json&batched=true`);
 	}
 
 	export async function startLogStream() {

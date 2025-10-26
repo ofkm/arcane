@@ -70,7 +70,13 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	corsMiddleware := middleware.NewCORSMiddleware(cfg).Add()
 	router.Use(corsMiddleware)
 
-	apiGroup := router.Group("/api")
+	var apiGroup *gin.RouterGroup
+	if cfg.BasePath != "" {
+		basePath := router.Group(cfg.BasePath)
+		apiGroup = basePath.Group("/api")
+	} else {
+		apiGroup = router.Group("/api")
+	}
 
 	api.NewApplicationImagesHandler(apiGroup, appServices.AppImages)
 	api.NewUserHandler(apiGroup, appServices.User, authMiddleware)
@@ -114,7 +120,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 		}
 	}
 
-	if err := frontend.RegisterFrontend(router); err != nil {
+	if err := frontend.RegisterFrontend(router, cfg.BasePath); err != nil {
 		_, _ = gin.DefaultErrorWriter.Write([]byte("Failed to register frontend: " + err.Error() + "\n"))
 	}
 

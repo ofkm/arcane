@@ -3,7 +3,20 @@ import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
+function getBasePath() {
+	if (process.env.BASE_PATH) return process.env.BASE_PATH;
+	try {
+		const url = new URL(process.env.APP_URL || '');
+		return url.pathname.replace(/\/$/, '') || '';
+	} catch {
+		return '';
+	}
+}
+
+const basePath = getBasePath();
+
 export default defineConfig({
+	base: basePath,
 	optimizeDeps: {
 		exclude: ['@lucide/svelte']
 	},
@@ -20,7 +33,7 @@ export default defineConfig({
 	server: {
 		host: process.env.HOST,
 		proxy: {
-			'/api': {
+			[`${basePath}/api`]: {
 				target: process.env.DEV_BACKEND_URL || 'http://localhost:3552',
 				changeOrigin: true,
 				ws: true

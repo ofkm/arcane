@@ -1,9 +1,11 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageLoad } from './$types';
 
+const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 export const load: PageLoad = async ({ fetch }) => {
 	try {
-		await fetch('/api/auth/logout', {
+		await fetch(`${basePath}/api/auth/logout`, {
 			method: 'POST',
 			credentials: 'include'
 		});
@@ -11,5 +13,5 @@ export const load: PageLoad = async ({ fetch }) => {
 		console.error('Logout error:', error);
 	}
 
-	throw redirect(302, '/auth/login');
+	throw redirect(302, `${basePath}/auth/login`);
 };

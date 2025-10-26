@@ -16,9 +16,9 @@ services:
       - ./package.json:/app/package.json:ro
       - ./pnpm-workspace.yaml:/app/pnpm-workspace.yaml:ro
       - ./pnpm-lock.yaml:/app/pnpm-lock.yaml:ro
-      # Anonymous volumes for node_modules to avoid conflicts
-      - /app/node_modules
-      - /app/frontend/node_modules
+      # Named volumes for node_modules to avoid conflicts
+      - frontend-root-node-modules:/app/node_modules
+      - frontend-node-modules:/app/frontend/node_modules
       # Persistent pnpm cache
       - pnpm-cache:/root/.local/share/pnpm/store
     env_file:
@@ -137,3 +137,7 @@ volumes:
     name: arcane-go-mod-cache
   pnpm-cache:
     name: arcane-pnpm-cache
+  frontend-root-node-modules:
+    name: arcane-frontend-root-node-modules
+  frontend-node-modules:
+    name: arcane-frontend-node-modules
