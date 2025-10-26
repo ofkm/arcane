@@ -13,6 +13,7 @@
 	import { toast } from 'svelte-sonner';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
+	import { withBase } from '$lib/utils/path.util';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
@@ -293,8 +294,11 @@
 					icon: ClockIcon
 				}
 			: undefined}
+		}
+		:
+		undefined}
 		rowActions={RowActions}
-		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}`)}
+		onclick={(item: ContainerSummaryDto) => goto(withBase(`/containers/${item.id}`))}
 	>
 		{#snippet children()}
 			{#if (mobileFieldVisibility.ports ?? true) && item.ports && item.ports.length > 0}
@@ -328,7 +332,7 @@
 		</DropdownMenu.Trigger>
 		<DropdownMenu.Content align="end">
 			<DropdownMenu.Group>
-				<DropdownMenu.Item onclick={() => goto(`/containers/${item.id}`)} disabled={isAnyLoading}>
+				<DropdownMenu.Item onclick={() => goto(withBase(`/containers/${item.id}`))} disabled={isAnyLoading}>
 					<ScanSearchIcon class="size-4" />
 					{m.common_inspect()}
 				</DropdownMenu.Item>

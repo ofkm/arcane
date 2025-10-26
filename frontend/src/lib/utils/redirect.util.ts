@@ -1,5 +1,8 @@
 import type { User } from '$lib/types/user.type';
 
+// Get base path from build config
+const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 const PROTECTED_PREFIXES = [
 	'dashboard',
 	'compose',
@@ -21,30 +24,44 @@ const isProtectedPath = (path: string) => {
 	return result;
 };
 
+// Strip base path from a path for comparison
+const stripBasePath = (path: string) => {
+	if (basePath && path.startsWith(basePath)) {
+		return path.slice(basePath.length) || '/';
+	}
+	return path;
+};
+
+// Add base path to a path
+const addBasePath = (path: string) => `${basePath}${path}`;
+
 export function getAuthRedirectPath(path: string, user: User | null) {
 	const isSignedIn = !!user;
 
-	const isUnauthenticatedOnlyPath =
-		path === '/auth/login' ||
-		path.startsWith('/auth/login/') ||
-		path === '/auth/oidc/login' ||
-		path.startsWith('/auth/oidc/login') ||
-		path === '/auth/oidc/callback' ||
-		path.startsWith('/auth/oidc/callback') ||
-		path === '/img' ||
-		path.startsWith('/img') ||
-		path === '/favicon.ico';
+	// Strip base path for comparison
+	const cleanPath = stripBasePath(path);
 
-	if (!isSignedIn && isProtectedPath(path)) {
-		return '/auth/login';
+	const isUnauthenticatedOnlyPath =
+		cleanPath === '/auth/login' ||
+		cleanPath.startsWith('/auth/login/') ||
+		cleanPath === '/auth/oidc/login' ||
+		cleanPath.startsWith('/auth/oidc/login') ||
+		cleanPath === '/auth/oidc/callback' ||
+		cleanPath.startsWith('/auth/oidc/callback') ||
+		cleanPath === '/img' ||
+		cleanPath.startsWith('/img') ||
+		cleanPath === '/favicon.ico';
+
+	if (!isSignedIn && isProtectedPath(cleanPath)) {
+		return addBasePath('/auth/login');
 	}
 
 	if (isUnauthenticatedOnlyPath && isSignedIn) {
-		return '/dashboard';
+		return addBasePath('/dashboard');
 	}
 
-	if (path === '/') {
-		return isSignedIn ? '/dashboard' : '/auth/login';
+	if (cleanPath === '/') {
+		return isSignedIn ? addBasePath('/dashboard') : addBasePath('/auth/login');
 	}
 
 	return null;

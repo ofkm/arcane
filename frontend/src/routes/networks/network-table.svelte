@@ -13,6 +13,7 @@
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
+	import { withBase } from '$lib/utils/path.util';
 	import { DEFAULT_NETWORK_NAMES } from '$lib/constants';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
@@ -253,11 +254,9 @@
 			}
 		]}
 		rowActions={RowActions}
-		onclick={() => goto(`/networks/${item.id}`)}
+		onclick={() => goto(withBase(`/networks/${item.id}`))}
 	/>
-{/snippet}
-
-{#snippet RowActions({ item }: { item: NetworkSummaryDto })}
+{/snippet}{#snippet RowActions({ item }: { item: NetworkSummaryDto })}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
 			{#snippet child({ props })}
@@ -269,7 +268,7 @@
 		</DropdownMenu.Trigger>
 		<DropdownMenu.Content align="end">
 			<DropdownMenu.Group>
-				<DropdownMenu.Item onclick={() => goto(`/networks/${item.id}`)} disabled={isAnyLoading}>
+				<DropdownMenu.Item onclick={() => goto(withBase(`/networks/${item.id}`))} disabled={isAnyLoading}>
 					<ScanSearchIcon class="size-4" />
 					{m.common_inspect()}
 				</DropdownMenu.Item>

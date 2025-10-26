@@ -13,11 +13,13 @@
 	import { truncateString } from '$lib/utils/string.utils';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog/';
 	import { toast } from 'svelte-sonner';
+	import { withBase } from '$lib/utils/path.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { ArcaneButton } from '$lib/components/arcane-button/index.js';
 	import { format } from 'date-fns';
 	import ContainerIcon from '@lucide/svelte/icons/container';
+	import { withBase } from '$lib/utils/path.util';
 	import { m } from '$lib/paraglide/messages';
 	import { volumeService } from '$lib/services/volume-service.js';
 
@@ -48,7 +50,7 @@
 						setLoadingState: (value) => (isLoading.remove = value),
 						onSuccess: async () => {
 							toast.success(m.volumes_remove_success({ name: safeName }));
-							goto('/volumes');
+							goto(withBase('/volumes'));
 						}
 					});
 				}
@@ -327,7 +329,7 @@
 			<ArcaneButton
 				action="cancel"
 				customLabel={m.common_back_to({ resource: m.volumes_title() })}
-				onclick={() => goto('/volumes')}
+				onclick={() => goto(withBase('/volumes'))}
 				size="sm"
 			/>
 		</div>

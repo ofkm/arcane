@@ -10,6 +10,9 @@
 	import { settingsService } from '$lib/services/settings-service';
 	import { authService } from '$lib/services/auth-service';
 
+	// Get base path from build config
+	const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 	let isProcessing = $state(true);
 	let error = $state('');
 
@@ -20,7 +23,7 @@
 			const errorParam = page.url.searchParams.get('error');
 			const errorDescription = page.url.searchParams.get('error_description');
 
-			const redirectTo = localStorage.getItem('oidc_redirect') || '/dashboard';
+			const redirectTo = localStorage.getItem('oidc_redirect') || `${basePath}/dashboard`;
 			localStorage.removeItem('oidc_redirect');
 
 			if (errorParam) {
@@ -32,14 +35,14 @@
 				}
 
 				error = errorDescription || userMessage;
-				setTimeout(() => goto('/auth/login?error=oidc_provider_error'), 3000);
+				setTimeout(() => goto(`${basePath}/auth/login?error=oidc_provider_error`), 3000);
 				isProcessing = false;
 				return;
 			}
 
 			if (!code || !stateFromUrl) {
 				error = m.auth_oidc_invalid_response();
-				setTimeout(() => goto('/auth/login?error=oidc_invalid_response'), 3000);
+				setTimeout(() => goto(`${basePath}/auth/login?error=oidc_invalid_response`), 3000);
 				isProcessing = false;
 				return;
 			}
@@ -55,7 +58,7 @@
 				}
 
 				error = userMessage;
-				setTimeout(() => goto('/auth/login?error=oidc_auth_failed'), 3000);
+				setTimeout(() => goto(`${basePath}/auth/login?error=oidc_auth_failed`), 3000);
 				isProcessing = false;
 				return;
 			}
@@ -89,7 +92,7 @@
 				finalizeLogin();
 			} else {
 				error = m.auth_oidc_user_info_missing();
-				setTimeout(() => goto('/auth/login?error=oidc_user_info_missing'), 3000);
+				setTimeout(() => goto(`${basePath}/auth/login?error=oidc_user_info_missing`), 3000);
 				isProcessing = false;
 			}
 		} catch (err: any) {
@@ -101,7 +104,7 @@
 			}
 
 			error = userMessage;
-			setTimeout(() => goto('/auth/login?error=oidc_callback_error'), 3000);
+			setTimeout(() => goto(`${basePath}/auth/login?error=oidc_callback_error`), 3000);
 			isProcessing = false;
 		}
 	});

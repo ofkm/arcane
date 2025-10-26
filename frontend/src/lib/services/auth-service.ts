@@ -5,6 +5,9 @@ import type { User } from '$lib/types/user.type';
 import type { OidcStatusInfo } from '$lib/types/settings.type';
 import type { OidcUserInfo, LoginCredentials, LoginResponseData } from '$lib/types/auth.type';
 
+// Get base path from build config
+const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 export class AuthService extends BaseAPIService {
 	async login(credentials: LoginCredentials): Promise<User> {
 		const data = await this.handleResponse<LoginResponseData>(this.api.post('/auth/login', credentials));
@@ -12,7 +15,7 @@ export class AuthService extends BaseAPIService {
 
 		userStore.setUser(user);
 		await invalidateAll();
-		goto('/auth/login');
+		goto(`${basePath}/auth/login`);
 
 		return user;
 	}

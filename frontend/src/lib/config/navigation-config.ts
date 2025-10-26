@@ -18,6 +18,12 @@ import NavigationIcon from '@lucide/svelte/icons/navigation';
 import FileTextIcon from '@lucide/svelte/icons/file-text';
 import { m } from '$lib/paraglide/messages';
 
+// Get base path from build config
+const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
+// Helper to create paths with base
+const p = (path: string) => `${basePath}${path}`;
+
 export type NavigationItem = {
 	title: string;
 	url: string;
@@ -27,48 +33,48 @@ export type NavigationItem = {
 
 export const navigationItems: Record<string, NavigationItem[]> = {
 	managementItems: [
-		{ title: m.dashboard_title(), url: '/dashboard', icon: HouseIcon },
-		{ title: m.containers_title(), url: '/containers', icon: ContainerIcon },
-		{ title: m.projects_title(), url: '/projects', icon: FileStackIcon },
-		{ title: m.images_title(), url: '/images', icon: ImageIcon },
-		{ title: m.networks_title(), url: '/networks', icon: NetworkIcon },
-		{ title: m.volumes_title(), url: '/volumes', icon: HardDriveIcon }
+		{ title: m.dashboard_title(), url: p('/dashboard'), icon: HouseIcon },
+		{ title: m.containers_title(), url: p('/containers'), icon: ContainerIcon },
+		{ title: m.projects_title(), url: p('/projects'), icon: FileStackIcon },
+		{ title: m.images_title(), url: p('/images'), icon: ImageIcon },
+		{ title: m.networks_title(), url: p('/networks'), icon: NetworkIcon },
+		{ title: m.volumes_title(), url: p('/volumes'), icon: HardDriveIcon }
 	],
 	customizationItems: [
 		{
 			title: m.customize_title(),
-			url: '/customize',
+			url: p('/customize'),
 			icon: PaletteIcon,
 			items: [
-				{ title: m.templates_title(), url: '/customize/templates', icon: LayoutTemplateIcon },
-				{ title: m.registries_title(), url: '/customize/registries', icon: LockKeyholeIcon },
-				{ title: m.variables_title(), url: '/customize/variables', icon: FileTextIcon }
+				{ title: m.templates_title(), url: p('/customize/templates'), icon: LayoutTemplateIcon },
+				{ title: m.registries_title(), url: p('/customize/registries'), icon: LockKeyholeIcon },
+				{ title: m.variables_title(), url: p('/customize/variables'), icon: FileTextIcon }
 			]
 		}
 	],
 	environmentItems: [
 		{
 			title: m.environments_title(),
-			url: '/environments',
+			url: p('/environments'),
 			icon: ComputerIcon
 		}
 	],
 	settingsItems: [
 		{
 			title: m.events_title(),
-			url: '/events',
+			url: p('/events'),
 			icon: AlarmClockIcon
 		},
 		{
 			title: m.settings_title(),
-			url: '/settings',
+			url: p('/settings'),
 			icon: SettingsIcon,
 			items: [
-				{ title: m.general_title(), url: '/settings/general', icon: SettingsIcon },
-				{ title: m.docker_title(), url: '/settings/docker', icon: DatabaseIcon },
-				{ title: m.security_title(), url: '/settings/security', icon: ShieldIcon },
-				{ title: m.navigation_title(), url: '/settings/navigation', icon: NavigationIcon },
-				{ title: m.users_title(), url: '/settings/users', icon: UserIcon }
+				{ title: m.general_title(), url: p('/settings/general'), icon: SettingsIcon },
+				{ title: m.docker_title(), url: p('/settings/docker'), icon: DatabaseIcon },
+				{ title: m.security_title(), url: p('/settings/security'), icon: ShieldIcon },
+				{ title: m.navigation_title(), url: p('/settings/navigation'), icon: NavigationIcon },
+				{ title: m.users_title(), url: p('/settings/users'), icon: UserIcon }
 			]
 		}
 	]

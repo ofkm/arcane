@@ -17,6 +17,9 @@
 	import { authService } from '$lib/services/auth-service';
 	import { getApplicationLogo } from '$lib/utils/image.util';
 
+	// Get base path from build config
+	const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 	let { data }: { data: PageData } = $props();
 
 	let loading = $state(false);
@@ -34,8 +37,8 @@
 	const showLocalLoginForm = $derived(localAuthEnabledBySettings);
 
 	function handleOidcLogin() {
-		const currentRedirect = data.redirectTo || '/dashboard';
-		goto(`/auth/oidc/login?redirect=${encodeURIComponent(currentRedirect)}`);
+		const currentRedirect = data.redirectTo || `${basePath}/dashboard`;
+		goto(`${basePath}/auth/oidc/login?redirect=${encodeURIComponent(currentRedirect)}`);
 	}
 
 	async function handleLogin(event: Event) {
@@ -52,7 +55,7 @@
 		try {
 			const user = await authService.login({ username, password });
 			userStore.setUser(user);
-			const redirectTo = data.redirectTo || '/dashboard';
+			const redirectTo = data.redirectTo || `${basePath}/dashboard`;
 			goto(redirectTo, { replaceState: true });
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Login failed';

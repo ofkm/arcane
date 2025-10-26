@@ -63,12 +63,22 @@
 	const isMobile = new IsMobile();
 	const isTablet = new IsTablet();
 	const isNavigating = $derived(navigating.type !== null);
+
+	// Strip base path for pathname comparison
+	const cleanPathname = $derived(() => {
+		const path = String(page.url.pathname);
+		if (basePath && path.startsWith(basePath)) {
+			return path.slice(basePath.length) || '/';
+		}
+		return path;
+	});
+
 	const isLoginPage = $derived(
-		String(page.url.pathname) === '/login' ||
-			String(page.url.pathname).startsWith('/auth/login') ||
-			String(page.url.pathname) === '/auth' ||
-			String(page.url.pathname).includes('/login') ||
-			String(page.url.pathname).includes('/callback')
+		cleanPathname() === '/login' ||
+			cleanPathname().startsWith('/auth/login') ||
+			cleanPathname() === '/auth' ||
+			cleanPathname().includes('/login') ||
+			cleanPathname().includes('/callback')
 	);
 	let showPasswordChangeDialog = $state(false);
 

@@ -5,17 +5,20 @@
 	import { m } from '$lib/paraglide/messages';
 	import { authService } from '$lib/services/auth-service';
 
+	// Get base path from build config
+	const basePath = import.meta.env.BASE_URL?.replace(/\/$/, '') || '';
+
 	let isRedirecting = $state(true);
 	let error = $state('');
 
 	onMount(async () => {
 		try {
-			const redirect = page.url.searchParams.get('redirect') || '/dashboard';
+			const redirect = page.url.searchParams.get('redirect') || `${basePath}/dashboard`;
 
 			const authUrl = await authService.getAuthUrl(redirect);
 			if (!authUrl) {
 				error = m.auth_oidc_url_generation_failed();
-				setTimeout(() => goto('/auth/login?error=oidc_url_generation_failed'), 3000);
+				setTimeout(() => goto(`${basePath}/auth/login?error=oidc_url_generation_failed`), 3000);
 				isRedirecting = false;
 				return;
 			}
@@ -33,7 +36,7 @@
 			}
 
 			error = userMessage;
-			setTimeout(() => goto('/auth/login?error=oidc_init_failed'), 3000);
+			setTimeout(() => goto(`${basePath}/auth/login?error=oidc_init_failed`), 3000);
 			isRedirecting = false;
 		}
 	});

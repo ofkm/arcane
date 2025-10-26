@@ -26,6 +26,7 @@
 	import type { NetworkInspectDto } from '$lib/types/network.type';
 	import { m } from '$lib/paraglide/messages';
 	import { networkService } from '$lib/services/network-service';
+	import { withBase } from '$lib/utils/path.util';
 
 	let { data }: { data: PageData } = $props();
 	let { network }: { network: NetworkInspectDto | null | undefined } = $derived(data);
@@ -66,7 +67,7 @@
 						setLoadingState: (value) => (isRemoving = value),
 						onSuccess: async () => {
 							toast.success(m.networks_remove_success({ name: network?.name ?? shortId }));
-							goto('/networks');
+							goto(withBase('/networks'));
 						},
 						onError: (error) => {
 							errorMessage = error?.message ?? m.error_occurred();
@@ -465,7 +466,7 @@
 			<ArcaneButton
 				action="cancel"
 				customLabel={m.common_back_to({ resource: m.networks_title() })}
-				onclick={() => goto('/networks')}
+				onclick={() => goto(withBase('/networks'))}
 				size="sm"
 			/>
 		</div>

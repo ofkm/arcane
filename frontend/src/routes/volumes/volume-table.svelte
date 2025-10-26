@@ -18,6 +18,8 @@
 	import type { VolumeSummaryDto } from '$lib/types/volume.type';
 	import type { ColumnSpec } from '$lib/components/arcane-table';
 	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
+	import { withBase } from '$lib/utils/path.util';
+	import { withBase } from '$lib/utils/path.util';
 	import DatabaseIcon from '@lucide/svelte/icons/database';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
@@ -205,11 +207,9 @@
 				}
 			: undefined}
 		rowActions={RowActions}
-		onclick={() => goto(`/volumes/${item.id}`)}
+		onclick={() => goto(withBase(`/volumes/${item.id}`))}
 	/>
-{/snippet}
-
-{#snippet RowActions({ item }: { item: VolumeSummaryDto })}
+{/snippet}{#snippet RowActions({ item }: { item: VolumeSummaryDto })}
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>
 			{#snippet child({ props })}
@@ -221,7 +221,7 @@
 		</DropdownMenu.Trigger>
 		<DropdownMenu.Content align="end">
 			<DropdownMenu.Group>
-				<DropdownMenu.Item onclick={() => goto(`/volumes/${item.id}`)}>
+				<DropdownMenu.Item onclick={() => goto(withBase(`/volumes/${item.id}`))}>
 					<ScanSearchIcon class="size-4" />
 					{m.common_inspect()}
 				</DropdownMenu.Item>
