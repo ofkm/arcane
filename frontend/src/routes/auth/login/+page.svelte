@@ -61,6 +61,16 @@
 
 	const showDivider = $derived(showOidcLoginButton && showLocalLoginForm);
 
+	// Generate random starting positions for each orb
+	const orb1X = Math.random() * 80 - 40;
+	const orb1Y = Math.random() * 80 - 40;
+	const orb2X = Math.random() * 80 - 40;
+	const orb2Y = Math.random() * 80 - 40;
+	const orb3X = Math.random() * 80 - 40;
+	const orb3Y = Math.random() * 80 - 40;
+	const orb4X = Math.random() * 80 - 40;
+	const orb4Y = Math.random() * 80 - 40;
+
 	// Add random delay for each orb to create natural animation
 	const orb1Delay = Math.random() * 2;
 	const orb2Delay = Math.random() * 2;
@@ -69,10 +79,10 @@
 </script>
 
 <div class="fixed inset-0 overflow-hidden">
-	<div class="orb orb-1" style="--orb-delay: {orb1Delay}s;"></div>
-	<div class="orb orb-2" style="--orb-delay: {orb2Delay}s;"></div>
-	<div class="orb orb-3" style="--orb-delay: {orb3Delay}s;"></div>
-	<div class="orb orb-4" style="--orb-delay: {orb4Delay}s;"></div>
+	<div class="orb orb-1" style="--start-x: {orb1X}; --start-y: {orb1Y}; --orb-delay: {orb1Delay}s;"></div>
+	<div class="orb orb-2" style="--start-x: {orb2X}; --start-y: {orb2Y}; --orb-delay: {orb2Delay}s;"></div>
+	<div class="orb orb-3" style="--start-x: {orb3X}; --start-y: {orb3Y}; --orb-delay: {orb3Delay}s;"></div>
+	<div class="orb orb-4" style="--start-x: {orb4X}; --start-y: {orb4Y}; --orb-delay: {orb4Delay}s;"></div>
 </div>
 
 <div class="relative flex min-h-screen flex-col items-center justify-center p-6 md:p-10">
@@ -87,7 +97,7 @@
 			<Card.Content class="p-8">
 				<div class="mb-8 flex flex-col items-center text-center">
 					<h1 class="text-3xl font-bold tracking-tight">{m.auth_welcome_back_title()}</h1>
-					<p class="text-muted-foreground mt-2 text-balance text-sm">{m.auth_login_subtitle()}</p>
+					<p class="text-muted-foreground mt-2 text-sm text-balance">{m.auth_login_subtitle()}</p>
 				</div>
 
 				<div class="space-y-4">
@@ -194,7 +204,7 @@
 						{#if showDivider}
 							<div class="relative my-4">
 								<div class="absolute inset-0 flex items-center">
-									<div class="w-full border-t border-border/60"></div>
+									<div class="border-border/60 w-full border-t"></div>
 								</div>
 								<div class="relative flex justify-center text-xs">
 									<span class="glass-light bubble-pill text-muted-foreground px-3 py-1">
@@ -217,13 +227,13 @@
 	</div>
 </div>
 
-<div class="fixed bottom-4 left-0 right-0 p-4">
+<div class="fixed right-0 bottom-4 left-0 p-4">
 	<div class="text-muted-foreground flex items-center justify-center">
 		<a
 			href="https://github.com/ofkm/arcane"
 			target="_blank"
 			rel="noopener noreferrer"
-			class="glass-light bubble-pill text-xs hover:text-primary transition-colors"
+			class="glass-light bubble-pill hover:text-primary text-xs transition-colors"
 		>
 			{m.common_view_on_github()}
 		</a>
@@ -236,61 +246,57 @@
 		border-radius: 50%;
 		filter: blur(85px);
 		opacity: 0.3;
-		animation: orb-float 15s ease-in-out infinite;
+		background: var(--primary);
+		transform: translate(calc(-20px + var(--start-x) * 4px), calc(-20px + var(--start-y) * 4px)) scale(1);
+		animation: orb-float var(--orb-duration, 18s) ease-in-out infinite;
 		animation-delay: var(--orb-delay, 0s);
 	}
 
 	.orb-1 {
 		width: 500px;
 		height: 500px;
-		background: var(--primary);
 		left: 10%;
 		top: -150px;
-		animation-duration: 18s;
+		--orb-duration: 18s;
 	}
 
 	.orb-2 {
 		width: 420px;
 		height: 420px;
-		background: var(--primary);
 		right: 15%;
 		bottom: -150px;
-		animation-duration: 22s;
+		--orb-duration: 22s;
 	}
 
 	.orb-3 {
 		width: 380px;
 		height: 380px;
-		background: var(--primary);
 		right: -120px;
 		top: 20%;
-		animation-duration: 20s;
+		--orb-duration: 20s;
 	}
 
 	.orb-4 {
 		width: 320px;
 		height: 320px;
-		background: var(--primary);
 		left: -100px;
 		bottom: 30%;
-		animation-duration: 16s;
+		--orb-duration: 16s;
 	}
 
 	@keyframes orb-float {
-		0% {
-			transform: translate(0, 0) scale(1);
+		0%,
+		100% {
+			transform: translate(calc(-20px + var(--start-x) * 4px), calc(-20px + var(--start-y) * 4px)) scale(1);
 		}
 		25% {
-			transform: translate(80px, -60px) scale(1.15);
+			transform: translate(calc(60px + var(--start-x) * 4px), calc(-80px + var(--start-y) * 4px)) scale(1.15);
 		}
 		50% {
-			transform: translate(40px, 40px) scale(0.95);
+			transform: translate(calc(20px + var(--start-x) * 4px), calc(20px + var(--start-y) * 4px)) scale(0.95);
 		}
 		75% {
-			transform: translate(-60px, 80px) scale(1.1);
-		}
-		100% {
-			transform: translate(0, 0) scale(1);
+			transform: translate(calc(-80px + var(--start-x) * 4px), calc(60px + var(--start-y) * 4px)) scale(1.1);
 		}
 	}
 
