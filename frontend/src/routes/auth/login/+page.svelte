@@ -11,9 +11,7 @@
 	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
 	import userStore from '$lib/stores/user-store';
-	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
-	import { settingsService } from '$lib/services/settings-service';
 	import { authService } from '$lib/services/auth-service';
 	import { getApplicationLogo } from '$lib/utils/image.util';
 
@@ -181,7 +179,7 @@
 										class="after:border-border/60 relative my-2 text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t"
 									>
 										<span
-											class="bg-card/70 text-muted-foreground supports-[backdrop-filter]:bg-card/50 relative z-10 inline-flex items-center rounded-full px-3 py-0.5 text-xs backdrop-blur"
+											class="bg-card/70 text-muted-foreground supports-backdrop-filter:bg-card/50 relative z-10 inline-flex items-center rounded-full px-3 py-0.5 text-xs backdrop-blur"
 										>
 											{m.auth_or_continue()}
 										</span>
@@ -199,7 +197,7 @@
 					</div>
 
 					<div
-						class="hidden h-full w-full bg-gradient-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10 md:flex md:items-center md:justify-center"
+						class="hidden h-full w-full bg-linear-to-br from-blue-600/10 via-indigo-600/10 to-purple-600/10 md:flex md:items-center md:justify-center"
 					>
 						<div class="space-y-4 p-8 text-center">
 							<div class="mb-8">
@@ -222,7 +220,7 @@
 				href="https://github.com/ofkm/arcane"
 				target="_blank"
 				rel="noopener noreferrer"
-				class="bg-card/70 text-muted-foreground supports-[backdrop-filter]:bg-card/50 hover:text-primary relative inline-flex items-center rounded-full px-3 py-0.5 text-xs backdrop-blur transition-colors"
+				class="bg-card/70 text-muted-foreground supports-backdrop-filter:bg-card/50 hover:text-primary relative inline-flex items-center rounded-full px-3 py-0.5 text-xs backdrop-blur transition-colors"
 			>
 				{m.common_view_on_github()}
 			</a>
