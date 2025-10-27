@@ -2,7 +2,7 @@
 	import { type VariantProps, tv } from 'tailwind-variants';
 
 	export const alertVariants = tv({
-		base: '[&>svg]:text-foreground relative w-full rounded-xl border p-4 glass-subtle [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg~*]:pl-7',
+		base: '[&>svg]:text-foreground relative w-full rounded-xl border p-4 backdrop-blur-sm bg-card/80 [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg~*]:pl-7',
 		variants: {
 			variant: {
 				default: 'text-foreground',
