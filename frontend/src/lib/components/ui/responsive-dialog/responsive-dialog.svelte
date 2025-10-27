@@ -3,6 +3,7 @@
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import * as Drawer from '$lib/components/ui/drawer/index.js';
 	import type { ResponsiveDialogProps } from './responsive-dialog.type.js';
+	import { cn } from '$lib/utils.js';
 
 	let {
 		open = $bindable(false),
@@ -31,9 +32,9 @@
 				{@render trigger()}
 			</Dialog.Trigger>
 		{/if}
-		<Dialog.Content class={contentClass ?? 'sm:max-w-[425px]'}>
+		<Dialog.Content class={cn('flex max-h-[90vh] flex-col', contentClass ?? 'sm:max-w-[425px]')}>
 			{#if title || description}
-				<Dialog.Header>
+				<Dialog.Header class="shrink-0">
 					{#if title}
 						<Dialog.Title>{title}</Dialog.Title>
 					{/if}
@@ -42,11 +43,11 @@
 					{/if}
 				</Dialog.Header>
 			{/if}
-			<div class={className ?? ''}>
+			<div class={cn('min-h-0 flex-1 overflow-y-auto', className)}>
 				{@render children()}
 			</div>
 			{#if footer}
-				<Dialog.Footer>
+				<Dialog.Footer class="shrink-0">
 					{@render footer()}
 				</Dialog.Footer>
 			{/if}
@@ -59,9 +60,9 @@
 				{@render trigger()}
 			</Drawer.Trigger>
 		{/if}
-		<Drawer.Content>
+		<Drawer.Content class="flex max-h-[80vh] flex-col">
 			{#if title || description}
-				<Drawer.Header class="text-left">
+				<Drawer.Header class="shrink-0 text-left">
 					{#if title}
 						<Drawer.Title>{title}</Drawer.Title>
 					{/if}
@@ -70,11 +71,11 @@
 					{/if}
 				</Drawer.Header>
 			{/if}
-			<div class={className ?? 'px-4 pb-4'}>
+			<div class={cn('min-h-0 flex-1 overflow-y-auto', className ?? 'px-4 pb-4')}>
 				{@render children()}
 			</div>
 			{#if footer}
-				<Drawer.Footer class="pt-2">
+				<Drawer.Footer class="shrink-0 pt-2">
 					{@render footer()}
 				</Drawer.Footer>
 			{/if}
