@@ -886,7 +886,7 @@ func (s *NotificationService) sendBatchDiscordNotification(ctx context.Context, 
 		return fmt.Errorf("failed to marshal Discord payload: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", discordConfig.WebhookURL, bytes.NewReader(jsonPayload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, discordConfig.WebhookURL, bytes.NewReader(jsonPayload))
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -901,7 +901,7 @@ func (s *NotificationService) sendBatchDiscordNotification(ctx context.Context, 
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("Discord webhook failed with status %d: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("discord webhook failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
 	return nil
