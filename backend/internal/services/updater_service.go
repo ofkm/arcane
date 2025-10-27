@@ -753,17 +753,10 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 
 			// Send notification after successful container update
 			if s.notificationService != nil {
-				updateInfo := &dto.ImageUpdateResponse{
-					HasUpdate:      true,
-					UpdateType:     "container-updated",
-					CurrentDigest:  match,
-					LatestDigest:   s.normalizeRef(newRef),
-					CheckTime:      time.Now(),
-					ResponseTimeMs: 0,
-				}
-				if notifErr := s.notificationService.SendImageUpdateNotification(ctx, newRef, updateInfo, models.NotificationEventContainerUpdate); notifErr != nil {
+				if notifErr := s.notificationService.SendContainerUpdateNotification(ctx, name, newRef, match, s.normalizeRef(newRef)); notifErr != nil {
 					slog.WarnContext(ctx, "Failed to send container update notification",
 						slog.String("containerId", c.ID),
+						slog.String("containerName", name),
 						slog.String("imageRef", newRef),
 						slog.String("error", notifErr.Error()))
 				}

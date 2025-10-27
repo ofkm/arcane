@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/mail"
@@ -157,6 +158,58 @@ func (s *NotificationService) isEventEnabled(config models.JSON, eventType model
 	}
 
 	return enabled
+}
+
+func (s *NotificationService) SendContainerUpdateNotification(ctx context.Context, containerName, imageRef, oldDigest, newDigest string) error {
+	settings, err := s.GetAllSettings(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get notification settings: %w", err)
+	}
+
+	var errors []string
+	for _, setting := range settings {
+		if !setting.Enabled {
+			continue
+		}
+
+		// Check if container update event is enabled for this provider
+		if !s.isEventEnabled(setting.Config, models.NotificationEventContainerUpdate) {
+			continue
+		}
+
+		var sendErr error
+		switch setting.Provider {
+		case string(models.NotificationProviderDiscord):
+			sendErr = s.sendDiscordContainerUpdateNotification(ctx, containerName, imageRef, oldDigest, newDigest, setting.Config)
+		case string(models.NotificationProviderEmail):
+			sendErr = s.sendEmailContainerUpdateNotification(ctx, containerName, imageRef, oldDigest, newDigest, setting.Config)
+		default:
+			slog.WarnContext(ctx, "Unknown notification provider", "provider", setting.Provider)
+			continue
+		}
+
+		status := "success"
+		var errMsg *string
+		if sendErr != nil {
+			status = "failed"
+			msg := sendErr.Error()
+			errMsg = &msg
+			errors = append(errors, fmt.Sprintf("%s: %s", setting.Provider, msg))
+		}
+
+		s.logNotification(ctx, setting.Provider, imageRef, status, errMsg, models.JSON{
+			"containerName": containerName,
+			"oldDigest":     oldDigest,
+			"newDigest":     newDigest,
+			"eventType":     string(models.NotificationEventContainerUpdate),
+		})
+	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("notification errors: %s", strings.Join(errors, "; "))
+	}
+
+	return nil
 }
 
 func (s *NotificationService) sendDiscordNotification(ctx context.Context, imageRef string, updateInfo *dto.ImageUpdateResponse, config models.JSON) error {
@@ -350,6 +403,207 @@ func (s *NotificationService) renderEmailTemplate(imageRef string, updateInfo *d
 	}
 
 	textContent, err := resources.FS.ReadFile("email-templates/image-update_text.tmpl")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read text template: %w", err)
+	}
+
+	textTmpl, err := template.New("text").Parse(string(textContent))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse text template: %w", err)
+	}
+
+	var textBuf bytes.Buffer
+	if err := textTmpl.ExecuteTemplate(&textBuf, "root", data); err != nil {
+		return "", "", fmt.Errorf("failed to execute text template: %w", err)
+	}
+
+	return htmlBuf.String(), textBuf.String(), nil
+}
+
+func (s *NotificationService) sendDiscordContainerUpdateNotification(ctx context.Context, containerName, imageRef, oldDigest, newDigest string, config models.JSON) error {
+	var discordConfig models.DiscordConfig
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal Discord config: %w", err)
+	}
+	if err := json.Unmarshal(configBytes, &discordConfig); err != nil {
+		return fmt.Errorf("failed to unmarshal Discord config: %w", err)
+	}
+
+	if discordConfig.WebhookURL == "" {
+		return fmt.Errorf("discord webhook URL not configured")
+	}
+
+	webhookURL := discordConfig.WebhookURL
+	if decrypted, err := utils.Decrypt(webhookURL); err == nil {
+		webhookURL = decrypted
+	}
+
+	if err := validateWebhookURL(webhookURL); err != nil {
+		return fmt.Errorf("invalid webhook URL: %w", err)
+	}
+
+	username := discordConfig.Username
+	if username == "" {
+		username = "Arcane"
+	}
+
+	fields := []map[string]interface{}{
+		{
+			"name":   "Container",
+			"value":  containerName,
+			"inline": false,
+		},
+		{
+			"name":   "Image",
+			"value":  imageRef,
+			"inline": false,
+		},
+		{
+			"name":   "Status",
+			"value":  "✅ Updated Successfully",
+			"inline": false,
+		},
+	}
+
+	if oldDigest != "" {
+		fields = append(fields, map[string]interface{}{
+			"name":   "Previous Version",
+			"value":  truncateDigest(oldDigest),
+			"inline": true,
+		})
+	}
+	if newDigest != "" {
+		fields = append(fields, map[string]interface{}{
+			"name":   "Current Version",
+			"value":  truncateDigest(newDigest),
+			"inline": true,
+		})
+	}
+
+	embed := map[string]interface{}{
+		"title":       "Container Successfully Updated",
+		"description": "Your container has been updated with the latest image version.",
+		"color":       5025616, // Green color for success
+		"fields":      fields,
+		"timestamp":   time.Now().Format(time.RFC3339),
+	}
+
+	payload := map[string]interface{}{
+		"username": username,
+		"embeds":   []map[string]interface{}{embed},
+	}
+
+	if discordConfig.AvatarURL != "" {
+		payload["avatar_url"] = discordConfig.AvatarURL
+	}
+
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal Discord payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", webhookURL, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send webhook: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("webhook returned status %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	return nil
+}
+
+func (s *NotificationService) sendEmailContainerUpdateNotification(ctx context.Context, containerName, imageRef, oldDigest, newDigest string, config models.JSON) error {
+	var emailConfig models.EmailConfig
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal email config: %w", err)
+	}
+	if err := json.Unmarshal(configBytes, &emailConfig); err != nil {
+		return fmt.Errorf("failed to unmarshal email config: %w", err)
+	}
+
+	if emailConfig.SMTPHost == "" || emailConfig.SMTPPort == 0 {
+		return fmt.Errorf("SMTP host or port not configured")
+	}
+	if len(emailConfig.ToAddresses) == 0 {
+		return fmt.Errorf("no recipient email addresses configured")
+	}
+
+	if _, err := mail.ParseAddress(emailConfig.FromAddress); err != nil {
+		return fmt.Errorf("invalid from address: %w", err)
+	}
+	for _, addr := range emailConfig.ToAddresses {
+		if _, err := mail.ParseAddress(addr); err != nil {
+			return fmt.Errorf("invalid to address %s: %w", addr, err)
+		}
+	}
+
+	if emailConfig.SMTPPassword != "" {
+		if decrypted, err := utils.Decrypt(emailConfig.SMTPPassword); err == nil {
+			emailConfig.SMTPPassword = decrypted
+		}
+	}
+
+	htmlBody, textBody, err := s.renderContainerUpdateEmailTemplate(containerName, imageRef, oldDigest, newDigest)
+	if err != nil {
+		return fmt.Errorf("failed to render email template: %w", err)
+	}
+
+	subject := fmt.Sprintf("Container Updated: %s", notifications.SanitizeForEmail(containerName))
+	message := notifications.BuildMultipartMessage(emailConfig.FromAddress, emailConfig.ToAddresses, subject, htmlBody, textBody)
+
+	client, err := notifications.ConnectSMTP(ctx, emailConfig)
+	if err != nil {
+		return fmt.Errorf("failed to connect to SMTP server: %w", err)
+	}
+	defer client.Close()
+
+	if err := client.SendMessage(emailConfig.FromAddress, emailConfig.ToAddresses, message); err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
+
+	return nil
+}
+
+func (s *NotificationService) renderContainerUpdateEmailTemplate(containerName, imageRef, oldDigest, newDigest string) (string, string, error) {
+	data := map[string]interface{}{
+		"LogoURL":       "https://raw.githubusercontent.com/ofkm/arcane/main/backend/resources/images/logo-full.svg",
+		"AppURL":        s.config.AppUrl,
+		"ContainerName": containerName,
+		"ImageRef":      imageRef,
+		"OldDigest":     truncateDigest(oldDigest),
+		"NewDigest":     truncateDigest(newDigest),
+		"UpdateTime":    time.Now().Format(time.RFC1123),
+	}
+
+	htmlContent, err := resources.FS.ReadFile("email-templates/container-update_html.tmpl")
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read HTML template: %w", err)
+	}
+
+	htmlTmpl, err := template.New("html").Parse(string(htmlContent))
+	if err != nil {
+		return "", "", fmt.Errorf("failed to parse HTML template: %w", err)
+	}
+
+	var htmlBuf bytes.Buffer
+	if err := htmlTmpl.ExecuteTemplate(&htmlBuf, "root", data); err != nil {
+		return "", "", fmt.Errorf("failed to execute HTML template: %w", err)
+	}
+
+	textContent, err := resources.FS.ReadFile("email-templates/container-update_text.tmpl")
 	if err != nil {
 		return "", "", fmt.Errorf("failed to read text template: %w", err)
 	}
