@@ -43,7 +43,7 @@
 					{/if}
 				</Dialog.Header>
 			{/if}
-			<div class={cn('min-h-0 flex-1 overflow-y-auto', className ?? '')}>
+			<div class={cn('min-h-0 flex-1 overflow-y-auto', className)}>
 				{@render children()}
 			</div>
 			{#if footer}
