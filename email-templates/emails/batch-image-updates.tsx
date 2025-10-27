@@ -10,12 +10,7 @@ interface BatchImageUpdatesEmailProps {
   checkTime: string;
 }
 
-export const BatchImageUpdatesEmail = ({
-  logoURL,
-  appURL,
-  updateCount,
-  checkTime,
-}: BatchImageUpdatesEmailProps) => {
+export const BatchImageUpdatesEmail = ({ logoURL, appURL, updateCount, checkTime }: BatchImageUpdatesEmailProps) => {
   return (
     <BaseTemplate logoURL={logoURL} appURL={appURL}>
       <CardHeader title="Image Updates Available" />
@@ -51,9 +46,7 @@ export const BatchImageUpdatesEmail = ({
       </Section>
 
       <Section style={{ marginTop: '24px' }}>
-        <Text style={footerStyle}>
-          Log in to Arcane to view details and update your containers.
-        </Text>
+        <Text style={footerStyle}>Log in to Arcane to view details and update your containers.</Text>
       </Section>
     </BaseTemplate>
   );
