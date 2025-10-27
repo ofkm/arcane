@@ -444,7 +444,7 @@
 {/snippet}
 
 {#snippet Pagination({ table }: { table: TableType<TData> })}
-	<div class="flex flex-col gap-4 px-2 sm:flex-row sm:items-center sm:justify-between">
+	<div class="flex w-full flex-col gap-4 px-2 sm:flex-row sm:items-center sm:justify-between">
 		<div class="text-muted-foreground order-2 text-sm sm:order-1">
 			{m.common_showing_of_total({ shown: items.data.length, total: totalItems })}
 		</div>
