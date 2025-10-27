@@ -503,7 +503,7 @@ func (s *NotificationService) sendDiscordContainerUpdateNotification(ctx context
 		return fmt.Errorf("failed to marshal Discord payload: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", webhookURL, bytes.NewBuffer(payloadBytes))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhookURL, bytes.NewBuffer(payloadBytes))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
