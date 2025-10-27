@@ -79,10 +79,22 @@
 </script>
 
 <div class="fixed inset-0 overflow-hidden">
-	<div class="orb orb-1" style="--start-x: {orb1X}; --start-y: {orb1Y}; --orb-delay: {orb1Delay}s;"></div>
-	<div class="orb orb-2" style="--start-x: {orb2X}; --start-y: {orb2Y}; --orb-delay: {orb2Delay}s;"></div>
-	<div class="orb orb-3" style="--start-x: {orb3X}; --start-y: {orb3Y}; --orb-delay: {orb3Delay}s;"></div>
-	<div class="orb orb-4" style="--start-x: {orb4X}; --start-y: {orb4Y}; --orb-delay: {orb4Delay}s;"></div>
+	<div
+		class="absolute rounded-full opacity-30 blur-[57px] md:blur-[85px] bg-primary w-[330px] h-[330px] md:w-[500px] md:h-[500px] left-[10%] top-[-150px] orb"
+		style="--start-x: {orb1X}; --start-y: {orb1Y}; --orb-delay: {orb1Delay}s; --orb-duration: 18s;"
+	></div>
+	<div
+		class="absolute rounded-full opacity-30 blur-[57px] md:blur-[85px] bg-primary w-[280px] h-[280px] md:w-[420px] md:h-[420px] right-[15%] bottom-[-150px] orb"
+		style="--start-x: {orb2X}; --start-y: {orb2Y}; --orb-delay: {orb2Delay}s; --orb-duration: 22s;"
+	></div>
+	<div
+		class="absolute rounded-full opacity-30 blur-[57px] md:blur-[85px] bg-primary w-[250px] h-[250px] md:w-[380px] md:h-[380px] right-[-120px] top-[20%] orb"
+		style="--start-x: {orb3X}; --start-y: {orb3Y}; --orb-delay: {orb3Delay}s; --orb-duration: 20s;"
+	></div>
+	<div
+		class="absolute rounded-full opacity-30 blur-[57px] md:blur-[85px] bg-primary w-[210px] h-[210px] md:w-[320px] md:h-[320px] left-[-100px] bottom-[30%] orb"
+		style="--start-x: {orb4X}; --start-y: {orb4Y}; --orb-delay: {orb4Delay}s; --orb-duration: 16s;"
+	></div>
 </div>
 
 <div class="relative flex min-h-screen flex-col items-center justify-center p-6 md:p-10">
@@ -242,46 +254,9 @@
 
 <style>
 	.orb {
-		position: absolute;
-		border-radius: 50%;
-		filter: blur(85px);
-		opacity: 0.3;
-		background: var(--primary);
 		transform: translate(calc(-20px + var(--start-x) * 4px), calc(-20px + var(--start-y) * 4px)) scale(1);
 		animation: orb-float var(--orb-duration, 18s) ease-in-out infinite;
 		animation-delay: var(--orb-delay, 0s);
-	}
-
-	.orb-1 {
-		width: 500px;
-		height: 500px;
-		left: 10%;
-		top: -150px;
-		--orb-duration: 18s;
-	}
-
-	.orb-2 {
-		width: 420px;
-		height: 420px;
-		right: 15%;
-		bottom: -150px;
-		--orb-duration: 22s;
-	}
-
-	.orb-3 {
-		width: 380px;
-		height: 380px;
-		right: -120px;
-		top: 20%;
-		--orb-duration: 20s;
-	}
-
-	.orb-4 {
-		width: 320px;
-		height: 320px;
-		left: -100px;
-		bottom: 30%;
-		--orb-duration: 16s;
 	}
 
 	@keyframes orb-float {
