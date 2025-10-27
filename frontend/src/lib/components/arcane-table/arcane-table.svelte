@@ -412,11 +412,6 @@
 		}))
 	);
 
-	const isDarkMode = $derived(mode.current === 'dark');
-	const headerBackgroundClass = $derived(
-		isDarkMode ? 'bg-gradient-to-br from-gray-900/20 to-slate-900/10' : 'bg-gradient-to-br from-gray-50 to-slate-50/30'
-	);
-
 	$effect(() => {
 		const s = requestOptions?.sort;
 		if (!s) {
@@ -554,7 +549,7 @@
 {:else if unstyled}
 	<div class="flex h-full min-h-0 flex-col">
 		{#if !withoutSearch}
-			<div class="shrink-0 border-b {headerBackgroundClass}">
+			<div class="shrink-0 border-b">
 				<DataTableToolbar
 					{table}
 					{selectedIds}
@@ -636,23 +631,23 @@
 		{/if}
 	</div>
 {:else}
-	<Card.Root class="flex h-full min-h-0 flex-col overflow-hidden">
-		{#if !withoutSearch}
-			<div class="shrink-0 border-b {headerBackgroundClass}">
-				<DataTableToolbar
-					{table}
-					{selectedIds}
-					{selectionDisabled}
-					{onRemoveSelected}
-					mobileFields={mobileFieldsForOptions}
-					{onToggleMobileField}
-					{customViewOptions}
-				/>
-			</div>
-		{/if}
+	<Card.Root class="overflow-hiddens flex h-full min-h-0 flex-col">
+		{#snippet children()}
+			{#if !withoutSearch}
+				<Card.Header class="border-b">
+					<DataTableToolbar
+						{table}
+						{selectedIds}
+						{selectionDisabled}
+						{onRemoveSelected}
+						mobileFields={mobileFieldsForOptions}
+						{onToggleMobileField}
+						{customViewOptions}
+					/>
+				</Card.Header>
+			{/if}
 
-		<Card.Content class="hidden h-full min-h-0 flex-1 overflow-auto p-0 md:block">
-			<div class="h-full w-full">
+			<Card.Content class="hidden h-full min-h-0 flex-1 overflow-auto p-0 md:block">
 				<Table.Root class="relative">
 					<Table.Header>
 						{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
@@ -692,12 +687,10 @@
 						{/each}
 					</Table.Body>
 				</Table.Root>
-			</div>
-		</Card.Content>
+			</Card.Content>
 
-		<!-- Mobile Card View -->
-		<Card.Content class="block flex-1 overflow-auto p-0 md:hidden">
-			<div class="divide-border/40 divide-y">
+			<!-- Mobile Card View -->
+			<Card.Content class="block flex-1 overflow-auto p-0 md:hidden">
 				{#each table.getRowModel().rows as row (row.id)}
 					{@render MobileCard({ row, item: row.original as TData })}
 				{:else}
@@ -710,13 +703,13 @@
 						</Empty.Header>
 					</Empty.Root>
 				{/each}
-			</div>
-		</Card.Content>
+			</Card.Content>
 
-		{#if !withoutPagination}
-			<Card.Footer class="shrink-0 border-t px-2 py-4">
-				{@render Pagination({ table })}
-			</Card.Footer>
-		{/if}
+			{#if !withoutPagination}
+				<Card.Footer class="shrink-0 border-t px-2 py-4">
+					{@render Pagination({ table })}
+				</Card.Footer>
+			{/if}
+		{/snippet}
 	</Card.Root>
 {/if}
