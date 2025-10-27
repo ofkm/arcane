@@ -38,12 +38,14 @@
 	});
 
 	const { versionInformation, user, settings } = data;
+	let isGlassEnabled = $state(settings?.glassEffectEnabled ?? false);
 
 	// Apply glass-enabled class to body based on settings
 	$effect(() => {
 		if (browser && settings) {
-			const glassEnabled = $settingsStore?.glassEffectEnabled ?? settings.glassEffectEnabled ?? false;
-			if (glassEnabled) {
+			const enabled = $settingsStore?.glassEffectEnabled ?? settings.glassEffectEnabled ?? false;
+			isGlassEnabled = enabled;
+			if (enabled) {
 				document.body.classList.add('glass-enabled');
 			} else {
 				document.body.classList.remove('glass-enabled');
@@ -104,7 +106,7 @@
 
 <svelte:head><title>{m.layout_title()}</title></svelte:head>
 
-<div class="bg-background flex min-h-screen flex-col">
+<div class={isGlassEnabled ? 'flex min-h-screen flex-col bg-transparent' : 'bg-background flex min-h-screen flex-col'}>
 	{#if !settings}
 		<Error message={m.error_occurred()} showButton={true} />
 	{:else if !isLoginPage}

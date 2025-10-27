@@ -18,12 +18,12 @@
 		updateAvailable?: boolean;
 	} = $props();
 
-	console.log(versionInformation);
-
 	const sidebar = useSidebar();
+
+	const shouldShowBanner = $derived(updateAvailable && versionInformation?.isSemverVersion);
 </script>
 
-{#if updateAvailable}
+{#if shouldShowBanner}
 	<div class={cn('pb-2', isCollapsed ? 'px-1' : 'px-4')}>
 		<Separator.Root class="mb-3 opacity-30" />
 

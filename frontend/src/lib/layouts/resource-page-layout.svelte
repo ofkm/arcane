@@ -122,10 +122,7 @@
 							<EllipsisIcon class="size-4" />
 						</DropdownMenu.Trigger>
 
-						<DropdownMenu.Content
-							align="end"
-							class="bg-card/80 supports-[backdrop-filter]:bg-card/60 z-50 min-w-[160px] rounded-md p-1 shadow-lg backdrop-blur-sm supports-[backdrop-filter]:backdrop-blur-sm"
-						>
+						<DropdownMenu.Content align="end" class="backdrop-blur-md bg-popover/90 z-50 min-w-[160px] rounded-xl border p-1 shadow-lg">
 							<DropdownMenu.Group>
 								{#each mobileDropdownButtons as button}
 									<DropdownMenu.Item onclick={button.onclick} disabled={button.disabled || button.loading}>

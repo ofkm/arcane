@@ -1,8 +1,8 @@
 <script lang="ts">
+	import { ResponsiveDialog } from '$lib/components/ui/responsive-dialog/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
 	import KeyIcon from '@lucide/svelte/icons/key';
 	import TriangleAlertIcon from '@lucide/svelte/icons/triangle-alert';
 	import InfoIcon from '@lucide/svelte/icons/info';
@@ -82,52 +82,38 @@
 	}
 </script>
 
-<Dialog.Root bind:open>
-	<Dialog.Content class="flex max-h-[90vh] flex-col sm:max-w-[860px]">
-		<Dialog.Header class="flex-shrink-0 space-y-3">
-			<Dialog.Title class="flex items-center gap-2">
-				<span class="bg-primary/10 text-primary ring-primary/20 flex size-8 items-center justify-center rounded-md ring-1">
-					<KeyIcon class="size-4" />
-				</span>
-				{dialogTitle}
-			</Dialog.Title>
-			<Dialog.Description class="text-sm leading-relaxed">
-				{dialogDescription}
-			</Dialog.Description>
-		</Dialog.Header>
-
-		<div class="min-h-0 flex-1 overflow-y-auto py-4">
-			<div class="space-y-6">
-				{#if isViewMode}
-					{@render viewModeContent()}
-				{:else}
-					{@render editModeContent()}
-				{/if}
-
-				{#if isWarningMode}
-					{@render warningBanner()}
-				{/if}
-
-				{@render redirectUriSection()}
-			</div>
-		</div>
-
-		<Dialog.Footer class="flex flex-shrink-0 gap-3 border-t pt-4">
-			<Button variant="outline" onclick={handleClose} class="flex-1 sm:flex-none">
-				{m.common_close()}
-			</Button>
-			{#if !isViewMode}
-				<Button onclick={onSave} class="flex-1 sm:flex-none">
-					<KeyIcon class="mr-2 size-4" />
-					{m.common_save()}
-				</Button>
+<ResponsiveDialog bind:open title={dialogTitle} description={dialogDescription} contentClass="sm:max-w-[860px]">
+	{#snippet children()}
+		<div class="space-y-6">
+			{#if isViewMode}
+				{@render viewModeContent()}
+			{:else}
+				{@render editModeContent()}
 			{/if}
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+
+			{#if isWarningMode}
+				{@render warningBanner()}
+			{/if}
+
+			{@render redirectUriSection()}
+		</div>
+	{/snippet}
+
+	{#snippet footer()}
+		<Button variant="outline" onclick={handleClose} class="flex-1 sm:flex-none">
+			{m.common_close()}
+		</Button>
+		{#if !isViewMode}
+			<Button onclick={onSave} class="flex-1 sm:flex-none">
+				<KeyIcon class="mr-2 size-4" />
+				{m.common_save()}
+			</Button>
+		{/if}
+	{/snippet}
+</ResponsiveDialog>
 
 {#snippet viewModeContent()}
-	<div class="bg-card/50 rounded-lg border p-4">
+	<div class="bg-card/90 rounded-lg border p-4 backdrop-blur-sm">
 		<h3 class="text-base font-semibold">{m.oidc_server_env_config_title()}</h3>
 		<p class="text-muted-foreground mt-1 mb-4 text-sm">{m.oidc_server_env_config_description()}</p>
 
@@ -164,7 +150,7 @@
 {/snippet}
 
 {#snippet editModeContent()}
-	<div class="bg-card/50 rounded-lg border p-4">
+	<div class="backdrop-blur-sm bg-card/90 rounded-lg border p-4">
 		<h3 class="text-base font-semibold">{m.oidc_basic_configuration_title()}</h3>
 		<p class="text-muted-foreground mt-1 mb-4 text-sm">{m.oidc_basic_description()}</p>
 
@@ -258,7 +244,7 @@
 {/snippet}
 
 {#snippet redirectUriSection()}
-	<div class="bg-card/50 rounded-lg border p-4">
+	<div class="backdrop-blur-sm bg-card/90 rounded-lg border p-4">
 		<div class="mb-3 flex items-center gap-2">
 			<InfoIcon class="size-4 text-blue-600" />
 			<h3 class="text-base font-semibold">{m.oidc_redirect_uri_title()}</h3>
@@ -266,7 +252,7 @@
 		<p class="text-muted-foreground mb-3 text-sm">{m.oidc_redirect_uri_description()}</p>
 		<div class="flex items-center gap-2">
 			<code class="bg-muted flex-1 rounded p-2 font-mono text-xs break-all">{redirectUri}</code>
-			<Button size="sm" variant="outline" onclick={() => handleCopy(redirectUri)} class="flex-shrink-0" title={m.common_copy()}>
+			<Button size="sm" variant="outline" onclick={() => handleCopy(redirectUri)} class="shrink-0" title={m.common_copy()}>
 				<CopyIcon class="size-3" />
 			</Button>
 		</div>

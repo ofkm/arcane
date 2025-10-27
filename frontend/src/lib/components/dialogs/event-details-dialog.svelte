@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import { ResponsiveDialog } from '$lib/components/ui/responsive-dialog/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge';
 	import CopyIcon from '@lucide/svelte/icons/copy';
@@ -70,28 +70,25 @@
 	}
 </script>
 
-<Dialog.Root bind:open>
-	<Dialog.Content class="bg-card flex max-h-[90vh] flex-col rounded-xl border shadow-xl sm:max-w-[980px]">
-		<Dialog.Header class="flex-shrink-0 border-b p-4">
+<ResponsiveDialog bind:open contentClass="sm:max-w-[980px]">
+	{#snippet children()}
+		<div class="space-y-4">
 			{@render headerContent()}
-		</Dialog.Header>
-
-		<div class="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
 			{@render infoCards()}
 			{@render metadataSection()}
 			{@render rawEventSection()}
 		</div>
+	{/snippet}
 
-		<Dialog.Footer class="flex flex-shrink-0 items-center justify-end gap-2 border-t p-3">
-			<Button variant="outline" onclick={handleClose}>
-				{m.common_close()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+	{#snippet footer()}
+		<Button variant="outline" onclick={handleClose}>
+			{m.common_close()}
+		</Button>
+	{/snippet}
+</ResponsiveDialog>
 
 {#snippet headerContent()}
-	<div class="flex items-start gap-3">
+	<div class="flex items-start gap-3 border-b pb-4">
 		<div class="mt-0.5">
 			{#if severity === 'success'}
 				<CheckCircle2Icon class={getSeverityIconClass(severity) + ' size-6'} />
@@ -104,13 +101,13 @@
 			{/if}
 		</div>
 		<div class="min-w-0 flex-1">
-			<Dialog.Title class="text-xl font-semibold">
+			<h3 class="text-xl font-semibold">
 				{event?.title ?? m.events_details_title()}
-			</Dialog.Title>
+			</h3>
 			{#if event?.description}
-				<Dialog.Description class="text-muted-foreground mt-1 text-sm">
+				<p class="text-muted-foreground mt-1 text-sm">
 					{event.description}
-				</Dialog.Description>
+				</p>
 			{/if}
 			<div class="mt-3 flex flex-wrap items-center gap-2">
 				<Badge class={`border ${getSeverityBadgeClass(severity)}`}>
@@ -201,13 +198,3 @@
 			></pre>
 	</div>
 {/snippet}
-
-<style>
-	/* Lock background scroll while dialog is open; no animations/effects */
-	:global(html:has([data-slot='dialog-overlay'][data-state='open'])) {
-		overflow: hidden;
-	}
-	:global(body:has([data-slot='dialog-overlay'][data-state='open'])) {
-		overflow: hidden;
-	}
-</style>

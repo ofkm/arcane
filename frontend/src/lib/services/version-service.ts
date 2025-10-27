@@ -7,27 +7,39 @@ function getCurrentVersion() {
 }
 
 async function getVersionInformation(): Promise<AppVersionInformation> {
-	const res = await axios.get('/api/version', {
-		params: { current: getCurrentVersion() },
-		timeout: 2000
-	});
-	const data = res.data as {
-		currentVersion?: string;
-		newestVersion?: string;
-		updateAvailable?: boolean;
-		releaseUrl?: string;
-	};
+	try {
+		const res = await axios.get('/api/app-version', {
+			timeout: 2000
+		});
+		const data = res.data as {
+			currentVersion?: string;
+			displayVersion?: string;
+			revision?: string;
+			isSemverVersion?: boolean;
+			newestVersion?: string;
+			updateAvailable?: boolean;
+			releaseUrl?: string;
+		};
 
-	const current = getCurrentVersion();
-	const newest = data.newestVersion;
-	const updateAvailable = newest ? newest !== current : false;
-
-	return {
-		currentVersion: current,
-		newestVersion: newest,
-		updateAvailable,
-		releaseUrl: data.releaseUrl
-	};
+		return {
+			currentVersion: data.currentVersion || getCurrentVersion(),
+			displayVersion: data.displayVersion || data.currentVersion || getCurrentVersion(),
+			revision: data.revision || 'unknown',
+			isSemverVersion: data.isSemverVersion || false,
+			newestVersion: data.newestVersion,
+			updateAvailable: data.updateAvailable || false,
+			releaseUrl: data.releaseUrl
+		};
+	} catch (error) {
+		// Fallback to basic version info if app-version endpoint fails
+		return {
+			currentVersion: getCurrentVersion(),
+			displayVersion: getCurrentVersion(),
+			revision: 'unknown',
+			isSemverVersion: false,
+			updateAvailable: false
+		};
+	}
 }
 
 async function getNewestVersion(): Promise<string | undefined> {
