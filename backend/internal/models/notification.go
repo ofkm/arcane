@@ -11,6 +11,13 @@ const (
 	NotificationProviderEmail   NotificationProvider = "email"
 )
 
+type NotificationEventType string
+
+const (
+	NotificationEventImageUpdate     NotificationEventType = "image_update"
+	NotificationEventContainerUpdate NotificationEventType = "container_update"
+)
+
 type EmailTLSMode string
 
 const (
@@ -49,17 +56,19 @@ func (NotificationLog) TableName() string {
 }
 
 type DiscordConfig struct {
-	WebhookURL string `json:"webhookUrl"`
-	Username   string `json:"username,omitempty"`
-	AvatarURL  string `json:"avatarUrl,omitempty"`
+	WebhookURL string                         `json:"webhookUrl"`
+	Username   string                         `json:"username,omitempty"`
+	AvatarURL  string                         `json:"avatarUrl,omitempty"`
+	Events     map[NotificationEventType]bool `json:"events,omitempty"`
 }
 
 type EmailConfig struct {
-	SMTPHost     string       `json:"smtpHost"`
-	SMTPPort     int          `json:"smtpPort"`
-	SMTPUsername string       `json:"smtpUsername"`
-	SMTPPassword string       `json:"smtpPassword"`
-	FromAddress  string       `json:"fromAddress"`
-	ToAddresses  []string     `json:"toAddresses"`
-	TLSMode      EmailTLSMode `json:"tlsMode"`
+	SMTPHost     string                         `json:"smtpHost"`
+	SMTPPort     int                            `json:"smtpPort"`
+	SMTPUsername string                         `json:"smtpUsername"`
+	SMTPPassword string                         `json:"smtpPassword"`
+	FromAddress  string                         `json:"fromAddress"`
+	ToAddresses  []string                       `json:"toAddresses"`
+	TLSMode      EmailTLSMode                   `json:"tlsMode"`
+	Events       map[NotificationEventType]bool `json:"events,omitempty"`
 }

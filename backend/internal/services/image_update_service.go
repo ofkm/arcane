@@ -107,7 +107,7 @@ func (s *ImageUpdateService) CheckImageUpdate(ctx context.Context, imageRef stri
 
 	// Send notification if update is available
 	if digestResult.HasUpdate && s.notificationService != nil {
-		if notifErr := s.notificationService.SendImageUpdateNotification(ctx, imageRef, digestResult); notifErr != nil {
+		if notifErr := s.notificationService.SendImageUpdateNotification(ctx, imageRef, digestResult, models.NotificationEventImageUpdate); notifErr != nil {
 			slog.WarnContext(ctx, "Failed to send update notification",
 				slog.String("imageRef", imageRef),
 				slog.String("error", notifErr.Error()))

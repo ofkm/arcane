@@ -81,7 +81,7 @@ func (s *NotificationService) DeleteSettings(ctx context.Context, provider strin
 	return nil
 }
 
-func (s *NotificationService) SendImageUpdateNotification(ctx context.Context, imageRef string, updateInfo *dto.ImageUpdateResponse) error {
+func (s *NotificationService) SendImageUpdateNotification(ctx context.Context, imageRef string, updateInfo *dto.ImageUpdateResponse, eventType models.NotificationEventType) error {
 	settings, err := s.GetAllSettings(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get notification settings: %w", err)
@@ -90,6 +90,11 @@ func (s *NotificationService) SendImageUpdateNotification(ctx context.Context, i
 	var errors []string
 	for _, setting := range settings {
 		if !setting.Enabled {
+			continue
+		}
+
+		// Check if this event type is enabled for this provider
+		if !s.isEventEnabled(setting.Config, eventType) {
 			continue
 		}
 
@@ -118,6 +123,7 @@ func (s *NotificationService) SendImageUpdateNotification(ctx context.Context, i
 			"currentDigest": updateInfo.CurrentDigest,
 			"latestDigest":  updateInfo.LatestDigest,
 			"updateType":    updateInfo.UpdateType,
+			"eventType":     string(eventType),
 		})
 	}
 
@@ -126,6 +132,31 @@ func (s *NotificationService) SendImageUpdateNotification(ctx context.Context, i
 	}
 
 	return nil
+}
+
+// isEventEnabled checks if a specific event type is enabled in the config
+func (s *NotificationService) isEventEnabled(config models.JSON, eventType models.NotificationEventType) bool {
+	configBytes, err := json.Marshal(config)
+	if err != nil {
+		return true // Default to enabled if we can't parse
+	}
+
+	var configMap map[string]interface{}
+	if err := json.Unmarshal(configBytes, &configMap); err != nil {
+		return true // Default to enabled if we can't parse
+	}
+
+	events, ok := configMap["events"].(map[string]interface{})
+	if !ok {
+		return true // If no events config, default to enabled
+	}
+
+	enabled, ok := events[string(eventType)].(bool)
+	if !ok {
+		return true // If event type not specified, default to enabled
+	}
+
+	return enabled
 }
 
 func (s *NotificationService) sendDiscordNotification(ctx context.Context, imageRef string, updateInfo *dto.ImageUpdateResponse, config models.JSON) error {

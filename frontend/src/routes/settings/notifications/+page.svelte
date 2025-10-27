@@ -28,6 +28,8 @@
 		discordWebhookUrl: string;
 		discordUsername: string;
 		discordAvatarUrl: string;
+		discordEventImageUpdate: boolean;
+		discordEventContainerUpdate: boolean;
 		emailEnabled: boolean;
 		emailSmtpHost: string;
 		emailSmtpPort: number;
@@ -36,6 +38,8 @@
 		emailFromAddress: string;
 		emailToAddresses: string;
 		emailTlsMode: EmailTLSMode;
+		emailEventImageUpdate: boolean;
+		emailEventContainerUpdate: boolean;
 	}
 
 	let { data } = $props();
@@ -50,6 +54,8 @@
 		discordWebhookUrl: '',
 		discordUsername: 'Arcane',
 		discordAvatarUrl: '',
+		discordEventImageUpdate: true,
+		discordEventContainerUpdate: true,
 		emailEnabled: false,
 		emailSmtpHost: '',
 		emailSmtpPort: 587,
@@ -57,7 +63,9 @@
 		emailSmtpPassword: '',
 		emailFromAddress: '',
 		emailToAddresses: '',
-		emailTlsMode: 'starttls'
+		emailTlsMode: 'starttls',
+		emailEventImageUpdate: true,
+		emailEventContainerUpdate: true
 	});
 
 	const formSchema = z
@@ -66,6 +74,8 @@
 			discordWebhookUrl: z.string(),
 			discordUsername: z.string(),
 			discordAvatarUrl: z.string(),
+			discordEventImageUpdate: z.boolean(),
+			discordEventContainerUpdate: z.boolean(),
 			emailEnabled: z.boolean(),
 			emailSmtpHost: z.string(),
 			emailSmtpPort: z.number().int().min(1).max(65535),
@@ -73,7 +83,9 @@
 			emailSmtpPassword: z.string(),
 			emailFromAddress: z.email(),
 			emailToAddresses: z.string(),
-			emailTlsMode: z.enum(['none', 'starttls', 'ssl'])
+			emailTlsMode: z.enum(['none', 'starttls', 'ssl']),
+			emailEventImageUpdate: z.boolean(),
+			emailEventContainerUpdate: z.boolean()
 		})
 		.superRefine((data, ctx) => {
 			// Validate Discord fields when Discord is enabled
@@ -153,6 +165,8 @@
 			$formInputs.discordWebhookUrl.value !== currentSettings.discordWebhookUrl ||
 			$formInputs.discordUsername.value !== currentSettings.discordUsername ||
 			$formInputs.discordAvatarUrl.value !== currentSettings.discordAvatarUrl ||
+			$formInputs.discordEventImageUpdate.value !== currentSettings.discordEventImageUpdate ||
+			$formInputs.discordEventContainerUpdate.value !== currentSettings.discordEventContainerUpdate ||
 			$formInputs.emailEnabled.value !== currentSettings.emailEnabled ||
 			$formInputs.emailSmtpHost.value !== currentSettings.emailSmtpHost ||
 			$formInputs.emailSmtpPort.value !== currentSettings.emailSmtpPort ||
@@ -160,7 +174,9 @@
 			$formInputs.emailSmtpPassword.value !== currentSettings.emailSmtpPassword ||
 			$formInputs.emailFromAddress.value !== currentSettings.emailFromAddress ||
 			$formInputs.emailToAddresses.value !== currentSettings.emailToAddresses ||
-			$formInputs.emailTlsMode.value !== currentSettings.emailTlsMode
+			$formInputs.emailTlsMode.value !== currentSettings.emailTlsMode ||
+			$formInputs.emailEventImageUpdate.value !== currentSettings.emailEventImageUpdate ||
+			$formInputs.emailEventContainerUpdate.value !== currentSettings.emailEventContainerUpdate
 	);
 
 	$effect(() => {
@@ -180,6 +196,8 @@
 				currentSettings.discordWebhookUrl = discordSetting.config?.webhookUrl || '';
 				currentSettings.discordUsername = discordSetting.config?.username || 'Arcane';
 				currentSettings.discordAvatarUrl = discordSetting.config?.avatarUrl || '';
+				currentSettings.discordEventImageUpdate = discordSetting.config?.events?.image_update ?? true;
+				currentSettings.discordEventContainerUpdate = discordSetting.config?.events?.container_update ?? true;
 			}
 
 			const emailSetting = data.notificationSettings.find((s) => s.provider === 'email');
@@ -192,6 +210,8 @@
 				currentSettings.emailFromAddress = emailSetting.config?.fromAddress || '';
 				currentSettings.emailToAddresses = (emailSetting.config?.toAddresses || []).join(', ');
 				currentSettings.emailTlsMode = emailSetting.config?.tlsMode || 'starttls';
+				currentSettings.emailEventImageUpdate = emailSetting.config?.events?.image_update ?? true;
+				currentSettings.emailEventContainerUpdate = emailSetting.config?.events?.container_update ?? true;
 			}
 
 			// Sync form inputs after currentSettings is updated
@@ -199,6 +219,8 @@
 			$formInputs.discordWebhookUrl.value = currentSettings.discordWebhookUrl;
 			$formInputs.discordUsername.value = currentSettings.discordUsername;
 			$formInputs.discordAvatarUrl.value = currentSettings.discordAvatarUrl;
+			$formInputs.discordEventImageUpdate.value = currentSettings.discordEventImageUpdate;
+			$formInputs.discordEventContainerUpdate.value = currentSettings.discordEventContainerUpdate;
 			$formInputs.emailEnabled.value = currentSettings.emailEnabled;
 			$formInputs.emailSmtpHost.value = currentSettings.emailSmtpHost;
 			$formInputs.emailSmtpPort.value = currentSettings.emailSmtpPort;
@@ -207,6 +229,8 @@
 			$formInputs.emailFromAddress.value = currentSettings.emailFromAddress;
 			$formInputs.emailToAddresses.value = currentSettings.emailToAddresses;
 			$formInputs.emailTlsMode.value = currentSettings.emailTlsMode;
+			$formInputs.emailEventImageUpdate.value = currentSettings.emailEventImageUpdate;
+			$formInputs.emailEventContainerUpdate.value = currentSettings.emailEventContainerUpdate;
 		}
 
 		if (formState) {
@@ -235,7 +259,11 @@
 					config: {
 						webhookUrl: formData.discordWebhookUrl,
 						username: formData.discordUsername,
-						avatarUrl: formData.discordAvatarUrl
+						avatarUrl: formData.discordAvatarUrl,
+						events: {
+							image_update: formData.discordEventImageUpdate,
+							container_update: formData.discordEventContainerUpdate
+						}
 					}
 				});
 			} catch (error: any) {
@@ -260,7 +288,11 @@
 						smtpPassword: formData.emailSmtpPassword,
 						fromAddress: formData.emailFromAddress,
 						toAddresses: toAddressArray,
-						tlsMode: formData.emailTlsMode
+						tlsMode: formData.emailTlsMode,
+						events: {
+							image_update: formData.emailEventImageUpdate,
+							container_update: formData.emailEventContainerUpdate
+						}
 					}
 				});
 			} catch (error: any) {
@@ -287,6 +319,8 @@
 		$formInputs.discordWebhookUrl.value = currentSettings.discordWebhookUrl;
 		$formInputs.discordUsername.value = currentSettings.discordUsername;
 		$formInputs.discordAvatarUrl.value = currentSettings.discordAvatarUrl;
+		$formInputs.discordEventImageUpdate.value = currentSettings.discordEventImageUpdate;
+		$formInputs.discordEventContainerUpdate.value = currentSettings.discordEventContainerUpdate;
 		$formInputs.emailEnabled.value = currentSettings.emailEnabled;
 		$formInputs.emailSmtpHost.value = currentSettings.emailSmtpHost;
 		$formInputs.emailSmtpPort.value = currentSettings.emailSmtpPort;
@@ -295,6 +329,8 @@
 		$formInputs.emailFromAddress.value = currentSettings.emailFromAddress;
 		$formInputs.emailToAddresses.value = currentSettings.emailToAddresses;
 		$formInputs.emailTlsMode.value = currentSettings.emailTlsMode;
+		$formInputs.emailEventImageUpdate.value = currentSettings.emailEventImageUpdate;
+		$formInputs.emailEventContainerUpdate.value = currentSettings.emailEventContainerUpdate;
 	}
 
 	async function testNotification(provider: string, type: string = 'simple') {
@@ -379,6 +415,27 @@
 									autocomplete="off"
 									helpText={m.notifications_discord_avatar_url_help()}
 								/>
+
+								<div class="space-y-3 pt-2">
+									<Label class="text-sm font-medium">{m.notifications_events_title()}</Label>
+									<p class="text-muted-foreground text-xs">{m.notifications_events_description()}</p>
+									<div class="space-y-2">
+										<SwitchWithLabel
+											id="discord-event-image-update"
+											bind:checked={$formInputs.discordEventImageUpdate.value}
+											disabled={isReadOnly}
+											label={m.notifications_event_image_update_label()}
+											description={m.notifications_event_image_update_description()}
+										/>
+										<SwitchWithLabel
+											id="discord-event-container-update"
+											bind:checked={$formInputs.discordEventContainerUpdate.value}
+											disabled={isReadOnly}
+											label={m.notifications_event_container_update_label()}
+											description={m.notifications_event_container_update_description()}
+										/>
+									</div>
+								</div>
 							</div>
 						{/if}
 					</Card.Content>
@@ -507,6 +564,27 @@
 									]}
 									description="StartTLS (default) upgrades from plain connection. SSL/TLS uses encryption from start. None uses no encryption."
 								/>
+
+								<div class="space-y-3 pt-2">
+									<Label class="text-sm font-medium">{m.notifications_events_title()}</Label>
+									<p class="text-muted-foreground text-xs">{m.notifications_events_description()}</p>
+									<div class="space-y-2">
+										<SwitchWithLabel
+											id="email-event-image-update"
+											bind:checked={$formInputs.emailEventImageUpdate.value}
+											disabled={isReadOnly}
+											label={m.notifications_event_image_update_label()}
+											description={m.notifications_event_image_update_description()}
+										/>
+										<SwitchWithLabel
+											id="email-event-container-update"
+											bind:checked={$formInputs.emailEventContainerUpdate.value}
+											disabled={isReadOnly}
+											label={m.notifications_event_container_update_label()}
+											description={m.notifications_event_container_update_description()}
+										/>
+									</div>
+								</div>
 							</div>
 						{/if}
 					</Card.Content>
