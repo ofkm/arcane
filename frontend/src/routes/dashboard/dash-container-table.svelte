@@ -112,7 +112,9 @@
 			mobileCard={DashContainerMobileCard}
 		/>
 		{#if containers.data.length > 5}
-			<div class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 border-t px-6 py-3 text-xs backdrop-blur-sm">
+			<div
+				class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 rounded-b-xl px-6 py-3 text-xs backdrop-blur-sm"
+			>
 				{m.containers_showing_of_total({ shown: 5, total: containers.pagination.totalItems })}
 			</div>
 		{/if}

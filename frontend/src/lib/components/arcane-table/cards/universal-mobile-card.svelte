@@ -1,4 +1,5 @@
 <script lang="ts" generics="T">
+	import * as Card from '$lib/components/ui/card';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { cn } from '$lib/utils';
 	import type { Snippet, Component } from 'svelte';
@@ -99,20 +100,16 @@
 	}
 </script>
 
-<svelte:element
-	this={onclick ? 'button' : 'div'}
-	class={cn('group relative w-full px-3 py-3 transition-all duration-200', className)}
-	onclick={onclick ? () => onclick(item) : undefined}
-	type={onclick ? 'button' : undefined}
-	role={onclick && 'button'}
->
-	<div
+<div class={cn('group relative w-full px-3 py-3', className)}>
+	<Card.Root
+		variant="subtle"
 		class={cn(
-			'glass-medium overflow-hidden rounded-xl border border-white/10 text-left shadow-md ring-1 ring-inset ring-white/5 transition-all duration-200',
-			onclick && 'hover:border-white/15 hover:shadow-lg hover:ring-white/10 cursor-pointer'
+			'overflow-hidden text-left transition-all duration-200',
+			onclick && 'cursor-pointer hover:border-white/20 hover:shadow-md'
 		)}
+		onclick={onclick ? () => onclick(item) : undefined}
 	>
-		<div class={cn('flex flex-col text-left', compact ? 'gap-3 p-3' : 'gap-4 px-4 py-4')}>
+		<Card.Content class={cn('flex flex-col text-left', compact ? 'gap-3 p-3' : 'gap-4 p-4')}>
 			<!-- Main Row -->
 			<div class="flex items-start gap-4">
 				{#if resolvedIcon}
@@ -159,9 +156,7 @@
 			<!-- Additional Fields -->
 			{#if visibleFields.length > 0}
 				{#if !compact}
-					<div
-						class="-mx-4 flex flex-wrap gap-x-6 gap-y-4 px-4"
-					>
+					<div class="-mx-4 flex flex-wrap gap-x-6 gap-y-4 px-4">
 						{#each visibleFields as field}
 							{@const value = field.getValue(item)}
 							{#if value !== null && value !== undefined}
@@ -228,13 +223,13 @@
 			{#if children}
 				{@render children()}
 			{/if}
-		</div>
+		</Card.Content>
 
 		{#if !compact && footer}
 			{@const footerValue = footer.getValue(item)}
 			{#if footerValue}
 				{@const FooterIcon = footer.icon}
-				<div class="bg-muted/30 border-border/40 flex items-center gap-3 rounded-b-xl border-t px-4 py-3.5 backdrop-blur-sm">
+				<Card.Footer class="bg-muted/30 border-border/40 flex items-center gap-3 border-t px-4 py-3.5 backdrop-blur-sm">
 					<FooterIcon class="text-muted-foreground size-4" />
 					<span class="text-muted-foreground/70 text-[10px] font-semibold tracking-wider uppercase">
 						{footer.label}
@@ -242,8 +237,8 @@
 					<span class="text-foreground ml-auto font-mono text-xs font-medium">
 						{footerValue}
 					</span>
-				</div>
+				</Card.Footer>
 			{/if}
 		{/if}
-	</div>
-</svelte:element>
+	</Card.Root>
+</div>

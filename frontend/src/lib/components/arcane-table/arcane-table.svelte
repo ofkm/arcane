@@ -14,7 +14,9 @@
 	import { createSvelteTable } from '$lib/components/ui/data-table/data-table.svelte.js';
 	import FlexRender from '$lib/components/ui/data-table/flex-render.svelte';
 	import * as Table from '$lib/components/ui/table/index.js';
+	import * as Card from '$lib/components/ui/card/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
+	import { mode } from 'mode-watcher';
 	import { renderComponent, renderSnippet } from '$lib/components/ui/data-table/render-helpers.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
@@ -408,6 +410,11 @@
 		}))
 	);
 
+	const isDarkMode = $derived(mode.current === 'dark');
+	const headerBackgroundClass = $derived(
+		isDarkMode ? 'bg-gradient-to-br from-gray-900/20 to-slate-900/10' : 'bg-gradient-to-br from-gray-50 to-slate-50/30'
+	);
+
 	$effect(() => {
 		const s = requestOptions?.sort;
 		if (!s) {
@@ -540,66 +547,70 @@
 	{/if}
 {/snippet}
 
-<div class="flex h-full min-h-0 flex-col gap-4">
-	{#if !withoutSearch}
-		<DataTableToolbar
-			{table}
-			{selectedIds}
-			{selectionDisabled}
-			{onRemoveSelected}
-			mobileFields={mobileFieldsForOptions}
-			{onToggleMobileField}
-			{customViewOptions}
-		/>
-	{/if}
+{#if customTableView}
+	{@render customTableView({ table })}
+{:else}
+	<Card.Root class="flex h-full min-h-0 flex-col overflow-hidden">
+		{#if !withoutSearch}
+			<div class="shrink-0 border-b {headerBackgroundClass}">
+				<DataTableToolbar
+					{table}
+					{selectedIds}
+					{selectionDisabled}
+					{onRemoveSelected}
+					mobileFields={mobileFieldsForOptions}
+					{onToggleMobileField}
+					{customViewOptions}
+				/>
+			</div>
+		{/if}
 
-	{#if customTableView}
-		{@render customTableView({ table })}
-	{:else}
-		<div class="hidden h-full min-h-0 w-full flex-1 md:flex md:flex-col">
-			<Table.Root class="h-full w-full flex-1">
-				<Table.Header>
-					{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
-						<Table.Row>
-							{#each headerGroup.headers as header (header.id)}
-								<Table.Head colspan={header.colSpan}>
-									{#if !header.isPlaceholder}
-										<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
-									{/if}
-								</Table.Head>
-							{/each}
-						</Table.Row>
-					{/each}
-				</Table.Header>
-				<Table.Body>
-					{#each table.getRowModel().rows as row (row.id)}
-						<Table.Row data-state={(selectedIds ?? []).includes((row.original as TData).id) && 'selected'}>
-							{#each row.getVisibleCells() as cell (cell.id)}
-								<Table.Cell>
-									<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
+		<Card.Content class="hidden h-full min-h-0 flex-1 overflow-auto p-0 md:block">
+			<div class="h-full w-full">
+				<Table.Root class="relative">
+					<Table.Header>
+						{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+							<Table.Row>
+								{#each headerGroup.headers as header (header.id)}
+									<Table.Head colspan={header.colSpan}>
+										{#if !header.isPlaceholder}
+											<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
+										{/if}
+									</Table.Head>
+								{/each}
+							</Table.Row>
+						{/each}
+					</Table.Header>
+					<Table.Body>
+						{#each table.getRowModel().rows as row (row.id)}
+							<Table.Row data-state={(selectedIds ?? []).includes((row.original as TData).id) && 'selected'}>
+								{#each row.getVisibleCells() as cell (cell.id)}
+									<Table.Cell>
+										<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
+									</Table.Cell>
+								{/each}
+							</Table.Row>
+						{:else}
+							<Table.Row>
+								<Table.Cell colspan={columnsDef.length} class="h-48">
+									<Empty.Root class="border border-dashed">
+										<Empty.Header>
+											<Empty.Media variant="icon">
+												<FolderXIcon />
+											</Empty.Media>
+											<Empty.Title>{m.common_no_results_found()}</Empty.Title>
+										</Empty.Header>
+									</Empty.Root>
 								</Table.Cell>
-							{/each}
-						</Table.Row>
-					{:else}
-						<Table.Row>
-							<Table.Cell colspan={columnsDef.length} class="h-48">
-								<Empty.Root class="border border-dashed">
-									<Empty.Header>
-										<Empty.Media variant="icon">
-											<FolderXIcon />
-										</Empty.Media>
-										<Empty.Title>{m.common_no_results_found()}</Empty.Title>
-									</Empty.Header>
-								</Empty.Root>
-							</Table.Cell>
-						</Table.Row>
-					{/each}
-				</Table.Body>
-			</Table.Root>
-		</div>
+							</Table.Row>
+						{/each}
+					</Table.Body>
+				</Table.Root>
+			</div>
+		</Card.Content>
 
 		<!-- Mobile Card View -->
-		<div class="glass-table md:hidden">
+		<Card.Content class="block flex-1 overflow-auto p-0 md:hidden">
 			<div class="divide-border/40 divide-y">
 				{#each table.getRowModel().rows as row (row.id)}
 					{@render MobileCard({ row, item: row.original as TData })}
@@ -614,10 +625,12 @@
 					</Empty.Root>
 				{/each}
 			</div>
-		</div>
+		</Card.Content>
 
 		{#if !withoutPagination}
-			{@render Pagination({ table })}
+			<Card.Footer class="shrink-0 border-t px-2 py-4">
+				{@render Pagination({ table })}
+			</Card.Footer>
 		{/if}
-	{/if}
-</div>
+	</Card.Root>
+{/if}
