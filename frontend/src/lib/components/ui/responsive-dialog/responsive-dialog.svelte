@@ -32,9 +32,14 @@
 				{@render trigger()}
 			</Dialog.Trigger>
 		{/if}
-		<Dialog.Content class={cn('flex max-h-[90vh] flex-col', contentClass ?? 'sm:max-w-[425px]')}>
+		<Dialog.Content
+			class={cn(
+				'max-h-[calc(100vh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto]! overflow-hidden p-0!',
+				contentClass ?? 'sm:max-w-[425px]'
+			)}
+		>
 			{#if title || description}
-				<Dialog.Header class="shrink-0">
+				<Dialog.Header class="shrink-0 px-6 pt-6">
 					{#if title}
 						<Dialog.Title>{title}</Dialog.Title>
 					{/if}
@@ -43,11 +48,11 @@
 					{/if}
 				</Dialog.Header>
 			{/if}
-			<div class={cn('min-h-0 flex-1 overflow-y-auto', className)}>
+			<div class={cn('min-h-0 overflow-y-auto px-6', className)}>
 				{@render children()}
 			</div>
 			{#if footer}
-				<Dialog.Footer class="shrink-0">
+				<Dialog.Footer class="shrink-0 px-6 pb-6">
 					{@render footer()}
 				</Dialog.Footer>
 			{/if}
@@ -60,7 +65,7 @@
 				{@render trigger()}
 			</Drawer.Trigger>
 		{/if}
-		<Drawer.Content class="flex max-h-[80vh] flex-col">
+		<Drawer.Content class="flex max-h-[85vh] flex-col overflow-hidden">
 			{#if title || description}
 				<Drawer.Header class="shrink-0 text-left">
 					{#if title}
