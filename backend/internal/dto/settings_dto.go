@@ -29,11 +29,10 @@ type UpdateSettingsDto struct {
 	AuthSessionTimeout           *string `json:"authSessionTimeout,omitempty"`
 	AuthPasswordPolicy           *string `json:"authPasswordPolicy,omitempty"`
 	AuthOidcConfig               *string `json:"authOidcConfig,omitempty"`
-	OnboardingCompleted          *string `json:"onboardingCompleted,omitempty"`
-	OnboardingSteps              *string `json:"onboardingSteps,omitempty"`
-	MobileNavigationMode         *string `json:"mobileNavigationMode,omitempty"`
-	MobileNavigationShowLabels   *string `json:"mobileNavigationShowLabels,omitempty"`
-	MobileNavigationScrollToHide *string `json:"mobileNavigationScrollToHide,omitempty"`
-	SidebarHoverExpansion        *string `json:"sidebarHoverExpansion,omitempty"`
-	GlassEffectEnabled           *string `json:"glassEffectEnabled,omitempty"`
+	OnboardingCompleted        *string `json:"onboardingCompleted,omitempty"`
+	OnboardingSteps            *string `json:"onboardingSteps,omitempty"`
+	MobileNavigationMode       *string `json:"mobileNavigationMode,omitempty"`
+	MobileNavigationShowLabels *string `json:"mobileNavigationShowLabels,omitempty"`
+	SidebarHoverExpansion      *string `json:"sidebarHoverExpansion,omitempty"`
+	GlassEffectEnabled         *string `json:"glassEffectEnabled,omitempty"`
 }
