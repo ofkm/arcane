@@ -104,7 +104,7 @@ func (s *Settings) ToSettingVariableSlice(showAll bool, redactSensitiveValues bo
 			continue
 		}
 
-		if !showAll && attrs != "public" {
+		if !showAll && !strings.Contains(attrs, "public") {
 			continue
 		}
 
@@ -168,7 +168,7 @@ func (s *Settings) UpdateField(key string, value string, noSensitive bool) error
 		}
 
 		// If the field is sensitive and noSensitive is true, we skip that
-		if noSensitive && attrs == "sensitive" {
+		if noSensitive && strings.Contains(attrs, "sensitive") {
 			return SettingSensitiveForbiddenError{field: key}
 		}
 
@@ -186,7 +186,7 @@ func (s *Settings) UpdateField(key string, value string, noSensitive bool) error
 
 // helper keeps redaction logic in one place; behavior unchanged
 func redactSettingValue(key, value, attrs string, redact bool) string {
-	if value == "" || !redact || attrs != "sensitive" {
+	if value == "" || !redact || !strings.Contains(attrs, "sensitive") {
 		return value
 	}
 

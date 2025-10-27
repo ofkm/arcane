@@ -159,8 +159,8 @@
 
 {#if isSubPage}
 	<div
-		class="glass glass-strong fixed top-4 z-[5] rounded-lg border shadow-lg transition-all duration-200"
-		style="left: {leftPosition()}; right: 1rem; --glass-base: var(--background); --glass-tint: var(--primary)"
+		class="backdrop-blur-md bg-background/95 border fixed top-4 z-[5] rounded-lg shadow-lg transition-all duration-200"
+		style="left: {leftPosition()}; right: 1rem;"
 	>
 		<div class="px-4 py-3">
 			<div class="flex items-center justify-between gap-4">

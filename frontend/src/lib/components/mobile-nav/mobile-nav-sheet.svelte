@@ -45,8 +45,7 @@
 	<Drawer.Overlay class="fixed inset-0 z-40 bg-black/40 backdrop-blur-xl" />
 	<Drawer.Content
 		data-testid="mobile-nav-sheet"
-		class={cn('glass glass-strong rounded-t-3xl border-t shadow-sm', 'z-50 flex max-h-[85vh] flex-col')}
-		style="--glass-base: var(--background); --glass-tint: var(--primary)"
+		class={cn('backdrop-blur-md bg-background/95 border rounded-t-3xl border-t shadow-sm', 'z-50 flex max-h-[85vh] flex-col')}
 	>
 		<div class="px-6 pt-4">
 			{#if memoizedUser}
