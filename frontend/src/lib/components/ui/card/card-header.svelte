@@ -39,14 +39,10 @@
 
 	const isDarkMode = $derived(mode.current === 'dark');
 
-	const headerBackgroundClass = $derived(
-		isDarkMode ? 'bg-gradient-to-br from-gray-900/20 to-slate-900/10' : 'bg-gradient-to-br from-gray-50 to-slate-50/30'
-	);
-
 	const headerHoverClass = $derived(
 		isDarkMode
-			? 'group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-gray-800/40 group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-slate-800/30'
-			: 'group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-gray-100 group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-slate-100/50'
+			? 'group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-primary/8 group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-primary/2'
+			: 'group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:from-primary/6 group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:to-primary/2'
 	);
 </script>
 
@@ -54,11 +50,10 @@
 	bind:this={ref}
 	data-slot="card-header"
 	class={cn(
-		'@container/card-header has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6 grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6',
-		icon ? 'flex flex-row items-start space-y-0 transition-colors' : '',
-		icon ? headerBackgroundClass : '',
+		'@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6',
+		icon && 'from-primary/3 flex flex-row items-start space-y-0 bg-linear-to-br to-transparent',
 		icon && compact ? 'gap-2 p-2' : icon ? 'gap-3 p-3.5' : '',
-		icon && enableHover ? `transition-colors ${headerHoverClass}` : '',
+		icon && enableHover && `transition-colors ${headerHoverClass}`,
 		className
 	)}
 	{...restProps}
@@ -67,7 +62,7 @@
 		{@const IconComponent = loading ? Spinner : icon}
 		<div
 			class={cn(
-				'flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br shadow-lg transition-transform group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:scale-105',
+				'flex shrink-0 items-center justify-center rounded-full bg-linear-to-br shadow-lg transition-transform group-[&:not(:has(button:hover,a:hover,[role=button]:hover))]:hover:scale-105',
 				iconVariantClasses[iconVariant],
 				compact ? 'size-8 sm:size-10' : 'size-10'
 			)}
