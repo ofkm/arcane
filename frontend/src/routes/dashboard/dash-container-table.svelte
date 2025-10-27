@@ -82,7 +82,6 @@
 			}
 		]}
 		compact
-		class="mx-2"
 		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}`)}
 	/>
 {/snippet}

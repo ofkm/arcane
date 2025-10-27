@@ -94,7 +94,6 @@
 			}
 		]}
 		compact
-		class="mx-2"
 		onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)}
 	/>
 {/snippet}

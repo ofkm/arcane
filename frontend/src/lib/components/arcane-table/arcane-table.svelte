@@ -599,19 +599,21 @@
 		</div>
 
 		<!-- Mobile Card View -->
-		<div class="space-y-3 md:hidden">
-			{#each table.getRowModel().rows as row (row.id)}
-				{@render MobileCard({ row, item: row.original as TData })}
-			{:else}
-				<Empty.Root class="min-h-48 border border-dashed">
-					<Empty.Header>
-						<Empty.Media variant="icon">
-							<FolderXIcon />
-						</Empty.Media>
-						<Empty.Title>{m.common_no_results_found()}</Empty.Title>
-					</Empty.Header>
-				</Empty.Root>
-			{/each}
+		<div class="glass-table md:hidden">
+			<div class="divide-border/40 divide-y">
+				{#each table.getRowModel().rows as row (row.id)}
+					{@render MobileCard({ row, item: row.original as TData })}
+				{:else}
+					<Empty.Root class="min-h-48 border-0">
+						<Empty.Header>
+							<Empty.Media variant="icon">
+								<FolderXIcon />
+							</Empty.Media>
+							<Empty.Title>{m.common_no_results_found()}</Empty.Title>
+						</Empty.Header>
+					</Empty.Root>
+				{/each}
+			</div>
 		</div>
 
 		{#if !withoutPagination}
