@@ -881,8 +881,6 @@
 	"navigation_mode_docked": "停靠",
 	"navigation_show_labels_label": "显示标签",
 	"navigation_show_labels_description": "在导航图标下方显示文字标签以提高清晰度和可访问性",
-	"navigation_scroll_to_hide_label": "滚动以隐藏",
-	"navigation_scroll_to_hide_description": "在向下滚动时自动隐藏导航栏以获取更简洁的视图体验",
 	"navigation_settings_saved": "导航设置保存成功",
 	"navigation_desktop_sidebar_title": "Desktop Sidebar",
 	"navigation_desktop_sidebar_description": "配置桌面侧边栏行为和外观",
