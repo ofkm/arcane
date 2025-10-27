@@ -12,7 +12,7 @@ import (
 )
 
 type Client struct {
-	svc       api.Service
+	svc       api.Compose
 	dockerCli command.Cli
 }
 

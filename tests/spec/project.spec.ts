@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { fetchProjectCountsWithRetry, fetchProjectsWithRetry } from '../utils/fetch.util';
 import { Project, ProjectStatusCounts } from 'types/project.type';
+import { TEST_COMPOSE_YAML, TEST_ENV_FILE } from '../setup/project.data';
 
 const ROUTES = {
   page: '/projects',
@@ -138,6 +139,22 @@ test.describe('New Compose Project Page', () => {
     const composeEditor = page.locator('.cm-editor').first();
     await expect(composeEditor).toBeVisible();
 
+    const composeContent = composeEditor.locator('.cm-content[contenteditable]');
+    await composeContent.focus();
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.evaluate((text) => navigator.clipboard.writeText(text), TEST_COMPOSE_YAML);
+    await page.keyboard.press('ControlOrMeta+V');
+
+    const envEditor = page.locator('.cm-editor').nth(1);
+    await expect(envEditor).toBeVisible();
+
+    const envContent = envEditor.locator('.cm-content[contenteditable]');
+    await envContent.focus();
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.evaluate((text) => navigator.clipboard.writeText(text), TEST_ENV_FILE);
+    await page.keyboard.press('ControlOrMeta+V');
+
     await page.route('/api/environments/*/projects', async (route) => {
       if (route.request().method() === 'POST') {
         const response = await route.fetch();
@@ -172,6 +189,27 @@ test.describe('New Compose Project Page', () => {
     }
 
     await expect(page.getByRole('button', { name: projectName })).toBeVisible();
+
+    await page.getByRole('tab', { name: /Services/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    const serviceNameWhenStopped = page.getByRole('heading', { name: 'redis', exact: true });
+    await expect(serviceNameWhenStopped).toBeVisible();
+
+    const containerNameWhenStopped = page.getByRole('link', { name: 'test-redis-container redis' });
+    await expect(containerNameWhenStopped).not.toBeVisible();
+
+    const deployButton = page.getByRole('button', { name: 'Up', exact: true }).filter({ hasText: 'Up' }).last();
+    await deployButton.click();
+
+    await page.waitForTimeout(5000);
+    await page.waitForLoadState('networkidle');
+
+    const containerNameElement = page.getByRole('link', { name: 'test-redis-container redis' });
+    await expect(containerNameElement).toBeVisible({ timeout: 15000 });
+
+    const serviceBadge = page.locator('text=redis').first();
+    await expect(serviceBadge).toBeVisible();
   });
 });
 
@@ -251,8 +289,8 @@ test.describe('Project Detail Page', () => {
     await expect(logsTab).toBeEnabled();
     await logsTab.click();
 
-    await expect(page.getByText(/Logs/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Start|Stop/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Clear/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Project Logs' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Start', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeVisible();
   });
 });

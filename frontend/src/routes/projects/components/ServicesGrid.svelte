@@ -6,9 +6,11 @@
 	import { getStatusVariant } from '$lib/utils/status.utils';
 	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 	import { m } from '$lib/paraglide/messages';
+	import { Badge } from '$lib/components/ui/badge';
 
 	type Service = {
 		container_id?: string;
+		container_name?: string;
 		name: string;
 		status?: string;
 		health?: string;
@@ -16,12 +18,12 @@
 
 	let { services, projectId }: { services?: Service[]; projectId?: string } = $props();
 
-	function getHealthVariant(health: string | undefined): 'green' | 'red' | 'amber' {
-		if (!health) return 'amber';
+	function getHealthColor(health: string | undefined): string {
+		if (!health) return 'text-amber-500';
 		const normalized = health.toLowerCase();
-		if (normalized === 'healthy') return 'green';
-		if (normalized === 'unhealthy') return 'red';
-		return 'amber'; // starting, none, etc.
+		if (normalized === 'healthy') return 'text-green-500';
+		if (normalized === 'unhealthy') return 'text-red-500';
+		return 'text-amber-500';
 	}
 </script>
 
@@ -58,19 +60,18 @@
 											<LayersIcon class="size-5 text-blue-500" />
 										</div>
 										<div class="min-w-0 flex-1">
-											<h3 class="text-foreground mb-2 text-base font-semibold transition-colors">
-												{service.name}
-											</h3>
+											<div class="mb-2 flex items-center gap-2">
+												<h3 class="text-foreground text-base font-semibold transition-colors">
+													{service.container_name || service.name}
+												</h3>
+												<Badge variant="outline" class="text-xs">
+													{service.name}
+												</Badge>
+											</div>
 											<div class="flex flex-wrap items-center gap-3">
 												<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
 												{#if service.health}
-													{@const healthVariant = getHealthVariant(service.health)}
-													{@const healthColor =
-														healthVariant === 'green'
-															? 'text-green-500'
-															: healthVariant === 'red'
-																? 'text-red-500'
-																: 'text-amber-500'}
+													{@const healthColor = getHealthColor(service.health)}
 													<div class="flex items-center gap-1.5">
 														<HeartPulseIcon class="{healthColor} size-4" />
 														<span class="text-muted-foreground text-xs">{capitalizeFirstLetter(service.health)}</span>

@@ -46,7 +46,7 @@
 </script>
 
 <Card.Root
-	class={`bg-card/80 ring-border/40 supports-[backdrop-filter]:bg-card/60 group relative flex flex-col gap-6 overflow-hidden rounded-xl border py-3 shadow-sm ring-1 backdrop-blur ring-inset
+	class={`backdrop-blur-sm bg-card/90 ring-border/40 group relative flex flex-col gap-6 overflow-hidden rounded-xl border py-3 shadow-sm ring-1 ring-inset
         before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:[mask-composite:exclude] before:p-[1px]
         before:content-['']
         before:[-webkit-mask-composite:xor]

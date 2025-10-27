@@ -10,7 +10,7 @@
 					'bubble-pill bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90 [a&]:hover-lift border-transparent',
 				destructive:
 					'bubble-pill bg-destructive [a&]:hover:bg-destructive/90 [a&]:hover-lift focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/70 border-transparent text-white',
-				outline: 'glass-subtle text-foreground [a&]:hover:glass [a&]:hover:text-accent-foreground [a&]:hover-lift'
+				outline: 'backdrop-blur-sm bg-card/60 text-foreground [a&]:hover:backdrop-blur-sm [a&]:hover:bg-card/90 [a&]:hover:text-accent-foreground [a&]:hover-lift'
 			}
 		},
 		defaultVariants: {
