@@ -918,6 +918,10 @@
 	"update_schedule_timezone_description": "Timezone for schedule windows",
 	"update_schedule_no_windows": "No update windows configured. Updates will not be applied automatically.",
 	"update_schedule_next_window": "Next Update Window",
+	"update_schedule_edit_windows": "Edit Windows",
+	"update_schedule_dialog_title": "Configure Update Windows",
+	"update_schedule_dialog_description": "Manage when automatic updates are applied",
+	"update_schedule_window_label": "Window {number}",
 	
 	"_comment_project_settings": "=== PROJECT SETTINGS ===",
 	"project_settings_description": "Configure update behavior for this project",
