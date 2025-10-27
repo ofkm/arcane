@@ -540,7 +540,7 @@
 	{/if}
 {/snippet}
 
-<div class="space-y-4">
+<div class="flex h-full min-h-0 flex-col gap-4">
 	{#if !withoutSearch}
 		<DataTableToolbar
 			{table}
@@ -556,8 +556,8 @@
 	{#if customTableView}
 		{@render customTableView({ table })}
 	{:else}
-		<div class="hidden rounded-md md:block">
-			<Table.Root>
+		<div class="hidden h-full min-h-0 w-full flex-1 md:flex md:flex-col">
+			<Table.Root class="h-full w-full flex-1">
 				<Table.Header>
 					{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
 						<Table.Row>
@@ -583,7 +583,7 @@
 					{:else}
 						<Table.Row>
 							<Table.Cell colspan={columnsDef.length} class="h-48">
-								<Empty.Root class="border-0 border border-dashed">
+								<Empty.Root class="border border-dashed">
 									<Empty.Header>
 										<Empty.Media variant="icon">
 											<FolderXIcon />

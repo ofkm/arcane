@@ -8,7 +8,10 @@
 <td
 	bind:this={ref}
 	data-slot="table-cell"
-	class={cn('bg-clip-padding p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0', className)}
+	class={cn(
+		'first:glass-table-cell-first last:glass-table-cell-last bg-clip-padding px-4 py-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0',
+		className
+	)}
 	{...restProps}
 >
 	{@render children?.()}

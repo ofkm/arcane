@@ -2,7 +2,6 @@
 	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import type { ImageSummaryDto } from '$lib/types/image.type';
@@ -100,20 +99,20 @@
 	/>
 {/snippet}
 
-<Card.Root class="pb-2">
-	<Card.Header class="flex items-center justify-between p-4">
+<div class="flex h-full min-h-0 flex-col gap-4">
+	<div class="flex shrink-0 items-center justify-between px-1">
 		<div>
-			<Card.Title>
-				<a class="font-medium hover:underline" href="/images">{m.images_title()}</a>
-			</Card.Title>
-			<Card.Description>{m.images_top_largest()}</Card.Description>
+			<h3 class="text-lg font-semibold tracking-tight">
+				<a class="hover:underline" href="/images">{m.images_title()}</a>
+			</h3>
+			<p class="text-muted-foreground text-sm">{m.images_top_largest()}</p>
 		</div>
 		<Button variant="ghost" size="sm" href="/images" disabled={isLoading}>
 			{m.common_view_all()}
 			<ArrowRightIcon class="ml-2 size-4" />
 		</Button>
-	</Card.Header>
-	<Card.Content class="p-0 pt-2">
+	</div>
+	<div class="relative flex min-h-0 flex-1 flex-col">
 		<ArcaneTable
 			items={images}
 			bind:requestOptions
@@ -126,9 +125,9 @@
 			mobileCard={DashImageMobileCard}
 		/>
 		{#if images.data.length > 5}
-			<div class="bg-muted/40 text-muted-foreground border-t px-6 py-3 text-xs">
+			<div class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 border-t px-6 py-3 text-xs backdrop-blur-sm">
 				{m.images_showing_of_total({ shown: 5, total: images.pagination.totalItems })}
 			</div>
 		{/if}
-	</Card.Content>
-</Card.Root>
+	</div>
+</div>

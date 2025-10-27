@@ -2,7 +2,6 @@
 	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
 	import BoxIcon from '@lucide/svelte/icons/box';
@@ -88,20 +87,20 @@
 	/>
 {/snippet}
 
-<Card.Root class="pb-2">
-	<Card.Header class="flex items-center justify-between p-4">
+<div class="flex h-full min-h-0 flex-col gap-4">
+	<div class="flex shrink-0 items-center justify-between px-1">
 		<div>
-			<Card.Title>
+			<h3 class="text-lg font-semibold tracking-tight">
 				{m.containers_title()}
-			</Card.Title>
-			<Card.Description>{m.containers_recent()}</Card.Description>
+			</h3>
+			<p class="text-muted-foreground text-sm">{m.containers_recent()}</p>
 		</div>
 		<Button variant="ghost" size="sm" href="/containers" disabled={isLoading}>
 			{m.common_view_all()}
 			<ArrowRightIcon class="ml-2 size-4" />
 		</Button>
-	</Card.Header>
-	<Card.Content class="p-0 pt-2">
+	</div>
+	<div class="relative flex min-h-0 flex-1 flex-col">
 		<ArcaneTable
 			items={containers}
 			bind:requestOptions
@@ -114,9 +113,9 @@
 			mobileCard={DashContainerMobileCard}
 		/>
 		{#if containers.data.length > 5}
-			<div class="bg-muted/40 text-muted-foreground border-t px-6 py-3 text-xs">
+			<div class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 border-t px-6 py-3 text-xs backdrop-blur-sm">
 				{m.containers_showing_of_total({ shown: 5, total: containers.pagination.totalItems })}
 			</div>
 		{/if}
-	</Card.Content>
-</Card.Root>
+	</div>
+</div>

@@ -4,7 +4,6 @@
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import ScanSearchIcon from '@lucide/svelte/icons/scan-search';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
@@ -234,20 +233,16 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root class="flex flex-col gap-6 py-3">
-	<Card.Content class="px-6 py-5">
-		<ArcaneTable
-			persistKey="arcane-volumes-table"
-			items={volumes}
-			bind:requestOptions
-			bind:selectedIds
-			bind:mobileFieldVisibility
-			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
-			onRefresh={async (options) => (volumes = await volumeService.getVolumes(options))}
-			{columns}
-			{mobileFields}
-			rowActions={RowActions}
-			mobileCard={VolumeMobileCardSnippet}
-		/>
-	</Card.Content>
-</Card.Root>
+<ArcaneTable
+	persistKey="arcane-volumes-table"
+	items={volumes}
+	bind:requestOptions
+	bind:selectedIds
+	bind:mobileFieldVisibility
+	onRemoveSelected={(ids) => handleDeleteSelected(ids)}
+	onRefresh={async (options) => (volumes = await volumeService.getVolumes(options))}
+	{columns}
+	{mobileFields}
+	rowActions={RowActions}
+	mobileCard={VolumeMobileCardSnippet}
+/>

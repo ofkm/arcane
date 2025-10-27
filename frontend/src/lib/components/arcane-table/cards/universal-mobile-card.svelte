@@ -129,7 +129,7 @@
 					{/if}
 				{/if}
 			</div>
-			<div class="flex flex-shrink-0 items-center gap-2">
+			<div class="flex shrink-0 items-center gap-2">
 				{#each resolvedBadges as badge}
 					<StatusBadge variant={badge.variant} text={badge.text} size="sm" />
 				{/each}
