@@ -53,6 +53,7 @@
 		pruning: false,
 		loadingStats: true,
 		loadingDockerInfo: false,
+		loadingContainers: false,
 		loadingImages: false
 	});
 
@@ -340,7 +341,7 @@
 	<section>
 		<h2 class="mb-4 text-lg font-semibold tracking-tight">Resources</h2>
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-			<DashboardContainerTable bind:containers isLoading={isLoading.loadingStats} />
+			<DashboardContainerTable bind:containers isLoading={isLoading.loadingContainers} />
 			<DashboardImageTable bind:images isLoading={isLoading.loadingImages} />
 		</div>
 	</section>
