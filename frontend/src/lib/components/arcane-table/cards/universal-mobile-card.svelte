@@ -1,5 +1,4 @@
 <script lang="ts" generics="T">
-	import * as Card from '$lib/components/ui/card';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { cn } from '$lib/utils';
 	import type { Snippet, Component } from 'svelte';
@@ -161,7 +160,7 @@
 			{#if visibleFields.length > 0}
 				{#if !compact}
 					<div
-						class="bg-muted/30 border-border/40 -mx-4 flex flex-wrap gap-x-6 gap-y-4 rounded-lg border-y px-4 py-4 backdrop-blur-sm"
+						class="-mx-4 flex flex-wrap gap-x-6 gap-y-4 px-4"
 					>
 						{#each visibleFields as field}
 							{@const value = field.getValue(item)}

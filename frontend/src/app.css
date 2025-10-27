@@ -506,12 +506,12 @@ body::after {
 	}
 
 	.glass-table-row {
-		border-bottom: 1px solid color-mix(in oklch, var(--border) 40%, transparent);
+		border-bottom: 1px solid color-mix(in oklch, var(--border) 90%, transparent);
 		transition: background-color 200ms ease, transform 100ms ease;
 	}
 
 	.glass-table-row:hover {
-		background: color-mix(in oklch, var(--glass-tint, var(--primary)) 6%, transparent);
+		background: color-mix(in oklch, var(--glass-tint, var(--primary)) 10%, transparent);
 		backdrop-filter: blur(var(--glass-blur-xs));
 		-webkit-backdrop-filter: blur(var(--glass-blur-xs));
 	}
