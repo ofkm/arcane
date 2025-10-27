@@ -274,30 +274,6 @@ body:not(.glass-enabled) {
 		backdrop-filter: none !important;
 	}
 
-	/* Glass Table fallback when glass is disabled */
-	.glass-table {
-		background: var(--card) !important;
-		backdrop-filter: none !important;
-		-webkit-backdrop-filter: none !important;
-		border: 1.5px solid var(--border) !important;
-		box-shadow:
-			0 1px 3px 0 rgb(0 0 0 / 0.1),
-			0 1px 2px -1px rgb(0 0 0 / 0.1) !important;
-	}
-
-	.glass-table-header {
-		background: var(--muted) !important;
-		border-bottom: 1.5px solid var(--border) !important;
-		backdrop-filter: none !important;
-		-webkit-backdrop-filter: none !important;
-	}
-
-	.glass-table-row:hover {
-		background: var(--muted) !important;
-		backdrop-filter: none !important;
-		-webkit-backdrop-filter: none !important;
-	}
-
 	.glass-medium {
 		background: var(--card) !important;
 		backdrop-filter: none !important;
@@ -470,66 +446,6 @@ body::after {
 		100% {
 			transform: translate3d(2%, 1%, 0) scale(1.05);
 		}
-	}
-
-	/* Glass Table Styles */
-	.glass-table {
-		background:
-			radial-gradient(
-				140% 100% at 50% 0%,
-				color-mix(in oklch, var(--glass-tint, var(--primary)) 4%, transparent) 0%,
-				transparent 70%
-			),
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) var(--glass-medium-alpha), transparent);
-		backdrop-filter: blur(var(--glass-blur-md)) saturate(var(--glass-saturation));
-		-webkit-backdrop-filter: blur(var(--glass-blur-md)) saturate(var(--glass-saturation));
-		border-radius: var(--radius-xl);
-		border: 1.5px solid color-mix(in oklch, var(--border) 70%, color-mix(in oklch, var(--foreground) 8%, transparent));
-		box-shadow:
-			0 8px 32px -8px var(--glass-shadow-color),
-			0 0 0 1px color-mix(in oklch, var(--glass-stroke-outer) 60%, transparent) inset,
-			0 2px 8px -2px color-mix(in oklch, var(--glass-tint, var(--primary)) 8%, transparent) inset;
-		overflow-y: hidden;
-		isolation: isolate;
-	}
-
-	.glass-table-header {
-		background:
-			linear-gradient(
-				to bottom,
-				color-mix(in oklch, var(--glass-tint, var(--primary)) 6%, transparent),
-				color-mix(in oklch, var(--glass-base, var(--bg-surface)) var(--glass-light-alpha), transparent)
-			);
-		border-bottom: 1.5px solid color-mix(in oklch, var(--border) 60%, color-mix(in oklch, var(--foreground) 12%, transparent));
-		backdrop-filter: blur(var(--glass-blur-sm));
-		-webkit-backdrop-filter: blur(var(--glass-blur-sm));
-	}
-
-	.glass-table-row {
-		border-bottom: 1px solid color-mix(in oklch, var(--border) 90%, transparent);
-		transition: background-color 200ms ease, transform 100ms ease;
-	}
-
-	.glass-table-row:hover {
-		background: color-mix(in oklch, var(--glass-tint, var(--primary)) 10%, transparent);
-		backdrop-filter: blur(var(--glass-blur-xs));
-		-webkit-backdrop-filter: blur(var(--glass-blur-xs));
-	}
-
-	.glass-table-row:last-child {
-		border-bottom: none;
-	}
-
-	.glass-table-row[data-state='selected'] {
-		background: color-mix(in oklch, var(--glass-tint, var(--primary)) 10%, transparent);
-	}
-
-	.glass-table-cell-first {
-		padding-left: 1.5rem;
-	}
-
-	.glass-table-cell-last {
-		padding-right: 1.5rem;
 	}
 
 	/* Glass variants for cards/components */

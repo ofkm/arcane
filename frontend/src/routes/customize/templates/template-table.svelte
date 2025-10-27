@@ -357,71 +357,73 @@
 			{@const registryTemplateIds = new Set(registryTemplates.map((t) => t.id))}
 			{@const registryRows = table.getRowModel().rows.filter((row) => registryTemplateIds.has(row.original.id))}
 
-		<Collapsible.Root
-			class="glass-table overflow-hidden"
-			open={registryOpenStates.current[registryName] ?? true}
-			onOpenChange={(open) => toggleRegistryState(registryName, open)}
-		>
-			<Collapsible.Trigger
-				class="glass-table-header hover:bg-accent/50 flex w-full items-center justify-between px-6 py-4 text-left transition-colors"
+			<Collapsible.Root
+				class="isolate overflow-hidden overflow-y-hidden rounded-[--radius-xl] border-[1.5px] border-[color-mix(in_oklch,var(--border)_70%,color-mix(in_oklch,var(--foreground)_8%,transparent))] bg-[radial-gradient(140%_100%_at_50%_0%,color-mix(in_oklch,var(--glass-tint,var(--primary))_4%,transparent)_0%,transparent_70%),color-mix(in_oklch,var(--glass-base,var(--bg-surface))_var(--glass-medium-alpha),transparent)] shadow-[0_8px_32px_-8px_var(--glass-shadow-color),0_0_0_1px_color-mix(in_oklch,var(--glass-stroke-outer)_60%,transparent)_inset,0_2px_8px_-2px_color-mix(in_oklch,var(--glass-tint,var(--primary))_8%,transparent)_inset] backdrop-blur-[--glass-blur-md] backdrop-saturate-[--glass-saturation]"
+				open={registryOpenStates.current[registryName] ?? true}
+				onOpenChange={(open) => toggleRegistryState(registryName, open)}
 			>
-				<div class="flex items-center gap-2">
-					{#if registryOpenStates.current[registryName] ?? true}
-						<ChevronDownIcon class="size-4 transition-transform" />
-					{:else}
-						<ChevronRightIcon class="size-4 transition-transform" />
-					{/if}
-					<span class="font-semibold">{registryName}</span>
-					<Badge variant="secondary" class="ml-2">{registryTemplates.length}</Badge>
-				</div>
-			</Collapsible.Trigger>
-			<Collapsible.Content>
-				<div class="hidden md:block">
-					<Table.Root class="**:data-[slot='table-container']:border-0 **:data-[slot='table-container']:rounded-none **:data-[slot='table-container']:bg-transparent **:data-[slot='table-container']:shadow-none **:data-[slot='table-container']:backdrop-filter-none">
-						<Table.Header class="border-t border-border/40">
-							{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
-								<Table.Row>
-									{#each headerGroup.headers as header (header.id)}
-										<Table.Head colspan={header.colSpan}>
-											{#if !header.isPlaceholder}
-												<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
-											{/if}
-										</Table.Head>
-									{/each}
-								</Table.Row>
-							{/each}
-						</Table.Header>
-						<Table.Body>
-							{#each registryRows as row (row.id)}
-								<Table.Row data-state={(selectedIds ?? []).includes((row.original as Template).id) && 'selected'}>
-									{#each row.getVisibleCells() as cell (cell.id)}
-										<Table.Cell>
-											<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
-										</Table.Cell>
-									{/each}
-								</Table.Row>
-							{:else}
-								<Table.Row>
-									<Table.Cell colspan={table.getAllColumns().length} class="h-24 text-center"
-										>{m.common_no_results_found()}</Table.Cell
-									>
-								</Table.Row>
-							{/each}
-						</Table.Body>
-					</Table.Root>
-				</div>
+				<Collapsible.Trigger
+					class="hover:bg-accent/50 flex w-full items-center justify-between border-b-[1.5px] border-[color-mix(in_oklch,var(--border)_60%,color-mix(in_oklch,var(--foreground)_12%,transparent))] bg-[linear-gradient(to_bottom,color-mix(in_oklch,var(--glass-tint,var(--primary))_6%,transparent),color-mix(in_oklch,var(--glass-base,var(--bg-surface))_var(--glass-light-alpha),transparent))] px-6 py-4 text-left backdrop-blur-[--glass-blur-sm] transition-colors"
+				>
+					<div class="flex items-center gap-2">
+						{#if registryOpenStates.current[registryName] ?? true}
+							<ChevronDownIcon class="size-4 transition-transform" />
+						{:else}
+							<ChevronRightIcon class="size-4 transition-transform" />
+						{/if}
+						<span class="font-semibold">{registryName}</span>
+						<Badge variant="secondary" class="ml-2">{registryTemplates.length}</Badge>
+					</div>
+				</Collapsible.Trigger>
+				<Collapsible.Content>
+					<div class="hidden md:block">
+						<Table.Root
+							class="**:data-[slot='table-container']:rounded-none **:data-[slot='table-container']:border-0 **:data-[slot='table-container']:bg-transparent **:data-[slot='table-container']:shadow-none **:data-[slot='table-container']:backdrop-filter-none"
+						>
+							<Table.Header class="border-border/40 border-t">
+								{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+									<Table.Row>
+										{#each headerGroup.headers as header (header.id)}
+											<Table.Head colspan={header.colSpan}>
+												{#if !header.isPlaceholder}
+													<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
+												{/if}
+											</Table.Head>
+										{/each}
+									</Table.Row>
+								{/each}
+							</Table.Header>
+							<Table.Body>
+								{#each registryRows as row (row.id)}
+									<Table.Row data-state={(selectedIds ?? []).includes((row.original as Template).id) && 'selected'}>
+										{#each row.getVisibleCells() as cell (cell.id)}
+											<Table.Cell>
+												<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
+											</Table.Cell>
+										{/each}
+									</Table.Row>
+								{:else}
+									<Table.Row>
+										<Table.Cell colspan={table.getAllColumns().length} class="h-24 text-center"
+											>{m.common_no_results_found()}</Table.Cell
+										>
+									</Table.Row>
+								{/each}
+							</Table.Body>
+						</Table.Root>
+					</div>
 
-				<div class="space-y-3 p-4 md:hidden">
-					{#each registryRows as row (row.id)}
-						{@render TemplateMobileCardSnippet({ row, item: row.original as Template, mobileFieldVisibility })}
-					{:else}
-						<div class="flex h-24 items-center justify-center text-center text-muted-foreground">
-							{m.common_no_results_found()}
-						</div>
-					{/each}
-				</div>
-			</Collapsible.Content>
-		</Collapsible.Root>
+					<div class="space-y-3 p-4 md:hidden">
+						{#each registryRows as row (row.id)}
+							{@render TemplateMobileCardSnippet({ row, item: row.original as Template, mobileFieldVisibility })}
+						{:else}
+							<div class="flex h-24 items-center justify-center text-center text-muted-foreground">
+								{m.common_no_results_found()}
+							</div>
+						{/each}
+					</div>
+				</Collapsible.Content>
+			</Collapsible.Root>
 		{/each}
 	</div>
 {/snippet}

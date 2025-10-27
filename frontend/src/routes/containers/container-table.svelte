@@ -416,12 +416,12 @@
 				.rows.filter((row) => projectContainerIds.has((row.original as ContainerSummaryDto).id))}
 
 			<Collapsible.Root
-				class="glass-table overflow-hidden"
+				class="isolate overflow-hidden overflow-y-hidden rounded-[--radius-xl] border-[1.5px] border-[color-mix(in_oklch,var(--border)_70%,color-mix(in_oklch,var(--foreground)_8%,transparent))] bg-[radial-gradient(140%_100%_at_50%_0%,color-mix(in_oklch,var(--glass-tint,var(--primary))_4%,transparent)_0%,transparent_70%),color-mix(in_oklch,var(--glass-base,var(--bg-surface))_var(--glass-medium-alpha),transparent)] shadow-[0_8px_32px_-8px_var(--glass-shadow-color),0_0_0_1px_color-mix(in_oklch,var(--glass-stroke-outer)_60%,transparent)_inset,0_2px_8px_-2px_color-mix(in_oklch,var(--glass-tint,var(--primary))_8%,transparent)_inset] backdrop-blur-[--glass-blur-md] backdrop-saturate-[--glass-saturation]"
 				open={projectOpenStates.current[projectName] ?? false}
 				onOpenChange={(open) => toggleProjectState(projectName, open)}
 			>
 				<Collapsible.Trigger
-					class="glass-table-header hover:bg-accent/50 flex w-full items-center justify-between px-6 py-4 text-left transition-colors"
+					class="hover:bg-accent/50 flex w-full items-center justify-between border-b-[1.5px] border-[color-mix(in_oklch,var(--border)_60%,color-mix(in_oklch,var(--foreground)_12%,transparent))] bg-[linear-gradient(to_bottom,color-mix(in_oklch,var(--glass-tint,var(--primary))_6%,transparent),color-mix(in_oklch,var(--glass-base,var(--bg-surface))_var(--glass-light-alpha),transparent))] px-6 py-4 text-left backdrop-blur-[--glass-blur-sm] transition-colors"
 				>
 					<div class="flex items-center gap-2">
 						{#if projectOpenStates.current[projectName] ?? false}
