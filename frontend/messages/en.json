@@ -930,6 +930,11 @@
 	"project_settings_schedule_section": "Update Schedule",
 	"project_settings_save_success": "Project settings updated successfully",
 	"project_settings_save_error": "Failed to update project settings",
+	"project_settings_use_global": "Use global settings",
+	"project_settings_use_project": "Override with project-specific settings",
+	"project_settings_using_global": "Using global settings: {mode}",
+	"project_settings_validation_error": "Please check the form for errors",
+	"project_settings_project_label": "Project",
 
 	"_comment_days_of_week": "=== DAYS OF WEEK ===",
 	"day_monday": "Monday",

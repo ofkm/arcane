@@ -2,18 +2,19 @@
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
 	import UpdateScheduleEditor from '$lib/components/update-schedule-editor.svelte';
-	import SettingsSection from '$lib/components/settings/settings-section.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { toast } from 'svelte-sonner';
 	import { projectService } from '$lib/services/project-service';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
-	import ClockIcon from '@lucide/svelte/icons/clock';
+	import GlobeIcon from '@lucide/svelte/icons/globe';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import SaveIcon from '@lucide/svelte/icons/save';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import settingsStore from '$lib/stores/config-store';
 	import type { Project, ProjectSettingsUpdate } from '$lib/types/project.type';
 	import { z } from 'zod/v4';
 	import { createForm } from '$lib/utils/form.utils';
+	import { cn } from '$lib/utils';
 
 	interface Props {
 		project: Project;
@@ -71,11 +72,7 @@
 		hasChanges = formHasChanges;
 	});
 
-	const updateSettingsDescription = $derived(() => {
-		if (isOverrideEnabled) {
-			return m.project_settings_overridden();
-		}
-		// Derive mode from global settings
+	const globalSettingsDescription = $derived(() => {
 		const autoUpdate = globalSettings?.autoUpdate ?? false;
 		const scheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;
 		const mode = !autoUpdate
@@ -83,7 +80,7 @@
 			: scheduleEnabled
 				? m.update_schedule_mode_scheduled()
 				: m.update_schedule_mode_immediate();
-		return `Global: ${mode}`;
+		return mode;
 	});
 
 	function enableOverride() {
@@ -110,7 +107,7 @@
 	async function saveSettings() {
 		const formData = form.validate();
 		if (!formData) {
-			toast.error('Please check the form for errors');
+			toast.error(m.project_settings_validation_error());
 			return;
 		}
 
@@ -167,30 +164,66 @@
 	<Card.Root>
 		<Card.Header icon={RefreshCwIcon}>
 			<div class="flex flex-col space-y-1.5">
-				<Card.Title>{m.docker_auto_updates_title()}</Card.Title>
-				<Card.Description>{m.project_settings_description()}</Card.Description>
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<Card.Title>{m.docker_auto_updates_title()}</Card.Title>
+					{#if globalSettings?.pollingEnabled}
+						<div class="bg-muted/30 flex items-center gap-2 rounded-full border p-0.5">
+							<button
+								class={cn(
+									'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all',
+									!isOverrideEnabled
+										? 'bg-primary text-primary-foreground shadow-sm'
+										: 'text-muted-foreground hover:bg-background/50'
+								)}
+								onclick={clearOverride}
+								title={m.project_settings_use_global()}
+								type="button"
+							>
+								<GlobeIcon class="size-3" />
+								<span>{m.common_global()}</span>
+							</button>
+							<button
+								class={cn(
+									'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all',
+									isOverrideEnabled
+										? 'bg-primary text-primary-foreground shadow-sm'
+										: 'text-muted-foreground hover:bg-background/50'
+								)}
+								onclick={enableOverride}
+								title={m.project_settings_use_project()}
+								type="button"
+							>
+								<SettingsIcon class="size-3" />
+								<span>{m.project_settings_project_label()}</span>
+							</button>
+						</div>
+					{/if}
+				</div>
+				<Card.Description>
+					{#if globalSettings?.pollingEnabled}
+						{#if isOverrideEnabled}
+							{m.project_settings_description()}
+						{:else}
+							Using global settings: <strong>{globalSettingsDescription()}</strong>
+						{/if}
+					{:else}
+						{m.project_settings_description()}
+					{/if}
+				</Card.Description>
 			</div>
 		</Card.Header>
-		<Card.Content class="space-y-6 px-3 py-4 sm:px-6">
-			{#if globalSettings?.pollingEnabled}
-				<SettingsSection
-					title={m.update_schedule_title()}
-					description={updateSettingsDescription()}
-					icon={ClockIcon}
-					isOverridden={isOverrideEnabled}
-					{isLoading}
-					onClearOverride={clearOverride}
-					onEnableOverride={enableOverride}
-				>
-					{#snippet children()}
+		{#if globalSettings?.pollingEnabled && isOverrideEnabled}
+			<Card.Content class="p-4">
+				<Card.Root variant="subtle">
+					<Card.Content class="p-4">
 						<UpdateScheduleEditor
 							bind:autoUpdate={$formInputs.autoUpdate.value}
 							bind:scheduleEnabled={$formInputs.updateScheduleEnabled.value}
 							bind:windows={$formInputs.updateScheduleWindows.value}
 						/>
-					{/snippet}
-				</SettingsSection>
-			{/if}
-		</Card.Content>
+					</Card.Content>
+				</Card.Root>
+			</Card.Content>
+		{/if}
 	</Card.Root>
 </div>
