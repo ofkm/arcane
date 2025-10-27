@@ -38,13 +38,14 @@
 	});
 
 	const { versionInformation, user, settings } = data;
-	let isGlassEnabled = $state(false);
+	let isGlassEnabled = $state(settings?.glassEffectEnabled ?? false);
 
 	// Apply glass-enabled class to body based on settings
 	$effect(() => {
 		if (browser && settings) {
-			isGlassEnabled = $settingsStore?.glassEffectEnabled ?? settings.glassEffectEnabled ?? false;
-			if (isGlassEnabled) {
+			const enabled = $settingsStore?.glassEffectEnabled ?? settings.glassEffectEnabled ?? false;
+			isGlassEnabled = enabled;
+			if (enabled) {
 				document.body.classList.add('glass-enabled');
 			} else {
 				document.body.classList.remove('glass-enabled');
