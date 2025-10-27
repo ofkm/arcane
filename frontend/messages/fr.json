@@ -881,8 +881,6 @@
 	"navigation_mode_docked": "Ancré",
 	"navigation_show_labels_label": "Afficher les étiquettes",
 	"navigation_show_labels_description": "Afficher les libellés du texte sous les icônes de navigation pour plus de clarté et d'accessibilité",
-	"navigation_scroll_to_hide_label": "Faites défiler pour masquer",
-	"navigation_scroll_to_hide_description": "Masquer automatiquement la barre de navigation lors du défilement vers le bas pour une expérience de visualisation plus propre",
 	"navigation_settings_saved": "Paramètres de navigation enregistrés avec succès",
 	"navigation_desktop_sidebar_title": "Desktop Sidebar",
 	"navigation_desktop_sidebar_description": "Configurer le comportement et l'apparence de la barre latérale du bureau",
