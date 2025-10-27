@@ -26,7 +26,7 @@
 
 <div
 	class={cn(
-		'glass-light group hover-lift relative overflow-hidden rounded-xl border p-5 transition-all duration-300',
+		'backdrop-blur-sm bg-card/90 border shadow-sm group hover-lift relative overflow-hidden rounded-xl p-5 transition-all duration-300',
 		iconColor,
 		className
 	)}
@@ -55,7 +55,7 @@
 
 		<div
 			class={cn(
-				'glass-light relative shrink-0 rounded-xl border border-white/10 p-3 shadow-lg backdrop-blur-sm transition-all duration-300 group-hover:bg-[var(--stat-hover-tint)]/10',
+				'backdrop-blur-sm bg-card/80 relative shrink-0 rounded-xl border border-white/10 p-3 shadow-lg transition-all duration-300 group-hover:bg-[var(--stat-hover-tint)]/10',
 				'group-hover:-translate-y-0.5 group-hover:shadow-xl',
 				bgColor
 			)}

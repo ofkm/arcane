@@ -113,7 +113,7 @@
 </ResponsiveDialog>
 
 {#snippet viewModeContent()}
-	<div class="glass-light rounded-lg border p-4">
+	<div class="bg-card/90 rounded-lg border p-4 backdrop-blur-sm">
 		<h3 class="text-base font-semibold">{m.oidc_server_env_config_title()}</h3>
 		<p class="text-muted-foreground mt-1 mb-4 text-sm">{m.oidc_server_env_config_description()}</p>
 
@@ -150,7 +150,7 @@
 {/snippet}
 
 {#snippet editModeContent()}
-	<div class="glass-light rounded-lg border p-4">
+	<div class="backdrop-blur-sm bg-card/90 rounded-lg border p-4">
 		<h3 class="text-base font-semibold">{m.oidc_basic_configuration_title()}</h3>
 		<p class="text-muted-foreground mt-1 mb-4 text-sm">{m.oidc_basic_description()}</p>
 
@@ -244,7 +244,7 @@
 {/snippet}
 
 {#snippet redirectUriSection()}
-	<div class="glass-light rounded-lg border p-4">
+	<div class="backdrop-blur-sm bg-card/90 rounded-lg border p-4">
 		<div class="mb-3 flex items-center gap-2">
 			<InfoIcon class="size-4 text-blue-600" />
 			<h3 class="text-base font-semibold">{m.oidc_redirect_uri_title()}</h3>

@@ -212,8 +212,12 @@ body:not(.glass-enabled) {
 	}
 
 	.glass,
+	.glass-light,
+	.glass-medium,
+	.glass-heavy,
 	.glass-strong,
 	.glass-subtle {
+		-webkit-backdrop-filter: none !important;
 		backdrop-filter: none !important;
 		background: var(--card) !important;
 		border-color: var(--border) !important;
@@ -436,128 +440,6 @@ body::after {
 		100% {
 			transform: translate3d(2%, 1%, 0) scale(1.05);
 		}
-	}
-
-	/* Glass utilities - Modern glassmorphism with saturation */
-	.glass {
-		/* iOS-like liquid glass: neutral frosted base + subtle specular highlights */
-		backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-		-webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-		background: none;
-		background-color: color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-bg-alpha) * 100%), transparent);
-		border: 1px solid
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-border-alpha) * 100%), transparent);
-		box-shadow:
-			inset 0 1px 0 0 var(--glass-stroke-outer),
-			inset 0 -1px 0 0 var(--glass-stroke-inner),
-			0 10px 30px -10px var(--glass-shadow-color);
-		transform: translateZ(0);
-		backface-visibility: hidden;
-	}
-
-	.glass-light {
-		/* Lighter liquid glass with clearer top sheen */
-		backdrop-filter: blur(var(--glass-blur-sm)) saturate(var(--glass-saturation));
-		-webkit-backdrop-filter: blur(var(--glass-blur-sm)) saturate(var(--glass-saturation));
-		background: none;
-		background-color: color-mix(
-			in oklch,
-			var(--glass-base, var(--bg-surface)) calc(var(--glass-light-alpha) * 100%),
-			transparent
-		);
-		border: 1px solid
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-border-alpha) * 100%), transparent);
-		box-shadow:
-			inset 0 1px 0 0 var(--glass-stroke-outer),
-			inset 0 -1px 0 0 var(--glass-stroke-inner),
-			0 8px 24px -8px var(--glass-shadow-color);
-		transform: translateZ(0);
-		backface-visibility: hidden;
-	}
-
-	.glass-medium {
-		backdrop-filter: blur(var(--glass-blur-md)) saturate(var(--glass-saturation));
-		-webkit-backdrop-filter: blur(var(--glass-blur-md)) saturate(var(--glass-saturation));
-		background-color: color-mix(
-			in oklch,
-			var(--glass-base, var(--bg-surface)) calc(var(--glass-medium-alpha) * 100%),
-			transparent
-		);
-		border: 1px solid
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-border-alpha) * 100%), transparent);
-		box-shadow:
-			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 28%, transparent) inset,
-			0 10px 30px -10px var(--glass-shadow-color);
-	}
-
-	.glass-heavy {
-		backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturation));
-		-webkit-backdrop-filter: blur(var(--glass-blur-lg)) saturate(var(--glass-saturation));
-		background-color: color-mix(
-			in oklch,
-			var(--glass-base, var(--bg-surface)) calc(var(--glass-heavy-alpha) * 100%),
-			transparent
-		);
-		border: 1px solid
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-border-alpha) * 100%), transparent);
-		box-shadow:
-			0 1px 0 0 color-mix(in oklch, var(--glass-base, var(--bg-surface)) 32%, transparent) inset,
-			0 12px 36px -12px var(--glass-shadow-color);
-	}
-
-	.glass-strong {
-		backdrop-filter: blur(calc(var(--glass-blur) * 1.25)) saturate(var(--glass-saturation));
-		-webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.25)) saturate(var(--glass-saturation));
-		background-color: color-mix(
-			in oklch,
-			var(--glass-base, var(--bg-surface)) calc(var(--glass-heavy-alpha) * 100%),
-			transparent
-		);
-		border: 1px solid
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-border-alpha) * 100%), transparent);
-	}
-
-	.glass-subtle {
-		backdrop-filter: blur(calc(var(--glass-blur) * 0.85)) saturate(var(--glass-saturation));
-		-webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.85)) saturate(var(--glass-saturation));
-		background-color: color-mix(
-			in oklch,
-			var(--glass-base, var(--bg-surface)) calc(var(--glass-light-alpha) * 100%),
-			transparent
-		);
-		border: 1px solid
-			color-mix(in oklch, var(--glass-base, var(--bg-surface)) calc(var(--glass-border-alpha) * 100%), transparent);
-	}
-
-	.glass-blur-xs {
-		backdrop-filter: blur(var(--glass-blur-xs));
-		-webkit-backdrop-filter: blur(var(--glass-blur-xs));
-	}
-
-	.glass-blur-sm {
-		backdrop-filter: blur(var(--glass-blur-sm));
-		-webkit-backdrop-filter: blur(var(--glass-blur-sm));
-	}
-
-	.glass-blur-md {
-		backdrop-filter: blur(var(--glass-blur-md));
-		-webkit-backdrop-filter: blur(var(--glass-blur-md));
-	}
-
-	.glass-blur-lg {
-		backdrop-filter: blur(var(--glass-blur-lg));
-		-webkit-backdrop-filter: blur(var(--glass-blur-lg));
-	}
-
-	.glass-blur-xl {
-		backdrop-filter: blur(var(--glass-blur-xl));
-		-webkit-backdrop-filter: blur(var(--glass-blur-xl));
-	}
-
-	/* Glass card convenience class */
-	.glass-card {
-		border-radius: var(--radius-lg);
-		padding: 1rem;
 	}
 }
 

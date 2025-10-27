@@ -25,7 +25,6 @@
 {#if collapsible === 'none'}
 	<div
 		class={cn('bg-sidebar text-sidebar-foreground flex h-full w-(--sidebar-width) flex-col', className)}
-		style="--glass-base: var(--background); --glass-tint: var(--primary); --glass-tint-mix: 12%; --glass-tint-strong-mix: 22%; --glass-tint-subtle-mix: 8%"
 		bind:this={ref}
 		{...restProps}
 	>
@@ -35,7 +34,6 @@
 	<div
 		bind:this={ref}
 		class="text-sidebar-foreground group peer hidden md:block"
-		style="--glass-base: var(--background); --glass-tint: var(--primary); --glass-tint-mix: 12%; --glass-tint-strong-mix: 22%; --glass-tint-subtle-mix: 8%"
 		data-state={sidebar.state}
 		data-collapsible={sidebar.state === 'collapsed' ? collapsible : ''}
 		data-variant={variant}
@@ -84,8 +82,7 @@
 			<div
 				data-sidebar="sidebar"
 				data-slot="sidebar-inner"
-				class="bg-sidebar/90 supports-[backdrop-filter]:bg-sidebar group-data-[variant=floating]:border-sidebar-border glass flex h-full w-full flex-col overflow-x-hidden group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
-				style="--glass-blur: 10px; --glass-saturation: 160%;"
+				class="backdrop-blur-md group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col overflow-x-hidden group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
 			>
 				{@render children?.()}
 			</div>
