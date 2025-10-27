@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import { ResponsiveDialog } from '$lib/components/ui/responsive-dialog/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Card } from '$lib/components/ui/card/index.js';
 	import { Badge } from '$lib/components/ui/badge/index.js';
@@ -218,41 +218,38 @@
 	</Card>
 {/snippet}
 
-<Dialog.Root bind:open>
-	<Dialog.Content class="max-h-screen overflow-y-auto sm:max-w-[900px]">
-		<Dialog.Header>
-			<Dialog.Title class="flex items-center gap-2">
-				<FileTextIcon class="size-5" />
-				{m.templates_choose_title()}
-			</Dialog.Title>
-			<Dialog.Description>{m.templates_choose_description()}</Dialog.Description>
-		</Dialog.Header>
-
-		<div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-			<div class="flex items-center gap-3">
-				<SwitchWithLabel
-					id="groupByRegistrySwitch"
-					label={m.templates_group_by_registry_label()}
-					description={m.templates_group_by_registry_description()}
-					bind:checked={groupByRegistry}
-				/>
+<ResponsiveDialog
+	bind:open
+	title={m.templates_choose_title()}
+	description={m.templates_choose_description()}
+	contentClass="sm:max-w-[900px]"
+>
+	{#snippet children()}
+		<div class="space-y-4">
+			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+				<div class="flex items-center gap-3">
+					<SwitchWithLabel
+						id="groupByRegistrySwitch"
+						label={m.templates_group_by_registry_label()}
+						description={m.templates_group_by_registry_description()}
+						bind:checked={groupByRegistry}
+					/>
+				</div>
+				<div class="flex items-center gap-3">
+					<Label for="sortBy" class="text-sm font-medium whitespace-nowrap">{m.common_sort_by()}</Label>
+					<Select.Root bind:value={sortBy} type="single">
+						<Select.Trigger id="sortBy" class="bg-background h-9 rounded-md border px-2 text-sm">
+							{filters[sortBy]}
+						</Select.Trigger>
+						<Select.Content>
+							{#each Object.entries(filters) as [value, label]}
+								<Select.Item {value}>{label}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				</div>
 			</div>
-			<div class="flex items-center gap-3">
-				<Label for="sortBy" class="text-sm font-medium whitespace-nowrap">{m.common_sort_by()}</Label>
-				<Select.Root bind:value={sortBy} type="single">
-					<Select.Trigger id="sortBy" class="bg-background h-9 rounded-md border px-2 text-sm">
-						{filters[sortBy]}
-					</Select.Trigger>
-					<Select.Content>
-						{#each Object.entries(filters) as [value, label]}
-							<Select.Item {value}>{label}</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
-			</div>
-		</div>
 
-		<div class="py-2">
 			<ScrollArea class="max-h-[65vh]">
 				{#if allTemplates.length === 0}
 					<div class="text-muted-foreground py-10 text-center">
@@ -299,12 +296,12 @@
 				{/if}
 			</ScrollArea>
 		</div>
+	{/snippet}
 
-		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (open = false)}>{m.common_cancel()}</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+	{#snippet footer()}
+		<Button variant="outline" onclick={() => (open = false)}>{m.common_cancel()}</Button>
+	{/snippet}
+</ResponsiveDialog>
 
 <style>
 	.line-clamp-2 {

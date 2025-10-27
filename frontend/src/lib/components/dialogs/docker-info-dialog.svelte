@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import { ResponsiveDialog } from '$lib/components/ui/responsive-dialog/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import { Badge } from '$lib/components/ui/badge';
 	import InfoIcon from '@lucide/svelte/icons/info';
@@ -34,30 +34,27 @@
 	}
 </script>
 
-<Dialog.Root bind:open>
-	<Dialog.Content class="flex max-h-[90vh] flex-col sm:max-w-[720px]">
-		<Dialog.Header class="flex-shrink-0 border-b pb-3">
-			<Dialog.Title class="flex items-center gap-2">
-				<InfoIcon class="size-5 text-blue-500" />
-				{m.docker_info_dialog_title()}
-			</Dialog.Title>
-			<Dialog.Description>{m.docker_info_dialog_description()}</Dialog.Description>
-		</Dialog.Header>
-
-		<div class="min-h-0 flex-1 space-y-4 overflow-y-auto py-4">
+<ResponsiveDialog
+	bind:open
+	title={m.docker_info_dialog_title()}
+	description={m.docker_info_dialog_description()}
+	contentClass="sm:max-w-[720px]"
+>
+	{#snippet children()}
+		<div class="space-y-4">
 			{@render versionSection()}
 			{@render systemSection()}
 			{@render driversSection()}
 			{@render statsSection()}
 		</div>
+	{/snippet}
 
-		<Dialog.Footer class="flex-shrink-0 border-t pt-3">
-			<Button variant="outline" onclick={handleClose}>
-				{m.common_close()}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+	{#snippet footer()}
+		<Button variant="outline" onclick={handleClose}>
+			{m.common_close()}
+		</Button>
+	{/snippet}
+</ResponsiveDialog>
 
 {#snippet versionSection()}
 	<div>
