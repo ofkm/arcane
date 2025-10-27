@@ -63,16 +63,21 @@
 
 	// Enable touch gestures
 	$effect(() => {
+		scrollToHideEnabled;
 		return gestures.enableTouchGestures();
 	});
 
 	// Enable scroll gestures
 	$effect(() => {
+		scrollToHideEnabled;
+		menuOpen;
 		return gestures.enableScrollGestures();
 	});
 
 	// Enable wheel gestures on nav element
 	$effect(() => {
+		scrollToHideEnabled;
+		menuOpen;
 		if (navElement) {
 			gestures.setElement(navElement);
 			return gestures.enableWheelGestures();

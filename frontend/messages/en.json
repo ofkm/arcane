@@ -905,8 +905,6 @@
 	"navigation_mode_docked": "Docked",
 	"navigation_show_labels_label": "Show Labels",
 	"navigation_show_labels_description": "Display text labels below navigation icons for better clarity and accessibility",
-	"navigation_scroll_to_hide_label": "Scroll to Hide",
-	"navigation_scroll_to_hide_description": "Automatically hide the navigation bar when scrolling down for a cleaner viewing experience",
 	"navigation_settings_saved": "Navigation settings saved successfully",
 	"navigation_desktop_sidebar_title": "Desktop Sidebar",
 	"navigation_desktop_sidebar_description": "Configure desktop sidebar behavior and appearance",

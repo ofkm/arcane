@@ -273,6 +273,12 @@ body:not(.glass-enabled) {
 		-webkit-backdrop-filter: none !important;
 		backdrop-filter: none !important;
 	}
+
+	.glass-medium {
+		background: var(--card) !important;
+		backdrop-filter: none !important;
+		-webkit-backdrop-filter: none !important;
+	}
 }
 
 body.glass-enabled {
@@ -441,6 +447,13 @@ body::after {
 			transform: translate3d(2%, 1%, 0) scale(1.05);
 		}
 	}
+
+	/* Glass variants for cards/components */
+	.glass-medium {
+		background: color-mix(in oklch, var(--glass-base, var(--bg-surface)) var(--glass-medium-alpha), transparent);
+		backdrop-filter: blur(var(--glass-blur-md)) saturate(var(--glass-saturation));
+		-webkit-backdrop-filter: blur(var(--glass-blur-md)) saturate(var(--glass-saturation));
+	}
 }
 
 .version-collapsed {
@@ -454,12 +467,22 @@ html,
 body {
 	overflow-x: hidden;
 	max-width: 100vw;
-	min-height: 100vh;
+	min-height: 100dvh;
 }
 
 body {
 	display: flex;
 	flex-direction: column;
+}
+
+/* iOS keyboard fix: prevent page from becoming scrollable when keyboard appears */
+@supports (-webkit-touch-callout: none) {
+	body {
+		/* On iOS, prevent the body from being scrollable beyond the visual viewport */
+		/* This prevents the auto-scroll that causes position:fixed elements to detach */
+		max-height: 100vh;
+		max-height: 100dvh;
+	}
 }
 
 main {

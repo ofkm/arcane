@@ -2,7 +2,6 @@ export type LocalSettings = {
 	accentColor: string;
 	mobileNavigationMode: string;
 	mobileNavigationShowLabels: boolean;
-	mobileNavigationScrollToHide: boolean;
 	sidebarHoverExpansion: boolean;
 	glassEffectEnabled: boolean;
 };
@@ -11,7 +10,6 @@ const LOCAL_SETTING_KEYS = new Set([
 	'accentColor',
 	'mobileNavigationMode',
 	'mobileNavigationShowLabels',
-	'mobileNavigationScrollToHide',
 	'sidebarHoverExpansion',
 	'glassEffectEnabled'
 ]);

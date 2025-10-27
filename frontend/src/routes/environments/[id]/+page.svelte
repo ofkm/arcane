@@ -363,15 +363,6 @@
 														/>
 													</div>
 												</div>
-												<div>
-													<Label class="text-muted-foreground text-sm font-medium">{m.navigation_scroll_to_hide_label()}</Label>
-													<div class="mt-1">
-														<StatusBadge
-															text={settings.mobileNavigationScrollToHide ? m.common_enabled() : m.common_disabled()}
-															variant={settings.mobileNavigationScrollToHide ? 'green' : 'gray'}
-														/>
-													</div>
-												</div>
 											</div>
 										</div>
 									{/if}

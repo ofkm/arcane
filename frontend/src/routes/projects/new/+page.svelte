@@ -6,7 +6,6 @@
 	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import LayoutTemplateIcon from '@lucide/svelte/icons/layout-template';
 	import WandIcon from '@lucide/svelte/icons/wand';
-	import { Input } from '$lib/components/ui/input/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
@@ -141,7 +140,7 @@
 
 <div class="bg-background flex min-h-0 flex-col">
 	<!-- Header -->
-	<div class="bg-background/80 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 border-b backdrop-blur">
+	<div class="bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 border-b backdrop-blur">
 		<div class="mx-auto flex h-16 max-w-full items-center justify-between gap-4 px-6">
 			<div class="flex items-center gap-4">
 				<Button variant="ghost" size="sm" href="/projects" class="gap-2">

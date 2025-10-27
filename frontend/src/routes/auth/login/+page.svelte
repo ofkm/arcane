@@ -80,19 +80,19 @@
 
 <div class="fixed inset-0 overflow-hidden">
 	<div
-		class="absolute rounded-full opacity-30 blur-[57px] md:blur-[85px] bg-primary w-[330px] h-[330px] md:w-[500px] md:h-[500px] left-[10%] top-[-150px] orb"
+		class="bg-primary orb absolute top-[-150px] left-[10%] h-[330px] w-[330px] rounded-full opacity-30 blur-[57px] md:h-[500px] md:w-[500px] md:blur-[85px]"
 		style="--start-x: {orb1X}; --start-y: {orb1Y}; --orb-delay: {orb1Delay}s; --orb-duration: 18s;"
 	></div>
 	<div
-		class="absolute rounded-full opacity-30 blur-[57px] md:blur-[85px] bg-primary w-[280px] h-[280px] md:w-[420px] md:h-[420px] right-[15%] bottom-[-150px] orb"
+		class="bg-primary orb absolute right-[15%] bottom-[-150px] h-[280px] w-[280px] rounded-full opacity-30 blur-[57px] md:h-[420px] md:w-[420px] md:blur-[85px]"
 		style="--start-x: {orb2X}; --start-y: {orb2Y}; --orb-delay: {orb2Delay}s; --orb-duration: 22s;"
 	></div>
 	<div
-		class="absolute rounded-full opacity-30 blur-[57px] md:blur-[85px] bg-primary w-[250px] h-[250px] md:w-[380px] md:h-[380px] right-[-120px] top-[20%] orb"
+		class="bg-primary orb absolute top-[20%] right-[-120px] h-[250px] w-[250px] rounded-full opacity-30 blur-[57px] md:h-[380px] md:w-[380px] md:blur-[85px]"
 		style="--start-x: {orb3X}; --start-y: {orb3Y}; --orb-delay: {orb3Delay}s; --orb-duration: 20s;"
 	></div>
 	<div
-		class="absolute rounded-full opacity-30 blur-[57px] md:blur-[85px] bg-primary w-[210px] h-[210px] md:w-[320px] md:h-[320px] left-[-100px] bottom-[30%] orb"
+		class="bg-primary orb absolute bottom-[30%] left-[-100px] h-[210px] w-[210px] rounded-full opacity-30 blur-[57px] md:h-[320px] md:w-[320px] md:blur-[85px]"
 		style="--start-x: {orb4X}; --start-y: {orb4Y}; --orb-delay: {orb4Delay}s; --orb-duration: 16s;"
 	></div>
 </div>
