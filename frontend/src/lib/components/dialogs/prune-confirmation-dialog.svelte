@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import { ResponsiveDialog } from '$lib/components/ui/responsive-dialog/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as Checkbox from '$lib/components/ui/checkbox/index.js';
 	import { Label } from '$lib/components/ui/label/index.js';
@@ -54,22 +54,17 @@
 			onCancel();
 		}
 	}
-
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape' && !isPruning) {
-			handleCancel();
-		}
-	}
 </script>
 
-<Dialog.Root bind:open onOpenChange={(isOpen) => !isOpen && handleCancel()}>
-	<Dialog.Content class="sm:max-w-[450px]" onkeydown={handleKeydown}>
-		<Dialog.Header>
-			<Dialog.Title>{m.prune_confirm_system_title()}</Dialog.Title>
-			<Dialog.Description>{m.prune_confirm_description()}</Dialog.Description>
-		</Dialog.Header>
-
-		<div class="grid gap-4 py-4">
+<ResponsiveDialog
+	bind:open
+	onOpenChange={(isOpen) => !isOpen && handleCancel()}
+	title={m.prune_confirm_system_title()}
+	description={m.prune_confirm_description()}
+	contentClass="sm:max-w-[450px]"
+>
+	{#snippet children()}
+		<div class="grid gap-4">
 			<div class="flex items-center space-x-3">
 				<Checkbox.Root id="prune-containers" bind:checked={pruneContainers} disabled={isPruning} />
 				<Label
@@ -90,7 +85,6 @@
 				</Label>
 			</div>
 
-			<!-- Build cache -->
 			<div class="flex items-center space-x-3">
 				<Checkbox.Root id="prune-build-cache" bind:checked={pruneBuildCache} disabled={isPruning} />
 				<Label
@@ -129,23 +123,23 @@
 				</Alert.Root>
 			{/if}
 		</div>
+	{/snippet}
 
-		<Dialog.Footer>
-			<Button class="arcane-button-cancel" variant="outline" onclick={handleCancel} disabled={isPruning}>
-				{m.common_cancel()}
-			</Button>
-			<Button
-				class="arcane-button-remove"
-				variant="destructive"
-				onclick={handleConfirm}
-				disabled={selectedTypes.length === 0 || isPruning}
-			>
-				{#if isPruning}
-					<Spinner class="mr-2 size-4" /> {m.common_action_pruning()}
-				{:else}
-					<Trash2Icon class="mr-2 size-4" /> {m.prune_button({ count: selectedTypes.length })}
-				{/if}
-			</Button>
-		</Dialog.Footer>
-	</Dialog.Content>
-</Dialog.Root>
+	{#snippet footer()}
+		<Button class="arcane-button-cancel" variant="outline" onclick={handleCancel} disabled={isPruning}>
+			{m.common_cancel()}
+		</Button>
+		<Button
+			class="arcane-button-remove"
+			variant="destructive"
+			onclick={handleConfirm}
+			disabled={selectedTypes.length === 0 || isPruning}
+		>
+			{#if isPruning}
+				<Spinner class="mr-2 size-4" /> {m.common_action_pruning()}
+			{:else}
+				<Trash2Icon class="mr-2 size-4" /> {m.prune_button({ count: selectedTypes.length })}
+			{/if}
+		</Button>
+	{/snippet}
+</ResponsiveDialog>

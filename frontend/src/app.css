@@ -118,7 +118,6 @@
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.541 0.281 293.009);
 
-	/* Surface and glass tunables (dark) */
 	--bg-surface: oklch(0.21 0.006 285.885);
 	--glass-base: var(--bg-surface);
 	--glass-tint: var(--primary);
@@ -126,18 +125,15 @@
 	--glass-border-alpha: 0.28;
 	--glass-shadow-color: oklch(0 0 0 / 0.32);
 	--glass-saturation: 180%;
-	/* Cupertino liquid glass strokes (dark) */
 	--glass-stroke-outer: color-mix(in oklch, white 10%, transparent);
 	--glass-stroke-inner: color-mix(in oklch, black 10%, transparent);
 	--glass-stroke-outer-strong: color-mix(in oklch, white 14%, transparent);
 	--glass-stroke-inner-strong: color-mix(in oklch, black 14%, transparent);
 
-	/* Glass effect intensity presets (dark) */
 	--glass-light-alpha: 0.2;
 	--glass-medium-alpha: 0.35;
 	--glass-heavy-alpha: 0.5;
 
-	/* Popup-specific blur values */
 	--glass-blur-popup: 48px;
 }
 
@@ -204,20 +200,17 @@
 
 /* Glass effect toggle: disable all glass/blur/gradients when .glass-disabled */
 body:not(.glass-enabled) {
-	/* Make core surfaces fully opaque (classic/old background look) */
-	/* Use the base surface color for cards and sidebar instead of semi-transparent variants */
 	--card: var(--bg-surface);
 	--sidebar: var(--bg-surface);
 
-	/* Hide ambient backdrop */
 	&::before {
 		display: none;
 	}
-	/* Reduce noise opacity to minimal */
+
 	&::after {
 		opacity: 0.015;
 	}
-	/* Override glass classes to be solid, but keep proper card backgrounds */
+
 	.glass,
 	.glass-strong,
 	.glass-subtle {
@@ -226,37 +219,37 @@ body:not(.glass-enabled) {
 		border-color: var(--border) !important;
 		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
 	}
-	/* Override bubble styles */
+
 	.bubble {
 		background: var(--card) !important;
 		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
 	}
-	/* Override bubble shadows */
+
 	.bubble-shadow,
 	.bubble-shadow-lg {
 		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
 	}
-	/* Disable hover lift when glass disabled */
+
 	.hover-lift:hover {
 		transform: none !important;
 	}
-	/* Remove bubble outline gradient */
+
 	.bubble-outline {
 		background: var(--card) !important;
 		border: 1px solid var(--border) !important;
 	}
-	/* Remove blob floating effects */
+
 	.blob-floating::before {
 		display: none;
 	}
-	/* Ensure inputs work properly without glass */
+
 	input[data-slot='input'],
 	textarea[data-slot='textarea'],
 	[data-slot='select-trigger'] {
 		background: var(--input) !important;
 		border: 1px solid var(--border) !important;
 	}
-	/* Restore focus states for inputs */
+
 	input[data-slot='input']:focus-visible,
 	textarea[data-slot='textarea']:focus-visible,
 	[data-slot='select-trigger']:focus-visible {
@@ -266,7 +259,6 @@ body:not(.glass-enabled) {
 		outline: none !important;
 	}
 
-	/* Sidebar: force solid background and remove any blur */
 	[data-sidebar='sidebar'] {
 		background: var(--bg-surface) !important;
 		backdrop-filter: none !important;
@@ -279,14 +271,11 @@ body:not(.glass-enabled) {
 	}
 }
 
-/* Global colorful backdrop for glass surfaces - only when glass is enabled */
 body.glass-enabled {
-	/* Solid background in glass mode; panels provide the liquid sheen */
 	background-color: var(--background);
 }
 
 body.glass-enabled::before {
-	/* Disable the pseudo-layer so the glass blur samples the page background */
 	display: none !important;
 }
 
@@ -296,7 +285,6 @@ body.glass-enabled::before {
 	}
 }
 
-/* Subtle noise to reduce banding */
 body::after {
 	content: '';
 	position: fixed;
