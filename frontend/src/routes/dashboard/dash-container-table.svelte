@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
+	import * as Card from '$lib/components/ui/card/index.js';
 	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
@@ -86,20 +87,22 @@
 	/>
 {/snippet}
 
-<div class="flex h-full min-h-0 flex-col gap-4">
-	<div class="flex shrink-0 items-center justify-between px-1">
-		<div>
-			<h3 class="text-lg font-semibold tracking-tight">
-				{m.containers_title()}
-			</h3>
-			<p class="text-muted-foreground text-sm">{m.containers_recent()}</p>
+<Card.Root class="flex h-full min-h-0 flex-col">
+	<Card.Header icon={BoxIcon} class="shrink-0">
+		<div class="flex flex-1 items-center justify-between">
+			<div class="flex flex-col space-y-1.5">
+				<Card.Title>
+					<h2>{m.containers_title()}</h2>
+				</Card.Title>
+				<Card.Description>{m.containers_recent()}</Card.Description>
+			</div>
+			<Button variant="ghost" size="sm" href="/containers" disabled={isLoading}>
+				{m.common_view_all()}
+				<ArrowRightIcon class="ml-2 size-4" />
+			</Button>
 		</div>
-		<Button variant="ghost" size="sm" href="/containers" disabled={isLoading}>
-			{m.common_view_all()}
-			<ArrowRightIcon class="ml-2 size-4" />
-		</Button>
-	</div>
-	<div class="relative flex min-h-0 flex-1 flex-col">
+	</Card.Header>
+	<Card.Content class="relative flex min-h-0 flex-1 flex-col px-0">
 		<ArcaneTable
 			items={containers}
 			bind:requestOptions
@@ -108,6 +111,7 @@
 			withoutSearch={true}
 			withoutPagination={true}
 			selectionDisabled={true}
+			unstyled={true}
 			{columns}
 			mobileCard={DashContainerMobileCard}
 		/>
@@ -118,5 +122,5 @@
 				{m.containers_showing_of_total({ shown: 5, total: containers.pagination.totalItems })}
 			</div>
 		{/if}
-	</div>
-</div>
+	</Card.Content>
+</Card.Root>

@@ -54,6 +54,7 @@
 		withoutSearch = $bindable(),
 		withoutPagination = false,
 		selectionDisabled = false,
+		unstyled = false,
 		onRefresh,
 		columns,
 		rowActions,
@@ -72,6 +73,7 @@
 		withoutSearch?: boolean;
 		withoutPagination?: boolean;
 		selectionDisabled?: boolean;
+		unstyled?: boolean;
 		onRefresh: (requestOptions: SearchPaginationSortRequest) => Promise<Paginated<TData>>;
 		columns: ColumnSpec<TData>[];
 		rowActions?: Snippet<[{ row: Row<TData>; item: TData }]>;
@@ -549,6 +551,90 @@
 
 {#if customTableView}
 	{@render customTableView({ table })}
+{:else if unstyled}
+	<div class="flex h-full min-h-0 flex-col">
+		{#if !withoutSearch}
+			<div class="shrink-0 border-b {headerBackgroundClass}">
+				<DataTableToolbar
+					{table}
+					{selectedIds}
+					{selectionDisabled}
+					{onRemoveSelected}
+					mobileFields={mobileFieldsForOptions}
+					{onToggleMobileField}
+					{customViewOptions}
+				/>
+			</div>
+		{/if}
+
+		<div class="hidden h-full min-h-0 flex-1 overflow-auto md:block">
+			<div class="h-full w-full">
+				<Table.Root class="relative">
+					<Table.Header>
+						{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+							<Table.Row>
+								{#each headerGroup.headers as header (header.id)}
+									<Table.Head colspan={header.colSpan}>
+										{#if !header.isPlaceholder}
+											<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
+										{/if}
+									</Table.Head>
+								{/each}
+							</Table.Row>
+						{/each}
+					</Table.Header>
+					<Table.Body>
+						{#each table.getRowModel().rows as row (row.id)}
+							<Table.Row data-state={(selectedIds ?? []).includes((row.original as TData).id) && 'selected'}>
+								{#each row.getVisibleCells() as cell (cell.id)}
+									<Table.Cell>
+										<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
+									</Table.Cell>
+								{/each}
+							</Table.Row>
+						{:else}
+							<Table.Row>
+								<Table.Cell colspan={columnsDef.length} class="h-48">
+									<Empty.Root class="border border-dashed">
+										<Empty.Header>
+											<Empty.Media variant="icon">
+												<FolderXIcon />
+											</Empty.Media>
+											<Empty.Title>{m.common_no_results_found()}</Empty.Title>
+										</Empty.Header>
+									</Empty.Root>
+								</Table.Cell>
+							</Table.Row>
+						{/each}
+					</Table.Body>
+				</Table.Root>
+			</div>
+		</div>
+
+		<!-- Mobile Card View -->
+		<div class="block flex-1 overflow-auto md:hidden">
+			<div class="divide-border/40 divide-y">
+				{#each table.getRowModel().rows as row (row.id)}
+					{@render MobileCard({ row, item: row.original as TData })}
+				{:else}
+					<Empty.Root class="min-h-48 border-0">
+						<Empty.Header>
+							<Empty.Media variant="icon">
+								<FolderXIcon />
+							</Empty.Media>
+							<Empty.Title>{m.common_no_results_found()}</Empty.Title>
+						</Empty.Header>
+					</Empty.Root>
+				{/each}
+			</div>
+		</div>
+
+		{#if !withoutPagination}
+			<div class="shrink-0 border-t px-2 py-4">
+				{@render Pagination({ table })}
+			</div>
+		{/if}
+	</div>
 {:else}
 	<Card.Root class="flex h-full min-h-0 flex-col overflow-hidden">
 		{#if !withoutSearch}
