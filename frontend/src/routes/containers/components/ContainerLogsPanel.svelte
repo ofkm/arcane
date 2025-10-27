@@ -87,7 +87,7 @@
 		</div>
 	</Card.Header>
 	<Card.Content class="p-0">
-		<div class="glass-light rounded-lg border p-0">
+		<div class="backdrop-blur-sm bg-card/90 rounded-lg border p-0">
 			<LogViewer
 				bind:this={viewer}
 				bind:autoScroll
