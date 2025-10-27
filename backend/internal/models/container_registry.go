@@ -5,12 +5,12 @@ import (
 )
 
 type ContainerRegistry struct {
-	URL         string    `json:"url" gorm:"not null" sortable:"true"`
-	Username    string    `json:"username" gorm:"not null" sortable:"true"`
-	Token       string    `json:"token" gorm:"not null"`
+	URL         string    `json:"url" sortable:"true"`
+	Username    string    `json:"username" sortable:"true"`
+	Token       string    `json:"token"`
 	Description *string   `json:"description,omitempty" sortable:"true"`
-	Insecure    bool      `json:"insecure" gorm:"default:false" sortable:"true"`
-	Enabled     bool      `json:"enabled" gorm:"default:true" sortable:"true"`
+	Insecure    bool      `json:"insecure" sortable:"true"`
+	Enabled     bool      `json:"enabled" sortable:"true"`
 	CreatedAt   time.Time `json:"createdAt" sortable:"true"`
 	UpdatedAt   time.Time `json:"updatedAt" sortable:"true"`
 	BaseModel

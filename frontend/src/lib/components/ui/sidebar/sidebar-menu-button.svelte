@@ -61,6 +61,7 @@
 			// Always ensure icons are visible and centered in collapsed mode
 			'group-data-[collapsible=icon]:!justify-center',
 			sidebar.hoverExpansionEnabled && [
+				'group-data-[collapsible=icon]:group-data-[hovered=true]:!p-2',
 				'group-data-[collapsible=icon]:group-data-[hovered=true]:!w-full group-data-[collapsible=icon]:group-data-[hovered=true]:!justify-start',
 				'group-data-[collapsible=icon]:group-data-[hovered=true]:[&>a]:!w-full group-data-[collapsible=icon]:group-data-[hovered=true]:[&>a]:!justify-start',
 				'group-data-[collapsible=icon]:group-data-[hovered=true]:[&>button]:!w-full group-data-[collapsible=icon]:group-data-[hovered=true]:[&>button]:!justify-start',

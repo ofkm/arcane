@@ -17,6 +17,8 @@ type Services struct {
 	Project           *services.ProjectService
 	Environment       *services.EnvironmentService
 	Settings          *services.SettingsService
+	SettingsSearch    *services.SettingsSearchService
+	CustomizeSearch   *services.CustomizeSearchService
 	Container         *services.ContainerService
 	Image             *services.ImageService
 	Volume            *services.VolumeService
@@ -41,6 +43,8 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to settings service: %w", err)
 	}
+	svcs.SettingsSearch = services.NewSettingsSearchService()
+	svcs.CustomizeSearch = services.NewCustomizeSearchService()
 	svcs.AppImages = services.NewApplicationImagesService(resources.FS, svcs.Settings)
 	dockerClient := services.NewDockerClientService(db, cfg)
 	svcs.Docker = dockerClient
@@ -58,7 +62,7 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs.Oidc = services.NewOidcService(svcs.Auth, cfg, httpClient)
 	svcs.Updater = services.NewUpdaterService(db, svcs.Settings, svcs.Docker, svcs.Project, svcs.ImageUpdate, svcs.ContainerRegistry, svcs.Event, svcs.Image)
 	svcs.System = services.NewSystemService(db, svcs.Docker, svcs.Container, svcs.Image, svcs.Volume, svcs.Network, svcs.Settings)
-	svcs.Version = services.NewVersionService(httpClient, cfg.UpdateCheckDisabled)
+	svcs.Version = services.NewVersionService(httpClient, cfg.UpdateCheckDisabled, config.Version, config.Revision)
 
 	return svcs, dockerClient, nil
 }

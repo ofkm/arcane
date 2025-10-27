@@ -1,242 +1,78 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import SearchIcon from '@lucide/svelte/icons/search';
 	import PaletteIcon from '@lucide/svelte/icons/palette';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import FileTextIcon from '@lucide/svelte/icons/file-text';
+	import LayersIcon from '@lucide/svelte/icons/layers';
+	import PackageIcon from '@lucide/svelte/icons/package';
+	import CodeIcon from '@lucide/svelte/icons/code';
 	import { Button } from '$lib/components/ui/button';
 	import { Card } from '$lib/components/ui/card';
 	import { m } from '$lib/paraglide/messages';
 	import { UiConfigDisabledTag } from '$lib/components/badges/index.js';
-	import { navigationItems } from '$lib/config/navigation-config';
-	import type { NavigationItem } from '$lib/config/navigation-config';
-
-	interface CustomizationMeta {
-		key: string;
-		label: string;
-		type: string;
-		keywords?: string[];
-		description?: string;
-	}
-
-	interface CustomizationCategory {
-		id: string;
-		title: string;
-		description: string;
-		icon: any;
-		url: string;
-		keywords: string[];
-		customizations: CustomizationMeta[];
-		matchingCustomizations?: CustomizationMeta[];
-		relevanceScore?: number;
-	}
+	import { customizeSearchService } from '$lib/services/customize-search';
+	import type { CustomizeCategory } from '$lib/types/customize-search.type';
+	import { debounced } from '$lib/utils/utils';
 
 	let { data } = $props();
 	let searchQuery = $state('');
 	let showSearchResults = $state(false);
-	let searchResults = $state<CustomizationCategory[]>([]);
+	let searchResults = $state<CustomizeCategory[]>([]);
+	let isSearching = $state(false);
+	let customizeCategories = $state<CustomizeCategory[]>([]);
+	let currentSearchRequest = $state(0);
 
-	// Extract customization items from navigation config
-	const customizationNavItems = navigationItems.customizationItems[0]?.items || [];
+	const iconMap: Record<string, any> = {
+		'file-text': FileTextIcon,
+		layers: LayersIcon,
+		package: PackageIcon,
+		code: CodeIcon
+	};
 
-	// Build customization categories with metadata
-	const customizationCategories: CustomizationCategory[] = customizationNavItems.map((item: NavigationItem) => {
-		const categoryId = item.url.split('/').pop() || '';
-
-		// Define customization metadata for each category
-		const customizationsByCategory: Record<string, CustomizationMeta[]> = {
-			defaults: [
-				{
-					key: 'defaultProjectTemplate',
-					label: m.customize_default_project_template(),
-					type: 'select',
-					description: m.customize_defaults_description(),
-					keywords: ['template', 'default', 'project', 'scaffold', 'boilerplate', 'starter']
-				},
-				{
-					key: 'defaultContainerSettings',
-					label: m.customize_default_container_settings(),
-					type: 'object',
-					description: m.customize_defaults_description(),
-					keywords: ['container', 'default', 'settings', 'docker', 'configuration', 'runtime']
-				},
-				{
-					key: 'defaultNetworkMode',
-					label: m.customize_default_network_mode(),
-					type: 'select',
-					description: m.customize_category_defaults_description(),
-					keywords: ['network', 'default', 'mode', 'bridge', 'host', 'none', 'container']
-				}
-			],
-			templates: [
-				{
-					key: 'customTemplates',
-					label: m.templates_title(),
-					type: 'array',
-					description: m.customize_category_templates_description(),
-					keywords: ['templates', 'custom', 'project', 'compose', 'docker-compose', 'yaml', 'stack']
-				},
-				{
-					key: 'templateCategories',
-					label: m.customize_template_categories(),
-					type: 'array',
-					description: m.customize_category_templates_description(),
-					keywords: ['categories', 'organization', 'grouping', 'tags', 'classification']
-				},
-				{
-					key: 'templateValidation',
-					label: m.customize_template_validation(),
-					type: 'boolean',
-					description: m.customize_validation_error(),
-					keywords: ['validation', 'check', 'verify', 'lint', 'syntax', 'schema']
-				}
-			],
-			registries: [
-				{
-					key: 'containerRegistries',
-					label: m.registries_title(),
-					type: 'array',
-					description: m.customize_category_registries_description(),
-					keywords: ['registry', 'docker', 'images', 'hub', 'private', 'authentication', 'credentials']
-				},
-				{
-					key: 'registryCredentials',
-					label: m.customize_registry_credentials(),
-					type: 'secure',
-					description: m.registries_credentials_description(),
-					keywords: ['credentials', 'auth', 'username', 'password', 'token', 'login', 'security']
-				},
-				{
-					key: 'registryMirrors',
-					label: m.customize_registry_mirrors(),
-					type: 'array',
-					description: m.customize_category_registries_description(),
-					keywords: ['mirrors', 'proxy', 'cache', 'performance', 'cdn', 'regional']
-				}
-			],
-			variables: [
-				{
-					key: 'globalVariables',
-					label: m.variables_title(),
-					type: 'object',
-					description: m.variables_subtitle(),
-					keywords: ['variables', 'environment', 'env', 'global', 'config', 'settings', 'parameters']
-				},
-				{
-					key: 'secretVariables',
-					label: m.customize_secret_variables(),
-					type: 'secure',
-					description: m.customize_category_variables_description(),
-					keywords: ['secrets', 'sensitive', 'secure', 'encrypted', 'password', 'api', 'key']
-				},
-				{
-					key: 'variableTemplates',
-					label: m.customize_variable_templates(),
-					type: 'array',
-					description: m.customize_category_variables_description(),
-					keywords: ['templates', 'reusable', 'preset', 'configuration', 'standard', 'common']
-				}
-			]
-		};
-
-		return {
-			id: categoryId,
-			title: item.title,
-			description: getDescriptionForCategory(categoryId),
-			icon: item.icon,
-			url: item.url,
-			keywords: getKeywordsForCategory(categoryId),
-			customizations: customizationsByCategory[categoryId] || []
-		};
-	});
-
-	function getDescriptionForCategory(categoryId: string): string {
-		const descriptions: Record<string, string> = {
-			defaults: m.customize_category_defaults_description(),
-			templates: m.customize_category_templates_description(),
-			registries: m.customize_category_registries_description(),
-			variables: m.customize_category_variables_description()
-		};
-		return descriptions[categoryId] || m.customize_fallback_description();
-	}
-
-	function getKeywordsForCategory(categoryId: string): string[] {
-		const keywordMap: Record<string, string[]> = {
-			defaults: ['defaults', 'templates', 'presets', 'configuration', 'initial'],
-			templates: ['templates', 'stacks', 'compose', 'docker-compose', 'yaml', 'custom'],
-			registries: ['registries', 'docker', 'images', 'authentication', 'credentials', 'private'],
-			variables: ['variables', 'environment', 'config', 'settings', 'secrets', 'parameters']
-		};
-		return keywordMap[categoryId] || [];
-	}
-
-	// Search functionality
-	$effect(() => {
-		if (searchQuery.trim()) {
-			showSearchResults = true;
-			performSearch();
-		} else {
-			showSearchResults = false;
-			searchResults = [];
+	onMount(async () => {
+		try {
+			customizeCategories = await customizeSearchService.getCategories();
+		} catch (error) {
+			console.error('Failed to load categories:', error);
 		}
 	});
 
-	function performSearch() {
-		const query = searchQuery.toLowerCase().trim();
-		const results: CustomizationCategory[] = [];
+	async function performSearch(query: string, immediate = false) {
+		const trimmedQuery = query.trim();
 
-		customizationCategories.forEach((category) => {
-			// Check if category matches
-			const categoryMatch =
-				category.title.toLowerCase().includes(query) ||
-				category.description.toLowerCase().includes(query) ||
-				category.keywords.some((keyword) => keyword.toLowerCase().includes(query));
+		if (!trimmedQuery) {
+			searchResults = [];
+			showSearchResults = false;
+			isSearching = false;
+			currentSearchRequest++;
+			return;
+		}
 
-			// Check individual customizations with enhanced matching
-			const matchingCustomizations = category.customizations.filter((customization) => {
-				const keyMatch = customization.key.toLowerCase().includes(query);
-				const labelMatch = customization.label.toLowerCase().includes(query);
-				const descriptionMatch = customization.description?.toLowerCase().includes(query) || false;
-				const keywordsMatch = customization.keywords?.some((keyword) => keyword.toLowerCase().includes(query)) || false;
+		currentSearchRequest++;
+		const requestId = currentSearchRequest;
+		isSearching = true;
+		showSearchResults = true;
 
-				return keyMatch || labelMatch || descriptionMatch || keywordsMatch;
-			});
-
-			if (categoryMatch || matchingCustomizations.length > 0) {
-				// Calculate relevance score based on match quality
-				let relevanceScore = 0;
-
-				if (categoryMatch) {
-					// Category title/description match gets high score
-					if (category.title.toLowerCase().includes(query)) relevanceScore += 20;
-					if (category.description.toLowerCase().includes(query)) relevanceScore += 15;
-					if (category.keywords.some((keyword) => keyword.toLowerCase() === query)) relevanceScore += 25;
-					if (category.keywords.some((keyword) => keyword.toLowerCase().includes(query))) relevanceScore += 10;
-				}
-
-				// Add score for individual customization matches
-				matchingCustomizations.forEach((customization) => {
-					if (customization.key.toLowerCase() === query) relevanceScore += 30;
-					else if (customization.key.toLowerCase().includes(query)) relevanceScore += 15;
-
-					if (customization.label.toLowerCase().includes(query)) relevanceScore += 12;
-					if (customization.description?.toLowerCase().includes(query)) relevanceScore += 8;
-
-					if (customization.keywords?.some((keyword) => keyword.toLowerCase() === query)) relevanceScore += 20;
-					else if (customization.keywords?.some((keyword) => keyword.toLowerCase().includes(query))) relevanceScore += 5;
-				});
-
-				const categoryResult: CustomizationCategory = {
-					...category,
-					matchingCustomizations: matchingCustomizations.length > 0 ? matchingCustomizations : category.customizations,
-					relevanceScore
-				};
-				results.push(categoryResult);
+		try {
+			const response = await customizeSearchService.search(trimmedQuery);
+			if (requestId === currentSearchRequest) {
+				searchResults = response.results || [];
+				isSearching = false;
 			}
-		});
-
-		// Sort by relevance (highest first)
-		searchResults = results.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+		} catch (error) {
+			console.error('Search failed:', error);
+			if (requestId === currentSearchRequest) {
+				searchResults = [];
+				isSearching = false;
+			}
+		}
 	}
+
+	const debouncedSearch = debounced((query: string) => {
+		void performSearch(query, false);
+	}, 300);
 
 	function navigateToCategory(categoryUrl: string) {
 		goto(categoryUrl);
@@ -245,6 +81,13 @@
 	function clearSearch() {
 		searchQuery = '';
 		showSearchResults = false;
+		isSearching = false;
+		searchResults = [];
+		currentSearchRequest++;
+	}
+
+	function getIconComponent(iconName: string) {
+		return iconMap[iconName] || PaletteIcon;
 	}
 </script>
 
@@ -276,11 +119,20 @@
 				</div>
 
 				<div class="relative mt-4 w-full sm:mt-6 sm:max-w-md">
-					<SearchIcon class="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+					<SearchIcon class="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
 					<input
 						type="text"
 						placeholder={m.customize_search_placeholder()}
-						bind:value={searchQuery}
+						value={searchQuery}
+						oninput={(e) => {
+							searchQuery = e.currentTarget.value;
+							debouncedSearch(e.currentTarget.value);
+						}}
+						onkeydown={(e) => {
+							if (e.key === 'Enter') {
+								performSearch((e.currentTarget as HTMLInputElement).value, true);
+							}
+						}}
 						class="bg-background/50 border-input ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-10 w-full rounded-md border px-3 py-2 pl-10 text-sm backdrop-blur-sm file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
 					/>
 					{#if showSearchResults}
@@ -295,8 +147,8 @@
 
 	{#if !showSearchResults}
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-3">
-			{#each customizationCategories as category}
-				{@const Icon = category.icon}
+			{#each customizeCategories as category}
+				{@const Icon = getIconComponent(category.icon)}
 				<Card class="hover:border-primary/20 group cursor-pointer transition-all duration-200 hover:shadow-md">
 					<button onclick={() => navigateToCategory(category.url)} class="w-full p-4 text-left sm:p-6">
 						<div class="flex items-start justify-between gap-3">
@@ -328,7 +180,14 @@
 				</h2>
 			</div>
 
-			{#if searchResults.length === 0}
+			{#if isSearching}
+				<div class="py-8 text-center sm:py-12">
+					<div
+						class="border-primary mx-auto mb-3 size-8 animate-spin rounded-full border-4 border-t-transparent sm:mb-4 sm:size-12"
+					></div>
+					<p class="text-muted-foreground text-sm sm:text-base">Searching...</p>
+				</div>
+			{:else if searchResults.length === 0}
 				<div class="py-8 text-center sm:py-12">
 					<SearchIcon class="text-muted-foreground mx-auto mb-3 size-8 sm:mb-4 sm:size-12" />
 					<h3 class="mb-2 text-base font-medium sm:text-lg">{m.customize_no_options()}</h3>
@@ -337,7 +196,7 @@
 			{:else}
 				<div class="space-y-4 sm:space-y-6">
 					{#each searchResults as result}
-						{@const Icon = result.icon}
+						{@const Icon = getIconComponent(result.icon)}
 						<div class="bg-background/40 rounded-lg border shadow-sm">
 							<div class="border-b p-4 sm:p-6">
 								<div class="flex items-center justify-between">

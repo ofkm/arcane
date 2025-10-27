@@ -11,7 +11,6 @@
 	import { m } from '$lib/paraglide/messages';
 	import { volumeService } from '$lib/services/volume-service';
 	import { environmentStore } from '$lib/stores/environment.store.svelte';
-	import type { Environment } from '$lib/types/environment.type';
 	import { ResourcePageLayout, type ActionButton, type StatCardConfig } from '$lib/layouts/index.js';
 
 	let { data } = $props();
@@ -74,10 +73,9 @@
 		});
 	}
 
-	const selectedEnvStore = environmentStore.selected;
 	let lastEnvId: string | null = null;
 	$effect(() => {
-		const env = selectedEnvStore as Environment | null;
+		const env = environmentStore.selected;
 		if (!env) return;
 		if (lastEnvId === null) {
 			lastEnvId = env.id;

@@ -172,7 +172,7 @@
 		{#if loadingDockerInfo}
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				{#each Array(3) as _}
-					<div class="bg-card flex items-center rounded-lg border p-3">
+					<div class="glass-light flex items-center rounded-lg border p-3">
 						<div class="bg-muted mr-3 size-6 animate-pulse rounded-full"></div>
 						<div class="flex-1">
 							<div class="bg-muted mb-1 h-3 w-16 animate-pulse rounded"></div>

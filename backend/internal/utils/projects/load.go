@@ -46,17 +46,21 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName, projectsD
 	}
 
 	envLoader := NewEnvLoader(projectsDir, workdir)
-	envMap, injectionVars, err := envLoader.LoadEnvironment(ctx)
+
+	// Load full environment (process + global + project .env) for service injection
+	fullEnvMap, injectionVars, err := envLoader.LoadEnvironment(ctx)
 	if err != nil {
 		slog.WarnContext(ctx, "Failed to load environment", "error", err)
 	}
 
+	// Pass full environment to compose-go for interpolation
+	// compose-go will use this for ${VAR} expansion in the compose file
 	cfg := composetypes.ConfigDetails{
 		WorkingDir: workdir,
 		ConfigFiles: []composetypes.ConfigFile{
 			{Filename: composeFile},
 		},
-		Environment: composetypes.Mapping(envMap),
+		Environment: composetypes.Mapping(fullEnvMap),
 	}
 
 	project, err := loader.LoadWithContext(ctx, cfg, func(opts *loader.Options) {

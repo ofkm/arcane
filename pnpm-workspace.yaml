@@ -5,6 +5,7 @@ packages:
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
   - esbuild
+  - sharp
 
 overrides:
-  'devalue': '^5.3.2'
+  devalue: ^5.3.2

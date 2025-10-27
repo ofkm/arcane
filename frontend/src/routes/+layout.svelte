@@ -20,6 +20,8 @@
 	import { browser, dev } from '$app/environment';
 	import { onMount } from 'svelte';
 	import settingsStore from '$lib/stores/config-store';
+	import FirstLoginPasswordDialog from '$lib/components/dialogs/first-login-password-dialog.svelte';
+	import { invalidateAll } from '$app/navigation';
 
 	let {
 		data,
@@ -36,12 +38,13 @@
 	});
 
 	const { versionInformation, user, settings } = data;
+	let isGlassEnabled = $state(false);
 
 	// Apply glass-enabled class to body based on settings
 	$effect(() => {
 		if (browser && settings) {
-			const glassEnabled = $settingsStore?.glassEffectEnabled ?? settings.glassEffectEnabled ?? false;
-			if (glassEnabled) {
+			isGlassEnabled = $settingsStore?.glassEffectEnabled ?? settings.glassEffectEnabled ?? false;
+			if (isGlassEnabled) {
 				document.body.classList.add('glass-enabled');
 			} else {
 				document.body.classList.remove('glass-enabled');
@@ -52,14 +55,6 @@
 	const isMobile = new IsMobile();
 	const isTablet = new IsTablet();
 	const isNavigating = $derived(navigating.type !== null);
-	const isOnboardingPage = $derived(String(page.url.pathname).startsWith('/onboarding'));
-
-	const navigationSettings = $derived.by(() => {
-		settings;
-		navigationSettingsOverridesStore.current;
-		return getEffectiveNavigationSettings();
-	});
-	const navigationMode = $derived(navigationSettings.mode);
 	const isLoginPage = $derived(
 		String(page.url.pathname) === '/login' ||
 			String(page.url.pathname).startsWith('/auth/login') ||
@@ -67,8 +62,30 @@
 			String(page.url.pathname).includes('/login') ||
 			String(page.url.pathname).includes('/callback')
 	);
+	let showPasswordChangeDialog = $state(false);
 
-	const redirectPath = getAuthRedirectPath(page.url.pathname, user, settings);
+	$effect(() => {
+		// Show password change dialog if user requires password change
+		// Make it reactive to data changes
+		if (data.user && data.user.requiresPasswordChange && !isLoginPage) {
+			showPasswordChangeDialog = true;
+		} else {
+			showPasswordChangeDialog = false;
+		}
+	});
+
+	function handlePasswordChangeSuccess() {
+		invalidateAll();
+	}
+
+	const navigationSettings = $derived.by(() => {
+		settings;
+		navigationSettingsOverridesStore.current;
+		return getEffectiveNavigationSettings();
+	});
+	const navigationMode = $derived(navigationSettings.mode);
+
+	const redirectPath = getAuthRedirectPath(page.url.pathname, user);
 	if (redirectPath) {
 		goto(redirectPath);
 	}
@@ -88,10 +105,10 @@
 
 <svelte:head><title>{m.layout_title()}</title></svelte:head>
 
-<div class="bg-background flex min-h-screen flex-col">
+<div class={isGlassEnabled ? 'flex min-h-screen flex-col bg-transparent' : 'bg-background flex min-h-screen flex-col'}>
 	{#if !settings}
 		<Error message={m.error_occurred()} showButton={true} />
-	{:else if !isOnboardingPage && !isLoginPage}
+	{:else if !isLoginPage}
 		{#if isMobile.current}
 			<main class="flex-1">
 				<section
@@ -143,3 +160,4 @@
 />
 <ConfirmDialog />
 <LoadingIndicator active={isNavigating} thickness="h-1.5" />
+<FirstLoginPasswordDialog bind:open={showPasswordChangeDialog} onSuccess={handlePasswordChangeSuccess} />

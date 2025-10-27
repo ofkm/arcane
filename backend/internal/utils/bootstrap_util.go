@@ -37,24 +37,25 @@ type SettingsManager interface {
 func InitializeDefaultSettings(ctx context.Context, cfg *config.Config, settingsMgr SettingsManager) {
 	slog.InfoContext(ctx, "Ensuring default settings are initialized")
 
+	if err := settingsMgr.EnsureDefaultSettings(ctx); err != nil {
+		slog.WarnContext(ctx, "Failed to initialize default settings", slog.String("error", err.Error()))
+	} else {
+		slog.InfoContext(ctx, "Default settings initialized successfully")
+	}
+
+	// Mark onboarding as completed for all installs (onboarding is replaced with first-login password change)
+	if err := settingsMgr.SetBoolSetting(ctx, "onboardingCompleted", true); err != nil {
+		slog.WarnContext(ctx, "Failed to mark onboarding as completed", slog.String("error", err.Error()))
+	} else {
+		slog.InfoContext(ctx, "Onboarding marked as completed")
+	}
+
 	if cfg.AgentMode || cfg.UIConfigurationDisabled {
 		if err := settingsMgr.PersistEnvSettingsIfMissing(ctx); err != nil {
 			slog.WarnContext(ctx, "Failed to persist env-driven settings", slog.String("error", err.Error()))
 		} else {
 			slog.DebugContext(ctx, "Persisted env-driven settings if missing")
 		}
-
-		if err := settingsMgr.SetBoolSetting(ctx, "onboardingCompleted", true); err != nil {
-			slog.WarnContext(ctx, "Failed to mark onboarding as completed", slog.String("error", err.Error()))
-		} else {
-			slog.InfoContext(ctx, "Onboarding automatically completed (UI configuration disabled)")
-		}
-	}
-
-	if err := settingsMgr.EnsureDefaultSettings(ctx); err != nil {
-		slog.WarnContext(ctx, "Failed to initialize default settings", slog.String("error", err.Error()))
-	} else {
-		slog.InfoContext(ctx, "Default settings initialized successfully")
 	}
 }
 

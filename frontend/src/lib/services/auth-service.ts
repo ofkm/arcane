@@ -1,5 +1,4 @@
-import { goto } from '$app/navigation';
-import { invalidateAll } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import BaseAPIService from './api-service';
 import userStore from '$lib/stores/user-store';
 import type { User } from '$lib/types/user.type';
@@ -53,6 +52,15 @@ export class AuthService extends BaseAPIService {
 
 	async getStatus(): Promise<OidcStatusInfo> {
 		return this.handleResponse(this.api.get('/oidc/status'));
+	}
+
+	async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+		await this.handleResponse(
+			this.api.post('/auth/password', {
+				currentPassword,
+				newPassword
+			})
+		);
 	}
 }
 
