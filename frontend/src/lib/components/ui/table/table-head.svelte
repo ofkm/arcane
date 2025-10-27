@@ -9,7 +9,7 @@
 	bind:this={ref}
 	data-slot="table-head"
 	class={cn(
-		'text-foreground h-10 bg-clip-padding px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0',
+		'text-muted-foreground h-12 px-4 text-left align-middle text-xs font-medium uppercase first:pl-6 last:pr-6 [&:has([role=checkbox])]:pr-0',
 		className
 	)}
 	{...restProps}

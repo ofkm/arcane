@@ -143,7 +143,10 @@
 											<EllipsisIcon class="size-4" />
 										</DropdownMenu.Trigger>
 
-										<DropdownMenu.Content align="end" class="backdrop-blur-md bg-popover/90 z-50 min-w-[160px] rounded-xl border p-1 shadow-lg">
+										<DropdownMenu.Content
+											align="end"
+											class="bg-popover/90 z-50 min-w-[160px] rounded-xl border p-1 shadow-lg backdrop-blur-md"
+										>
 											<DropdownMenu.Group>
 												{#each mobileDropdownButtons as button}
 													<DropdownMenu.Item onclick={button.onclick} disabled={button.disabled || button.loading}>

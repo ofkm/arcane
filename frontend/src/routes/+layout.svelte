@@ -22,6 +22,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import FirstLoginPasswordDialog from '$lib/components/dialogs/first-login-password-dialog.svelte';
 	import { invalidateAll } from '$app/navigation';
+	import { cn } from '$lib/utils';
 
 	let {
 		data,
@@ -106,23 +107,23 @@
 
 <svelte:head><title>{m.layout_title()}</title></svelte:head>
 
-<div class={isGlassEnabled ? 'flex min-h-screen flex-col bg-transparent' : 'bg-background flex min-h-screen flex-col'}>
+<div class={cn('flex min-h-dvh flex-col', isGlassEnabled ? 'bg-transparent' : 'bg-background')}>
 	{#if !settings}
 		<Error message={m.error_occurred()} showButton={true} />
 	{:else if !isLoginPage}
 		{#if isMobile.current}
 			<main class="flex-1">
 				<section
-					class={navigationMode === 'docked'
-						? navigationSettings.scrollToHide
-							? 'px-2 pt-5 sm:px-5 sm:pt-5'
-							: 'px-2 pt-5 sm:p-5'
-						: 'px-2 py-5 sm:p-5'}
-					style={navigationMode === 'docked' && !navigationSettings.scrollToHide
-						? 'padding-bottom: var(--mobile-docked-nav-offset, calc(3.5rem + env(safe-area-inset-bottom)));'
-						: navigationMode === 'floating' && !navigationSettings.scrollToHide
-							? 'padding-bottom: var(--mobile-floating-nav-offset, 6rem);'
-							: ''}
+					class={cn(
+						'px-2',
+						navigationMode === 'docked'
+							? navigationSettings.scrollToHide
+								? 'pt-5 sm:px-5 sm:pt-5'
+								: 'pt-5 pb-(--mobile-docked-nav-offset,calc(3.5rem+env(safe-area-inset-bottom))) sm:p-5'
+							: navigationSettings.scrollToHide
+								? 'py-5 sm:p-5'
+								: 'py-5 pb-(--mobile-floating-nav-offset,6rem) sm:p-5'
+					)}
 				>
 					{@render children()}
 				</section>

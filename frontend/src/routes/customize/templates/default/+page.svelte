@@ -94,7 +94,7 @@
 		{#snippet mainContent()}
 			<div class="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-stretch">
 				<Card.Root class="flex min-w-0 flex-col lg:col-span-3">
-					<Card.Header icon={CodeIcon} class="flex-shrink-0">
+					<Card.Header icon={CodeIcon} class="shrink-0">
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>
 								<h2>{m.templates_compose_template_label()}</h2>
@@ -102,7 +102,7 @@
 							<Card.Description>{m.templates_service_definitions()}</Card.Description>
 						</div>
 					</Card.Header>
-					<Card.Content class="min-h-[500px] flex-grow p-0 lg:h-full">
+					<Card.Content class="min-h-[500px] grow p-0 lg:h-full">
 						<div class="h-full rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
 							<CodeEditor bind:value={$inputs.composeContent.value} language="yaml" />
 						</div>
@@ -117,7 +117,7 @@
 				</Card.Root>
 
 				<Card.Root class="flex min-w-0 flex-col lg:col-span-2">
-					<Card.Header icon={FileTextIcon} class="flex-shrink-0">
+					<Card.Header icon={FileTextIcon} class="shrink-0">
 						<div class="flex flex-col space-y-1.5">
 							<Card.Title>
 								<h2>{m.templates_env_template_label()}</h2>
@@ -125,7 +125,7 @@
 							<Card.Description>{m.templates_default_config_values()}</Card.Description>
 						</div>
 					</Card.Header>
-					<Card.Content class="min-h-[500px] flex-grow p-0 lg:h-full">
+					<Card.Content class="min-h-[500px] grow p-0 lg:h-full">
 						<div class="h-full rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
 							<CodeEditor bind:value={$inputs.envContent.value} language="env" />
 						</div>

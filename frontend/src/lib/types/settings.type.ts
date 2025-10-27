@@ -39,7 +39,6 @@ export type Settings = {
 
 	mobileNavigationMode: 'floating' | 'docked';
 	mobileNavigationShowLabels: boolean;
-	mobileNavigationScrollToHide: boolean;
 	sidebarHoverExpansion: boolean;
 
 	glassEffectEnabled: boolean;

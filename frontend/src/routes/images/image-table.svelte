@@ -6,7 +6,6 @@
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import ScanSearchIcon from '@lucide/svelte/icons/scan-search';
 	import { Spinner } from '$lib/components/ui/spinner/index.js';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import bytes from 'bytes';
@@ -270,8 +269,8 @@
 		rowActions={RowActions}
 		onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)}
 	>
-		<div class="flex flex-wrap gap-x-4 gap-y-3 border-t pt-3">
-			{#if (mobileFieldVisibility.updates ?? true) && item.updateInfo !== undefined}
+		{#if (mobileFieldVisibility.updates ?? true) && item.updateInfo !== undefined}
+			<div class="flex flex-wrap gap-x-4 gap-y-3 border-t pt-3">
 				<div class="flex min-w-0 flex-1 basis-[180px] flex-col">
 					<div class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
 						{m.images_updates()}
@@ -286,8 +285,8 @@
 						/>
 					</div>
 				</div>
-			{/if}
-		</div>
+			</div>
+		{/if}
 	</UniversalMobileCard>
 {/snippet}
 
@@ -333,20 +332,16 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root class="flex flex-col gap-6 py-3">
-	<Card.Content class="px-6 py-5">
-		<ArcaneTable
-			persistKey="arcane-image-table"
-			items={images}
-			bind:requestOptions
-			bind:selectedIds
-			bind:mobileFieldVisibility
-			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
-			onRefresh={async (options) => (images = await imageService.getImages(options))}
-			{columns}
-			{mobileFields}
-			rowActions={RowActions}
-			mobileCard={ImageMobileCardSnippet}
-		/>
-	</Card.Content>
-</Card.Root>
+<ArcaneTable
+	persistKey="arcane-image-table"
+	items={images}
+	bind:requestOptions
+	bind:selectedIds
+	bind:mobileFieldVisibility
+	onRemoveSelected={(ids) => handleDeleteSelected(ids)}
+	onRefresh={async (options) => (images = await imageService.getImages(options))}
+	{columns}
+	{mobileFields}
+	rowActions={RowActions}
+	mobileCard={ImageMobileCardSnippet}
+/>
