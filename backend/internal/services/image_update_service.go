@@ -955,6 +955,13 @@ func (s *ImageUpdateService) CheckMultipleImages(ctx context.Context, imageRefs 
 		slog.Int("successCount", len(results)),
 		slog.Duration("duration", time.Since(startBatch)))
 
+	if s.notificationService != nil {
+		if notifErr := s.notificationService.SendBatchImageUpdateNotification(ctx, results); notifErr != nil {
+			slog.WarnContext(ctx, "Failed to send batch update notification",
+				slog.String("error", notifErr.Error()))
+		}
+	}
+
 	return results, nil
 }
 

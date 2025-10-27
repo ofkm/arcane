@@ -1,15 +1,15 @@
-import { render } from "@react-email/components";
-import * as fs from "node:fs";
-import * as path from "node:path";
+import { render } from '@react-email/components';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 
-const outputDir = "../backend/resources/email-templates";
+const outputDir = '../backend/resources/email-templates';
 
 if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
 }
 
 function getTemplateName(filename: string): string {
-  return filename.replace(".tsx", "");
+  return filename.replace('.tsx', '');
 }
 
 /**
@@ -24,7 +24,7 @@ function tagAwareWrap(input: string, maxLen: number): string {
   for (const originalLine of input.split(/\r?\n/)) {
     let line = originalLine;
     while (line.length > maxLen) {
-      let breakPos = line.lastIndexOf(">", maxLen);
+      let breakPos = line.lastIndexOf('>', maxLen);
 
       // If '>' happens to be exactly at maxLen, break after it
       if (breakPos === maxLen) breakPos = maxLen;
@@ -43,14 +43,10 @@ function tagAwareWrap(input: string, maxLen: number): string {
     out.push(line);
   }
 
-  return out.join("\n");
+  return out.join('\n');
 }
 
-async function buildTemplateFile(
-  Component: any,
-  templateName: string,
-  isPlainText: boolean
-) {
+async function buildTemplateFile(Component: any, templateName: string, isPlainText: boolean) {
   const rendered = await render(Component(Component.TemplateProps), {
     plainText: isPlainText,
   });
@@ -63,20 +59,20 @@ async function buildTemplateFile(
   const safe = tagAwareWrap(normalized, maxLen);
 
   const goTemplate = `{{define "root"}}${safe}{{end}}`;
-  const suffix = isPlainText ? "_text.tmpl" : "_html.tmpl";
+  const suffix = isPlainText ? '_text.tmpl' : '_html.tmpl';
   const templatePath = path.join(outputDir, `${templateName}${suffix}`);
 
   fs.writeFileSync(templatePath, goTemplate);
 }
 
 async function discoverAndBuildTemplates() {
-  console.log("Discovering and building email templates...");
+  console.log('Discovering and building email templates...');
 
-  const emailsDir = "./emails";
+  const emailsDir = './emails';
   const files = fs.readdirSync(emailsDir);
 
   for (const file of files) {
-    if (!file.endsWith(".tsx")) continue;
+    if (!file.endsWith('.tsx')) continue;
 
     const templateName = getTemplateName(file);
     const modulePath = `./${emailsDir}/${file}`;
@@ -98,7 +94,7 @@ async function discoverAndBuildTemplates() {
       }
 
       await buildTemplateFile(Component, templateName, false); // HTML
-      await buildTemplateFile(Component, templateName, true);  // Text
+      await buildTemplateFile(Component, templateName, true); // Text
 
       console.log(`✓ Built ${templateName}`);
     } catch (error) {
@@ -109,7 +105,7 @@ async function discoverAndBuildTemplates() {
 
 async function main() {
   await discoverAndBuildTemplates();
-  console.log("All templates built successfully!");
+  console.log('All templates built successfully!');
 }
 
 main().catch(console.error);
