@@ -6,14 +6,13 @@
 	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import EyeIcon from '@lucide/svelte/icons/eye';
-	import ScrollTextIcon from '@lucide/svelte/icons/scroll-text';
 	import NavigationIcon from '@lucide/svelte/icons/navigation';
 	import SidebarIcon from '@lucide/svelte/icons/sidebar';
 	import NavigationSettingControl from '$lib/components/navigation-setting-control.svelte';
 	import NavigationModeSettingControl from '$lib/components/navigation-mode-setting-control.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
-	import { navigationSettingsOverridesStore, resetNavigationVisibility } from '$lib/utils/navigation.utils';
+	import { navigationSettingsOverridesStore } from '$lib/utils/navigation.utils';
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import { Switch } from '$lib/components/ui/switch/index.js';
@@ -29,7 +28,6 @@
 	const formSchema = z.object({
 		mobileNavigationMode: z.enum(['floating', 'docked']),
 		mobileNavigationShowLabels: z.boolean(),
-		mobileNavigationScrollToHide: z.boolean(),
 		sidebarHoverExpansion: z.boolean()
 	});
 
@@ -50,7 +48,6 @@
 		() =>
 			$formInputs.mobileNavigationMode.value !== currentSettings.mobileNavigationMode ||
 			$formInputs.mobileNavigationShowLabels.value !== currentSettings.mobileNavigationShowLabels ||
-			$formInputs.mobileNavigationScrollToHide.value !== currentSettings.mobileNavigationScrollToHide ||
 			$formInputs.sidebarHoverExpansion.value !== currentSettings.sidebarHoverExpansion
 	);
 
@@ -62,31 +59,21 @@
 		}
 	});
 
-	function setLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide', value: any) {
+	function setLocalOverride(key: 'mode' | 'showLabels', value: any) {
 		const currentOverrides = navigationSettingsOverridesStore.current;
 		navigationSettingsOverridesStore.current = {
 			...currentOverrides,
 			[key]: value
 		};
 		persistedState = navigationSettingsOverridesStore.current;
-
-		// Reset navigation bar visibility when behavior settings change
-		if (key === 'scrollToHide') {
-			resetNavigationVisibility();
-		}
 	}
 
-	function clearLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide') {
+	function clearLocalOverride(key: 'mode' | 'showLabels') {
 		const currentOverrides = navigationSettingsOverridesStore.current;
 		const newOverrides = { ...currentOverrides };
 		delete newOverrides[key];
 		navigationSettingsOverridesStore.current = newOverrides;
 		persistedState = navigationSettingsOverridesStore.current;
-
-		// Reset navigation bar visibility when behavior settings change
-		if (key === 'scrollToHide') {
-			resetNavigationVisibility();
-		}
 
 		toast.success(`Local override cleared for ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
 	}
@@ -111,17 +98,9 @@
 		}
 		isLoading = true;
 
-		// Check if behavior settings changed
-		const behaviorChanged = formData.mobileNavigationScrollToHide !== currentSettings.mobileNavigationScrollToHide;
-
 		await updateSettingsConfig(formData)
 			.then(() => {
 				toast.success(m.navigation_settings_saved());
-
-				// Reset navigation bar visibility if behavior settings changed
-				if (behaviorChanged) {
-					resetNavigationVisibility();
-				}
 			})
 			.catch((error) => {
 				console.error('Failed to save navigation settings:', error);
@@ -133,7 +112,6 @@
 	function resetForm() {
 		$formInputs.mobileNavigationMode.value = currentSettings.mobileNavigationMode;
 		$formInputs.mobileNavigationShowLabels.value = currentSettings.mobileNavigationShowLabels;
-		$formInputs.mobileNavigationScrollToHide.value = currentSettings.mobileNavigationScrollToHide;
 	}
 
 	onMount(() => {
@@ -240,32 +218,6 @@
 				</Card.Content>
 			</Card.Root>
 
-			<Card.Root>
-				<Card.Header icon={NavigationIcon}>
-					<div class="flex flex-col space-y-1.5">
-						<Card.Title>{m.navigation_mobile_behavior_title()}</Card.Title>
-						<Card.Description>{m.navigation_mobile_behavior_description()}</Card.Description>
-					</div>
-				</Card.Header>
-				<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
-					<div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))]">
-						<NavigationSettingControl
-							id="mobileNavigationScrollToHide"
-							label={m.navigation_scroll_to_hide_label()}
-							description={m.navigation_scroll_to_hide_description()}
-							icon={ScrollTextIcon}
-							serverValue={$formInputs.mobileNavigationScrollToHide.value}
-							localOverride={persistedState.scrollToHide}
-							onServerChange={(value) => {
-								$formInputs.mobileNavigationScrollToHide.value = value;
-							}}
-							onLocalOverride={(value) => setLocalOverride('scrollToHide', value)}
-							onClearOverride={() => clearLocalOverride('scrollToHide')}
-							serverDisabled={isReadOnly}
-						/>
-					</div>
-				</Card.Content>
-			</Card.Root>
 		</div>
 	{/snippet}
 </SettingsPageLayout>

@@ -85,7 +85,6 @@ export type MobileNavigationSettings = {
 	pinnedItems: string[];
 	mode: 'floating' | 'docked';
 	showLabels: boolean;
-	scrollToHide: boolean;
 };
 
 export function getAvailableMobileNavItems(): NavigationItem[] {
@@ -115,6 +114,5 @@ export function getAvailableMobileNavItems(): NavigationItem[] {
 export const defaultMobileNavigationSettings: MobileNavigationSettings = {
 	pinnedItems: defaultMobilePinnedItems.map((item) => item.url),
 	mode: 'floating',
-	showLabels: true,
-	scrollToHide: true
+	showLabels: true
 };

@@ -112,16 +112,10 @@
 		{#if isMobile.current}
 			<main class="flex-1">
 				<section
-					class={navigationMode === 'docked'
-						? navigationSettings.scrollToHide
-							? 'px-2 pt-5 sm:px-5 sm:pt-5'
-							: 'px-2 pt-5 sm:p-5'
-						: 'px-2 py-5 sm:p-5'}
-					style={navigationMode === 'docked' && !navigationSettings.scrollToHide
+					class={navigationMode === 'docked' ? 'px-2 pt-5 sm:p-5' : 'px-2 py-5 sm:p-5'}
+					style={navigationMode === 'docked'
 						? 'padding-bottom: var(--mobile-docked-nav-offset, calc(3.5rem + env(safe-area-inset-bottom)));'
-						: navigationMode === 'floating' && !navigationSettings.scrollToHide
-							? 'padding-bottom: var(--mobile-floating-nav-offset, 6rem);'
-							: ''}
+						: 'padding-bottom: var(--mobile-floating-nav-offset, 6rem);'}
 				>
 					{@render children()}
 				</section>

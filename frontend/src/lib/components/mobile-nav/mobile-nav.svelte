@@ -32,23 +32,19 @@
 
 	const currentPath = $derived(page.url.pathname);
 	const showLabels = $derived(navigationSettings?.showLabels ?? true);
-	const scrollToHideEnabled = $derived(navigationSettings?.scrollToHide ?? true);
 	const mode = $derived(navigationSettings?.mode ?? 'floating');
 
 	const leftItems = $derived(pinnedItems.slice(0, Math.floor(pinnedItems.length / 2)));
 	const rightItems = $derived(pinnedItems.slice(Math.floor(pinnedItems.length / 2)));
 
-	let visible = $state(true);
 	let menuOpen = $state(false);
 	let navElement: HTMLElement;
 
 	const gestures = new MobileNavGestures(
 		{
-			onMenuOpen: () => (menuOpen = true),
-			onVisibilityChange: (isVisible) => (visible = isVisible)
+			onMenuOpen: () => (menuOpen = true)
 		},
 		{
-			scrollToHideEnabled: false,
 			menuOpen: false
 		}
 	);
@@ -56,38 +52,15 @@
 	// Update gesture options when reactive values change
 	$effect(() => {
 		gestures.updateOptions({
-			scrollToHideEnabled,
 			menuOpen
 		});
 	});
 
-	// Enable touch gestures
+	// Enable wheel gestures on nav element for menu opening
 	$effect(() => {
-		scrollToHideEnabled;
-		return gestures.enableTouchGestures();
-	});
-
-	// Enable scroll gestures
-	$effect(() => {
-		scrollToHideEnabled;
-		menuOpen;
-		return gestures.enableScrollGestures();
-	});
-
-	// Enable wheel gestures on nav element
-	$effect(() => {
-		scrollToHideEnabled;
-		menuOpen;
 		if (navElement) {
 			gestures.setElement(navElement);
 			return gestures.enableWheelGestures();
-		}
-	});
-
-	// Show nav when menu closes
-	$effect(() => {
-		if (!menuOpen) {
-			visible = true;
 		}
 	});
 
@@ -141,18 +114,11 @@
 			mode === 'floating' ? 'mobile-nav-floating' : 'mobile-nav-docked',
 			mode === 'floating' ? 'fixed left-1/2 z-50 -translate-x-1/2 transform' : 'fixed bottom-0 left-0 right-0 z-50 gap-2',
 			'bg-background/60 border-border/30 backdrop-blur-xl',
-			'shadow-sm select-none transition-all duration-300 ease-out',
+			'shadow-sm select-none',
 			'flex items-center',
 			mode === 'floating'
 				? cn('rounded-3xl border', showLabels ? 'gap-2 px-3 py-2' : 'gap-3 px-4 py-2.5')
 				: cn('border-t border-border/50 justify-around', showLabels ? 'px-4 pt-2 pb-4' : 'px-4 pt-2.5 pb-4'),
-			visible
-				? mode === 'floating'
-					? 'translate-y-0 scale-100 opacity-100'
-					: 'translate-y-0 opacity-100'
-				: mode === 'floating'
-					? 'translate-y-full scale-95 opacity-0'
-					: 'translate-y-full opacity-0',
 			className
 		)
 	);
