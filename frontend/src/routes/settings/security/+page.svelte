@@ -1,6 +1,5 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
-	import { getContext } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import OidcConfigDialog from '$lib/components/dialogs/oidc-config-dialog.svelte';
@@ -14,14 +13,11 @@
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import { SettingsPageLayout } from '$lib/layouts';
-	import { createSettingsState } from '$lib/components/settings';
+	import { useSettings } from '$lib/hooks/use-settings.svelte.js';
 
 	let { data }: { data: PageData } = $props();
-
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
-
 	let showOidcConfigDialog = $state(false);
-
 	let oidcConfigForm = $state({
 		clientId: '',
 		clientSecret: '',
@@ -31,35 +27,36 @@
 		adminValue: ''
 	});
 
-	const settingsState = createSettingsState(
-		{
+	const settings = useSettings({
+		initialValues: {
 			authLocalEnabled: data.settings!.authLocalEnabled,
 			authOidcEnabled: data.settings!.authOidcEnabled,
 			authSessionTimeout: data.settings!.authSessionTimeout,
 			authPasswordPolicy: data.settings!.authPasswordPolicy
 		},
-		[{ key: 'authLocalEnabled' }, { key: 'authOidcEnabled' }, { key: 'authSessionTimeout' }, { key: 'authPasswordPolicy' }]
-	);
+		onSuccess: () => toast.success(m.security_settings_saved()),
+		onError: () => toast.error(m.security_settings_save_failed())
+	});
 
-	const { bindings, values, originalValues, setupStoreSync } = settingsState.createPageSetup(
-		() => toast.success(m.security_settings_saved()),
-		(error: any) => {
-			console.error('Failed to save settings:', error);
-			toast.error(m.security_settings_save_failed());
-		}
-	);
-
-	setupStoreSync($settingsStore, ['authLocalEnabled', 'authOidcEnabled', 'authSessionTimeout', 'authPasswordPolicy']);
+	// Sync with settings store changes
+	$effect(() => {
+		settings.syncFromStore({
+			authLocalEnabled: $settingsStore.authLocalEnabled,
+			authOidcEnabled: $settingsStore.authOidcEnabled,
+			authSessionTimeout: $settingsStore.authSessionTimeout,
+			authPasswordPolicy: $settingsStore.authPasswordPolicy
+		});
+	});
 
 	// Helper: treat OIDC as active if forced by server or enabled in form
-	const isOidcActive = () => values.authOidcEnabled || data.oidcStatus.envForced;
+	const isOidcActive = () => settings.values.authOidcEnabled || data.oidcStatus.envForced;
 
 	// Only depend on envForced; open config when enabling and not forced
 	function handleOidcSwitchChange(checked: boolean) {
-		bindings.switch('authOidcEnabled').onCheckedChange(checked);
+		settings.setValue('authOidcEnabled', checked);
 
-		if (!checked && !values.authLocalEnabled && !data.oidcStatus.envForced) {
-			bindings.switch('authLocalEnabled').onCheckedChange(true);
+		if (!checked && !settings.values.authLocalEnabled && !data.oidcStatus.envForced) {
+			settings.setValue('authLocalEnabled', true);
 			toast.info(m.security_local_enabled_info());
 		}
 
@@ -70,11 +67,11 @@
 
 	function handleLocalSwitchChange(checked: boolean) {
 		if (!checked && !isOidcActive()) {
-			bindings.switch('authLocalEnabled').onCheckedChange(true);
+			settings.setValue('authLocalEnabled', true);
 			toast.error(m.security_enable_one_provider_error());
 			return;
 		}
-		bindings.switch('authLocalEnabled').onCheckedChange(checked);
+		settings.setValue('authLocalEnabled', checked);
 	}
 
 	function openOidcDialog() {
@@ -102,16 +99,13 @@
 			});
 
 			// Update the settings with OIDC config
-			await settingsState.save(
-				() => {
-					toast.success(m.security_settings_saved());
-					showOidcConfigDialog = false;
-				},
-				(error) => {
-					console.error('Failed to save OIDC config:', error);
-					toast.error('Failed to save OIDC configuration. Please try again.');
-				}
-			);
+			const success = await settings.save();
+			if (success) {
+				toast.success(m.security_settings_saved());
+				showOidcConfigDialog = false;
+			} else {
+				toast.error('Failed to save OIDC configuration. Please try again.');
+			}
 		} catch (error) {
 			console.error('Failed to save OIDC config:', error);
 			toast.error('Failed to save OIDC configuration. Please try again.');
@@ -141,7 +135,7 @@
 								id="localAuthSwitch"
 								label={m.security_local_auth_label()}
 								description={m.security_local_auth_description()}
-								bind:checked={values.authLocalEnabled}
+								bind:checked={settings.values.authLocalEnabled}
 								onCheckedChange={handleLocalSwitchChange}
 							/>
 
@@ -153,7 +147,7 @@
 										? m.security_oidc_auth_description_forced()
 										: m.security_oidc_auth_description()}
 									disabled={data.oidcStatus.envForced}
-									bind:checked={values.authOidcEnabled}
+									bind:checked={settings.values.authOidcEnabled}
 									onCheckedChange={handleOidcSwitchChange}
 								/>
 
@@ -193,12 +187,12 @@
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<TextInputWithLabel
-							bind:value={values.authSessionTimeout}
+							bind:value={settings.values.authSessionTimeout}
 							label={m.security_session_timeout_label()}
 							placeholder={m.security_session_timeout_placeholder()}
 							helpText={m.security_session_timeout_description()}
 							type="number"
-							onChange={(value) => bindings.textInput('authSessionTimeout').onChange(Number(value))}
+							onChange={(value) => settings.setValue('authSessionTimeout', Number(value))}
 						/>
 					</Card.Content>
 				</Card.Root>
@@ -215,11 +209,11 @@
 								<Tooltip.Root>
 									<Tooltip.Trigger>
 										<Button
-											variant={values.authPasswordPolicy === 'basic' ? 'default' : 'outline'}
-											class={values.authPasswordPolicy === 'basic'
+											variant={settings.values.authPasswordPolicy === 'basic' ? 'default' : 'outline'}
+											class={settings.values.authPasswordPolicy === 'basic'
 												? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
 												: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
-											onclick={() => bindings.textInput('authPasswordPolicy').onChange('basic')}
+											onclick={() => settings.setValue('authPasswordPolicy', 'basic')}
 											type="button"
 											>{m.common_basic()}
 										</Button>
@@ -230,11 +224,11 @@
 								<Tooltip.Root>
 									<Tooltip.Trigger>
 										<Button
-											variant={values.authPasswordPolicy === 'standard' ? 'default' : 'outline'}
-											class={values.authPasswordPolicy === 'standard'
+											variant={settings.values.authPasswordPolicy === 'standard' ? 'default' : 'outline'}
+											class={settings.values.authPasswordPolicy === 'standard'
 												? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
 												: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
-											onclick={() => bindings.textInput('authPasswordPolicy').onChange('standard')}
+											onclick={() => settings.setValue('authPasswordPolicy', 'standard')}
 											type="button"
 											>{m.security_password_policy_standard()}
 										</Button>
@@ -245,11 +239,11 @@
 								<Tooltip.Root>
 									<Tooltip.Trigger>
 										<Button
-											variant={values.authPasswordPolicy === 'strong' ? 'default' : 'outline'}
-											class={values.authPasswordPolicy === 'strong'
+											variant={settings.values.authPasswordPolicy === 'strong' ? 'default' : 'outline'}
+											class={settings.values.authPasswordPolicy === 'strong'
 												? 'arcane-button-create h-12 w-full text-xs sm:text-sm'
 												: 'arcane-button-restart h-12 w-full text-xs sm:text-sm'}
-											onclick={() => bindings.textInput('authPasswordPolicy').onChange('strong')}
+											onclick={() => settings.setValue('authPasswordPolicy', 'strong')}
 											type="button"
 											>{m.security_password_policy_strong()}
 										</Button>

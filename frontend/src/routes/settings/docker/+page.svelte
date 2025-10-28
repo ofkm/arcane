@@ -3,7 +3,6 @@
 	import ZapIcon from '@lucide/svelte/icons/zap';
 	import * as Alert from '$lib/components/ui/alert';
 	import { toast } from 'svelte-sonner';
-	import { getContext } from 'svelte';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -15,7 +14,7 @@
 	import settingsStore from '$lib/stores/config-store';
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { SettingsPageLayout } from '$lib/layouts';
-	import { createSettingsState } from '$lib/components/settings';
+	import { useSettings } from '$lib/hooks/use-settings.svelte.js';
 
 	let { data } = $props();
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
@@ -77,8 +76,8 @@
 		{ value: '/bin/zsh', label: '/bin/zsh', description: m.docker_shell_zsh_description() }
 	];
 
-	const settingsState = createSettingsState(
-		{
+	const settings = useSettings({
+		initialValues: {
 			pollingEnabled: data.settings!.pollingEnabled,
 			pollingInterval: data.settings!.pollingInterval,
 			autoUpdate: data.settings!.autoUpdate,
@@ -86,41 +85,30 @@
 			dockerPruneMode: data.settings!.dockerPruneMode,
 			defaultShell: data.settings!.defaultShell
 		},
-		[
-			{ key: 'pollingEnabled' },
-			{ key: 'pollingInterval' },
-			{ key: 'autoUpdate' },
-			{ key: 'autoUpdateInterval' },
-			{ key: 'dockerPruneMode' },
-			{ key: 'defaultShell' }
-		]
-	);
+		onSuccess: () => toast.success(m.general_settings_saved()),
+		onError: () => toast.error('Failed to save settings. Please try again.')
+	});
 
-	const { bindings, values, originalValues, setupStoreSync } = settingsState.createPageSetup(
-		() => toast.success(m.general_settings_saved()),
-		(error) => {
-			console.error('Failed to save settings:', error);
-			toast.error('Failed to save settings. Please try again.');
-		}
-	);
-
-	setupStoreSync($settingsStore, [
-		'pollingEnabled',
-		'pollingInterval',
-		'autoUpdate',
-		'autoUpdateInterval',
-		'dockerPruneMode',
-		'defaultShell'
-	]);
+	// Sync with settings store changes
+	$effect(() => {
+		settings.syncFromStore({
+			pollingEnabled: $settingsStore.pollingEnabled,
+			pollingInterval: $settingsStore.pollingInterval,
+			autoUpdate: $settingsStore.autoUpdate,
+			autoUpdateInterval: $settingsStore.autoUpdateInterval,
+			dockerPruneMode: $settingsStore.dockerPruneMode,
+			defaultShell: $settingsStore.defaultShell
+		});
+	});
 
 	// Derived values for UI
 	let pollingIntervalMode = $state<PollingIntervalMode>(
-		imagePollingOptions.find((o) => o.minutes === values.pollingInterval)?.value ?? 'custom'
+		imagePollingOptions.find((o) => o.minutes === settings.values.pollingInterval)?.value ?? 'custom'
 	);
 
-	let shellSelectValue = $state<string>(shellOptions.find((o) => o.value === values.defaultShell)?.value ?? 'custom');
+	let shellSelectValue = $state<string>(shellOptions.find((o) => o.value === settings.values.defaultShell)?.value ?? 'custom');
 
-	let pruneMode = $derived(values.dockerPruneMode);
+	let pruneMode = $derived(settings.values.dockerPruneMode);
 	const pruneModeDescription = $derived(
 		pruneModeOptions.find((o) => o.value === pruneMode)?.description ?? m.docker_prune_mode_description()
 	);
@@ -128,14 +116,14 @@
 	// Sync polling interval mode with values
 	$effect(() => {
 		if (pollingIntervalMode !== 'custom') {
-			bindings.switch('pollingInterval').onCheckedChange(presetToMinutes[pollingIntervalMode]);
+			settings.setValue('pollingInterval', presetToMinutes[pollingIntervalMode]);
 		}
 	});
 
 	// Sync shell select with values
 	$effect(() => {
 		if (shellSelectValue !== 'custom') {
-			bindings.textInput('defaultShell').onChange(shellSelectValue);
+			settings.setValue('defaultShell', shellSelectValue);
 		}
 	});
 </script>
@@ -163,11 +151,11 @@
 								id="pollingEnabled"
 								label={m.docker_enable_polling_label()}
 								description={m.docker_enable_polling_description()}
-								bind:checked={values.pollingEnabled}
-								onCheckedChange={bindings.switch('pollingEnabled').onCheckedChange}
+								bind:checked={settings.values.pollingEnabled}
+								onCheckedChange={(checked) => settings.setValue('pollingEnabled', checked)}
 							/>
 
-							{#if values.pollingEnabled}
+							{#if settings.values.pollingEnabled}
 								<div class="border-primary/20 space-y-3 border-l-2 pl-3">
 									<SelectWithLabel
 										id="pollingIntervalMode"
@@ -180,16 +168,16 @@
 
 									{#if pollingIntervalMode === 'custom'}
 										<TextInputWithLabel
-											bind:value={values.pollingInterval}
+											bind:value={settings.values.pollingInterval}
 											label={m.custom_polling_interval()}
 											placeholder={m.docker_polling_interval_placeholder()}
 											helpText={m.docker_polling_interval_description()}
 											type="number"
-											onChange={(value) => bindings.textInput('pollingInterval').onChange(Number(value))}
+											onChange={(value) => settings.setValue('pollingInterval', Number(value))}
 										/>
 									{/if}
 
-									{#if values.pollingInterval < 30}
+									{#if settings.values.pollingInterval < 30}
 										<Alert.Root variant="warning">
 											<ZapIcon class="size-4" />
 											<Alert.Title>{m.docker_rate_limit_warning_title()}</Alert.Title>
@@ -202,7 +190,7 @@
 					</Card.Content>
 				</Card.Root>
 
-				{#if values.pollingEnabled}
+				{#if settings.values.pollingEnabled}
 					<Card.Root>
 						<Card.Header icon={RefreshCwIcon}>
 							<div class="flex flex-col space-y-1.5">
@@ -216,19 +204,19 @@
 									id="autoUpdateSwitch"
 									label={m.docker_auto_update_label()}
 									description={m.docker_auto_update_description()}
-									bind:checked={values.autoUpdate}
-									onCheckedChange={bindings.switch('autoUpdate').onCheckedChange}
+									bind:checked={settings.values.autoUpdate}
+									onCheckedChange={(checked) => settings.setValue('autoUpdate', checked)}
 								/>
 
-								{#if values.autoUpdate}
+								{#if settings.values.autoUpdate}
 									<div class="border-primary/20 border-l-2 pl-3">
 										<TextInputWithLabel
-											bind:value={values.autoUpdateInterval}
+											bind:value={settings.values.autoUpdateInterval}
 											label={m.docker_auto_update_interval_label()}
 											placeholder={m.docker_auto_update_interval_placeholder()}
 											helpText={m.docker_auto_update_interval_description()}
 											type="number"
-											onChange={(value) => bindings.textInput('autoUpdateInterval').onChange(Number(value))}
+											onChange={(value) => settings.setValue('autoUpdateInterval', Number(value))}
 										/>
 									</div>
 								{/if}
@@ -248,12 +236,12 @@
 						<SelectWithLabel
 							id="dockerPruneMode"
 							name="pruneMode"
-							bind:value={values.dockerPruneMode}
+							bind:value={settings.values.dockerPruneMode}
 							label={m.docker_prune_action_label()}
 							description={pruneModeDescription}
 							placeholder={m.docker_prune_placeholder()}
 							options={pruneModeOptions}
-							onValueChange={(value) => bindings.textInput('dockerPruneMode').onChange(value as 'all' | 'dangling')}
+							onValueChange={(value) => settings.setValue('dockerPruneMode', value as 'all' | 'dangling')}
 						/>
 					</Card.Content>
 				</Card.Root>
@@ -283,12 +271,12 @@
 							{#if shellSelectValue === 'custom'}
 								<div class="border-primary/20 border-l-2 pl-3">
 									<TextInputWithLabel
-										bind:value={values.defaultShell}
+										bind:value={settings.values.defaultShell}
 										label={m.custom()}
 										placeholder={m.docker_shell_custom_path_placeholder()}
 										helpText={m.docker_shell_custom_path_help()}
 										type="text"
-										onChange={bindings.textInput('defaultShell').onChange}
+										onChange={(value) => settings.setValue('defaultShell', value)}
 									/>
 								</div>
 							{/if}

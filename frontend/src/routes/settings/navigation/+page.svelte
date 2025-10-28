@@ -1,6 +1,5 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
-	import { getContext } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import NavigationIcon from '@lucide/svelte/icons/navigation';
@@ -13,7 +12,7 @@
 	import { SettingsPageLayout } from '$lib/layouts';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
-	import { createSettingsState } from '$lib/components/settings';
+	import { useSettings } from '$lib/hooks/use-settings.svelte.js';
 
 	let { data } = $props();
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
@@ -26,41 +25,33 @@
 		// Sidebar context not available
 	}
 
-	const settingsState = createSettingsState(
-		{
+	const settings = useSettings({
+		initialValues: {
 			mobileNavigationMode: data.settings!.mobileNavigationMode,
 			mobileNavigationShowLabels: data.settings!.mobileNavigationShowLabels,
 			sidebarHoverExpansion: data.settings!.sidebarHoverExpansion
 		},
-		[
-			{ key: 'mobileNavigationMode' },
-			{ key: 'mobileNavigationShowLabels' },
-			{
-				key: 'sidebarHoverExpansion',
-				previewFn: (enabled: boolean) => {
+		previews: {
+			sidebarHoverExpansion: {
+				apply: (enabled: boolean) => {
 					if (sidebar) {
 						sidebar.setHoverExpansion(enabled);
 					}
 				}
 			}
-		]
-	);
-
-	const { bindings, values, originalValues, setupStoreSync } = settingsState.createPageSetup(
-		() => {
-			toast.success(m.navigation_settings_saved());
 		},
-		(error) => {
-			console.error('Failed to save navigation settings:', error);
-			toast.error('Failed to save navigation settings. Please try again.');
-		}
-	);
+		onSuccess: () => toast.success(m.navigation_settings_saved()),
+		onError: () => toast.error('Failed to save navigation settings. Please try again.')
+	});
 
-	setupStoreSync($settingsStore, [
-		'mobileNavigationMode',
-		'mobileNavigationShowLabels',
-		'sidebarHoverExpansion'
-	]);
+	// Sync with settings store changes
+	$effect(() => {
+		settings.syncFromStore({
+			mobileNavigationMode: $settingsStore.mobileNavigationMode,
+			mobileNavigationShowLabels: $settingsStore.mobileNavigationShowLabels,
+			sidebarHoverExpansion: $settingsStore.sidebarHoverExpansion
+		});
+	});
 
 	function setLocalOverride(key: 'mode' | 'showLabels', value: any) {
 		const currentOverrides = navigationSettingsOverridesStore.current;
@@ -125,12 +116,12 @@
 							<div class="flex items-center gap-2">
 								<Switch
 									id="sidebarHoverExpansion"
-									checked={values.sidebarHoverExpansion}
+									checked={settings.values.sidebarHoverExpansion}
 									disabled={isReadOnly}
-									onCheckedChange={bindings.switch('sidebarHoverExpansion').onCheckedChange}
+									onCheckedChange={(checked) => settings.setValue('sidebarHoverExpansion', checked)}
 								/>
 								<label for="sidebarHoverExpansion" class="text-xs font-medium">
-									{values.sidebarHoverExpansion
+									{settings.values.sidebarHoverExpansion
 										? m.navigation_sidebar_hover_expansion_enabled()
 										: m.navigation_sidebar_hover_expansion_disabled()}
 								</label>
@@ -154,9 +145,9 @@
 							label={m.navigation_mode_label()}
 							description={m.navigation_mode_description()}
 							icon={NavigationIcon}
-							serverValue={values.mobileNavigationMode}
+							serverValue={settings.values.mobileNavigationMode}
 							localOverride={persistedState.mode}
-							onServerChange={bindings.switch('mobileNavigationMode').onCheckedChange}
+							onServerChange={(value) => settings.setValue('mobileNavigationMode', value)}
 							onLocalOverride={(value) => setLocalOverride('mode', value)}
 							onClearOverride={() => clearLocalOverride('mode')}
 							serverDisabled={isReadOnly}
@@ -167,9 +158,9 @@
 							label={m.navigation_show_labels_label()}
 							description={m.navigation_show_labels_description()}
 							icon={EyeIcon}
-							serverValue={values.mobileNavigationShowLabels}
+							serverValue={settings.values.mobileNavigationShowLabels}
 							localOverride={persistedState.showLabels}
-							onServerChange={bindings.switch('mobileNavigationShowLabels').onCheckedChange}
+							onServerChange={(value) => settings.setValue('mobileNavigationShowLabels', value)}
 							onLocalOverride={(value) => setLocalOverride('showLabels', value)}
 							onClearOverride={() => clearLocalOverride('showLabels')}
 							serverDisabled={isReadOnly}
