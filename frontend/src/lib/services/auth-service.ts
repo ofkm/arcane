@@ -12,7 +12,7 @@ const REFRESH_BUFFER_MS = 5 * 60 * 1000; // Refresh 5 minutes before expiry
 export class AuthService extends BaseAPIService {
 	private refreshTimer: ReturnType<typeof setTimeout> | null = null;
 	private isRefreshing = false;
-	private refreshSubscribers: Array<(token: string) => void> = [];
+	private refreshSubscribers: Array<(token: string | null) => void> = [];
 
 	private storeTokenData(refreshToken: string, expiresAt: string): void {
 		if (typeof window === 'undefined') return;
@@ -50,7 +50,7 @@ export class AuthService extends BaseAPIService {
 
 	private scheduleTokenRefresh(expiresAt: string): void {
 		if (typeof window === 'undefined') return;
-		
+
 		if (this.refreshTimer) {
 			clearTimeout(this.refreshTimer);
 		}
@@ -77,7 +77,7 @@ export class AuthService extends BaseAPIService {
 
 		if (this.isRefreshing) {
 			return new Promise((resolve) => {
-				this.refreshSubscribers.push((token: string) => {
+				this.refreshSubscribers.push((token: string | null) => {
 					resolve(token);
 				});
 			});
@@ -86,18 +86,21 @@ export class AuthService extends BaseAPIService {
 		this.isRefreshing = true;
 
 		try {
-			const response = await this.api.post('/auth/refresh', { refreshToken });
-			const data = response.data.data || response.data;
-			
+			const data = await this.handleResponse<{
+				token?: string;
+				refreshToken?: string;
+				expiresAt?: string;
+			}>(this.api.post('/auth/refresh', { refreshToken }));
+
 			if (data.refreshToken && data.expiresAt) {
 				this.storeTokenData(data.refreshToken, data.expiresAt);
 			}
 
-			this.refreshSubscribers.forEach((callback) => callback(data.token));
+			this.refreshSubscribers.forEach((callback) => callback(data.token ?? null));
 			this.refreshSubscribers = [];
 			this.isRefreshing = false;
 
-			return data.token;
+			return data.token ?? null;
 		} catch (error) {
 			console.error('Token refresh failed:', error);
 			this.clearTokenData();
@@ -154,12 +157,19 @@ export class AuthService extends BaseAPIService {
 		user?: OidcUserInfo;
 		error?: string;
 	}> {
-		const response = await this.handleResponse(this.api.post('/oidc/callback', { code, state }));
-		
+		const response = await this.handleResponse<{
+			success: boolean;
+			token?: string;
+			refreshToken?: string;
+			expiresAt?: string;
+			user?: OidcUserInfo;
+			error?: string;
+		}>(this.api.post('/oidc/callback', { code, state }));
+
 		if (response.refreshToken && response.expiresAt) {
 			this.storeTokenData(response.refreshToken, response.expiresAt);
 		}
-		
+
 		return response;
 	}
 

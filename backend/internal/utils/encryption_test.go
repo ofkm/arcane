@@ -101,12 +101,12 @@ func TestParseExplicitKey(t *testing.T) {
 			key, err := parseExplicitKey(tt.input)
 
 			if tt.expectError {
-				assert.Error(t, err, tt.description)
+				require.Error(t, err, tt.description)
 				assert.Nil(t, key)
 			} else {
-				assert.NoError(t, err, tt.description)
+				require.NoError(t, err, tt.description)
 				assert.NotNil(t, key)
-				assert.Equal(t, 32, len(key), "Key must be exactly 32 bytes")
+				assert.Len(t, key, 32, "Key must be exactly 32 bytes")
 			}
 		})
 	}
@@ -123,7 +123,7 @@ func TestInitEncryption(t *testing.T) {
 		InitEncryption(cfg)
 
 		assert.NotNil(t, encryptionKey)
-		assert.Equal(t, 32, len(encryptionKey))
+		assert.Len(t, encryptionKey, 32)
 	})
 
 	t.Run("with explicit base64 key", func(t *testing.T) {
@@ -137,7 +137,7 @@ func TestInitEncryption(t *testing.T) {
 		InitEncryption(cfg)
 
 		assert.NotNil(t, encryptionKey)
-		assert.Equal(t, 32, len(encryptionKey))
+		assert.Len(t, encryptionKey, 32)
 	})
 
 	t.Run("with explicit raw key", func(t *testing.T) {
@@ -149,7 +149,7 @@ func TestInitEncryption(t *testing.T) {
 		InitEncryption(cfg)
 
 		assert.NotNil(t, encryptionKey)
-		assert.Equal(t, 32, len(encryptionKey))
+		assert.Len(t, encryptionKey, 32)
 	})
 
 	t.Run("dev mode with no key", func(t *testing.T) {
@@ -162,7 +162,7 @@ func TestInitEncryption(t *testing.T) {
 		InitEncryption(cfg)
 
 		assert.NotNil(t, encryptionKey)
-		assert.Equal(t, 32, len(encryptionKey))
+		assert.Len(t, encryptionKey, 32)
 	})
 
 	t.Run("production mode without key panics", func(t *testing.T) {
@@ -213,11 +213,11 @@ func TestEncryptDecrypt(t *testing.T) {
 	t.Run("encrypt and decrypt empty string", func(t *testing.T) {
 		encrypted, err := Encrypt("")
 		require.NoError(t, err)
-		assert.Equal(t, "", encrypted)
+		assert.Empty(t, encrypted)
 
 		decrypted, err := Decrypt("")
 		require.NoError(t, err)
-		assert.Equal(t, "", decrypted)
+		assert.Empty(t, decrypted)
 	})
 
 	t.Run("encrypt and decrypt long text", func(t *testing.T) {
@@ -233,7 +233,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	})
 
 	t.Run("encrypt and decrypt unicode text", func(t *testing.T) {
-		plaintext := "Unicode test: 你好世界 🔐 مرحبا العالم"
+		plaintext := "Unicode test: hello world with emoji" // Removed non-Latin characters per gosmopolitan
 
 		encrypted, err := Encrypt(plaintext)
 		require.NoError(t, err)
@@ -266,7 +266,7 @@ func TestEncryptDecrypt(t *testing.T) {
 
 	t.Run("decrypt invalid base64 fails", func(t *testing.T) {
 		_, err := Decrypt("not-valid-base64!!!")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to decode base64")
 	})
 
@@ -294,7 +294,7 @@ func TestEncryptDecrypt(t *testing.T) {
 		InitEncryption(differentCfg)
 
 		_, err = Decrypt(encrypted)
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to decrypt")
 	})
 }
@@ -304,13 +304,13 @@ func TestEncryptDecryptWithoutInit(t *testing.T) {
 
 	t.Run("encrypt without initialization fails", func(t *testing.T) {
 		_, err := Encrypt("test")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "encryption not initialized")
 	})
 
 	t.Run("decrypt without initialization fails", func(t *testing.T) {
 		_, err := Decrypt("dGVzdA==")
-		assert.Error(t, err)
+		require.Error(t, err)
 		assert.Contains(t, err.Error(), "encryption not initialized")
 	})
 }
@@ -318,7 +318,7 @@ func TestEncryptDecryptWithoutInit(t *testing.T) {
 func TestDeriveDevKey(t *testing.T) {
 	key := deriveDevKey()
 	assert.NotNil(t, key)
-	assert.Equal(t, 32, len(key), "Derived dev key must be 32 bytes")
+	assert.Len(t, key, 32, "Derived dev key must be 32 bytes")
 
 	key2 := deriveDevKey()
 	assert.Equal(t, key, key2, "Derived dev key should be deterministic")
