@@ -49,24 +49,20 @@
 	});
 </script>
 
-<Card.Root class="flex flex-col gap-6 py-3">
+<Card.Root class="flex flex-col">
 	<Card.Header
-		class="@container/card-header grid cursor-pointer auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 pt-2 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
+		class="cursor-pointer py-6"
 		onclick={toggleExpanded}
+		{icon}
 	>
-		<div class="flex items-center justify-between">
+		<div class="flex items-center justify-between w-full">
 			<div>
-				<Card.Title class="my-2 flex items-center">
-					{#if icon}{@const Icon = icon}
-						<Icon class="text-primary/80 size-6" />
-					{/if}
-					{title}
-				</Card.Title>
+				<Card.Title>{title}</Card.Title>
 				{#if description}
-					<Card.Description class="mt-1">{description}</Card.Description>
+					<Card.Description>{description}</Card.Description>
 				{/if}
 			</div>
-			<Button class="ml-10 h-8 p-3" variant="ghost" aria-label="Expand Card">
+			<Button class="ml-4 h-8 p-2" variant="ghost" aria-label="Expand Card">
 				<ChevronDownIcon class={cn('size-5 transition-transform duration-200', expanded && 'rotate-180 transform')} />
 			</Button>
 		</div>
