@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
+	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 )
 
@@ -51,7 +52,15 @@ func (h *NotificationHandler) GetAllSettings(c *gin.Context) {
 }
 
 func (h *NotificationHandler) GetSettings(c *gin.Context) {
-	provider := c.Param("provider")
+	providerStr := c.Param("provider")
+	provider := models.NotificationProvider(providerStr)
+
+	switch provider {
+	case models.NotificationProviderDiscord, models.NotificationProviderEmail:
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid provider"})
+		return
+	}
 
 	settings, err := h.notificationService.GetSettingsByProvider(c.Request.Context(), provider)
 	if err != nil {
@@ -98,7 +107,15 @@ func (h *NotificationHandler) CreateOrUpdateSettings(c *gin.Context) {
 }
 
 func (h *NotificationHandler) DeleteSettings(c *gin.Context) {
-	provider := c.Param("provider")
+	providerStr := c.Param("provider")
+	provider := models.NotificationProvider(providerStr)
+
+	switch provider {
+	case models.NotificationProviderDiscord, models.NotificationProviderEmail:
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid provider"})
+		return
+	}
 
 	if err := h.notificationService.DeleteSettings(c.Request.Context(), provider); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -109,7 +126,16 @@ func (h *NotificationHandler) DeleteSettings(c *gin.Context) {
 }
 
 func (h *NotificationHandler) TestNotification(c *gin.Context) {
-	provider := c.Param("provider")
+	providerStr := c.Param("provider")
+	provider := models.NotificationProvider(providerStr)
+
+	switch provider {
+	case models.NotificationProviderDiscord, models.NotificationProviderEmail:
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid provider"})
+		return
+	}
+
 	testType := c.DefaultQuery("type", "simple") // "simple" or "image-update"
 
 	if err := h.notificationService.TestNotification(c.Request.Context(), provider, testType); err != nil {

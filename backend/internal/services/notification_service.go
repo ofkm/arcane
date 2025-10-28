@@ -43,7 +43,7 @@ func (s *NotificationService) GetAllSettings(ctx context.Context) ([]models.Noti
 	return settings, nil
 }
 
-func (s *NotificationService) GetSettingsByProvider(ctx context.Context, provider string) (*models.NotificationSettings, error) {
+func (s *NotificationService) GetSettingsByProvider(ctx context.Context, provider models.NotificationProvider) (*models.NotificationSettings, error) {
 	var setting models.NotificationSettings
 	if err := s.db.WithContext(ctx).Where("provider = ?", provider).First(&setting).Error; err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (s *NotificationService) GetSettingsByProvider(ctx context.Context, provide
 	return &setting, nil
 }
 
-func (s *NotificationService) CreateOrUpdateSettings(ctx context.Context, provider string, enabled bool, config models.JSON) (*models.NotificationSettings, error) {
+func (s *NotificationService) CreateOrUpdateSettings(ctx context.Context, provider models.NotificationProvider, enabled bool, config models.JSON) (*models.NotificationSettings, error) {
 	var setting models.NotificationSettings
 
 	err := s.db.WithContext(ctx).Where("provider = ?", provider).First(&setting).Error
@@ -75,7 +75,7 @@ func (s *NotificationService) CreateOrUpdateSettings(ctx context.Context, provid
 	return &setting, nil
 }
 
-func (s *NotificationService) DeleteSettings(ctx context.Context, provider string) error {
+func (s *NotificationService) DeleteSettings(ctx context.Context, provider models.NotificationProvider) error {
 	if err := s.db.WithContext(ctx).Where("provider = ?", provider).Delete(&models.NotificationSettings{}).Error; err != nil {
 		return fmt.Errorf("failed to delete notification settings: %w", err)
 	}
@@ -101,9 +101,9 @@ func (s *NotificationService) SendImageUpdateNotification(ctx context.Context, i
 
 		var sendErr error
 		switch setting.Provider {
-		case string(models.NotificationProviderDiscord):
+		case models.NotificationProviderDiscord:
 			sendErr = s.sendDiscordNotification(ctx, imageRef, updateInfo, setting.Config)
-		case string(models.NotificationProviderEmail):
+		case models.NotificationProviderEmail:
 			sendErr = s.sendEmailNotification(ctx, imageRef, updateInfo, setting.Config)
 		default:
 			slog.WarnContext(ctx, "Unknown notification provider", "provider", setting.Provider)
@@ -179,9 +179,9 @@ func (s *NotificationService) SendContainerUpdateNotification(ctx context.Contex
 
 		var sendErr error
 		switch setting.Provider {
-		case string(models.NotificationProviderDiscord):
+		case models.NotificationProviderDiscord:
 			sendErr = s.sendDiscordContainerUpdateNotification(ctx, containerName, imageRef, oldDigest, newDigest, setting.Config)
-		case string(models.NotificationProviderEmail):
+		case models.NotificationProviderEmail:
 			sendErr = s.sendEmailContainerUpdateNotification(ctx, containerName, imageRef, oldDigest, newDigest, setting.Config)
 		default:
 			slog.WarnContext(ctx, "Unknown notification provider", "provider", setting.Provider)
@@ -621,7 +621,7 @@ func (s *NotificationService) renderContainerUpdateEmailTemplate(containerName, 
 	return htmlBuf.String(), textBuf.String(), nil
 }
 
-func (s *NotificationService) TestNotification(ctx context.Context, provider string, testType string) error {
+func (s *NotificationService) TestNotification(ctx context.Context, provider models.NotificationProvider, testType string) error {
 	setting, err := s.GetSettingsByProvider(ctx, provider)
 	if err != nil {
 		return fmt.Errorf("failed to get settings for provider %s: %w", provider, err)
@@ -637,9 +637,9 @@ func (s *NotificationService) TestNotification(ctx context.Context, provider str
 	}
 
 	switch provider {
-	case string(models.NotificationProviderDiscord):
+	case models.NotificationProviderDiscord:
 		return s.sendDiscordNotification(ctx, "test/image:latest", testUpdate, setting.Config)
-	case string(models.NotificationProviderEmail):
+	case models.NotificationProviderEmail:
 		if testType == "image-update" {
 			return s.sendEmailNotification(ctx, "nginx:latest", testUpdate, setting.Config)
 		}
@@ -741,7 +741,7 @@ func (s *NotificationService) renderTestEmailTemplate() (string, string, error) 
 	return htmlBuf.String(), textBuf.String(), nil
 }
 
-func (s *NotificationService) logNotification(ctx context.Context, provider, imageRef, status string, errMsg *string, metadata models.JSON) {
+func (s *NotificationService) logNotification(ctx context.Context, provider models.NotificationProvider, imageRef, status string, errMsg *string, metadata models.JSON) {
 	log := &models.NotificationLog{
 		Provider: provider,
 		ImageRef: imageRef,
@@ -753,7 +753,7 @@ func (s *NotificationService) logNotification(ctx context.Context, provider, ima
 
 	if err := s.db.WithContext(ctx).Create(log).Error; err != nil {
 		slog.WarnContext(ctx, "Failed to log notification",
-			slog.String("provider", provider),
+			slog.String("provider", string(provider)),
 			slog.String("error", err.Error()))
 	}
 }
@@ -791,9 +791,9 @@ func (s *NotificationService) SendBatchImageUpdateNotification(ctx context.Conte
 
 		var sendErr error
 		switch setting.Provider {
-		case string(models.NotificationProviderDiscord):
+		case models.NotificationProviderDiscord:
 			sendErr = s.sendBatchDiscordNotification(ctx, updatesWithChanges, setting.Config)
-		case string(models.NotificationProviderEmail):
+		case models.NotificationProviderEmail:
 			sendErr = s.sendBatchEmailNotification(ctx, updatesWithChanges, setting.Config)
 		default:
 			slog.WarnContext(ctx, "Unknown notification provider", "provider", setting.Provider)

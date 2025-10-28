@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -81,10 +82,12 @@ func ConnectSMTP(ctx context.Context, config models.EmailConfig) (*EmailClient, 
 	return &EmailClient{client: client}, nil
 }
 
-// sendHelloCommand sends the HELO/EHLO command to the SMTP server
+// sendHelloCommand sends the HELO/EHLO command to the SMTP server with the system hostname
 func sendHelloCommand(client *smtp.Client) error {
-	// Try to get hostname, use "localhost" as fallback
-	hostname := "localhost"
+	hostname, err := os.Hostname()
+	if err != nil || hostname == "" {
+		hostname = "arcane"
+	}
 	return client.Hello(hostname)
 }
 

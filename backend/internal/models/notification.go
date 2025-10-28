@@ -27,12 +27,12 @@ const (
 )
 
 type NotificationSettings struct {
-	ID        uint      `json:"id" gorm:"primaryKey"`
-	Provider  string    `json:"provider" gorm:"not null;index"`
-	Enabled   bool      `json:"enabled" gorm:"default:false"`
-	Config    JSON      `json:"config" gorm:"type:jsonb"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        uint                 `json:"id" gorm:"primaryKey"`
+	Provider  NotificationProvider `json:"provider" gorm:"not null;index;type:varchar(50)"`
+	Enabled   bool                 `json:"enabled" gorm:"default:false"`
+	Config    JSON                 `json:"config" gorm:"type:jsonb"`
+	CreatedAt time.Time            `json:"createdAt"`
+	UpdatedAt time.Time            `json:"updatedAt"`
 }
 
 func (NotificationSettings) TableName() string {
@@ -40,15 +40,15 @@ func (NotificationSettings) TableName() string {
 }
 
 type NotificationLog struct {
-	ID        uint      `json:"id" gorm:"primaryKey"`
-	Provider  string    `json:"provider" gorm:"not null;index"`
-	ImageRef  string    `json:"imageRef" gorm:"not null"`
-	Status    string    `json:"status" gorm:"not null"`
-	Error     *string   `json:"error,omitempty"`
-	Metadata  JSON      `json:"metadata" gorm:"type:jsonb"`
-	SentAt    time.Time `json:"sentAt" gorm:"not null;index"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        uint                 `json:"id" gorm:"primaryKey"`
+	Provider  NotificationProvider `json:"provider" gorm:"not null;index;type:varchar(50)"`
+	ImageRef  string               `json:"imageRef" gorm:"not null"`
+	Status    string               `json:"status" gorm:"not null"`
+	Error     *string              `json:"error,omitempty"`
+	Metadata  JSON                 `json:"metadata" gorm:"type:jsonb"`
+	SentAt    time.Time            `json:"sentAt" gorm:"not null;index"`
+	CreatedAt time.Time            `json:"createdAt"`
+	UpdatedAt time.Time            `json:"updatedAt"`
 }
 
 func (NotificationLog) TableName() string {
