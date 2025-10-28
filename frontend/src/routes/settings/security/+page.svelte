@@ -31,6 +31,7 @@
 		initialValues: {
 			authLocalEnabled: data.settings!.authLocalEnabled,
 			authOidcEnabled: data.settings!.authOidcEnabled,
+			authOidcConfig: data.settings!.authOidcConfig,
 			authSessionTimeout: data.settings!.authSessionTimeout,
 			authPasswordPolicy: data.settings!.authPasswordPolicy
 		},
@@ -43,6 +44,7 @@
 		settings.syncFromStore({
 			authLocalEnabled: $settingsStore.authLocalEnabled,
 			authOidcEnabled: $settingsStore.authOidcEnabled,
+			authOidcConfig: $settingsStore.authOidcConfig,
 			authSessionTimeout: $settingsStore.authSessionTimeout,
 			authPasswordPolicy: $settingsStore.authPasswordPolicy
 		});
@@ -75,13 +77,17 @@
 	}
 
 	function openOidcDialog() {
-		if (data.settings!.authOidcConfig) {
-			const cfg = JSON.parse(data.settings!.authOidcConfig);
-			oidcConfigForm.clientId = cfg.clientId || '';
-			oidcConfigForm.issuerUrl = cfg.issuerUrl || '';
-			oidcConfigForm.scopes = cfg.scopes || 'openid email profile';
-			oidcConfigForm.adminClaim = cfg.adminClaim || '';
-			oidcConfigForm.adminValue = cfg.adminValue || '';
+		if (settings.values.authOidcConfig) {
+			try {
+				const cfg = JSON.parse(settings.values.authOidcConfig);
+				oidcConfigForm.clientId = cfg.clientId || '';
+				oidcConfigForm.issuerUrl = cfg.issuerUrl || '';
+				oidcConfigForm.scopes = cfg.scopes || 'openid email profile';
+				oidcConfigForm.adminClaim = cfg.adminClaim || '';
+				oidcConfigForm.adminValue = cfg.adminValue || '';
+			} catch (error) {
+				console.error('Failed to parse OIDC config:', error);
+			}
 		}
 		oidcConfigForm.clientSecret = '';
 		showOidcConfigDialog = true;
@@ -98,10 +104,10 @@
 				adminValue: oidcConfigForm.adminValue || ''
 			});
 
-			// Update the settings with OIDC config
+			settings.setValue('authOidcConfig', authOidcConfig);
 			const success = await settings.save();
 			if (success) {
-				toast.success(m.security_settings_saved());
+				toast.success(m.security_oidc_saved());
 				showOidcConfigDialog = false;
 			} else {
 				toast.error('Failed to save OIDC configuration. Please try again.');

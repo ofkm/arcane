@@ -124,9 +124,7 @@ export function useSettings<T extends Partial<Settings>>(options: UseSettingsOpt
 			// Update original to match current (makes hasChanges false)
 			original = { ...values };
 
-			// Update the store
-			const currentSettings = get(settingsStore);
-			settingsStore.set({ ...currentSettings, ...changes });
+			// Reload the store from server (this will trigger syncFromStore after isSaving becomes false)
 			await settingsStore.reload();
 
 			// Call success callback
