@@ -268,10 +268,24 @@ body:not(.glass-enabled) {
 		backdrop-filter: none !important;
 	}
 
-	/* Neutralize any Tailwind backdrop-blur utilities when glass is disabled */
 	[class*='backdrop-blur'] {
 		-webkit-backdrop-filter: none !important;
 		backdrop-filter: none !important;
+	}
+
+	[data-slot='dialog-content'],
+	[data-slot='sheet-content'],
+	[data-slot='popover-content'] {
+		background: var(--card) !important;
+	}
+
+	[class*='bg-background/'],
+	[class*='bg-card/'],
+	[class*='bg-popover/'],
+	[class*='bg-muted/'],
+	[class*='bg-secondary/'],
+	[class*='bg-accent/'] {
+		background-color: var(--card) !important;
 	}
 
 	.glass-medium {
