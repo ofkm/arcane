@@ -4,7 +4,8 @@
   "packageManager": "pnpm@10.19.0",
   "workspaces": [
     "frontend",
-    "tests"
+    "tests",
+    "email-templates"
   ],
   "scripts": {
     "preinstall": "npx only-allow pnpm",

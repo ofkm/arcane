@@ -159,7 +159,7 @@
 
 {#if isSubPage}
 	<div
-		class="backdrop-blur-md bg-background/95 border fixed top-4 z-[5] rounded-lg shadow-lg transition-all duration-200"
+		class="bg-background/95 fixed top-4 z-5 rounded-lg border shadow-lg backdrop-blur-md transition-all duration-200"
 		style="left: {leftPosition()}; right: 1rem;"
 	>
 		<div class="px-4 py-3">

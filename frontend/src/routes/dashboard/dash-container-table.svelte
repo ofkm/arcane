@@ -1,8 +1,8 @@
 <script lang="ts">
 	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { UniversalMobileCard } from '$lib/components/arcane-table/index.js';
 	import BoxIcon from '@lucide/svelte/icons/box';
@@ -83,25 +83,26 @@
 			}
 		]}
 		compact
-		class="mx-2"
 		onclick={(item: ContainerSummaryDto) => goto(`/containers/${item.id}`)}
 	/>
 {/snippet}
 
-<Card.Root class="pb-2">
-	<Card.Header class="flex items-center justify-between p-4">
-		<div>
-			<Card.Title>
-				{m.containers_title()}
-			</Card.Title>
-			<Card.Description>{m.containers_recent()}</Card.Description>
+<Card.Root class="flex h-full min-h-0 flex-col">
+	<Card.Header icon={BoxIcon} class="shrink-0">
+		<div class="flex flex-1 items-center justify-between">
+			<div class="flex flex-col space-y-1.5">
+				<Card.Title>
+					<h2>{m.containers_title()}</h2>
+				</Card.Title>
+				<Card.Description>{m.containers_recent()}</Card.Description>
+			</div>
+			<Button variant="ghost" size="sm" href="/containers" disabled={isLoading}>
+				{m.common_view_all()}
+				<ArrowRightIcon class="ml-2 size-4" />
+			</Button>
 		</div>
-		<Button variant="ghost" size="sm" href="/containers" disabled={isLoading}>
-			{m.common_view_all()}
-			<ArrowRightIcon class="ml-2 size-4" />
-		</Button>
 	</Card.Header>
-	<Card.Content class="p-0 pt-2">
+	<Card.Content class="relative flex min-h-0 flex-1 flex-col px-0">
 		<ArcaneTable
 			items={containers}
 			bind:requestOptions
@@ -110,11 +111,14 @@
 			withoutSearch={true}
 			withoutPagination={true}
 			selectionDisabled={true}
+			unstyled={true}
 			{columns}
 			mobileCard={DashContainerMobileCard}
 		/>
 		{#if containers.data.length > 5}
-			<div class="bg-muted/40 text-muted-foreground border-t px-6 py-3 text-xs">
+			<div
+				class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 rounded-b-xl px-6 py-3 text-xs backdrop-blur-sm"
+			>
 				{m.containers_showing_of_total({ shown: 5, total: containers.pagination.totalItems })}
 			</div>
 		{/if}
