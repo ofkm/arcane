@@ -38,3 +38,14 @@ type UpdateSettingsDto struct {
 	SidebarHoverExpansion      *string `json:"sidebarHoverExpansion,omitempty"`
 	GlassEffectEnabled         *string `json:"glassEffectEnabled,omitempty"`
 }
+
+type TimezoneOption struct {
+	Value  string `json:"value"`
+	Label  string `json:"label"`
+	Offset string `json:"offset"`
+}
+
+type TimezoneListResponse struct {
+	Timezones []TimezoneOption `json:"timezones"`
+	Common    []string         `json:"common"`
+}

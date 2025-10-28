@@ -29,3 +29,10 @@ export interface AutoUpdateResourceResult {
 	error?: string;
 	details?: Record<string, any>;
 }
+
+export interface UpdateEligibilityStatus {
+	canUpdateNow: boolean;
+	nextWindowStart?: number; // Unix timestamp in seconds
+	reason?: string;
+	scheduleEnabled: boolean;
+}

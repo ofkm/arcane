@@ -1,87 +1,48 @@
-import { Info, DateTime } from 'luxon';
+import { settingsService } from '$lib/services/settings-service';
+import type { TimezoneOption } from '$lib/types/timezone.type';
+import type { UpdateScheduleWindow } from '$lib/types/settings.type';
+import { m } from '$lib/paraglide/messages';
 
-export interface TimezoneOption {
-	value: string;
-	label: string;
-	offset: string;
-}
+export type { TimezoneOption };
+
+type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+const dayOrder: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 let cachedTimezones: TimezoneOption[] | null = null;
+let commonTimezones: string[] = [];
 
-export function isValidTimezone(timezone: string): boolean {
-	return Info.isValidIANAZone(timezone);
-}
+// ============ Timezone Functions ============
 
-function getTimezoneOffset(tz: string): string {
-	try {
-		const dt = DateTime.now().setZone(tz);
-		if (!dt.isValid) return '';
-
-		const offsetMinutes = dt.offset;
-		const hours = Math.floor(Math.abs(offsetMinutes) / 60);
-		const minutes = Math.abs(offsetMinutes) % 60;
-		const sign = offsetMinutes >= 0 ? '+' : '-';
-
-		return `UTC${sign}${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-	} catch {
-		return '';
-	}
-}
-
-export function getAllTimezones(): TimezoneOption[] {
+export async function getAllTimezones(): Promise<TimezoneOption[]> {
 	if (cachedTimezones) {
 		return cachedTimezones;
 	}
 
 	try {
-		if (typeof Intl !== 'undefined' && 'supportedValuesOf' in Intl) {
-			const zones = (Intl as any).supportedValuesOf('timeZone') as string[];
-			cachedTimezones = zones
-				.filter((tz) => Info.isValidIANAZone(tz))
-				.sort()
-				.map((tz) => ({
-					value: tz,
-					label: tz,
-					offset: getTimezoneOffset(tz)
-				}));
-			return cachedTimezones;
-		}
+		const response = await settingsService.getTimezones();
+		cachedTimezones = response.timezones;
+		commonTimezones = response.common;
+		return response.timezones;
 	} catch (error) {
-		console.warn('Intl.supportedValuesOf not available, using fallback list');
+		console.error('Failed to fetch timezones from backend:', error);
+		return [];
 	}
-
-	return [];
 }
 
-export function getCommonTimezones(): TimezoneOption[] {
-	const allZones = getAllTimezones();
+export async function getCommonTimezones(): Promise<TimezoneOption[]> {
+	const allZones = await getAllTimezones();
 
-	const majorCities = [
-		'UTC',
-		'America/New_York',
-		'America/Chicago',
-		'America/Denver',
-		'America/Los_Angeles',
-		'Europe/London',
-		'Europe/Paris',
-		'Asia/Tokyo',
-		'Asia/Shanghai',
-		'Australia/Sydney'
-	];
-
-	const preferred = new Set(majorCities);
-
-	const common = allZones.filter((tz) => preferred.has(tz.value));
-
-	if (common.length > 0) {
-		return common;
+	if (commonTimezones.length > 0) {
+		const preferred = new Set(commonTimezones);
+		return allZones.filter((tz) => preferred.has(tz.value));
 	}
 
 	return allZones.slice(0, 20);
 }
 
-export function searchTimezones(query: string): TimezoneOption[] {
-	const allTimezones = getAllTimezones();
+export async function searchTimezones(query: string): Promise<TimezoneOption[]> {
+	const allTimezones = await getAllTimezones();
 
 	if (!query || query.trim() === '') {
 		return getCommonTimezones();
@@ -91,4 +52,53 @@ export function searchTimezones(query: string): TimezoneOption[] {
 	const filtered = allTimezones.filter((tz) => tz.value.toLowerCase().includes(lowerQuery));
 
 	return filtered.slice(0, 100);
+}
+
+// ============ Schedule Formatting Functions ============
+
+/**
+ * Formats an array of days into a compact string representation for display
+ * This is pure UI formatting - no business logic
+ */
+export function formatDays(days: DayOfWeek[]): string {
+	if (days.length === 0) return '';
+	if (days.length === 7) return m.all_days();
+
+	// Sort days by their order in the week
+	const sortedDays = [...days].sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
+
+	// Check if days form a continuous range
+	const indices = sortedDays.map((day) => dayOrder.indexOf(day));
+	const isConsecutive = indices.every((idx, i) => i === 0 || idx === indices[i - 1] + 1);
+
+	// Get translated day abbreviations
+	const dayAbbreviations: Record<DayOfWeek, string> = {
+		monday: m.day_monday_short(),
+		tuesday: m.day_tuesday_short(),
+		wednesday: m.day_wednesday_short(),
+		thursday: m.day_thursday_short(),
+		friday: m.day_friday_short(),
+		saturday: m.day_saturday_short(),
+		sunday: m.day_sunday_short()
+	};
+
+	if (isConsecutive && sortedDays.length > 2) {
+		// Format as range: Mon-Fri
+		return `${dayAbbreviations[sortedDays[0]]}-${dayAbbreviations[sortedDays[sortedDays.length - 1]]}`;
+	}
+
+	// Format as comma-separated list: Mon, Wed, Fri
+	return sortedDays.map((day) => dayAbbreviations[day]).join(', ');
+}
+
+/**
+ * Formats a schedule window into a compact summary string for display
+ * Example: "Mon-Fri 02:00-06:00 UTC"
+ */
+export function formatScheduleWindow(window: UpdateScheduleWindow): string {
+	const daysStr = formatDays(window.days);
+	const timeStr = `${window.startTime}-${window.endTime}`;
+	const timezoneStr = window.timezone;
+
+	return `${daysStr} ${timeStr} ${timezoneStr}`;
 }

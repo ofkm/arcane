@@ -228,6 +228,14 @@ func (s *ProjectService) GetProjectDetails(ctx context.Context, projectID string
 		resp.Services = raw
 	}
 
+	// Add formatted schedule windows
+	if proj.UpdateScheduleWindows != nil && *proj.UpdateScheduleWindows != "" {
+		windows, err := s.settingsService.ParseUpdateScheduleWindows(*proj.UpdateScheduleWindows)
+		if err == nil {
+			resp.UpdateScheduleWindowsFormatted = s.settingsService.FormatScheduleWindows(ctx, windows)
+		}
+	}
+
 	return resp, nil
 }
 

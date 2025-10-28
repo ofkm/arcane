@@ -1,5 +1,6 @@
 import BaseAPIService from './api-service';
 import type { Settings, OidcStatusInfo } from '$lib/types/settings.type';
+import type { TimezoneListResponse } from '$lib/types/timezone.type';
 import { environmentStore } from '$lib/stores/environment.store.svelte';
 import { isLocalSetting, extractLocalSettings, extractEnvironmentSettings } from '$lib/utils/settings.util';
 
@@ -122,6 +123,12 @@ export default class SettingsService extends BaseAPIService {
 		if (value === 'false') return false;
 		if (/^-?\d+(\.\d+)?$/.test(value)) return Number(value);
 		return value;
+	}
+
+	async getTimezones(): Promise<TimezoneListResponse> {
+		const envId = await environmentStore.getCurrentEnvironmentId();
+		const res = await this.handleResponse<TimezoneListResponse>(this.api.get(`/environments/${envId}/settings/timezones`));
+		return res;
 	}
 }
 

@@ -56,3 +56,19 @@ type AutoUpdateResourceResult struct {
 	Error           string                 `json:"error,omitempty"`
 	Details         map[string]interface{} `json:"details,omitempty"`
 }
+
+type UpdateEligibilityStatus struct {
+	CanUpdateNow    bool   `json:"canUpdateNow"`
+	NextWindowStart *int64 `json:"nextWindowStart,omitempty"` // Unix timestamp in seconds
+	Reason          string `json:"reason,omitempty"`
+	ScheduleEnabled bool   `json:"scheduleEnabled"`
+}
+
+type FormattedScheduleWindow struct {
+	Days        []string `json:"days"`
+	StartTime   string   `json:"startTime"`
+	EndTime     string   `json:"endTime"`
+	Timezone    string   `json:"timezone"`
+	DisplayText string   `json:"displayText"` // e.g., "Mon-Fri 02:00-06:00 UTC"
+	DaysText    string   `json:"daysText"`    // e.g., "Mon-Fri" or "Mon, Wed, Fri"
+}

@@ -23,6 +23,7 @@ func NewUpdaterHandler(group *gin.RouterGroup, updaterService *services.UpdaterS
 		apiGroup.POST("/run", handler.Run)
 		apiGroup.GET("/history", handler.History)
 		apiGroup.GET("/status", handler.Status)
+		apiGroup.GET("/eligibility", handler.GetUpdateEligibility)
 	}
 }
 
@@ -58,4 +59,16 @@ func (h *UpdaterHandler) History(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": history})
+}
+
+func (h *UpdaterHandler) GetUpdateEligibility(c *gin.Context) {
+	projectID := c.Query("projectId")
+
+	status, err := h.updaterService.GetUpdateEligibilityStatus(c.Request.Context(), projectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": status})
 }

@@ -1,4 +1,4 @@
-import type { UpdateScheduleWindow } from "./settings.type";
+import type { UpdateScheduleWindow, FormattedScheduleWindow } from './settings.type';
 
 export interface NetworkSettings {
 	Networks: Record<
@@ -41,6 +41,7 @@ export interface Project {
 	autoUpdate?: boolean | null;
 	updateScheduleEnabled?: boolean | null;
 	updateScheduleWindows?: UpdateScheduleWindow[] | null;
+	updateScheduleWindowsFormatted?: FormattedScheduleWindow[];
 }
 
 export interface ProjectStatusCounts {

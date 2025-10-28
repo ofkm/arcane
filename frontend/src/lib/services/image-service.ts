@@ -2,7 +2,7 @@ import BaseAPIService from './api-service';
 import { environmentStore } from '$lib/stores/environment.store.svelte';
 import type { ImageSummaryDto, ImageUsageCounts, ImageUpdateInfoDto } from '$lib/types/image.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
-import type { AutoUpdateCheck, AutoUpdateResult } from '$lib/types/auto-update.type';
+import type { AutoUpdateCheck, AutoUpdateResult, UpdateEligibilityStatus } from '$lib/types/auto-update.type';
 import { transformPaginationParams } from '$lib/utils/params.util';
 
 export class ImageService extends BaseAPIService {
@@ -53,6 +53,12 @@ export class ImageService extends BaseAPIService {
 	async runAutoUpdate(options?: AutoUpdateCheck): Promise<AutoUpdateResult> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.post(`/environments/${envId}/updater/run`, options));
+	}
+
+	async getUpdateEligibility(projectId?: string): Promise<UpdateEligibilityStatus> {
+		const envId = await environmentStore.getCurrentEnvironmentId();
+		const params = projectId ? { projectId } : {};
+		return this.handleResponse<UpdateEligibilityStatus>(this.api.get(`/environments/${envId}/updater/eligibility`, { params }));
 	}
 }
 

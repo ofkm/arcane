@@ -75,3 +75,8 @@ export interface UpdateScheduleWindow {
 	endTime: string; // e.g., "06:00"
 	timezone: string; // e.g., "UTC"
 }
+
+export interface FormattedScheduleWindow extends UpdateScheduleWindow {
+	displayText: string; // e.g., "Mon-Fri 02:00-06:00 UTC"
+	daysText: string; // e.g., "Mon-Fri" or "Mon, Wed, Fri"
+}

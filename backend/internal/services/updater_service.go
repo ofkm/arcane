@@ -664,6 +664,54 @@ func (s *UpdaterService) GetNextUpdateWindow(ctx context.Context, project *model
 	return nextWindow, nil
 }
 
+func (s *UpdaterService) GetUpdateEligibilityStatus(ctx context.Context, projectID string) (*dto.UpdateEligibilityStatus, error) {
+	var project *models.Project
+	
+	// If projectID is provided, fetch the project
+	if projectID != "" {
+		var err error
+		project, err = s.projectService.GetProjectFromDatabaseByID(ctx, projectID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get project: %w", err)
+		}
+	}
+
+	// Check if schedule is enabled
+	scheduleEnabled := s.settingsService.GetBoolSetting(ctx, "updateScheduleEnabled", false)
+	if project != nil && project.UpdateScheduleEnabled != nil {
+		scheduleEnabled = *project.UpdateScheduleEnabled
+	}
+
+	// Get window status
+	withinWindow, err := s.IsWithinUpdateWindow(ctx, project)
+	if err != nil {
+		return nil, err
+	}
+
+	status := &dto.UpdateEligibilityStatus{
+		CanUpdateNow:    withinWindow,
+		ScheduleEnabled: scheduleEnabled,
+	}
+
+	// If not within window, get next window time
+	if !withinWindow && scheduleEnabled {
+		nextWindow, _ := s.GetNextUpdateWindow(ctx, project)
+		if nextWindow != nil {
+			timestamp := nextWindow.Unix()
+			status.NextWindowStart = &timestamp
+			status.Reason = "Not within scheduled update window"
+		} else {
+			status.Reason = "No update windows configured"
+		}
+	} else if !scheduleEnabled {
+		status.Reason = "Schedule not enabled, updates allowed anytime"
+	} else {
+		status.Reason = "Within scheduled update window"
+	}
+
+	return status, nil
+}
+
 // --- internals ---
 
 func (s *UpdaterService) updateContainer(ctx context.Context, cnt container.Summary, inspect container.InspectResponse, newRef string) error {

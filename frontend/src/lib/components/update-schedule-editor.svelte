@@ -7,7 +7,7 @@
 	import EditIcon from '@lucide/svelte/icons/pencil';
 	import type { UpdateScheduleWindow } from '$lib/types/settings.type';
 	import { cn } from '$lib/utils';
-	import { formatScheduleWindow } from '$lib/utils/schedule-formatter';
+	import { formatScheduleWindow } from '$lib/utils/timezone';
 	import UpdateScheduleDialog from '$lib/components/dialogs/update-schedule-dialog.svelte';
 
 	interface Props {

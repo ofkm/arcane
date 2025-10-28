@@ -3,7 +3,7 @@
 	import * as Popover from '$lib/components/ui/popover';
 	import { Button } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';
-	import { isValidTimezone, searchTimezones, type TimezoneOption } from '$lib/utils/timezone';
+	import { getAllTimezones, searchTimezones, type TimezoneOption } from '$lib/utils/timezone';
 	import { m } from '$lib/paraglide/messages';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
@@ -19,8 +19,28 @@
 
 	let open = $state(false);
 	let searchQuery = $state('');
-	let isValid = $derived(isValidTimezone(value));
-	let filteredTimezones = $derived(searchTimezones(searchQuery));
+	let filteredTimezones = $state<TimezoneOption[]>([]);
+	let allTimezones = $state<TimezoneOption[]>([]);
+
+	// Validate against all timezones
+	let isValid = $derived.by(() => {
+		if (!value || allTimezones.length === 0) return true;
+		return allTimezones.some((tz) => tz.value === value);
+	});
+
+	// Load all timezones once on mount
+	$effect(() => {
+		getAllTimezones().then((timezones) => {
+			allTimezones = timezones;
+		});
+	});
+
+	// Filter timezones when searchQuery changes
+	$effect(() => {
+		searchTimezones(searchQuery).then((timezones) => {
+			filteredTimezones = timezones;
+		});
+	});
 
 	function selectTimezone(timezone: TimezoneOption) {
 		value = timezone.value;
@@ -54,7 +74,7 @@
 		<Command.Root shouldFilter={false}>
 			<Command.Input bind:value={searchQuery} placeholder={m.timezone_search_placeholder()} class="h-9" />
 			<Command.Empty class="py-6">
-				{#if searchQuery && isValidTimezone(searchQuery)}
+				{#if searchQuery && filteredTimezones.some((tz) => tz.value === searchQuery)}
 					<button
 						type="button"
 						onclick={() => handleInputChange(searchQuery)}

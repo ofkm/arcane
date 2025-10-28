@@ -28,6 +28,7 @@ func NewSettingsHandler(group *gin.RouterGroup, settingsService *services.Settin
 	apiGroup.GET("/public", handler.GetPublicSettings)
 	apiGroup.GET("", authMiddleware.WithAdminNotRequired().Add(), handler.GetSettings)
 	apiGroup.PUT("", authMiddleware.WithAdminRequired().Add(), handler.UpdateSettings)
+	apiGroup.GET("/timezones", authMiddleware.WithAdminNotRequired().Add(), handler.GetTimezones)
 
 	// Also expose top-level settings search and categories endpoints under /api/settings
 	top := group.Group("/settings")
@@ -158,5 +159,21 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success":  true,
 		"settings": settingDtos,
+	})
+}
+
+func (h *SettingsHandler) GetTimezones(c *gin.Context) {
+	timezones, err := h.settingsService.GetTimezones(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to get timezones",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    timezones,
 	})
 }

@@ -1,29 +1,17 @@
 import type { UpdateScheduleWindow } from '$lib/types/settings.type';
+import { m } from '$lib/paraglide/messages';
 
 type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
 
 const dayOrder: DayOfWeek[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
-const dayAbbreviations: Record<DayOfWeek, string> = {
-	monday: 'Mon',
-	tuesday: 'Tue',
-	wednesday: 'Wed',
-	thursday: 'Thu',
-	friday: 'Fri',
-	saturday: 'Sat',
-	sunday: 'Sun'
-};
-
 /**
- * Formats an array of days into a compact string representation
- * Examples:
- * - ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] => "Mon-Fri"
- * - ['saturday', 'sunday'] => "Sat-Sun"
- * - ['monday', 'wednesday', 'friday'] => "Mon, Wed, Fri"
+ * Formats an array of days into a compact string representation for display
+ * This is pure UI formatting - no business logic
  */
 export function formatDays(days: DayOfWeek[]): string {
 	if (days.length === 0) return '';
-	if (days.length === 7) return 'Every day';
+	if (days.length === 7) return m.all_days();
 
 	// Sort days by their order in the week
 	const sortedDays = [...days].sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
@@ -31,6 +19,17 @@ export function formatDays(days: DayOfWeek[]): string {
 	// Check if days form a continuous range
 	const indices = sortedDays.map((day) => dayOrder.indexOf(day));
 	const isConsecutive = indices.every((idx, i) => i === 0 || idx === indices[i - 1] + 1);
+
+	// Get translated day abbreviations
+	const dayAbbreviations: Record<DayOfWeek, string> = {
+		monday: m.day_monday_short(),
+		tuesday: m.day_tuesday_short(),
+		wednesday: m.day_wednesday_short(),
+		thursday: m.day_thursday_short(),
+		friday: m.day_friday_short(),
+		saturday: m.day_saturday_short(),
+		sunday: m.day_sunday_short()
+	};
 
 	if (isConsecutive && sortedDays.length > 2) {
 		// Format as range: Mon-Fri
@@ -42,7 +41,7 @@ export function formatDays(days: DayOfWeek[]): string {
 }
 
 /**
- * Formats a schedule window into a compact summary string
+ * Formats a schedule window into a compact summary string for display
  * Example: "Mon-Fri 02:00-06:00 UTC"
  */
 export function formatScheduleWindow(window: UpdateScheduleWindow): string {
@@ -52,26 +51,3 @@ export function formatScheduleWindow(window: UpdateScheduleWindow): string {
 
 	return `${daysStr} ${timeStr} ${timezoneStr}`;
 }
-
-/**
- * Gets a short timezone abbreviation for display
- * Falls back to the full timezone name if no abbreviation is available
- */
-export function getTimezoneAbbreviation(timezone: string): string {
-	// Common timezone abbreviations
-	const abbreviations: Record<string, string> = {
-		UTC: 'UTC',
-		'America/New_York': 'EST/EDT',
-		'America/Chicago': 'CST/CDT',
-		'America/Denver': 'MST/MDT',
-		'America/Los_Angeles': 'PST/PDT',
-		'Europe/London': 'GMT/BST',
-		'Europe/Paris': 'CET/CEST',
-		'Asia/Tokyo': 'JST',
-		'Asia/Shanghai': 'CST',
-		'Australia/Sydney': 'AEST/AEDT'
-	};
-
-	return abbreviations[timezone] || timezone;
-}
-
