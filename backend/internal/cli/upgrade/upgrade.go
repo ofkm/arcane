@@ -36,11 +36,9 @@ This command should be run from outside the container (e.g., from the host or an
 
   # Upgrade to a specific image tag
   arcane upgrade --container arcane --image ghcr.io/ofkm/arcane:v1.2.3`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// Use background context to ignore signals during upgrade
-		// This prevents the upgrade from being interrupted when the target container stops
-		return runUpgrade(cmd, args)
-	},
+	// Use background context to ignore signals during upgrade
+	// This prevents the upgrade from being interrupted when the target container stops
+	RunE: runUpgrade,
 }
 
 func init() {
@@ -111,78 +109,13 @@ func findArcaneContainer(ctx context.Context, dockerClient *client.Client) (cont
 		return container.InspectResponse{}, err
 	}
 
-	// Get our own container ID if we're running in Docker
-	selfID := ""
-	if data, err := os.ReadFile("/proc/self/cgroup"); err == nil {
-		content := string(data)
-		// Look for container ID in cgroup (supports both cgroup v1 and v2)
-		for _, line := range strings.Split(content, "\n") {
-			// cgroup v1: 12:pids:/docker/abc123...
-			if strings.Contains(line, "/docker/") {
-				parts := strings.Split(line, "/docker/")
-				if len(parts) > 1 {
-					id := strings.TrimSpace(parts[1])
-					// Remove any trailing path segments
-					if idx := strings.Index(id, "/"); idx != -1 {
-						id = id[:idx]
-					}
-					if len(id) >= 12 {
-						selfID = id[:12]
-						break
-					}
-				}
-			}
-			// cgroup v2: 0::/system.slice/docker-abc123....scope
-			if strings.Contains(line, "docker-") && strings.Contains(line, ".scope") {
-				start := strings.Index(line, "docker-")
-				if start != -1 {
-					start += 7 // len("docker-")
-					end := strings.Index(line[start:], ".scope")
-					if end != -1 {
-						id := line[start : start+end]
-						if len(id) >= 12 {
-							selfID = id[:12]
-							break
-						}
-					}
-				}
-			}
-		}
-	}
-
+	selfID := getSelfContainerID()
 	slog.Info("Searching for Arcane container", "selfID", selfID, "totalContainers", len(containers))
 
-	// Fallback: if we couldn't get our own ID, filter by creation time
-	// Skip containers created in the last 30 seconds (likely the upgrader)
 	now := time.Now()
 
 	for _, c := range containers {
-		// Skip ourselves (the upgrader container) by ID
-		if selfID != "" && strings.HasPrefix(c.ID, selfID) {
-			slog.Info("Skipping self by ID", "id", c.ID[:12], "names", c.Names)
-			continue
-		}
-
-		// Skip very recently created containers (likely the upgrader)
-		if c.Created > 0 {
-			createdTime := time.Unix(c.Created, 0)
-			age := now.Sub(createdTime)
-			if age < 30*time.Second {
-				slog.Info("Skipping recently created container", "id", c.ID[:12], "age", age, "names", c.Names)
-				continue
-			}
-		}
-
-		// Skip containers with "upgrader" in the name
-		skip := false
-		for _, name := range c.Names {
-			if strings.Contains(strings.ToLower(name), "upgrader") {
-				slog.Info("Skipping upgrader container by name", "name", name)
-				skip = true
-				break
-			}
-		}
-		if skip {
+		if shouldSkipContainer(c, selfID, now) {
 			continue
 		}
 
@@ -195,66 +128,190 @@ func findArcaneContainer(ctx context.Context, dockerClient *client.Client) (cont
 	return container.InspectResponse{}, fmt.Errorf("no running Arcane container found")
 }
 
-func determineImageName(ctx context.Context, dockerClient *client.Client, cont container.InspectResponse) string {
-	imageName := ""
-	if cont.Config != nil {
-		imageName = strings.TrimSpace(cont.Config.Image)
+// getSelfContainerID attempts to detect the container ID if running in Docker
+func getSelfContainerID() string {
+	data, err := os.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		return ""
 	}
 
-	// Strip digest
-	if idx := strings.Index(imageName, "@"); idx != -1 {
-		imageName = imageName[:idx]
-	}
-
-	// Check if it has a tag
-	hasExplicitTag := func(ref string) bool {
-		if ref == "" {
-			return false
+	content := string(data)
+	for _, line := range strings.Split(content, "\n") {
+		// cgroup v1: 12:pids:/docker/abc123...
+		if id := extractCgroupV1ID(line); id != "" {
+			return id
 		}
-		slash := strings.LastIndex(ref, "/")
-		colon := strings.LastIndex(ref, ":")
-		return colon > slash
+		// cgroup v2: 0::/system.slice/docker-abc123....scope
+		if id := extractCgroupV2ID(line); id != "" {
+			return id
+		}
 	}
+
+	return ""
+}
+
+// extractCgroupV1ID extracts container ID from cgroup v1 format
+func extractCgroupV1ID(line string) string {
+	if !strings.Contains(line, "/docker/") {
+		return ""
+	}
+
+	parts := strings.Split(line, "/docker/")
+	if len(parts) <= 1 {
+		return ""
+	}
+
+	id := strings.TrimSpace(parts[1])
+	if idx := strings.Index(id, "/"); idx != -1 {
+		id = id[:idx]
+	}
+
+	if len(id) >= 12 {
+		return id[:12]
+	}
+
+	return ""
+}
+
+// extractCgroupV2ID extracts container ID from cgroup v2 format
+func extractCgroupV2ID(line string) string {
+	if !strings.Contains(line, "docker-") || !strings.Contains(line, ".scope") {
+		return ""
+	}
+
+	start := strings.Index(line, "docker-")
+	if start == -1 {
+		return ""
+	}
+
+	start += 7 // len("docker-")
+	end := strings.Index(line[start:], ".scope")
+	if end == -1 {
+		return ""
+	}
+
+	id := line[start : start+end]
+	if len(id) >= 12 {
+		return id[:12]
+	}
+
+	return ""
+}
+
+// shouldSkipContainer determines if a container should be skipped during search
+func shouldSkipContainer(c container.Summary, selfID string, now time.Time) bool {
+	// Skip ourselves (the upgrader container) by ID
+	if selfID != "" && strings.HasPrefix(c.ID, selfID) {
+		slog.Info("Skipping self by ID", "id", c.ID[:12], "names", c.Names)
+		return true
+	}
+
+	// Skip very recently created containers (likely the upgrader)
+	if c.Created > 0 {
+		createdTime := time.Unix(c.Created, 0)
+		age := now.Sub(createdTime)
+		if age < 30*time.Second {
+			slog.Info("Skipping recently created container", "id", c.ID[:12], "age", age, "names", c.Names)
+			return true
+		}
+	}
+
+	// Skip containers with "upgrader" in the name
+	for _, name := range c.Names {
+		if strings.Contains(strings.ToLower(name), "upgrader") {
+			slog.Info("Skipping upgrader container by name", "name", name)
+			return true
+		}
+	}
+
+	return false
+}
+
+func determineImageName(ctx context.Context, dockerClient *client.Client, cont container.InspectResponse) string {
+	imageName := extractImageNameFromConfig(cont)
+	imageName = stripDigest(imageName)
 
 	// If no explicit tag, try to infer from image RepoTags
 	if !hasExplicitTag(imageName) {
-		if ii, err := dockerClient.ImageInspect(ctx, cont.Image); err == nil {
-			var arcaneNonLatest string
-			var arcaneAny string
-			for _, t := range ii.RepoTags {
-				if t == "" || t == "<none>:<none>" {
-					continue
-				}
-				if idx := strings.Index(t, "@"); idx != -1 {
-					t = t[:idx]
-				}
-				if strings.Contains(t, "arcane") {
-					if arcaneAny == "" {
-						arcaneAny = t
-					}
-					if !strings.HasSuffix(t, ":latest") && arcaneNonLatest == "" {
-						arcaneNonLatest = t
-					}
-				}
-			}
-			if arcaneNonLatest != "" {
-				imageName = arcaneNonLatest
-			} else if arcaneAny != "" {
-				imageName = arcaneAny
-			}
+		if inferredName := inferImageNameFromDocker(ctx, dockerClient, cont.Image); inferredName != "" {
+			imageName = inferredName
 		}
 	}
 
 	// Default to :latest if still no tag
 	if !hasExplicitTag(imageName) {
-		if imageName == "" {
-			imageName = "ghcr.io/ofkm/arcane:latest"
-		} else {
-			imageName += ":latest"
-		}
+		imageName = ensureDefaultTag(imageName)
 	}
 
 	return imageName
+}
+
+// extractImageNameFromConfig gets the image name from container config
+func extractImageNameFromConfig(cont container.InspectResponse) string {
+	if cont.Config == nil {
+		return ""
+	}
+	return strings.TrimSpace(cont.Config.Image)
+}
+
+// stripDigest removes digest from image reference
+func stripDigest(imageName string) string {
+	if idx := strings.Index(imageName, "@"); idx != -1 {
+		return imageName[:idx]
+	}
+	return imageName
+}
+
+// hasExplicitTag checks if image reference has a tag
+func hasExplicitTag(ref string) bool {
+	if ref == "" {
+		return false
+	}
+	slash := strings.LastIndex(ref, "/")
+	colon := strings.LastIndex(ref, ":")
+	return colon > slash
+}
+
+// inferImageNameFromDocker attempts to find the best tag from Docker image inspect
+func inferImageNameFromDocker(ctx context.Context, dockerClient *client.Client, imageID string) string {
+	ii, err := dockerClient.ImageInspect(ctx, imageID)
+	if err != nil {
+		return ""
+	}
+
+	var arcaneNonLatest string
+	var arcaneAny string
+
+	for _, t := range ii.RepoTags {
+		if t == "" || t == "<none>:<none>" {
+			continue
+		}
+
+		t = stripDigest(t)
+
+		if strings.Contains(t, "arcane") {
+			if arcaneAny == "" {
+				arcaneAny = t
+			}
+			if !strings.HasSuffix(t, ":latest") && arcaneNonLatest == "" {
+				arcaneNonLatest = t
+			}
+		}
+	}
+
+	// Prefer non-latest tags
+	if arcaneNonLatest != "" {
+		return arcaneNonLatest
+	}
+	return arcaneAny
+}
+
+// ensureDefaultTag adds :latest tag if no tag is present
+func ensureDefaultTag(imageName string) string {
+	if imageName == "" {
+		return "ghcr.io/ofkm/arcane:latest"
+	}
+	return imageName + ":latest"
 }
 
 func pullImage(ctx context.Context, dockerClient *client.Client, imageName string) error {
