@@ -3,6 +3,7 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/config"
@@ -20,6 +21,7 @@ type EnvironmentHandler struct {
 	environmentService *services.EnvironmentService
 	settingsService    *services.SettingsService
 	cfg                *config.Config
+	httpClient         *http.Client
 }
 
 func NewEnvironmentHandler(
@@ -33,6 +35,9 @@ func NewEnvironmentHandler(
 		environmentService: environmentService,
 		settingsService:    settingsService,
 		cfg:                cfg,
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
 	}
 
 	apiGroup := group.Group("/environments")

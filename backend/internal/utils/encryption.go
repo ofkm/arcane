@@ -51,19 +51,26 @@ func InitEncryption(cfg *config.Config) {
 
 func parseExplicitKey(in string) ([]byte, error) {
 	clean := strings.TrimSpace(in)
-	if len(clean) == 32 {
-		return []byte(clean), nil
+	
+	// Try hex decoding first (most common: openssl rand -hex 32 produces 64 hex chars)
+	if b, err := hex.DecodeString(clean); err == nil && len(b) >= 32 {
+		return b[:32], nil
 	}
-	if b, err := base64.StdEncoding.DecodeString(clean); err == nil && len(b) == 32 {
-		return b, nil
+	
+	// Try base64 decoding (standard and raw)
+	if b, err := base64.StdEncoding.DecodeString(clean); err == nil && len(b) >= 32 {
+		return b[:32], nil
 	}
-	if b, err := base64.RawStdEncoding.DecodeString(clean); err == nil && len(b) == 32 {
-		return b, nil
+	if b, err := base64.RawStdEncoding.DecodeString(clean); err == nil && len(b) >= 32 {
+		return b[:32], nil
 	}
-	if b, err := hex.DecodeString(clean); err == nil && len(b) == 32 {
-		return b, nil
+	
+	// Finally, try raw bytes (at least 32 ASCII characters)
+	if len(clean) >= 32 {
+		return []byte(clean[:32]), nil
 	}
-	return nil, fmt.Errorf("ENCRYPTION_KEY must be 32 bytes (raw/base64/hex). Provided=%d chars", len(clean))
+	
+	return nil, fmt.Errorf("ENCRYPTION_KEY must be at least 32 bytes (raw/base64/hex). Provided=%d chars", len(clean))
 }
 
 func loadOrCreateAgentKey() ([]byte, error) {
