@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 	"time"
@@ -130,8 +129,7 @@ func (ec *EmailClient) SendMessage(fromAddress string, toAddresses []string, mes
 	}
 
 	// Write the email content
-	_, err = io.Copy(w, strings.NewReader(message))
-	if err != nil {
+	if _, err := w.Write([]byte(message)); err != nil {
 		return fmt.Errorf("failed to write email data: %w", err)
 	}
 
@@ -159,7 +157,7 @@ func SanitizeForEmail(s string) string {
 	s = strings.ReplaceAll(s, "\n", "")
 
 	// Allow only: letters, numbers, dot, slash, dash, colon, at, underscore
-	safe := make([]rune, 0, len(s))
+	safe := make([]rune, 0)
 	for _, c := range s {
 		if (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
 			(c >= '0' && c <= '9') ||
