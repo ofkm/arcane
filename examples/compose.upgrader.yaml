@@ -1,0 +1,40 @@
+services:
+  arcane:
+    image: ghcr.io/ofkm/arcane:latest
+    container_name: arcane
+    ports:
+      - "3552:3552"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - arcane-data:/app/data
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxx
+      - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxx
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:3552/api/health >/dev/null || exit 1",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  # Upgrader container - runs the upgrade command and exits
+  # Usage: docker compose run --rm upgrader
+  upgrader:
+    image: ghcr.io/ofkm/arcane:latest
+    container_name: arcane-upgrader
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    entrypoint: ["/app/arcane"]
+    command: ["upgrade", "--auto"]
+    profiles:
+      - tools # Only runs when explicitly specified
+
+volumes:
+  arcane-data:

@@ -9,6 +9,7 @@ import (
 
 	"github.com/ofkm/arcane-backend/internal/bootstrap"
 	"github.com/ofkm/arcane-backend/internal/cli/generate"
+	"github.com/ofkm/arcane-backend/internal/cli/upgrade"
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/utils/signals"
 )
@@ -38,6 +39,7 @@ func Execute() {
 
 func init() {
 	rootCmd.AddCommand(generate.GenerateCmd)
+	rootCmd.AddCommand(upgrade.UpgradeCmd)
 }
 
 func getVersion() string {

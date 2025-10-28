@@ -67,7 +67,92 @@ func (s *SystemUpgradeService) CanUpgrade(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-// UpgradeToLatest performs the self-upgrade
+// TriggerUpgradeViaCLI spawns the upgrade CLI command in a separate container
+// This avoids self-termination issues by running the upgrade from outside
+func (s *SystemUpgradeService) TriggerUpgradeViaCLI(ctx context.Context, user models.User) error {
+	if !s.upgrading.CompareAndSwap(false, true) {
+		return ErrUpgradeInProgress
+	}
+	defer s.upgrading.Store(false)
+
+	// Get current container name
+	containerId, err := s.getCurrentContainerID()
+	if err != nil {
+		return fmt.Errorf("get current container: %w", err)
+	}
+
+	currentContainer, err := s.findArcaneContainer(ctx, containerId)
+	if err != nil {
+		return fmt.Errorf("inspect container: %w", err)
+	}
+
+	containerName := strings.TrimPrefix(currentContainer.Name, "/")
+
+	// Log upgrade event
+	metadata := models.JSON{
+		"action":        "system_upgrade_cli",
+		"containerId":   containerId,
+		"containerName": containerName,
+		"method":        "cli",
+	}
+	if err := s.eventService.LogUserEvent(ctx, models.EventTypeSystemUpgrade, user.ID, user.Username, metadata); err != nil {
+		slog.Warn("Failed to log upgrade event", "error", err)
+	}
+
+	// Get the current image to determine which image to use for the upgrader
+	currentImage := currentContainer.Config.Image
+	if idx := strings.Index(currentImage, "@"); idx != -1 {
+		currentImage = currentImage[:idx]
+	}
+
+	slog.Info("Spawning upgrade CLI command",
+		"containerName", containerName,
+		"upgraderImage", currentImage,
+	)
+
+	// Spawn the upgrade command in a detached container
+	// This will run independently of the current container
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	// Create the upgrader container config
+	config := &containertypes.Config{
+		Image: currentImage,
+		Cmd:   []string{"upgrade", "--container", containerName},
+	}
+
+	hostConfig := &containertypes.HostConfig{
+		AutoRemove: true, // Clean up after completion
+		Binds: []string{
+			"/var/run/docker.sock:/var/run/docker.sock",
+		},
+	}
+
+	containerName = fmt.Sprintf("%s-upgrader-%d", containerName, time.Now().Unix())
+
+	resp, err := dockerClient.ContainerCreate(ctx, config, hostConfig, nil, nil, containerName)
+	if err != nil {
+		return fmt.Errorf("create upgrader container: %w", err)
+	}
+
+	// Start the upgrader container - it will run the upgrade and auto-remove
+	if err := dockerClient.ContainerStart(ctx, resp.ID, containertypes.StartOptions{}); err != nil {
+		_ = dockerClient.ContainerRemove(ctx, resp.ID, containertypes.RemoveOptions{Force: true})
+		return fmt.Errorf("start upgrader container: %w", err)
+	}
+
+	slog.Info("Upgrade container started",
+		"upgraderId", resp.ID[:12],
+		"upgraderName", containerName,
+	)
+
+	return nil
+}
+
+// UpgradeToLatest performs the self-upgrade (DEPRECATED - use TriggerUpgradeViaCLI instead)
 func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.User) error {
 	if !s.upgrading.CompareAndSwap(false, true) {
 		return ErrUpgradeInProgress
@@ -107,8 +192,11 @@ func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.
 		return fmt.Errorf("pull image: %w", err)
 	}
 
-	// 5. Create new container with same config
-	newContainerId, err := s.recreateContainer(ctx, currentContainer, imageName)
+	// 5. Create and start replacement container with coordinated switchover
+	// We must stop the old container first to free ports, but do cleanup asynchronously
+	// to allow the HTTP response to complete before we fully terminate.
+	originalName := strings.TrimPrefix(currentContainer.Name, "/")
+	newContainerId, err := s.recreateContainerWithSwitchover(ctx, currentContainer, imageName, currentContainerId, originalName)
 	if err != nil {
 		return fmt.Errorf("recreate container: %w", err)
 	}
@@ -118,31 +206,6 @@ func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.
 		"newContainer", newContainerId,
 		"image", imageName,
 	)
-
-	// 6. Stop current container (this will terminate Arcane)
-	// The new container is already running at this point
-	// We do this in a goroutine so the response can be sent first
-	// Use WithoutCancel to ensure cleanup completes even if request is canceled
-	cleanupCtx := context.WithoutCancel(ctx)
-	go func(ctx context.Context, containerID string) {
-		time.Sleep(2 * time.Second)
-		dockerClient, err := s.dockerService.CreateConnection(ctx)
-		if err != nil {
-			slog.Error("Failed to create Docker client for cleanup", "error", err)
-			return
-		}
-		defer dockerClient.Close()
-
-		timeout := 10
-		if err := dockerClient.ContainerStop(ctx, containerID, containertypes.StopOptions{Timeout: &timeout}); err != nil {
-			slog.Warn("Failed to stop old container", "error", err)
-		}
-
-		// Remove old container
-		if err := dockerClient.ContainerRemove(ctx, containerID, containertypes.RemoveOptions{}); err != nil {
-			slog.Warn("Failed to remove old container", "error", err)
-		}
-	}(cleanupCtx, currentContainerId)
 
 	return nil
 }
@@ -274,7 +337,15 @@ func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containe
 	return containertypes.InspectResponse{}, ErrContainerNotFound
 }
 
-// determineImageName extracts image name from container or uses default
+// determineImageName resolves the image reference to pull for self-upgrade.
+// It preserves the currently deployed tag instead of defaulting to :latest.
+// Priority order when resolving tags:
+// 1. Explicit tag from container config (e.g., "arcane:v1.2.3")
+// 2. Non-latest arcane tag from image RepoTags (e.g., "ghcr.io/ofkm/arcane:v1.2.3")
+// 3. Any arcane tag from image RepoTags (including :latest)
+// 4. Any tag from image RepoTags
+// 5. Fallback to :latest if no tag found
+// This ensures upgrades pull the same tag channel (e.g., v1.x.x) as currently deployed.
 func (s *SystemUpgradeService) determineImageName(ctx context.Context, container containertypes.InspectResponse) string {
 	// Start with image reference from container config
 	imageName := ""
@@ -390,11 +461,15 @@ func (s *SystemUpgradeService) pullImage(ctx context.Context, imageName string) 
 	return nil
 }
 
-// recreateContainer creates and starts a new container with the new image
-func (s *SystemUpgradeService) recreateContainer(
+// recreateContainerWithSwitchover creates and starts a new container, performing a coordinated
+// switchover to avoid port conflicts. It stops the old container first, starts the new one,
+// then asynchronously cleans up and renames the new container to the original name.
+func (s *SystemUpgradeService) recreateContainerWithSwitchover(
 	ctx context.Context,
 	oldContainer containertypes.InspectResponse,
 	newImage string,
+	oldContainerID string,
+	originalName string,
 ) (string, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -420,54 +495,95 @@ func (s *SystemUpgradeService) recreateContainer(
 		}
 	}
 
-	// Generate new container name
-	oldName := strings.TrimPrefix(oldContainer.Name, "/")
-	newName := oldName
+	// Generate temporary name for new container
+	tempName := fmt.Sprintf("%s-new", originalName)
 
-	slog.Info("Creating new container",
-		"name", newName,
+	slog.Info("Stopping old container first to free ports",
+		"oldID", oldContainerID,
+	)
+
+	// Stop old container FIRST to free ports, before creating new container
+	timeout := 5
+	if err := dockerClient.ContainerStop(ctx, oldContainerID, containertypes.StopOptions{Timeout: &timeout}); err != nil {
+		return "", fmt.Errorf("stop old container: %w", err)
+	}
+
+	slog.Info("Creating new container with freed ports",
+		"tempName", tempName,
 		"image", newImage,
 		"volumes", len(hostConfig.Binds),
 		"networks", len(networkConfig.EndpointsConfig),
 	)
 
-	// Create container
+	// Now create the new container with full config including ports
 	resp, err := dockerClient.ContainerCreate(
 		ctx,
 		&config,
 		hostConfig,
 		networkConfig,
 		nil,
-		newName,
+		tempName,
 	)
 
-	// If name conflict, try with a suffix
+	// If name conflict, try with a unique suffix
 	if err != nil && strings.Contains(err.Error(), "already in use") {
-		newName = fmt.Sprintf("%s-new", oldName)
+		tempName = fmt.Sprintf("%s-new-%d", originalName, time.Now().Unix())
 		resp, err = dockerClient.ContainerCreate(
 			ctx,
 			&config,
 			hostConfig,
 			networkConfig,
 			nil,
-			newName,
+			tempName,
 		)
 	}
 
 	if err != nil {
+		// If create fails, try to restart old container
+		_ = dockerClient.ContainerStart(ctx, oldContainerID, containertypes.StartOptions{})
 		return "", fmt.Errorf("create container: %w", err)
 	}
 
-	slog.Info("New container created", "id", resp.ID, "name", newName)
+	slog.Info("New container created", "id", resp.ID, "tempName", tempName)
 
 	// Start the new container
 	if err := dockerClient.ContainerStart(ctx, resp.ID, containertypes.StartOptions{}); err != nil {
-		// Cleanup on failure
+		// If start fails, try to restart old container and cleanup new one
 		_ = dockerClient.ContainerRemove(ctx, resp.ID, containertypes.RemoveOptions{Force: true})
-		return "", fmt.Errorf("start container: %w", err)
+		_ = dockerClient.ContainerStart(ctx, oldContainerID, containertypes.StartOptions{})
+		return "", fmt.Errorf("start new container: %w", err)
 	}
 
 	slog.Info("New container started successfully", "id", resp.ID)
+
+	// Schedule async cleanup and rename - use WithoutCancel to ensure it completes
+	// even if the HTTP request context is cancelled when the old container terminates
+	cleanupCtx := context.WithoutCancel(ctx)
+	go func(ctx context.Context, oldID string, newID string, oldName string, origName string) {
+		// Small delay to allow HTTP response to complete
+		time.Sleep(1 * time.Second)
+
+		dcli, err := s.dockerService.CreateConnection(ctx)
+		if err != nil {
+			slog.Error("Failed to create Docker client for cleanup", "error", err)
+			return
+		}
+		defer dcli.Close()
+
+		// Remove old container to free the original name
+		if err := dcli.ContainerRemove(ctx, oldID, containertypes.RemoveOptions{}); err != nil {
+			slog.Warn("Failed to remove old container", "error", err, "oldID", oldID)
+		} else {
+			slog.Info("Removed old container", "oldID", oldID)
+		}
+
+		// Rename new container to original name
+		if err := dcli.ContainerRename(ctx, newID, origName); err != nil {
+			slog.Warn("Failed to rename new container to original name", "newID", newID, "origName", origName, "error", err)
+		} else {
+			slog.Info("Successfully renamed container to original name", "id", newID, "name", origName)
+		}
+	}(cleanupCtx, oldContainerID, resp.ID, tempName, originalName)
 
 	return resp.ID, nil
 }

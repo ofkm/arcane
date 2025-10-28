@@ -478,8 +478,8 @@ func (h *SystemHandler) CheckUpgradeAvailable(c *gin.Context) {
 	})
 }
 
-// TriggerUpgrade triggers a system self-upgrade
-// Remote environments are handled by the proxy middleware
+// TriggerUpgrade triggers a system upgrade by spawning the upgrade CLI command
+// This runs the upgrade from outside the current container to avoid self-termination issues
 func (h *SystemHandler) TriggerUpgrade(c *gin.Context) {
 	currentUser, ok := middleware.RequireAuthentication(c)
 	if !ok {
@@ -488,7 +488,7 @@ func (h *SystemHandler) TriggerUpgrade(c *gin.Context) {
 
 	slog.Info("System upgrade triggered", "user", currentUser.Username, "userId", currentUser.ID)
 
-	err := h.upgradeService.UpgradeToLatest(c.Request.Context(), *currentUser)
+	err := h.upgradeService.TriggerUpgradeViaCLI(c.Request.Context(), *currentUser)
 	if err != nil {
 		slog.Error("System upgrade failed", "error", err, "user", currentUser.Username)
 
@@ -505,7 +505,7 @@ func (h *SystemHandler) TriggerUpgrade(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusAccepted, gin.H{
-		"message": "Upgrade initiated successfully. Arcane will restart shortly.",
+		"message": "Upgrade initiated successfully. A new container is being created and will replace this one shortly.",
 		"success": true,
 	})
 }

@@ -76,31 +76,9 @@
 	}
 
 	async function handleConfirmUpgrade() {
-		upgrading = true;
 		try {
-			const result = await systemUpgradeService.triggerUpgrade();
-			toast.success(m.upgrade_success());
-
-			let countdown = 5;
-			const toastId = toast.info(`Reloading in ${countdown} seconds...`, {
-				duration: 5000
-			});
-
-			const interval = setInterval(() => {
-				countdown--;
-				if (countdown > 0) {
-					toast.info(`Reloading in ${countdown} seconds...`, {
-						id: toastId,
-						duration: 5000
-					});
-				}
-			}, 1000);
-
-			setTimeout(() => {
-				clearInterval(interval);
-				upgrading = false;
-				window.location.reload();
-			}, 5000);
+			await systemUpgradeService.triggerUpgrade();
+			// Dialog will handle countdown and reload
 		} catch (error: any) {
 			const errorMessage = error?.response?.data?.error || error?.message || 'Unknown error';
 			toast.error(m.upgrade_failed({ error: errorMessage }));
@@ -108,7 +86,7 @@
 		}
 	}
 
-	const shouldShowBanner = $derived(updateAvailable && versionInformation?.isSemverVersion || debug);
+	const shouldShowBanner = $derived((updateAvailable && versionInformation?.isSemverVersion) || debug);
 </script>
 
 {#snippet updateInfo()}
@@ -135,6 +113,7 @@
 
 <UpgradeConfirmationDialog
 	bind:open={showConfirmDialog}
+	bind:upgrading
 	version={versionInformation?.newestVersion ?? ''}
 	onConfirm={handleConfirmUpgrade}
 />

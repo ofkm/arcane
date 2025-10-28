@@ -1450,5 +1450,14 @@
 	"upgrade_success": "Upgrade initiated successfully. Arcane will restart shortly.",
 	"upgrade_failed": "Failed to initiate upgrade: {error}",
 	"upgrade_checking": "Checking...",
-	"upgrade_not_available": "Running in latest version"
+	"upgrade_not_available": "Running in latest version",
+	"upgrade_progress_message": "Upgrade in progress...",
+	"upgrade_wait_message": "The upgrade is in progress. This may take a few minutes depending on your connection speed.",
+	"upgrade_reload_message": "Please refresh this page manually once the upgrade completes (typically 1-2 minutes).",
+	"upgrade_reload_countdown": "Reloading in {countdown} seconds...",
+	"upgrade_remote_description": "You are about to upgrade {targetDescription} to v{version}.",
+	"upgrade_this_system": "this system",
+	"upgrade_phase_waiting": "Starting upgrade process...",
+	"upgrade_phase_stopping": "Stopping old container and starting new one...",
+	"upgrade_phase_restarting": "New container is ready, reloading..."
 }
