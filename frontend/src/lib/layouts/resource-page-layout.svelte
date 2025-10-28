@@ -51,7 +51,7 @@
 		mainContent,
 		additionalContent,
 		class: className = '',
-		containerClass = 'space-y-6'
+		containerClass = 'space-y-8 md:space-y-10'
 	}: Props = $props();
 
 	const mobileVisibleButtons = $derived(actionButtons.filter((btn) => btn.showOnMobile));
@@ -64,7 +64,7 @@
 			case 2:
 				return 'grid-cols-2 sm:grid-cols-2';
 			case 3:
-				return 'grid-cols-2 sm:grid-cols-3';
+				return 'grid-cols-2 sm:grid-cols-3 [&>*:nth-child(3)]:col-span-2 sm:[&>*:nth-child(3)]:col-span-1';
 			case 4:
 				return 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4';
 			case 5:
@@ -72,7 +72,8 @@
 			case 'auto':
 			default:
 				if (statCards.length <= 2) return 'grid-cols-2 sm:grid-cols-2';
-				if (statCards.length === 3) return 'grid-cols-2 sm:grid-cols-3';
+				if (statCards.length === 3)
+					return 'grid-cols-2 sm:grid-cols-3 [&>*:nth-child(3)]:col-span-2 sm:[&>*:nth-child(3)]:col-span-1';
 				if (statCards.length === 4) return 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-4';
 				return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5';
 		}
