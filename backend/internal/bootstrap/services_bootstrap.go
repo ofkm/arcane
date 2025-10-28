@@ -30,6 +30,7 @@ type Services struct {
 	Template          *services.TemplateService
 	ContainerRegistry *services.ContainerRegistryService
 	System            *services.SystemService
+	SystemUpgrade     *services.SystemUpgradeService
 	Updater           *services.UpdaterService
 	Event             *services.EventService
 	Version           *services.VersionService
@@ -65,6 +66,7 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs.Updater = services.NewUpdaterService(db, svcs.Settings, svcs.Docker, svcs.Project, svcs.ImageUpdate, svcs.ContainerRegistry, svcs.Event, svcs.Image, svcs.Notification)
 	svcs.System = services.NewSystemService(db, svcs.Docker, svcs.Container, svcs.Image, svcs.Volume, svcs.Network, svcs.Settings)
 	svcs.Version = services.NewVersionService(httpClient, cfg.UpdateCheckDisabled, config.Version, config.Revision)
+	svcs.SystemUpgrade = services.NewSystemUpgradeService(svcs.Docker, svcs.Version, svcs.Event)
 
 	return svcs, dockerClient, nil
 }

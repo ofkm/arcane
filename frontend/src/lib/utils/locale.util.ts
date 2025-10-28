@@ -3,9 +3,14 @@ import { setDefaultOptions } from 'date-fns';
 import { z } from 'zod/v4';
 
 export async function setLocale(locale: Locale, reload = true) {
+	let dateFnsLocale: string = locale;
+	if (dateFnsLocale === 'en') {
+		dateFnsLocale = 'en-US';
+	}
+
 	const [zodResult, dateFnsResult] = await Promise.allSettled([
 		import(`../../../node_modules/zod/v4/locales/${locale}.js`),
-		import(`../../../node_modules/date-fns/locale/${locale}.js`)
+		import(`../../../node_modules/date-fns/locale/${dateFnsLocale}.js`)
 	]);
 
 	if (zodResult.status === 'fulfilled') {

@@ -280,7 +280,9 @@ body:not(.glass-enabled) {
 
 	[data-slot='dialog-content'],
 	[data-slot='sheet-content'],
-	[data-slot='popover-content'] {
+	[data-slot='popover-content'],
+	[data-slot='dropdown-menu-content'],
+	[data-slot='select-content'] {
 		background: var(--bg-surface) !important;
 	}
 

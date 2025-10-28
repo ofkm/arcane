@@ -63,7 +63,7 @@
 									<Avatar.Image src={getDefaultProfilePicture()} alt={user.displayName} />
 								{/if}
 								<Avatar.Fallback
-									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-gradient-to-br"
+									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-linear-to-br"
 								>
 									{user.displayName?.charAt(0).toUpperCase()}
 								</Avatar.Fallback>
@@ -79,7 +79,7 @@
 				{/snippet}
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Content
-				class="border-border/20 min-w-56 rounded-2xl border p-0 shadow-lg backdrop-blur-[var(--glass-blur-popup)] backdrop-saturate-150"
+				class="border-border/20 min-w-56 rounded-2xl border p-0 shadow-lg backdrop-blur-(--glass-blur-popup) backdrop-saturate-150"
 				side="right"
 				align="end"
 				sideOffset={12}
@@ -113,7 +113,7 @@
 									<Avatar.Image src={getDefaultProfilePicture()} alt={user.displayName} />
 								{/if}
 								<Avatar.Fallback
-									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-gradient-to-br"
+									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-linear-to-br"
 								>
 									{user.displayName?.charAt(0).toUpperCase()}
 								</Avatar.Fallback>
@@ -140,7 +140,7 @@
 						<Button.Root
 							variant="ghost"
 							class={cn(
-								'text-muted-foreground flex w-full items-center rounded-xl text-sm font-medium transition-all duration-200 hover:bg-gradient-to-br',
+								'text-muted-foreground flex w-full items-center rounded-xl text-sm font-medium transition-all duration-200 hover:bg-linear-to-br',
 								'h-11 justify-start gap-3 px-3 py-2.5'
 							)}
 							title={m.common_toggle_theme()}

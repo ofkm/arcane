@@ -38,6 +38,7 @@ const (
 	EventTypeUserLogin        EventType = "user.login"
 	EventTypeUserLogout       EventType = "user.logout"
 	EventTypeSystemAutoUpdate EventType = "system.auto_update"
+	EventTypeSystemUpgrade    EventType = "system.upgrade"
 
 	// Event severities
 	EventSeverityInfo    EventSeverity = "info"

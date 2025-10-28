@@ -1,6 +1,7 @@
 {
   "name": "arcane-email-templates",
   "version": "1.0.0",
+  "packageManager": "pnpm@10.20.0",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "build": "tsx build.ts",
