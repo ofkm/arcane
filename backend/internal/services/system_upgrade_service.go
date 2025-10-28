@@ -99,15 +99,13 @@ func (s *SystemUpgradeService) TriggerUpgradeViaCLI(ctx context.Context, user mo
 		slog.Warn("Failed to log upgrade event", "error", err)
 	}
 
-	// Get the current image to determine which image to use for the upgrader
-	currentImage := currentContainer.Config.Image
-	if idx := strings.Index(currentImage, "@"); idx != -1 {
-		currentImage = currentImage[:idx]
-	}
+	// Use the official Arcane image for the upgrader container
+	// This ensures we always use the packaged CLI from the official image
+	upgraderImage := "ghcr.io/ofkm/arcane:self-update"
 
 	slog.Info("Spawning upgrade CLI command",
 		"containerName", containerName,
-		"upgraderImage", currentImage,
+		"upgraderImage", upgraderImage,
 	)
 
 	// Spawn the upgrade command in a detached container
@@ -120,8 +118,8 @@ func (s *SystemUpgradeService) TriggerUpgradeViaCLI(ctx context.Context, user mo
 
 	// Create the upgrader container config
 	config := &containertypes.Config{
-		Image: currentImage,
-		Cmd:   []string{"upgrade", "--container", containerName},
+		Image: upgraderImage,
+		Cmd:   []string{"/app/arcane", "upgrade", "--container", containerName},
 	}
 
 	hostConfig := &containertypes.HostConfig{

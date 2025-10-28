@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"strings"
 	"time"
 
@@ -35,7 +36,11 @@ This command should be run from outside the container (e.g., from the host or an
 
   # Upgrade to a specific image tag
   arcane upgrade --container arcane --image ghcr.io/ofkm/arcane:v1.2.3`,
-	RunE: runUpgrade,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// Use background context to ignore signals during upgrade
+		// This prevents the upgrade from being interrupted when the target container stops
+		return runUpgrade(cmd, args)
+	},
 }
 
 func init() {
@@ -45,7 +50,9 @@ func init() {
 }
 
 func runUpgrade(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
+	// Use background context instead of command context to ignore signals
+	// This prevents interruption when stopping the target container
+	ctx := context.Background()
 
 	// Connect to Docker
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -104,8 +111,83 @@ func findArcaneContainer(ctx context.Context, dockerClient *client.Client) (cont
 		return container.InspectResponse{}, err
 	}
 
+	// Get our own container ID if we're running in Docker
+	selfID := ""
+	if data, err := os.ReadFile("/proc/self/cgroup"); err == nil {
+		content := string(data)
+		// Look for container ID in cgroup (supports both cgroup v1 and v2)
+		for _, line := range strings.Split(content, "\n") {
+			// cgroup v1: 12:pids:/docker/abc123...
+			if strings.Contains(line, "/docker/") {
+				parts := strings.Split(line, "/docker/")
+				if len(parts) > 1 {
+					id := strings.TrimSpace(parts[1])
+					// Remove any trailing path segments
+					if idx := strings.Index(id, "/"); idx != -1 {
+						id = id[:idx]
+					}
+					if len(id) >= 12 {
+						selfID = id[:12]
+						break
+					}
+				}
+			}
+			// cgroup v2: 0::/system.slice/docker-abc123....scope
+			if strings.Contains(line, "docker-") && strings.Contains(line, ".scope") {
+				start := strings.Index(line, "docker-")
+				if start != -1 {
+					start += 7 // len("docker-")
+					end := strings.Index(line[start:], ".scope")
+					if end != -1 {
+						id := line[start : start+end]
+						if len(id) >= 12 {
+							selfID = id[:12]
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	slog.Info("Searching for Arcane container", "selfID", selfID, "totalContainers", len(containers))
+
+	// Fallback: if we couldn't get our own ID, filter by creation time
+	// Skip containers created in the last 30 seconds (likely the upgrader)
+	now := time.Now()
+
 	for _, c := range containers {
+		// Skip ourselves (the upgrader container) by ID
+		if selfID != "" && strings.HasPrefix(c.ID, selfID) {
+			slog.Info("Skipping self by ID", "id", c.ID[:12], "names", c.Names)
+			continue
+		}
+
+		// Skip very recently created containers (likely the upgrader)
+		if c.Created > 0 {
+			createdTime := time.Unix(c.Created, 0)
+			age := now.Sub(createdTime)
+			if age < 30*time.Second {
+				slog.Info("Skipping recently created container", "id", c.ID[:12], "age", age, "names", c.Names)
+				continue
+			}
+		}
+
+		// Skip containers with "upgrader" in the name
+		skip := false
+		for _, name := range c.Names {
+			if strings.Contains(strings.ToLower(name), "upgrader") {
+				slog.Info("Skipping upgrader container by name", "name", name)
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+
 		if strings.Contains(strings.ToLower(c.Image), "arcane") {
+			slog.Info("Found matching container", "id", c.ID[:12], "image", c.Image, "names", c.Names)
 			return dockerClient.ContainerInspect(ctx, c.ID)
 		}
 	}
