@@ -287,7 +287,15 @@
 	</div>
 
 	<section>
-		<h2 class="mb-4 text-lg font-semibold tracking-tight">{m.dashboard_system_overview()}</h2>
+		<div class="mb-4 flex items-center justify-between gap-4">
+			<h2 class="text-lg font-semibold tracking-tight">{m.dashboard_system_overview()}</h2>
+			{#if currentStats?.hostname}
+				<div class="text-muted-foreground flex items-center gap-2 text-sm">
+					<span class="text-muted-foreground/70">Hostname:</span>
+					<code class="bg-muted rounded px-2 py-0.5 font-mono text-xs">{currentStats.hostname}</code>
+				</div>
+			{/if}
+		</div>
 		<div class="space-y-3">
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				<MeterMetric

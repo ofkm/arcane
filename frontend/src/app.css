@@ -201,7 +201,12 @@
 /* Glass effect toggle: disable all glass/blur/gradients when .glass-disabled */
 body:not(.glass-enabled) {
 	--card: var(--bg-surface);
+	--card-foreground: var(--foreground);
 	--sidebar: var(--bg-surface);
+	--popover: var(--bg-surface);
+	--muted: var(--bg-surface);
+	--secondary: var(--bg-surface);
+	--accent: var(--bg-surface);
 
 	&::before {
 		display: none;
@@ -219,13 +224,13 @@ body:not(.glass-enabled) {
 	.glass-subtle {
 		-webkit-backdrop-filter: none !important;
 		backdrop-filter: none !important;
-		background: var(--card) !important;
+		background: var(--bg-surface) !important;
 		border-color: var(--border) !important;
 		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
 	}
 
 	.bubble {
-		background: var(--card) !important;
+		background: var(--bg-surface) !important;
 		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
 	}
 
@@ -239,7 +244,7 @@ body:not(.glass-enabled) {
 	}
 
 	.bubble-outline {
-		background: var(--card) !important;
+		background: var(--bg-surface) !important;
 		border: 1px solid var(--border) !important;
 	}
 
@@ -276,7 +281,7 @@ body:not(.glass-enabled) {
 	[data-slot='dialog-content'],
 	[data-slot='sheet-content'],
 	[data-slot='popover-content'] {
-		background: var(--card) !important;
+		background: var(--bg-surface) !important;
 	}
 
 	[class*='bg-background/'],
@@ -285,11 +290,11 @@ body:not(.glass-enabled) {
 	[class*='bg-muted/'],
 	[class*='bg-secondary/'],
 	[class*='bg-accent/'] {
-		background-color: var(--card) !important;
+		background-color: var(--bg-surface) !important;
 	}
 
 	.glass-medium {
-		background: var(--card) !important;
+		background: var(--bg-surface) !important;
 		backdrop-filter: none !important;
 		-webkit-backdrop-filter: none !important;
 	}
