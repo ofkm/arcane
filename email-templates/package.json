@@ -10,17 +10,17 @@
     "export": "email export"
   },
   "dependencies": {
-    "@react-email/components": "0.1.1",
+    "@react-email/components": "0.5.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
-    "@react-email/preview-server": "4.2.8",
+    "@react-email/preview-server": "4.3.2",
     "@types/node": "^24.0.10",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
-    "react-email": "4.2.8",
+    "react-email": "4.3.2",
     "tsx": "^4.0.0"
   }
 }
