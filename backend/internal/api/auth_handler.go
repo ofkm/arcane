@@ -69,6 +69,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	c.SetSameSite(http.SameSiteLaxMode)
 	maxAge := int(time.Until(tokenPair.ExpiresAt).Seconds())
+	if maxAge < 0 {
+		maxAge = 0
+	}
+	// Add 60 seconds buffer to account for clock skew and network latency
+	maxAge += 60
 	cookie.CreateTokenCookie(c, maxAge, tokenPair.AccessToken)
 
 	var out dto.UserResponseDto
@@ -141,6 +146,11 @@ func (h *AuthHandler) RefreshToken(c *gin.Context) {
 
 	c.SetSameSite(http.SameSiteLaxMode)
 	maxAge := int(time.Until(tokenPair.ExpiresAt).Seconds())
+	if maxAge < 0 {
+		maxAge = 0
+	}
+	// Add 60 seconds buffer to account for clock skew and network latency
+	maxAge += 60
 	cookie.CreateTokenCookie(c, maxAge, tokenPair.AccessToken)
 
 	c.JSON(http.StatusOK, gin.H{

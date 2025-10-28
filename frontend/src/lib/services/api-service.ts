@@ -29,10 +29,14 @@ abstract class BaseAPIService {
 
 		this.api.interceptors.response.use(
 			(response) => response,
-			(error) => {
+			async (error) => {
 				console.log(error);
 				const status = error?.response?.status;
-				if (status === 401 && typeof window !== 'undefined') {
+				const originalRequest = error.config;
+
+				if (status === 401 && typeof window !== 'undefined' && !originalRequest._retry) {
+					originalRequest._retry = true;
+
 					const serverMsg = extractServerMessage(error?.response?.data);
 					const isVersionMismatch = serverMsg?.toLowerCase().includes('application has been updated');
 
@@ -57,6 +61,7 @@ abstract class BaseAPIService {
 					const skipAuthPaths = [
 						'/auth/login',
 						'/auth/logout',
+						'/auth/refresh',
 						'/auth/oidc',
 						'/auth/oidc/login',
 						'/auth/oidc/callback',
@@ -66,6 +71,19 @@ abstract class BaseAPIService {
 
 					const pathname = window.location.pathname || '/';
 					const isOnAuthPage = pathname.startsWith('/auth');
+
+					if (!isAuthApi && !isOnAuthPage && !isVersionMismatch) {
+						try {
+							const authServiceModule = await import('./auth-service');
+							const newToken = await authServiceModule.authService.refreshAccessToken();
+							
+							if (newToken) {
+								return this.api(originalRequest);
+							}
+						} catch (refreshError) {
+							console.error('Token refresh failed in interceptor:', refreshError);
+						}
+					}
 
 					if (!isAuthApi && !isOnAuthPage) {
 						if (isVersionMismatch) {
