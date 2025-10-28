@@ -90,7 +90,7 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to upgrade container: %w", err)
 	}
 
-	slog.Info("✅ Upgrade completed successfully", "container", containerName, "image", imageToPull)
+	slog.Info("Upgrade completed successfully", "container", containerName, "image", imageToPull)
 	return nil
 }
 
@@ -166,7 +166,7 @@ func determineImageName(ctx context.Context, dockerClient *client.Client, cont c
 	// Default to :latest if still no tag
 	if !hasExplicitTag(imageName) {
 		if imageName == "" {
-			imageName = "ofkm/arcane:latest"
+			imageName = "ghcr.io/ofkm/arcane:latest"
 		} else {
 			imageName += ":latest"
 		}
