@@ -74,6 +74,7 @@
 				if (pollInterval && upgradeStatus !== 'ready') {
 					console.log('[Upgrade] 3-minute timeout reached, stopping polling');
 					clearInterval(pollInterval);
+					pollInterval = null;
 					upgradeStatus = 'upgrading';
 					upgrading = false;
 				}
