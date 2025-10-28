@@ -1,10 +1,12 @@
 packages:
   - frontend
   - tests
+  - email-templates
 
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'
   - esbuild
+  - sharp
 
 overrides:
-  'devalue': '^5.3.2'
+  devalue: ^5.3.2

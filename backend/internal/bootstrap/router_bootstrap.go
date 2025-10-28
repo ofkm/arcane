@@ -105,6 +105,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewSystemHandler(apiGroup, appServices.Docker, appServices.System, authMiddleware, cfg)
 	api.NewUpdaterHandler(apiGroup, appServices.Updater, authMiddleware)
 	api.NewVolumeHandler(apiGroup, appServices.Docker, appServices.Volume, authMiddleware)
+	api.NewNotificationHandler(apiGroup, appServices.Notification, authMiddleware)
 	api.NewSettingsHandler(apiGroup, appServices.Settings, appServices.SettingsSearch, authMiddleware)
 	api.NewCustomizeHandler(apiGroup, appServices.CustomizeSearch, authMiddleware)
 

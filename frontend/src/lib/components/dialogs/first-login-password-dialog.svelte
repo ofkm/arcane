@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Dialog from '$lib/components/ui/dialog';
+	import { ResponsiveDialog } from '$lib/components/ui/responsive-dialog/index.js';
 	import * as Alert from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -57,20 +57,18 @@
 	}
 </script>
 
-<Dialog.Root
+<ResponsiveDialog
 	bind:open
 	onOpenChange={(isOpen) => {
 		if (!isOpen) {
 			open = true;
 		}
 	}}
+	title={m.first_login_title()}
+	description={m.first_login_description()}
+	contentClass="sm:max-w-[425px] [&>button]:hidden"
 >
-	<Dialog.Content class="sm:max-w-[425px] [&>button]:hidden">
-		<Dialog.Header>
-			<Dialog.Title>{m.first_login_title()}</Dialog.Title>
-			<Dialog.Description>{m.first_login_description()}</Dialog.Description>
-		</Dialog.Header>
-
+	{#snippet children()}
 		<form
 			onsubmit={(e) => {
 				e.preventDefault();
@@ -169,17 +167,17 @@
 					</Button>
 				</div>
 			</div>
-
-			<Dialog.Footer>
-				<Button type="submit" disabled={!isValid || isLoading}>
-					{#if isLoading}
-						<Spinner class="mr-2 h-4 w-4" />
-						{m.first_login_submitting()}
-					{:else}
-						{m.first_login_submit()}
-					{/if}
-				</Button>
-			</Dialog.Footer>
 		</form>
-	</Dialog.Content>
-</Dialog.Root>
+	{/snippet}
+
+	{#snippet footer()}
+		<Button type="submit" onclick={handleSubmit} disabled={!isValid || isLoading}>
+			{#if isLoading}
+				<Spinner class="mr-2 h-4 w-4" />
+				{m.first_login_submitting()}
+			{:else}
+				{m.first_login_submit()}
+			{/if}
+		</Button>
+	{/snippet}
+</ResponsiveDialog>

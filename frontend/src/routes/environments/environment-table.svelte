@@ -8,7 +8,6 @@
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import MonitorIcon from '@lucide/svelte/icons/monitor';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -249,20 +248,16 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root class="flex flex-col gap-6 py-3">
-	<Card.Content class="px-6 py-5">
-		<ArcaneTable
-			persistKey="arcane-environments-table"
-			items={environments}
-			bind:requestOptions
-			bind:selectedIds
-			bind:mobileFieldVisibility
-			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
-			onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
-			{columns}
-			{mobileFields}
-			rowActions={RowActions}
-			mobileCard={EnvironmentMobileCardSnippet}
-		/>
-	</Card.Content>
-</Card.Root>
+<ArcaneTable
+	persistKey="arcane-environments-table"
+	items={environments}
+	bind:requestOptions
+	bind:selectedIds
+	bind:mobileFieldVisibility
+	onRemoveSelected={(ids) => handleDeleteSelected(ids)}
+	onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
+	{columns}
+	{mobileFields}
+	rowActions={RowActions}
+	mobileCard={EnvironmentMobileCardSnippet}
+/>

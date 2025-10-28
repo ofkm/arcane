@@ -33,19 +33,18 @@ export function getEffectiveNavigationSettings(): MobileNavigationSettings {
 		return overrideValue !== undefined ? overrideValue : (serverValue ?? defaultValue);
 	};
 
+	const mode = getEffectiveValue(serverSettings?.mobileNavigationMode, overrides.mode, defaultMobileNavigationSettings.mode);
+
 	return {
 		pinnedItems: overrides.pinnedItems ?? currentPinnedItems.pinnedItems,
-		mode: getEffectiveValue(serverSettings?.mobileNavigationMode, overrides.mode, defaultMobileNavigationSettings.mode),
+		mode,
 		showLabels: getEffectiveValue(
 			serverSettings?.mobileNavigationShowLabels,
 			overrides.showLabels,
 			defaultMobileNavigationSettings.showLabels
 		),
-		scrollToHide: getEffectiveValue(
-			serverSettings?.mobileNavigationScrollToHide,
-			overrides.scrollToHide,
-			defaultMobileNavigationSettings.scrollToHide
-		)
+		// scrollToHide is now computed based on mode: always true for floating, always false for docked
+		scrollToHide: mode === 'floating'
 	};
 }
 
