@@ -2,9 +2,13 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Button } from '$lib/components/ui/button';
 	import AlertTriangleIcon from '@lucide/svelte/icons/alert-triangle';
-	import LoaderCircleIcon from '@lucide/svelte/icons/loader-circle';
 	import InfoIcon from '@lucide/svelte/icons/info';
+	import CheckCircle2Icon from '@lucide/svelte/icons/check-circle-2';
+	import Spinner from '$lib/components/ui/spinner/spinner.svelte';
 	import * as m from '$lib/paraglide/messages';
+	import { onDestroy } from 'svelte';
+	import systemUpgradeService from '$lib/services/api/system-upgrade-service';
+	import { cn } from '$lib/utils';
 
 	let {
 		open = $bindable(false),
@@ -23,51 +27,173 @@
 	const isRemoteEnvironment = $derived(!!environmentName);
 	const targetDescription = $derived(isRemoteEnvironment ? `remote environment "${environmentName}"` : m.upgrade_this_system());
 
+	let upgradeStatus = $state<'upgrading' | 'waiting' | 'ready' | 'countdown'>('upgrading');
+	let countdown = $state(10);
+	let pollInterval: ReturnType<typeof setInterval> | null = null;
+	let countdownInterval: ReturnType<typeof setInterval> | null = null;
+	let fallbackTimeout: ReturnType<typeof setTimeout> | null = null;
+	let consecutiveSuccessfulChecks = $state(0);
+
+	async function startHealthPolling() {
+		console.log('[Upgrade] Starting upgrade monitoring...');
+
+		// Wait 15 seconds for the upgrade to start, then begin polling
+		setTimeout(() => {
+			upgradeStatus = 'waiting';
+			consecutiveSuccessfulChecks = 0;
+			console.log('[Upgrade] Starting health polling...');
+
+			pollInterval = setInterval(async () => {
+				const { healthy } = await systemUpgradeService.checkHealth();
+
+				console.log('[Upgrade] Health check:', { healthy, consecutiveSuccessfulChecks });
+
+				if (healthy) {
+					consecutiveSuccessfulChecks++;
+					console.log('[Upgrade] Container is up! Consecutive checks:', consecutiveSuccessfulChecks);
+
+					if (consecutiveSuccessfulChecks >= 3) {
+						console.log('[Upgrade] 3 consecutive checks passed! Starting countdown...');
+						if (pollInterval) clearInterval(pollInterval);
+						if (fallbackTimeout) clearTimeout(fallbackTimeout);
+						upgradeStatus = 'ready';
+						setTimeout(() => {
+							startCountdown();
+						}, 2000);
+					}
+				} else {
+					consecutiveSuccessfulChecks = 0;
+					console.log('[Upgrade] Container not ready yet, waiting...');
+				}
+			}, 2000);
+
+			// Stop polling after 3 minutes and show error
+			setTimeout(() => {
+				if (pollInterval && upgradeStatus !== 'ready') {
+					console.log('[Upgrade] 3-minute timeout reached, stopping polling');
+					clearInterval(pollInterval);
+					upgradeStatus = 'upgrading';
+					upgrading = false;
+				}
+			}, 180000);
+
+			// Force reload after 2.5 minutes as fallback
+			fallbackTimeout = setTimeout(() => {
+				if (upgradeStatus !== 'countdown') {
+					console.log('[Upgrade] Fallback timeout reached, forcing reload');
+					if (pollInterval) clearInterval(pollInterval);
+					reloadPage();
+				}
+			}, 150000);
+		}, 15000);
+	}
+
+	function startCountdown() {
+		upgradeStatus = 'countdown';
+		countdown = 10;
+		countdownInterval = setInterval(() => {
+			countdown--;
+			if (countdown <= 0) {
+				if (countdownInterval) clearInterval(countdownInterval);
+				reloadPage();
+			}
+		}, 1000);
+	}
+
+	function reloadPage() {
+		window.location.reload();
+	}
+
 	function handleConfirm() {
 		upgrading = true;
+		upgradeStatus = 'upgrading';
 		onConfirm();
+		if (!isRemoteEnvironment) {
+			startHealthPolling();
+		}
 	}
+
+	onDestroy(() => {
+		if (pollInterval) clearInterval(pollInterval);
+		if (countdownInterval) clearInterval(countdownInterval);
+		if (fallbackTimeout) clearTimeout(fallbackTimeout);
+	});
 </script>
 
 <Dialog.Root bind:open>
 	<Dialog.Content
-		class="sm:max-w-[500px]"
+		class={cn('sm:max-w-[500px]', upgrading && '[&>button]:hidden')}
 		onInteractOutside={(e: Event) => {
 			if (upgrading) e.preventDefault();
 		}}
 	>
 		<Dialog.Header>
-			<Dialog.Title class="flex items-center gap-2">
+			<Dialog.Title>
 				{#if upgrading}
 					{m.upgrade_in_progress()}
 				{:else}
 					{m.upgrade_confirm_title()}
 				{/if}
 			</Dialog.Title>
-			<Dialog.Description>
-				{#if upgrading}
-					{m.upgrade_wait_message()}
-				{:else if isRemoteEnvironment}
-					{m.upgrade_remote_description({ targetDescription, version })}
-				{:else}
-					{m.upgrade_confirm_description({ version })}
-				{/if}
-			</Dialog.Description>
+			{#if !upgrading}
+				<Dialog.Description>
+					{#if isRemoteEnvironment}
+						{m.upgrade_remote_description({ targetDescription, version })}
+					{:else}
+						{m.upgrade_confirm_description({ version })}
+					{/if}
+				</Dialog.Description>
+			{/if}
 		</Dialog.Header>
 
 		{#if upgrading}
 			<div class="space-y-4 py-4">
 				<div class="flex items-center justify-center gap-2 text-sm">
-					<LoaderCircleIcon class="size-5 animate-spin text-blue-500" />
-					<span class="font-medium">{m.upgrade_progress_message()}</span>
+					{#if upgradeStatus === 'countdown'}
+						<CheckCircle2Icon class="size-5 text-green-500" />
+						<span class="font-medium text-green-600 dark:text-green-400">{m.upgrade_status_complete()}</span>
+					{:else if upgradeStatus === 'ready'}
+						<CheckCircle2Icon class="size-5 animate-pulse text-green-500" />
+						<span class="font-medium text-green-600 dark:text-green-400">{m.upgrade_status_detected()}</span>
+					{:else}
+						<Spinner class="text-primary size-5" />
+						<span class="font-medium">
+							{#if upgradeStatus === 'upgrading'}
+								{m.upgrade_status_pulling()}
+							{:else if upgradeStatus === 'waiting'}
+								{m.upgrade_status_checking()}
+							{/if}
+						</span>
+					{/if}
 				</div>
 
-				<div class="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
-					<p class="flex items-center gap-2 text-sm font-medium text-blue-800 dark:text-blue-200">
-						<InfoIcon class="size-4" />
-						{m.upgrade_reload_message()}
-					</p>
-				</div>
+				{#if upgradeStatus === 'countdown'}
+					<div class="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/20">
+						<p class="flex items-center gap-2 text-sm font-medium text-green-800 dark:text-green-200">
+							<InfoIcon class="size-4" />
+							{m.upgrade_reload_auto({ countdown })}
+						</p>
+					</div>
+					<div class="flex justify-center">
+						<Button onclick={reloadPage} variant="default" size="sm" class="w-full sm:w-auto">
+							{m.upgrade_reload_now()}
+						</Button>
+					</div>
+				{:else if upgradeStatus === 'waiting'}
+					<div class="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
+						<p class="flex items-center gap-2 text-sm font-medium text-blue-800 dark:text-blue-200">
+							<InfoIcon class="size-4" />
+							{m.upgrade_wait_info()}
+						</p>
+					</div>
+				{:else}
+					<div class="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
+						<p class="flex items-center gap-2 text-sm font-medium text-blue-800 dark:text-blue-200">
+							<InfoIcon class="size-4" />
+							{m.upgrade_wait_message()}
+						</p>
+					</div>
+				{/if}
 			</div>
 		{:else}
 			<div class="space-y-3 py-4">

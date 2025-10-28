@@ -12,6 +12,10 @@ export interface UpgradeResponse {
 	error?: string;
 }
 
+export interface HealthCheckResult {
+	healthy: boolean;
+}
+
 /**
  * Check if the system can perform a self-upgrade
  * @returns Promise with upgrade availability status
@@ -30,7 +34,23 @@ async function triggerUpgrade(): Promise<UpgradeResponse> {
 	return res.data;
 }
 
+/**
+ * Check system health
+ * @returns Promise with health check result
+ */
+async function checkHealth(): Promise<HealthCheckResult> {
+	try {
+		const res = await axios.head('/api/health', {
+			timeout: 3000
+		});
+		return { healthy: res.status === 200 };
+	} catch {
+		return { healthy: false };
+	}
+}
+
 export default {
 	checkUpgradeAvailable,
-	triggerUpgrade
+	triggerUpgrade,
+	checkHealth
 };
