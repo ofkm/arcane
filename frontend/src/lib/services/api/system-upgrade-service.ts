@@ -36,11 +36,13 @@ async function triggerUpgrade(): Promise<UpgradeResponse> {
 
 /**
  * Check system health
+ * @param environmentId - Optional environment ID for remote environments (defaults to local system)
  * @returns Promise with health check result
  */
-async function checkHealth(): Promise<HealthCheckResult> {
+async function checkHealth(environmentId: string = '0'): Promise<HealthCheckResult> {
 	try {
-		const res = await axios.head('/api/health', {
+		const endpoint = environmentId === '0' ? '/api/health' : `/api/environments/${environmentId}/system/health`;
+		const res = await axios.head(endpoint, {
 			timeout: 3000
 		});
 		return { healthy: res.status === 200 };

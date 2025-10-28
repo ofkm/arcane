@@ -57,6 +57,7 @@ func NewSystemHandler(group *gin.RouterGroup, dockerService *services.DockerClie
 	apiGroup := group.Group("/environments/:id/system")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
+		apiGroup.HEAD("/health", handler.Health)
 		apiGroup.GET("/stats/ws", handler.Stats)
 		apiGroup.GET("/docker/info", handler.GetDockerInfo)
 		apiGroup.POST("/prune", handler.PruneAll)
@@ -81,6 +82,26 @@ type SystemStats struct {
 	Architecture string  `json:"architecture"`
 	Platform     string  `json:"platform"`
 	Hostname     string  `json:"hostname,omitempty"`
+}
+
+func (h *SystemHandler) Health(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	dockerClient, err := h.dockerService.CreateConnection(ctx)
+	if err != nil {
+		c.Status(http.StatusServiceUnavailable)
+		return
+	}
+	defer dockerClient.Close()
+
+	// Try to ping Docker to ensure it's responsive
+	_, err = dockerClient.Ping(ctx)
+	if err != nil {
+		c.Status(http.StatusServiceUnavailable)
+		return
+	}
+
+	c.Status(http.StatusOK)
 }
 
 func (h *SystemHandler) GetDockerInfo(c *gin.Context) {

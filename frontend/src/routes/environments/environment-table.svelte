@@ -299,22 +299,24 @@
 {/snippet}
 
 <ArcaneTable
-		persistKey="arcane-environments-table"
-		items={environments}
-		bind:requestOptions
-		bind:selectedIds
-		bind:mobileFieldVisibility
-		onRemoveSelected={(ids) => handleDeleteSelected(ids)}
-		onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
-		{columns}
-		{mobileFields}
-		rowActions={RowActions}
-	  mobileCard={EnvironmentMobileCardSnippet}
-  />
+	persistKey="arcane-environments-table"
+	items={environments}
+	bind:requestOptions
+	bind:selectedIds
+	bind:mobileFieldVisibility
+	onRemoveSelected={(ids) => handleDeleteSelected(ids)}
+	onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
+	{columns}
+	{mobileFields}
+	rowActions={RowActions}
+	mobileCard={EnvironmentMobileCardSnippet}
+/>
 
 <UpgradeConfirmationDialog
 	bind:open={showUpgradeDialog}
 	version="Latest"
 	onConfirm={handleConfirmUpgrade}
 	environmentName={selectedEnvironmentForUpgrade?.name}
+	environmentId={selectedEnvironmentForUpgrade?.id}
+	bind:upgrading={isLoading.upgrading}
 />

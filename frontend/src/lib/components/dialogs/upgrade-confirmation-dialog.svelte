@@ -15,12 +15,14 @@
 		version,
 		onConfirm,
 		environmentName,
+		environmentId,
 		upgrading = $bindable(false)
 	}: {
 		open?: boolean;
 		version: string;
 		onConfirm: () => void;
 		environmentName?: string;
+		environmentId?: string;
 		upgrading?: boolean;
 	} = $props();
 
@@ -44,9 +46,9 @@
 			console.log('[Upgrade] Starting health polling...');
 
 			pollInterval = setInterval(async () => {
-				const { healthy } = await systemUpgradeService.checkHealth();
+				const { healthy } = await systemUpgradeService.checkHealth(environmentId);
 
-				console.log('[Upgrade] Health check:', { healthy, consecutiveSuccessfulChecks });
+				console.log('[Upgrade] Health check:', { healthy, consecutiveSuccessfulChecks, environmentId });
 
 				if (healthy) {
 					consecutiveSuccessfulChecks++;
