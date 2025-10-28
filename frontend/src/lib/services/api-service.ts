@@ -22,6 +22,12 @@ abstract class BaseAPIService {
 		withCredentials: true
 	});
 
+	private static tokenRefreshHandler: (() => Promise<string | null>) | null = null;
+
+	static setTokenRefreshHandler(handler: () => Promise<string | null>) {
+		BaseAPIService.tokenRefreshHandler = handler;
+	}
+
 	constructor() {
 		if (typeof process !== 'undefined' && process?.env?.DEV_BACKEND_URL) {
 			this.api.defaults.baseURL = process.env.DEV_BACKEND_URL;
@@ -72,23 +78,27 @@ abstract class BaseAPIService {
 					const pathname = window.location.pathname || '/';
 					const isOnAuthPage = pathname.startsWith('/auth');
 
-					if (!isAuthApi && !isOnAuthPage && !isVersionMismatch) {
+					if (!isAuthApi && !isOnAuthPage && !isVersionMismatch && BaseAPIService.tokenRefreshHandler) {
 						try {
-							const authServiceModule = await import('./auth-service');
-							const newToken = await authServiceModule.authService.refreshAccessToken();
-							
+							const newToken = await BaseAPIService.tokenRefreshHandler();
+
 							if (newToken) {
 								return this.api(originalRequest);
 							}
 						} catch (refreshError) {
 							console.error('Token refresh failed in interceptor:', refreshError);
 						}
+
+						// If we reach here, refresh failed - redirect to login
+						if (!isOnAuthPage) {
+							const redirectTo = encodeURIComponent(pathname);
+							window.location.replace(`/auth/login?redirect=${redirectTo}`);
+							return new Promise(() => {});
+						}
 					}
 
-					if (!isAuthApi && !isOnAuthPage) {
-						if (isVersionMismatch) {
-							toast.info('Application has been updated. Please log in again.');
-						}
+					if (!isAuthApi && !isOnAuthPage && isVersionMismatch) {
+						toast.info('Application has been updated. Please log in again.');
 						const redirectTo = encodeURIComponent(pathname);
 						window.location.replace(`/auth/login?redirect=${redirectTo}`);
 						return new Promise(() => {});

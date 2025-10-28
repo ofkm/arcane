@@ -12,7 +12,12 @@ const REFRESH_BUFFER_MS = 5 * 60 * 1000; // Refresh 5 minutes before expiry
 export class AuthService extends BaseAPIService {
 	private refreshTimer: ReturnType<typeof setTimeout> | null = null;
 	private isRefreshing = false;
-	private refreshSubscribers: Array<(token: string | null) => void> = [];
+	private refreshSubscribers: Array<(token: string) => void> = [];
+
+	constructor() {
+		super();
+		BaseAPIService.setTokenRefreshHandler(() => this.refreshAccessToken());
+	}
 
 	private storeTokenData(refreshToken: string, expiresAt: string): void {
 		if (typeof window === 'undefined') return;
@@ -86,21 +91,22 @@ export class AuthService extends BaseAPIService {
 		this.isRefreshing = true;
 
 		try {
-			const data = await this.handleResponse<{
+			const response = await this.handleResponse<{
 				token?: string;
 				refreshToken?: string;
 				expiresAt?: string;
 			}>(this.api.post('/auth/refresh', { refreshToken }));
 
-			if (data.refreshToken && data.expiresAt) {
-				this.storeTokenData(data.refreshToken, data.expiresAt);
+			if (response.refreshToken && response.expiresAt) {
+				this.storeTokenData(response.refreshToken, response.expiresAt);
 			}
 
-			this.refreshSubscribers.forEach((callback) => callback(data.token ?? null));
+			const token = response.token || null;
+			this.refreshSubscribers.forEach((callback) => callback(token || ''));
 			this.refreshSubscribers = [];
 			this.isRefreshing = false;
 
-			return data.token ?? null;
+			return token;
 		} catch (error) {
 			console.error('Token refresh failed:', error);
 			this.clearTokenData();
