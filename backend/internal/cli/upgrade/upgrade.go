@@ -279,13 +279,25 @@ func upgradeContainer(ctx context.Context, dockerClient *client.Client, oldConta
 
 	hostConfig := oldContainer.HostConfig
 
-	// Build network config
+	// Build network config - preserve all network settings including IP addresses
 	networkConfig := &network.NetworkingConfig{
 		EndpointsConfig: make(map[string]*network.EndpointSettings),
 	}
 	for networkName, networkSettings := range oldContainer.NetworkSettings.Networks {
 		networkConfig.EndpointsConfig[networkName] = &network.EndpointSettings{
-			Aliases: networkSettings.Aliases,
+			IPAMConfig:          networkSettings.IPAMConfig,
+			Links:               networkSettings.Links,
+			Aliases:             networkSettings.Aliases,
+			NetworkID:           networkSettings.NetworkID,
+			EndpointID:          networkSettings.EndpointID,
+			Gateway:             networkSettings.Gateway,
+			IPAddress:           networkSettings.IPAddress,
+			IPPrefixLen:         networkSettings.IPPrefixLen,
+			IPv6Gateway:         networkSettings.IPv6Gateway,
+			GlobalIPv6Address:   networkSettings.GlobalIPv6Address,
+			GlobalIPv6PrefixLen: networkSettings.GlobalIPv6PrefixLen,
+			MacAddress:          networkSettings.MacAddress,
+			DriverOpts:          networkSettings.DriverOpts,
 		}
 	}
 
