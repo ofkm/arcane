@@ -50,12 +50,8 @@
 </script>
 
 <Card.Root class="flex flex-col">
-	<Card.Header
-		class="cursor-pointer py-6"
-		onclick={toggleExpanded}
-		{icon}
-	>
-		<div class="flex items-center justify-between w-full">
+	<Card.Header class="cursor-pointer py-6" onclick={toggleExpanded} {icon}>
+		<div class="flex w-full items-center justify-between">
 			<div>
 				<Card.Title>{title}</Card.Title>
 				{#if description}
