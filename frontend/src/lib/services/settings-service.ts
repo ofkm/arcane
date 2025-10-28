@@ -1,17 +1,41 @@
 import BaseAPIService from './api-service';
 import type { Settings, OidcStatusInfo } from '$lib/types/settings.type';
 import { environmentStore } from '$lib/stores/environment.store.svelte';
+import { isLocalSetting, extractLocalSettings, extractEnvironmentSettings } from '$lib/utils/settings.util';
 
 type KeyValuePair = { key: string; value: string };
 
 export default class SettingsService extends BaseAPIService {
 	async getSettings(): Promise<Settings> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		const res = await this.api.get(`/environments/${envId}/settings`);
-		return this.normalize(res.data);
+
+		// If we're on environment 0, just get all settings normally
+		if (envId === '0') {
+			const res = await this.api.get(`/environments/0/settings`);
+			return this.normalize(res.data);
+		}
+
+		// For remote environments, merge:
+		// - UI settings from environment 0 (main instance)
+		// - Environment-specific settings from current environment
+		const [mainSettings, envSettings] = await Promise.all([
+			this.api.get('/environments/0/settings'),
+			this.api.get(`/environments/${envId}/settings`)
+		]);
+
+		const mainNormalized = this.normalize(mainSettings.data);
+		const envNormalized = this.normalize(envSettings.data);
+
+		// Extract UI settings from main, environment settings from current env
+		const uiSettings = extractLocalSettings(mainNormalized);
+		const operationalSettings = extractEnvironmentSettings(envNormalized);
+
+		// Merge them
+		return { ...operationalSettings, ...uiSettings } as Settings;
 	}
 
 	async getSettingsForEnvironment(environmentId: string): Promise<Settings> {
+		// When viewing a specific environment's settings page, show all its settings
 		const res = await this.api.get(`/environments/${environmentId}/settings`);
 		return this.normalize(res.data);
 	}
@@ -23,13 +47,41 @@ export default class SettingsService extends BaseAPIService {
 
 	async updateSettings(settings: Partial<Settings>) {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		const payload: Record<string, string> = {};
+
+		const uiSettings: Record<string, any> = {};
+		const envSettings: Record<string, any> = {};
+
+		// Separate UI settings from environment settings
 		for (const key in settings) {
-			const v = (settings as any)[key];
-			payload[key] = typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
+			if (isLocalSetting(key)) {
+				uiSettings[key] = settings[key as keyof Settings];
+			} else {
+				envSettings[key] = settings[key as keyof Settings];
+			}
 		}
-		const res = await this.api.put(`/environments/${envId}/settings`, payload);
-		return this.normalize(res.data);
+
+		// Update UI settings on environment 0 (main instance)
+		if (Object.keys(uiSettings).length > 0) {
+			const payload: Record<string, string> = {};
+			for (const key in uiSettings) {
+				const v = uiSettings[key];
+				payload[key] = typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
+			}
+			await this.api.put('/environments/0/settings', payload);
+		}
+
+		// Update environment settings on current environment
+		if (Object.keys(envSettings).length > 0) {
+			const payload: Record<string, string> = {};
+			for (const key in envSettings) {
+				const v = envSettings[key];
+				payload[key] = typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
+			}
+			await this.api.put(`/environments/${envId}/settings`, payload);
+		}
+
+		// Reload and return merged settings
+		return this.getSettings();
 	}
 
 	async getOidcStatus(): Promise<OidcStatusInfo> {

@@ -132,38 +132,55 @@
 				<Card.Root>
 					<Card.Header icon={LockIcon}>
 						<div class="flex flex-col space-y-1.5">
-							<Card.Title>Authentication</Card.Title>
-							<Card.Description>Configure authentication methods</Card.Description>
+							<Card.Title>{m.security_authentication_heading()}</Card.Title>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
 						<div class="space-y-3">
 							<SwitchWithLabel
-								id="authLocalEnabled"
+								id="localAuthSwitch"
 								label={m.security_local_auth_label()}
 								description={m.security_local_auth_description()}
 								bind:checked={values.authLocalEnabled}
 								onCheckedChange={handleLocalSwitchChange}
 							/>
 
-							<SwitchWithLabel
-								id="authOidcEnabled"
-								label={m.security_oidc_auth_label()}
-								description={m.security_oidc_auth_description()}
-								bind:checked={values.authOidcEnabled}
-								disabled={data.oidcStatus.envForced}
-								onCheckedChange={handleOidcSwitchChange}
-							/>
+							<div class="space-y-2">
+								<SwitchWithLabel
+									id="oidcAuthSwitch"
+									label={m.security_oidc_auth_label()}
+									description={data.oidcStatus.envForced
+										? m.security_oidc_auth_description_forced()
+										: m.security_oidc_auth_description()}
+									disabled={data.oidcStatus.envForced}
+									bind:checked={values.authOidcEnabled}
+									onCheckedChange={handleOidcSwitchChange}
+								/>
 
-							{#if data.oidcStatus.envForced}
-								<div class="text-muted-foreground text-xs">OIDC is forced by environment configuration</div>
-							{/if}
-
-							{#if values.authOidcEnabled && !data.oidcStatus.envForced}
-								<div class="border-primary/20 border-l-2 pl-3">
-									<Button variant="outline" size="sm" onclick={openOidcDialog}>Configure OIDC</Button>
-								</div>
-							{/if}
+								{#if isOidcActive()}
+									<div class="pl-8 sm:pl-11">
+										{#if data.oidcStatus.envForced}
+											{#if !data.oidcStatus.envConfigured}
+												<Button
+													variant="link"
+													class="text-destructive h-auto p-0 text-xs hover:underline"
+													onclick={openOidcDialog}
+												>
+													{m.security_server_forces_oidc_missing_env()}
+												</Button>
+											{:else}
+												<Button variant="link" class="h-auto p-0 text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
+													{m.security_oidc_configured_forced_view()}
+												</Button>
+											{/if}
+										{:else}
+											<Button variant="link" class="h-auto p-0 text-xs text-sky-600 hover:underline" onclick={openOidcDialog}>
+												{m.security_manage_oidc_config()}
+											</Button>
+										{/if}
+									</div>
+								{/if}
+							</div>
 						</div>
 					</Card.Content>
 				</Card.Root>
@@ -171,8 +188,7 @@
 				<Card.Root>
 					<Card.Header icon={ClockIcon}>
 						<div class="flex flex-col space-y-1.5">
-							<Card.Title>Session Settings</Card.Title>
-							<Card.Description>Configure session timeout and security</Card.Description>
+							<Card.Title>{m.security_session_heading()}</Card.Title>
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">

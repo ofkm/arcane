@@ -29,14 +29,12 @@
 	import NetworkIcon from '@lucide/svelte/icons/network';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import { containerService } from '$lib/services/container-service';
-	import * as Collapsible from '$lib/components/ui/collapsible/index.js';
-	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
-	import { Badge } from '$lib/components/ui/badge/index.js';
+	import DropdownCard from '$lib/components/dropdown-card.svelte';
+	import FolderIcon from '@lucide/svelte/icons/folder';
 	import type { Table as TableType } from '@tanstack/table-core';
 	import * as Table from '$lib/components/ui/table/index.js';
 	import FlexRender from '$lib/components/ui/data-table/flex-render.svelte';
-	import { PersistedState } from 'runed';
+	import { DataTableViewOptions } from '$lib/components/arcane-table/index.js';
 
 	let {
 		containers = $bindable(),
@@ -139,7 +137,7 @@
 	const isAnyLoading = $derived(Object.values(isLoading).some((loading) => loading));
 
 	const columns = [
-		{ accessorKey: 'names', title: m.common_name(), sortable: true, cell: NameCell },
+		{ accessorKey: 'names', id: 'name', title: m.common_name(), sortable: true, cell: NameCell },
 		{ accessorKey: 'id', title: m.common_id(), cell: IdCell },
 		{ accessorKey: 'state', title: m.common_state(), sortable: true, cell: StateCell },
 		{ accessorKey: 'image', title: m.common_image(), sortable: true },
@@ -167,16 +165,6 @@
 		customSettings = { ...customSettings, groupByProject: value };
 	}
 
-	const projectOpenStates = new PersistedState<Record<string, boolean>>(
-		'arcane-container-groups-collapsed',
-		{},
-		{ syncTabs: false }
-	);
-
-	function toggleProjectState(projectName: string, isOpen: boolean) {
-		projectOpenStates.current = { ...projectOpenStates.current, [projectName]: isOpen };
-	}
-
 	function getProjectName(container: ContainerSummaryDto): string {
 		const projectLabel = container.labels?.['com.docker.compose.project'];
 		return projectLabel || 'No Project';
@@ -201,7 +189,7 @@
 			return a.localeCompare(b);
 		});
 
-		return sortedGroups;
+		return sortedGroups.length > 0 ? sortedGroups : null;
 	});
 </script>
 
@@ -384,26 +372,22 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root class="flex flex-col gap-6 py-3">
-	<Card.Content class="px-6 py-5">
-		<ArcaneTable
-			persistKey="arcane-container-table"
-			items={containers}
-			bind:requestOptions
-			bind:selectedIds
-			bind:mobileFieldVisibility
-			bind:customSettings
-			onRefresh={async (options) => (containers = await containerService.getContainers(options))}
-			{columns}
-			{mobileFields}
-			rowActions={RowActions}
-			mobileCard={ContainerMobileCardSnippet}
-			selectionDisabled
-			customViewOptions={CustomViewOptions}
-			customTableView={groupByProject && groupedContainers() ? GroupedTableView : undefined}
-		/>
-	</Card.Content>
-</Card.Root>
+<ArcaneTable
+	persistKey="arcane-container-table"
+	items={containers}
+	bind:requestOptions
+	bind:selectedIds
+	bind:mobileFieldVisibility
+	bind:customSettings
+	onRefresh={async (options) => (containers = await containerService.getContainers(options))}
+	{columns}
+	{mobileFields}
+	rowActions={RowActions}
+	mobileCard={ContainerMobileCardSnippet}
+	selectionDisabled
+	customViewOptions={CustomViewOptions}
+	customTableView={groupByProject && groupedContainers() ? GroupedTableView : undefined}
+/>
 
 {#snippet CustomViewOptions()}
 	<DropdownMenu.CheckboxItem bind:checked={() => groupByProject, (v) => setGroupByProject(!!v)}>
@@ -412,84 +396,69 @@
 {/snippet}
 
 {#snippet GroupedTableView({ table }: { table: TableType<ContainerSummaryDto> })}
-	<div class="space-y-4">
+	<div class="mb-4 flex items-center justify-end border-b px-6 py-4">
+		<DataTableViewOptions {table} customViewOptions={CustomViewOptions} />
+	</div>
+	<div class="space-y-4 px-6 pb-6">
 		{#each groupedContainers() ?? [] as [projectName, projectContainers] (projectName)}
 			{@const projectContainerIds = new Set(projectContainers.map((c) => c.id))}
 			{@const projectRows = table
 				.getRowModel()
 				.rows.filter((row) => projectContainerIds.has((row.original as ContainerSummaryDto).id))}
 
-			<Collapsible.Root
-				class="w-full"
-				open={projectOpenStates.current[projectName] ?? false}
-				onOpenChange={(open) => toggleProjectState(projectName, open)}
+			<DropdownCard
+				id={`container-project-${projectName}`}
+				title={projectName}
+				description={`${projectContainers.length} ${projectContainers.length === 1 ? 'container' : 'containers'}`}
+				icon={FolderIcon}
 			>
-				<Card.Root class="border-2">
-					<Collapsible.Trigger
-						class="hover:bg-accent/50 flex w-full items-center justify-between px-4 py-3 text-left transition-colors"
+				<div class="hidden md:block">
+					<Table.Root
+						class="**:data-[slot='table-container']:rounded-none **:data-[slot='table-container']:border-0 **:data-[slot='table-container']:bg-transparent **:data-[slot='table-container']:shadow-none **:data-[slot='table-container']:backdrop-filter-none"
 					>
-						<div class="flex items-center gap-2">
-							{#if projectOpenStates.current[projectName] ?? false}
-								<ChevronDownIcon class="size-4 transition-transform" />
+						<Table.Header class="border-border/40 border-t">
+							{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
+								<Table.Row>
+									{#each headerGroup.headers as header (header.id)}
+										<Table.Head colspan={header.colSpan}>
+											{#if !header.isPlaceholder}
+												<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
+											{/if}
+										</Table.Head>
+									{/each}
+								</Table.Row>
+							{/each}
+						</Table.Header>
+						<Table.Body>
+							{#each projectRows as row (row.id)}
+								<Table.Row data-state={(selectedIds ?? []).includes((row.original as ContainerSummaryDto).id) && 'selected'}>
+									{#each row.getVisibleCells() as cell (cell.id)}
+										<Table.Cell>
+											<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
+										</Table.Cell>
+									{/each}
+								</Table.Row>
 							{:else}
-								<ChevronRightIcon class="size-4 transition-transform" />
-							{/if}
-							<span class="font-semibold">{projectName}</span>
-							<Badge variant="secondary" class="ml-2">{projectContainers.length}</Badge>
-						</div>
-					</Collapsible.Trigger>
-					<Collapsible.Content>
-						<Card.Content class="p-0">
-							<div class="hidden rounded-md md:block">
-								<Table.Root>
-									<Table.Header>
-										{#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
-											<Table.Row>
-												{#each headerGroup.headers as header (header.id)}
-													<Table.Head colspan={header.colSpan}>
-														{#if !header.isPlaceholder}
-															<FlexRender content={header.column.columnDef.header} context={header.getContext()} />
-														{/if}
-													</Table.Head>
-												{/each}
-											</Table.Row>
-										{/each}
-									</Table.Header>
-									<Table.Body>
-										{#each projectRows as row (row.id)}
-											<Table.Row
-												data-state={(selectedIds ?? []).includes((row.original as ContainerSummaryDto).id) && 'selected'}
-											>
-												{#each row.getVisibleCells() as cell (cell.id)}
-													<Table.Cell>
-														<FlexRender content={cell.column.columnDef.cell} context={cell.getContext()} />
-													</Table.Cell>
-												{/each}
-											</Table.Row>
-										{:else}
-											<Table.Row>
-												<Table.Cell colspan={table.getAllColumns().length} class="h-24 text-center"
-													>{m.common_no_results_found()}</Table.Cell
-												>
-											</Table.Row>
-										{/each}
-									</Table.Body>
-								</Table.Root>
-							</div>
+								<Table.Row>
+									<Table.Cell colspan={table.getAllColumns().length} class="h-24 text-center"
+										>{m.common_no_results_found()}</Table.Cell
+									>
+								</Table.Row>
+							{/each}
+						</Table.Body>
+					</Table.Root>
+				</div>
 
-							<div class="space-y-3 md:hidden">
-								{#each projectRows as row (row.id)}
-									{@render ContainerMobileCardSnippet({ row, item: row.original as ContainerSummaryDto, mobileFieldVisibility })}
-								{:else}
-									<div class="h-24 flex items-center justify-center text-center text-muted-foreground">
-										{m.common_no_results_found()}
-									</div>
-								{/each}
-							</div>
-						</Card.Content>
-					</Collapsible.Content>
-				</Card.Root>
-			</Collapsible.Root>
+				<div class="space-y-3 md:hidden">
+					{#each projectRows as row (row.id)}
+						{@render ContainerMobileCardSnippet({ row, item: row.original as ContainerSummaryDto, mobileFieldVisibility })}
+					{:else}
+						<div class="h-24 flex items-center justify-center text-center text-muted-foreground">
+							{m.common_no_results_found()}
+						</div>
+					{/each}
+				</div>
+			</DropdownCard>
 		{/each}
 	</div>
 {/snippet}

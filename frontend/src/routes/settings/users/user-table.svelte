@@ -4,7 +4,6 @@
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
 	import EditIcon from '@lucide/svelte/icons/edit';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { toast } from 'svelte-sonner';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
@@ -215,24 +214,20 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root class="flex flex-col gap-6 py-3">
-	<Card.Content class="px-6 py-5">
-		<ArcaneTable
-			persistKey="arcane-users-table"
-			items={users}
-			bind:requestOptions
-			bind:selectedIds
-			bind:mobileFieldVisibility
-			onRemoveSelected={(ids) => handleDeleteSelected()}
-			onRefresh={async (options) => {
-				requestOptions = options;
-				await onUsersChanged();
-				return users;
-			}}
-			{columns}
-			{mobileFields}
-			rowActions={RowActions}
-			mobileCard={UserMobileCardSnippet}
-		/>
-	</Card.Content>
-</Card.Root>
+<ArcaneTable
+	persistKey="arcane-users-table"
+	items={users}
+	bind:requestOptions
+	bind:selectedIds
+	bind:mobileFieldVisibility
+	onRemoveSelected={(ids) => handleDeleteSelected()}
+	onRefresh={async (options) => {
+		requestOptions = options;
+		await onUsersChanged();
+		return users;
+	}}
+	{columns}
+	{mobileFields}
+	rowActions={RowActions}
+	mobileCard={UserMobileCardSnippet}
+/>

@@ -7,6 +7,7 @@
 		checked = $bindable(),
 		label,
 		description,
+		error,
 		disabled = false,
 		onCheckedChange
 	}: {
@@ -14,6 +15,7 @@
 		checked: boolean;
 		label: string;
 		description?: string;
+		error?: string | null;
 		disabled?: boolean;
 		onCheckedChange?: (checked: boolean) => void;
 	} = $props();
@@ -25,6 +27,11 @@
 		<Label for={id} class="mb-0 text-sm leading-none font-medium">
 			{label}
 		</Label>
+		{#if error}
+			<p class="text-destructive text-[0.8rem] font-medium">
+				{error}
+			</p>
+		{/if}
 		{#if description}
 			<p class="text-muted-foreground text-[0.8rem]">
 				{description}

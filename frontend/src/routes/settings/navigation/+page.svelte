@@ -3,7 +3,6 @@
 	import { getContext } from 'svelte';
 	import { toast } from 'svelte-sonner';
 	import EyeIcon from '@lucide/svelte/icons/eye';
-	import ScrollTextIcon from '@lucide/svelte/icons/scroll-text';
 	import NavigationIcon from '@lucide/svelte/icons/navigation';
 	import SidebarIcon from '@lucide/svelte/icons/sidebar';
 	import NavigationSettingControl from '$lib/components/navigation-setting-control.svelte';
@@ -31,13 +30,11 @@
 		{
 			mobileNavigationMode: data.settings!.mobileNavigationMode,
 			mobileNavigationShowLabels: data.settings!.mobileNavigationShowLabels,
-			mobileNavigationScrollToHide: data.settings!.mobileNavigationScrollToHide,
 			sidebarHoverExpansion: data.settings!.sidebarHoverExpansion
 		},
 		[
 			{ key: 'mobileNavigationMode' },
 			{ key: 'mobileNavigationShowLabels' },
-			{ key: 'mobileNavigationScrollToHide' },
 			{
 				key: 'sidebarHoverExpansion',
 				previewFn: (enabled: boolean) => {
@@ -52,10 +49,6 @@
 	const { bindings, values, originalValues, setupStoreSync } = settingsState.createPageSetup(
 		() => {
 			toast.success(m.navigation_settings_saved());
-			// Reset navigation bar visibility if behavior settings changed
-			if (values.mobileNavigationScrollToHide !== originalValues.mobileNavigationScrollToHide) {
-				resetNavigationVisibility();
-			}
 		},
 		(error) => {
 			console.error('Failed to save navigation settings:', error);
@@ -66,11 +59,10 @@
 	setupStoreSync($settingsStore, [
 		'mobileNavigationMode',
 		'mobileNavigationShowLabels',
-		'mobileNavigationScrollToHide',
 		'sidebarHoverExpansion'
 	]);
 
-	function setLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide', value: any) {
+	function setLocalOverride(key: 'mode' | 'showLabels', value: any) {
 		const currentOverrides = navigationSettingsOverridesStore.current;
 		navigationSettingsOverridesStore.current = {
 			...currentOverrides,
@@ -78,21 +70,21 @@
 		};
 		persistedState = navigationSettingsOverridesStore.current;
 
-		// Reset navigation bar visibility when behavior settings change
-		if (key === 'scrollToHide') {
+		// Reset navigation bar visibility when mode changes (affects scroll-to-hide behavior)
+		if (key === 'mode') {
 			resetNavigationVisibility();
 		}
 	}
 
-	function clearLocalOverride(key: 'mode' | 'showLabels' | 'scrollToHide') {
+	function clearLocalOverride(key: 'mode' | 'showLabels') {
 		const currentOverrides = navigationSettingsOverridesStore.current;
 		const newOverrides = { ...currentOverrides };
 		delete newOverrides[key];
 		navigationSettingsOverridesStore.current = newOverrides;
 		persistedState = navigationSettingsOverridesStore.current;
 
-		// Reset navigation bar visibility when behavior settings change
-		if (key === 'scrollToHide') {
+		// Reset navigation bar visibility when mode changes (affects scroll-to-hide behavior)
+		if (key === 'mode') {
 			resetNavigationVisibility();
 		}
 
@@ -119,7 +111,7 @@
 				<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
 					<div class="flex items-start gap-3 rounded-lg border p-3 sm:p-4">
 						<div
-							class="bg-primary/10 text-primary ring-primary/20 flex size-7 flex-shrink-0 items-center justify-center rounded-lg ring-1 sm:size-8"
+							class="bg-primary/10 text-primary ring-primary/20 flex size-7 shrink-0 items-center justify-center rounded-lg ring-1 sm:size-8"
 						>
 							<SidebarIcon class="size-3 sm:size-4" />
 						</div>
@@ -180,31 +172,6 @@
 							onServerChange={bindings.switch('mobileNavigationShowLabels').onCheckedChange}
 							onLocalOverride={(value) => setLocalOverride('showLabels', value)}
 							onClearOverride={() => clearLocalOverride('showLabels')}
-							serverDisabled={isReadOnly}
-						/>
-					</div>
-				</Card.Content>
-			</Card.Root>
-
-			<Card.Root>
-				<Card.Header icon={NavigationIcon}>
-					<div class="flex flex-col space-y-1.5">
-						<Card.Title>{m.navigation_mobile_behavior_title()}</Card.Title>
-						<Card.Description>{m.navigation_mobile_behavior_description()}</Card.Description>
-					</div>
-				</Card.Header>
-				<Card.Content class="px-3 py-3 sm:px-6 sm:py-4">
-					<div class="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[repeat(auto-fit,minmax(400px,1fr))]">
-						<NavigationSettingControl
-							id="mobileNavigationScrollToHide"
-							label={m.navigation_scroll_to_hide_label()}
-							description={m.navigation_scroll_to_hide_description()}
-							icon={ScrollTextIcon}
-							serverValue={values.mobileNavigationScrollToHide}
-							localOverride={persistedState.scrollToHide}
-							onServerChange={bindings.switch('mobileNavigationScrollToHide').onCheckedChange}
-							onLocalOverride={(value) => setLocalOverride('scrollToHide', value)}
-							onClearOverride={() => clearLocalOverride('scrollToHide')}
 							serverDisabled={isReadOnly}
 						/>
 					</div>

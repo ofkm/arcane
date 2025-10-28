@@ -1,8 +1,8 @@
 <script lang="ts">
 	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
 	import { Button } from '$lib/components/ui/button/index.js';
-	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import * as Card from '$lib/components/ui/card/index.js';
+	import ArrowRightIcon from '@lucide/svelte/icons/arrow-right';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 	import type { ImageSummaryDto } from '$lib/types/image.type';
@@ -95,25 +95,26 @@
 			}
 		]}
 		compact
-		class="mx-2"
 		onclick={(item: ImageSummaryDto) => goto(`/images/${item.id}`)}
 	/>
 {/snippet}
 
-<Card.Root class="pb-2">
-	<Card.Header class="flex items-center justify-between p-4">
-		<div>
-			<Card.Title>
-				<a class="font-medium hover:underline" href="/images">{m.images_title()}</a>
-			</Card.Title>
-			<Card.Description>{m.images_top_largest()}</Card.Description>
+<Card.Root class="flex h-full min-h-0 flex-col">
+	<Card.Header icon={HardDriveIcon} class="shrink-0">
+		<div class="flex flex-1 items-center justify-between">
+			<div class="flex flex-col space-y-1.5">
+				<Card.Title>
+					<h2><a class="hover:underline" href="/images">{m.images_title()}</a></h2>
+				</Card.Title>
+				<Card.Description>{m.images_top_largest()}</Card.Description>
+			</div>
+			<Button variant="ghost" size="sm" href="/images" disabled={isLoading}>
+				{m.common_view_all()}
+				<ArrowRightIcon class="ml-2 size-4" />
+			</Button>
 		</div>
-		<Button variant="ghost" size="sm" href="/images" disabled={isLoading}>
-			{m.common_view_all()}
-			<ArrowRightIcon class="ml-2 size-4" />
-		</Button>
 	</Card.Header>
-	<Card.Content class="p-0 pt-2">
+	<Card.Content class="relative flex min-h-0 flex-1 flex-col px-0">
 		<ArcaneTable
 			items={images}
 			bind:requestOptions
@@ -122,11 +123,14 @@
 			withoutSearch={true}
 			selectionDisabled={true}
 			withoutPagination={true}
+			unstyled={true}
 			{columns}
 			mobileCard={DashImageMobileCard}
 		/>
 		{#if images.data.length > 5}
-			<div class="bg-muted/40 text-muted-foreground border-t px-6 py-3 text-xs">
+			<div
+				class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 rounded-b-xl px-6 py-3 text-xs backdrop-blur-sm"
+			>
 				{m.images_showing_of_total({ shown: 5, total: images.pagination.totalItems })}
 			</div>
 		{/if}

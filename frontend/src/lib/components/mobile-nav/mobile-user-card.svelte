@@ -115,7 +115,7 @@
 								{/if}
 							</div>
 							<div class="min-w-0 flex-1">
-								<div class="text-muted-foreground/70 text-xs font-medium uppercase tracking-widest">
+								<div class="text-muted-foreground/70 text-xs font-medium tracking-widest uppercase">
 									{m.sidebar_environment_label()}
 								</div>
 								<div class="text-foreground text-sm font-medium">
@@ -133,7 +133,7 @@
 								<Select.Trigger class="bg-background/50 border-border/30 text-foreground h-9 w-full text-sm font-medium">
 									<span class="truncate">{m.sidebar_select_environment()}</span>
 								</Select.Trigger>
-								<Select.Content class="min-w-[160px] max-w-[280px]">
+								<Select.Content class="max-w-[280px] min-w-[160px]">
 									{#each environmentStore.available as env (env.id)}
 										<Select.Item value={env.id} class="text-sm">
 											{getEnvLabel(env)}
@@ -153,7 +153,7 @@
 							<LanguagesIcon class="size-4" />
 						</div>
 						<div class="min-w-0 flex-1">
-							<div class="text-muted-foreground/70 mb-1 text-xs font-medium uppercase tracking-widest">
+							<div class="text-muted-foreground/70 mb-1 text-xs font-medium tracking-widest uppercase">
 								{m.common_select_locale()}
 							</div>
 							<div class="text-foreground text-sm font-medium"></div>
@@ -176,7 +176,7 @@
 							{/if}
 						</div>
 						<div class="flex min-w-0 flex-1 flex-col justify-center">
-							<div class="text-muted-foreground/70 mb-1 text-xs font-medium uppercase tracking-widest">
+							<div class="text-muted-foreground/70 mb-1 text-xs font-medium tracking-widest uppercase">
 								{m.common_toggle_theme()}
 							</div>
 							<div class="text-foreground text-sm font-medium">

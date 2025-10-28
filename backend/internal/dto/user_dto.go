@@ -18,13 +18,14 @@ type UpdateUserDto struct {
 }
 
 type UserResponseDto struct {
-	ID            string   `json:"id"`
-	Username      string   `json:"username"`
-	DisplayName   *string  `json:"displayName,omitempty"`
-	Email         *string  `json:"email,omitempty"`
-	Roles         []string `json:"roles"`
-	OidcSubjectId *string  `json:"oidcSubjectId,omitempty"`
-	Locale        *string  `json:"locale,omitempty"`
-	CreatedAt     string   `json:"createdAt,omitempty"`
-	UpdatedAt     string   `json:"updatedAt,omitempty"`
+	ID                     string   `json:"id"`
+	Username               string   `json:"username"`
+	DisplayName            *string  `json:"displayName,omitempty"`
+	Email                  *string  `json:"email,omitempty"`
+	Roles                  []string `json:"roles"`
+	OidcSubjectId          *string  `json:"oidcSubjectId,omitempty"`
+	Locale                 *string  `json:"locale,omitempty"`
+	CreatedAt              string   `json:"createdAt,omitempty"`
+	UpdatedAt              string   `json:"updatedAt,omitempty"`
+	RequiresPasswordChange bool     `json:"requiresPasswordChange"`
 }

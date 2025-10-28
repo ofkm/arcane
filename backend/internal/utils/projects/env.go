@@ -1,7 +1,6 @@
 package projects
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"log/slog"
@@ -9,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/compose-spec/compose-go/v2/dotenv"
 )
 
 const filePerm = 0644
@@ -62,6 +63,29 @@ func (l *EnvLoader) LoadEnvironment(ctx context.Context) (envMap EnvMap, injecti
 	return envMap, injectionVars, nil
 }
 
+// LoadGlobalEnvironment loads only global environment variables:
+// 1. Process environment
+// 2. Global .env.global file (from projects directory)
+// This allows compose-go to load project-specific .env files and do interpolation
+func (l *EnvLoader) LoadGlobalEnvironment(ctx context.Context) (envMap EnvMap, injectionVars EnvMap, err error) {
+	envMap = l.loadProcessEnv()
+	injectionVars = make(EnvMap)
+
+	globalEnvPath := filepath.Join(l.projectsDir, globalEnvFileName)
+	if err := l.ensureGlobalEnvFile(ctx, globalEnvPath); err != nil {
+		slog.WarnContext(ctx, "Failed to ensure global env file", "path", globalEnvPath, "error", err)
+	}
+
+	if err := l.loadAndMergeGlobalEnv(ctx, globalEnvPath, envMap, injectionVars); err != nil {
+		slog.WarnContext(ctx, "Failed to load global env", "path", globalEnvPath, "error", err)
+	}
+
+	// Note: Project-specific .env file is NOT loaded here
+	// compose-go loader will load it automatically and handle interpolation
+
+	return envMap, injectionVars, nil
+}
+
 func (l *EnvLoader) loadProcessEnv() EnvMap {
 	envMap := make(EnvMap)
 	for _, kv := range os.Environ() {
@@ -108,7 +132,7 @@ func (l *EnvLoader) loadAndMergeGlobalEnv(ctx context.Context, path string, envM
 
 	slog.DebugContext(ctx, "Found global env file", "path", path)
 
-	globalEnv, err := parseEnvFile(path)
+	globalEnv, err := parseEnvFileWithContext(path, envMap)
 	if err != nil {
 		return fmt.Errorf("parse env file: %w", err)
 	}
@@ -145,7 +169,7 @@ func (l *EnvLoader) loadAndMergeProjectEnv(ctx context.Context, path string, env
 
 	slog.DebugContext(ctx, "Found project .env file", "path", path)
 
-	projectEnv, err := parseEnvFile(path)
+	projectEnv, err := parseEnvFileWithContext(path, envMap)
 	if err != nil {
 		return fmt.Errorf("parse env file: %w", err)
 	}
@@ -155,65 +179,37 @@ func (l *EnvLoader) loadAndMergeProjectEnv(ctx context.Context, path string, env
 	for k, v := range projectEnv {
 		envMap[k] = v
 		injectionVars[k] = v
+		slog.DebugContext(ctx, "Loaded env var from project .env", "key", k, "value", v)
 	}
 
 	slog.DebugContext(ctx, "Merged project .env into environment map", "total_env_count", len(envMap))
 	return nil
 }
 
-func parseEnvFile(path string) (EnvMap, error) {
+// parseEnvFileWithContext parses an env file using compose-go's dotenv parser with variable expansion.
+// The contextEnv map provides variables for expansion (e.g., from process env or previously loaded files).
+// This handles ${VAR} syntax and proper quote handling automatically via compose-go's dotenv package.
+func parseEnvFileWithContext(path string, contextEnv EnvMap) (EnvMap, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("open file: %w", err)
 	}
 	defer f.Close()
 
-	envMap := make(EnvMap)
-	scanner := bufio.NewScanner(f)
-
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-
-		// Skip empty lines and comments
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
+	// Create lookup function for variable expansion
+	// Checks contextEnv first (previously loaded vars), then process environment
+	lookupFn := func(key string) (string, bool) {
+		if val, ok := contextEnv[key]; ok {
+			return val, true
 		}
-
-		// Split on first '=' to get key and value
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			continue
-		}
-
-		key := strings.TrimSpace(parts[0])
-		value := strings.TrimSpace(parts[1])
-
-		// Strip surrounding quotes and unescape
-		value = stripQuotes(value)
-
-		envMap[key] = value
+		return os.LookupEnv(key)
 	}
 
-	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("scan file: %w", err)
+	// Use compose-go's dotenv parser with lookup support for variable expansion
+	envMap, err := dotenv.ParseWithLookup(f, lookupFn)
+	if err != nil {
+		return nil, fmt.Errorf("parse env file: %w", err)
 	}
 
-	return envMap, nil
-}
-
-func stripQuotes(value string) string {
-	if len(value) < 2 {
-		return value
-	}
-
-	// Check for surrounding quotes (either double or single)
-	if (strings.HasPrefix(value, `"`) && strings.HasSuffix(value, `"`)) ||
-		(strings.HasPrefix(value, `'`) && strings.HasSuffix(value, `'`)) {
-		// Remove surrounding quotes
-		value = value[1 : len(value)-1]
-		// Unescape inner double-quotes
-		value = strings.ReplaceAll(value, `\"`, `"`)
-	}
-
-	return value
+	return EnvMap(envMap), nil
 }

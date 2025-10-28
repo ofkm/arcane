@@ -9,7 +9,6 @@
 	import StopCircleIcon from '@lucide/svelte/icons/stop-circle';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import { Spinner } from '$lib/components/ui/spinner/index.js';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { toast } from 'svelte-sonner';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
@@ -300,19 +299,15 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root class="flex flex-col gap-6 py-3">
-	<Card.Content class="px-6 py-5">
-		<ArcaneTable
-			persistKey="arcane-project-table"
-			items={projects}
-			bind:requestOptions
-			bind:selectedIds
-			bind:mobileFieldVisibility
-			onRefresh={async (options) => (projects = await projectService.getProjects(options))}
-			{columns}
-			{mobileFields}
-			rowActions={RowActions}
-			mobileCard={ProjectMobileCardSnippet}
-		/>
-	</Card.Content>
-</Card.Root>
+<ArcaneTable
+	persistKey="arcane-project-table"
+	items={projects}
+	bind:requestOptions
+	bind:selectedIds
+	bind:mobileFieldVisibility
+	onRefresh={async (options) => (projects = await projectService.getProjects(options))}
+	{columns}
+	{mobileFields}
+	rowActions={RowActions}
+	mobileCard={ProjectMobileCardSnippet}
+/>

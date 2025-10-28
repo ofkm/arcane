@@ -61,8 +61,15 @@ jobs:
       - name: Build frontend
         run: pnpm --filter arcane-frontend build
 
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
       - name: Build binaries
         run: bash scripts/github/build-binaries.sh --docker
+        env:
+          VERSION: next
+          REVISION: ${{ steps.sha.outputs.short }}
 
       - name: Build and push container image
         id: build-push-image
@@ -118,8 +125,15 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
       - name: Build agent binaries
         run: bash scripts/github/build-binaries.sh --docker --agent
+        env:
+          VERSION: next
+          REVISION: ${{ steps.sha.outputs.short }}
 
       - name: Build and push agent image
         id: build-push-image

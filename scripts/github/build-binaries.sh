@@ -4,15 +4,16 @@ set -euo pipefail
 cd backend
 mkdir -p .bin
 
-HOST_OS="$(go env GOHOSTOS)"   # added
+HOST_OS="$(go env GOHOSTOS)"
 
 # Read version from repo root .version (trim whitespace), fallback to "dev"
-VERSION=$(cat ../.version | sed 's/^\s*\|\s*$//g')
-REVISION=$(cat ../.revision 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+
+VERSION=${VERSION:-$(cat ../.version | sed 's/^\s*\|\s*$//g')}
+REVISION=${REVISION:-$(cat ../.revision 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "unknown")}
 
 LDFLAGS="-w -s -buildid=${VERSION} \
   -X github.com/ofkm/arcane-backend/internal/config.Version=${VERSION} \
-  -X github.com/ofkm/arcane-backend/internal/config.Revision=${REVISION}" 
+  -X github.com/ofkm/arcane-backend/internal/config.Revision=${REVISION}"
 
 DOCKER_ONLY=false
 AGENT_BUILD=false

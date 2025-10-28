@@ -41,6 +41,19 @@
 		saveExpandedState();
 	}
 
+	function onHeaderClick(e: MouseEvent) {
+		const target = e.target as HTMLElement;
+		if (target.closest('button, a, [onclick], [role="button"]')) return;
+		toggleExpanded();
+	}
+
+	function onHeaderKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			toggleExpanded();
+		}
+	}
+
 	onMount(() => {
 		if (defaultExpanded) {
 			saveExpandedState();
@@ -49,31 +62,37 @@
 	});
 </script>
 
-<Card.Root class="flex flex-col gap-6 py-3">
+<Card.Root>
 	<Card.Header
-		class="@container/card-header grid cursor-pointer auto-rows-min grid-rows-[auto_auto] items-start gap-1.5 px-6 pt-2 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6"
-		onclick={toggleExpanded}
+		icon={icon}
+		enableHover
+		class="border-b cursor-pointer select-none"
+		role="button"
+		tabindex={0}
+		onclick={onHeaderClick}
+		onkeydown={onHeaderKeydown}
 	>
-		<div class="flex items-center justify-between">
-			<div>
-				<Card.Title class="my-2 flex items-center">
-					{#if icon}{@const Icon = icon}
-						<Icon class="text-primary/80 size-6" />
-					{/if}
-					{title}
-				</Card.Title>
-				{#if description}
-					<Card.Description class="mt-1">{description}</Card.Description>
-				{/if}
-			</div>
-			<Button class="ml-10 h-8 p-3" variant="ghost" aria-label="Expand Card">
-				<ChevronDownIcon class={cn('size-5 transition-transform duration-200', expanded && 'rotate-180 transform')} />
-			</Button>
+		<div>
+			<Card.Title>{title}</Card.Title>
+			{#if description}
+				<Card.Description class="mt-1">{description}</Card.Description>
+			{/if}
 		</div>
+		<Card.Action>
+			<Button
+				variant="ghost"
+				size="icon"
+				class="h-8 w-8"
+				aria-label={expanded ? 'Collapse section' : 'Expand section'}
+				onclick={() => toggleExpanded()}
+			>
+				<ChevronDownIcon class={cn('size-5 transition-transform duration-200', expanded && 'rotate-180')} />
+			</Button>
+		</Card.Action>
 	</Card.Header>
 	{#if expanded}
 		<div transition:slide={{ duration: 200 }}>
-			<Card.Content class="bg-muted/20 px-6 pt-5">
+			<Card.Content class="pt-4">
 				{@render children()}
 			</Card.Content>
 		</div>
