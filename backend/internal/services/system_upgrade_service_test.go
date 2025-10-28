@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"testing"
 
 	containertypes "github.com/docker/docker/api/types/container"
@@ -17,7 +18,7 @@ func TestDetermineImageName_DefaultWhenNoImage(t *testing.T) {
 		},
 	}
 
-	imageName := s.determineImageName(container)
+	imageName := s.determineImageName(context.Background(), container)
 	require.Equal(t, "ofkm/arcane:latest", imageName)
 }
 
@@ -31,7 +32,7 @@ func TestDetermineImageName_PreservesExistingTag(t *testing.T) {
 		},
 	}
 
-	imageName := s.determineImageName(container)
+	imageName := s.determineImageName(context.Background(), container)
 	require.Equal(t, "ofkm/arcane:v1.2.3", imageName)
 }
 
@@ -45,7 +46,7 @@ func TestDetermineImageName_RemovesDigest(t *testing.T) {
 		},
 	}
 
-	imageName := s.determineImageName(container)
+	imageName := s.determineImageName(context.Background(), container)
 	require.Equal(t, "ofkm/arcane:v1.2.3", imageName)
 }
 
@@ -59,7 +60,7 @@ func TestDetermineImageName_AddsLatestWhenNoTag(t *testing.T) {
 		},
 	}
 
-	imageName := s.determineImageName(container)
+	imageName := s.determineImageName(context.Background(), container)
 	require.Equal(t, "ofkm/arcane:latest", imageName)
 }
 
@@ -73,7 +74,7 @@ func TestDetermineImageName_CustomRegistry(t *testing.T) {
 		},
 	}
 
-	imageName := s.determineImageName(container)
+	imageName := s.determineImageName(context.Background(), container)
 	require.Equal(t, "registry.example.com/myorg/arcane:v2.0.0", imageName)
 }
 
@@ -87,7 +88,7 @@ func TestDetermineImageName_RemovesDigestFromCustomRegistry(t *testing.T) {
 		},
 	}
 
-	imageName := s.determineImageName(container)
+	imageName := s.determineImageName(context.Background(), container)
 	require.Equal(t, "registry.example.com/myorg/arcane:latest", imageName)
 }
 
@@ -180,7 +181,7 @@ func TestSystemUpgradeService_ImageNameValidation(t *testing.T) {
 				},
 			}
 
-			result := s.determineImageName(container)
+			result := s.determineImageName(context.Background(), container)
 			require.Equal(t, tt.expected, result)
 		})
 	}
@@ -358,7 +359,7 @@ func TestSystemUpgradeService_DetermineImageName_EdgeCases(t *testing.T) {
 				},
 			}
 
-			result := s.determineImageName(container)
+			result := s.determineImageName(context.Background(), container)
 			require.Equal(t, tt.expectedImage, result)
 		})
 	}

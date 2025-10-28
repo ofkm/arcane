@@ -99,7 +99,7 @@ func (s *SystemUpgradeService) UpgradeToLatest(ctx context.Context, user models.
 	}
 
 	// 3. Determine image to pull
-	imageName := s.determineImageName(currentContainer)
+	imageName := s.determineImageName(ctx, currentContainer)
 	slog.Info("Pulling new image", "image", imageName)
 
 	// 4. Pull new image
@@ -275,20 +275,87 @@ func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containe
 }
 
 // determineImageName extracts image name from container or uses default
-func (s *SystemUpgradeService) determineImageName(container containertypes.InspectResponse) string {
-	imageName := container.Config.Image
+func (s *SystemUpgradeService) determineImageName(ctx context.Context, container containertypes.InspectResponse) string {
+	// Start with image reference from container config
+	imageName := ""
+	if container.Config != nil {
+		imageName = strings.TrimSpace(container.Config.Image)
+	}
 
-	// Strip digest if present
-	if idx := strings.Index(imageName, "@sha256:"); idx != -1 {
+	// Strip digest (e.g., repo:tag@sha256:..., or repo@sha256:...)
+	if idx := strings.Index(imageName, "@"); idx != -1 {
 		imageName = imageName[:idx]
 	}
 
-	// If no tag is specified, add :latest
-	if !strings.Contains(imageName, ":") {
-		imageName += ":latest"
+	// Helper: does ref include an explicit tag?
+	hasExplicitTag := func(ref string) bool {
+		// tag separator is a ':' that occurs after the last '/'
+		if ref == "" {
+			return false
+		}
+		slash := strings.LastIndex(ref, "/")
+		colon := strings.LastIndex(ref, ":")
+		return colon > slash
 	}
 
-	// Ensure it's an ofkm/arcane image
+	// If no explicit tag or empty, try to infer from the actual image's RepoTags
+	if !hasExplicitTag(imageName) {
+		if s.dockerService != nil {
+			if dcli, err := s.dockerService.CreateConnection(ctx); err == nil {
+				func() {
+					defer dcli.Close()
+					// container.Image is usually an image ID (sha256:...)
+					// Try to resolve repo tags for this ID
+					if ii, ierr := dcli.ImageInspect(ctx, container.Image); ierr == nil {
+						// Prefer a non-latest arcane tag if available; otherwise any arcane tag; otherwise any tag
+						var anyTag string
+						var arcaneAny string
+						var arcaneNonLatest string
+						for _, t := range ii.RepoTags {
+							if t == "" || t == "<none>:<none>" {
+								continue
+							}
+							// ensure we don't pass a digest in tag (RepoTags are repo:tag)
+							tt := t
+							if idx := strings.Index(tt, "@"); idx != -1 {
+								tt = tt[:idx]
+							}
+							if anyTag == "" {
+								anyTag = tt
+							}
+							if strings.Contains(tt, "arcane") {
+								if arcaneAny == "" {
+									arcaneAny = tt
+								}
+								if !strings.HasSuffix(tt, ":latest") && arcaneNonLatest == "" {
+									arcaneNonLatest = tt
+								}
+							}
+						}
+						// choose best candidate
+						if arcaneNonLatest != "" {
+							imageName = arcaneNonLatest
+						} else if arcaneAny != "" {
+							imageName = arcaneAny
+						} else if anyTag != "" {
+							imageName = anyTag
+						}
+					}
+				}()
+			}
+		}
+	}
+
+	// After inference, if still no tag, default to :latest
+	if !hasExplicitTag(imageName) {
+		if imageName == "" {
+			imageName = "ofkm/arcane:latest"
+		} else {
+			imageName += ":latest"
+		}
+	}
+
+	// Ensure it's an arcane image; otherwise fallback to default
 	if !strings.Contains(imageName, "arcane") {
 		slog.Warn("Container is not running arcane image, using ofkm/arcane:latest", "currentImage", imageName)
 		return "ofkm/arcane:latest"
