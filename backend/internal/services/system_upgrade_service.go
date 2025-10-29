@@ -98,7 +98,7 @@ func (s *SystemUpgradeService) TriggerUpgradeViaCLI(ctx context.Context, user mo
 
 	// Use the official Arcane image for the upgrader container
 	// This ensures we always use the packaged CLI from the official image
-	upgraderImage := "ghcr.io/ofkm/arcane:self-update"
+	upgraderImage := "ghcr.io/ofkm/arcane:latest"
 
 	slog.Info("Spawning upgrade CLI command",
 		"containerName", containerName,

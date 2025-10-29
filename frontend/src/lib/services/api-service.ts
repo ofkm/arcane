@@ -22,6 +22,12 @@ abstract class BaseAPIService {
 		withCredentials: true
 	});
 
+	private static tokenRefreshHandler: (() => Promise<string | null>) | null = null;
+
+	static setTokenRefreshHandler(handler: () => Promise<string | null>) {
+		BaseAPIService.tokenRefreshHandler = handler;
+	}
+
 	constructor() {
 		if (typeof process !== 'undefined' && process?.env?.DEV_BACKEND_URL) {
 			this.api.defaults.baseURL = process.env.DEV_BACKEND_URL;
@@ -29,10 +35,14 @@ abstract class BaseAPIService {
 
 		this.api.interceptors.response.use(
 			(response) => response,
-			(error) => {
+			async (error) => {
 				console.log(error);
 				const status = error?.response?.status;
-				if (status === 401 && typeof window !== 'undefined') {
+				const originalRequest = error.config;
+
+				if (status === 401 && typeof window !== 'undefined' && !originalRequest._retry) {
+					originalRequest._retry = true;
+
 					const serverMsg = extractServerMessage(error?.response?.data);
 					const isVersionMismatch = serverMsg?.toLowerCase().includes('application has been updated');
 
@@ -57,6 +67,7 @@ abstract class BaseAPIService {
 					const skipAuthPaths = [
 						'/auth/login',
 						'/auth/logout',
+						'/auth/refresh',
 						'/auth/oidc',
 						'/auth/oidc/login',
 						'/auth/oidc/callback',
@@ -67,10 +78,27 @@ abstract class BaseAPIService {
 					const pathname = window.location.pathname || '/';
 					const isOnAuthPage = pathname.startsWith('/auth');
 
-					if (!isAuthApi && !isOnAuthPage) {
-						if (isVersionMismatch) {
-							toast.info('Application has been updated. Please log in again.');
+					if (!isAuthApi && !isOnAuthPage && !isVersionMismatch && BaseAPIService.tokenRefreshHandler) {
+						try {
+							const newToken = await BaseAPIService.tokenRefreshHandler();
+
+							if (newToken) {
+								return this.api(originalRequest);
+							}
+						} catch (refreshError) {
+							console.error('Token refresh failed in interceptor:', refreshError);
 						}
+
+						// If we reach here, refresh failed - redirect to login
+						if (!isOnAuthPage) {
+							const redirectTo = encodeURIComponent(pathname);
+							window.location.replace(`/auth/login?redirect=${redirectTo}`);
+							return new Promise(() => {});
+						}
+					}
+
+					if (!isAuthApi && !isOnAuthPage && isVersionMismatch) {
+						toast.info('Application has been updated. Please log in again.');
 						const redirectTo = encodeURIComponent(pathname);
 						window.location.replace(`/auth/login?redirect=${redirectTo}`);
 						return new Promise(() => {});

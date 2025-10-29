@@ -1,3 +1,82 @@
+## v1.7.0
+
+### New features
+
+* arcane cli `generate secret` command ([#760](https://github.com/ofkm/arcane/pull/760) by @kmendell)
+* notification system for container and image updates ([#730](https://github.com/ofkm/arcane/pull/730) by @Copilot)
+* add hostname to dashboard([492222d](https://github.com/ofkm/arcane/commit/492222d26872fd51879760345bdfa4bfe1c66e39) by @kmendell)
+* arcane self-updater ([#744](https://github.com/ofkm/arcane/pull/744) by @kmendell)
+
+### Bug fixes
+
+* text inputs not using correct string or number type for input boxes([215d8ed](https://github.com/ofkm/arcane/commit/215d8ed6e3847f7405607118f0ac986f089e5ae2) by @kmendell)
+* project env interpolation not parsing env files in correct order ([#751](https://github.com/ofkm/arcane/pull/751) by @kmendell)
+* load project services concurrently ([#758](https://github.com/ofkm/arcane/pull/758) by @kmendell)
+* only log entrypoint when running the base arcane command([e95093f](https://github.com/ofkm/arcane/commit/e95093f2ad90b878d43ffb91b8d7a12eaf654f0c) by @kmendell)
+* refresh environment on all pages([44501d4](https://github.com/ofkm/arcane/commit/44501d492f88f5b8e6f938e4844b3568406012e9) by @kmendell)
+* properly persist local vs environment settings ([#775](https://github.com/ofkm/arcane/pull/775) by @kmendell)
+* remove default route from customize overview ([#776](https://github.com/ofkm/arcane/pull/776) by @cabaucom376)
+* responsive dialog overflow ([#786](https://github.com/ofkm/arcane/pull/786) by @cabaucom376)
+* scroll-to-hide by mode, fix detachment ([#781](https://github.com/ofkm/arcane/pull/781) by @cabaucom376)
+* containers unable to be sorted by name([f1905ed](https://github.com/ofkm/arcane/commit/f1905ed1b95caef0f7637de8058aeae338a83ba8) by @kmendell)
+* stat card columns([ac05b46](https://github.com/ofkm/arcane/commit/ac05b463c7ed7537d1ebcf2f08aca2c87071654c) by @kmendell)
+* date locale cant be loaded from date-fns if locale is en([947655c](https://github.com/ofkm/arcane/commit/947655c30dd9be29c81a42a0ccce35d1a6fdb858) by @kmendell)
+* popovers fully transparent without glassmorphism ([#793](https://github.com/ofkm/arcane/pull/793) by @cabaucom376)
+* encryption key validation errors([b3c7cb5](https://github.com/ofkm/arcane/commit/b3c7cb5bd64c6a5d49a0950ae7bde01f42910f4d) by @kmendell)
+* sessions not using refresh tokens ([#795](https://github.com/ofkm/arcane/pull/795) by @kmendell)
+
+### Other
+
+* bump the dev-dependencies group with 3 updates ([#743](https://github.com/ofkm/arcane/pull/743) by @dependabot[bot])
+* bump github.com/docker/compose/v2 from 2.40.0 to 2.40.1 in /backend in the backend-dependencies group ([#745](https://github.com/ofkm/arcane/pull/745) by @dependabot[bot])
+* bump the prod-dependencies group with 6 updates ([#742](https://github.com/ofkm/arcane/pull/742) by @dependabot[bot])
+* use ellipsis instead of three dots in source strings ([#748](https://github.com/ofkm/arcane/pull/748) by @blfpd)
+* use ellipsis instead of three dots in translated strings ([#749](https://github.com/ofkm/arcane/pull/749) by @blfpd)
+* add greptile.json configuration file([7e3c645](https://github.com/ofkm/arcane/commit/7e3c645e0cc8c75d245338840a343cf1664088b9) by @kmendell)
+* bump vite from 7.1.10 to 7.1.11 in the npm_and_yarn group across 1 directory ([#752](https://github.com/ofkm/arcane/pull/752) by @dependabot[bot])
+* move settings/customize search to backend ([#739](https://github.com/ofkm/arcane/pull/739) by @kmendell)
+* bump @types/node from 24.8.1 to 24.9.1 in the dev-dependencies group ([#754](https://github.com/ofkm/arcane/pull/754) by @dependabot[bot])
+* bump the prod-dependencies group with 4 updates ([#753](https://github.com/ofkm/arcane/pull/753) by @dependabot[bot])
+* fix linter about complexity([bc99f5a](https://github.com/ofkm/arcane/commit/bc99f5af5d03ddf01854140d335d309b005322e3) by @kmendell)
+* remove onboarding screens with simple change password dialog ([#759](https://github.com/ofkm/arcane/pull/759) by @kmendell)
+* bump isomorphic-dompurify from 2.29.0 to 2.30.0 in the prod-dependencies group ([#761](https://github.com/ofkm/arcane/pull/761) by @dependabot[bot])
+* bump pnpm to 10.19.0([7046e7e](https://github.com/ofkm/arcane/commit/7046e7e1f3e7ee79f21095c41bc8b25251a1e2e0) by @kmendell)
+* show correct version on non-release builds([d0b6b35](https://github.com/ofkm/arcane/commit/d0b6b354de711e6abc392c7e5eb2ac4238bef744) by @kmendell)
+* pass version arguments to next build([be7222a](https://github.com/ofkm/arcane/commit/be7222ae7eb707c306be9ae593071a7ca81c52e4) by @kmendell)
+* bump frontend and tests pnpm version to 10.19.0([a441293](https://github.com/ofkm/arcane/commit/a441293ad308d9c06dbbb7347e5db146f6762755) by @kmendell)
+* tweak glass-ui styling([f6edd50](https://github.com/ofkm/arcane/commit/f6edd5025e9522e7f0978c26bf8fc37521073c0b) by @kmendell)
+* bump vite from 7.1.11 to 7.1.12 in the dev-dependencies group ([#769](https://github.com/ofkm/arcane/pull/769) by @dependabot[bot])
+* bump the prod-dependencies group across 1 directory with 9 updates ([#774](https://github.com/ofkm/arcane/pull/774) by @dependabot[bot])
+* tweak glass ui on sheets and dialogs([051fee6](https://github.com/ofkm/arcane/commit/051fee6d18d729bd52b49435fc6a0db1fec83516) by @kmendell)
+* update backend deps([7de538c](https://github.com/ofkm/arcane/commit/7de538c550da99aaa6bc54e3f2536afa79ebdff5) by @kmendell)
+* use env interpolation in project tests([7ba22ce](https://github.com/ofkm/arcane/commit/7ba22ceaef0b6c80a76a688185114696bbb02a37) by @kmendell)
+* use correct project logs heading selector([2742223](https://github.com/ofkm/arcane/commit/2742223e8b191c032543bd610ccafc7227794451) by @kmendell)
+* use correct project logs button selectors([dbecb46](https://github.com/ofkm/arcane/commit/dbecb460bffed17089d3ae527b9e989b4549bc58) by @kmendell)
+* use drawers on mobile and dialogs on desktop([89beadc](https://github.com/ofkm/arcane/commit/89beadc5dcdbcc03ccd4426e494803179a760a95) by @kmendell)
+* better align glass ui in production builds([ed9b171](https://github.com/ofkm/arcane/commit/ed9b1715542fd145c7f9618fe77eff8cb1a00c24) by @kmendell)
+* login screen styling ([#780](https://github.com/ofkm/arcane/pull/780) by @cabaucom376)
+* bump the prod-dependencies group with 4 updates ([#784](https://github.com/ofkm/arcane/pull/784) by @dependabot[bot])
+* bump actions/upload-artifact from 4 to 5 ([#782](https://github.com/ofkm/arcane/pull/782) by @dependabot[bot])
+* bump actions/download-artifact from 5 to 6 ([#783](https://github.com/ofkm/arcane/pull/783) by @dependabot[bot])
+* update dialog overflow ([#788](https://github.com/ofkm/arcane/pull/788) by @cabaucom376)
+* use accent color for card header ([#789](https://github.com/ofkm/arcane/pull/789) by @cabaucom376)
+* table styling ([#787](https://github.com/ofkm/arcane/pull/787) by @cabaucom376)
+* run formatter([a89581e](https://github.com/ofkm/arcane/commit/a89581e2a3229c29bc6cd9628edbc3191ba0795c) by @kmendell)
+* restore solid backgrounds for non-glass ui([38f919b](https://github.com/ofkm/arcane/commit/38f919b3e6fbe834ee0108a33bc94e0a068405e1) by @kmendell)
+* use dropdown card component for group by project([b26f873](https://github.com/ofkm/arcane/commit/b26f87347697187fee4d8a717d10e17061a9f3bb) by @kmendell)
+* use new ubuntu-slim runner for smaller workflows([51213a4](https://github.com/ofkm/arcane/commit/51213a40ed798a7b6f9124a75a6027e64d35c7ef) by @kmendell)
+* revert ubuntu-slim workflows([6ead191](https://github.com/ofkm/arcane/commit/6ead191a36e5e38f06b6db8d87c0482d7b5d8a28) by @kmendell)
+* bump validator.js to 13.15.20([db216dd](https://github.com/ofkm/arcane/commit/db216dd5383e2f53f8d3453868996a234d7a6e5d) by @kmendell)
+* bump pnpm to 10.20.0([5241be7](https://github.com/ofkm/arcane/commit/5241be7aeb2aae2202d0e00a371cfe0d6426d3a0) by @kmendell)
+* table cell newline wrapping fix ([#792](https://github.com/ofkm/arcane/pull/792) by @cabaucom376)
+* bump the prod-dependencies group across 1 directory with 6 updates ([#794](https://github.com/ofkm/arcane/pull/794) by @dependabot[bot])
+* bump @types/dockerode from 3.3.44 to 3.3.45 in the dev-dependencies group ([#785](https://github.com/ofkm/arcane/pull/785) by @dependabot[bot])
+* change upgrader image tag to 'latest'([882edae](https://github.com/ofkm/arcane/commit/882edae20675cb23f22e33fd8e01b9219592b06b) by @kmendell)
+
+
+
+**Full Changelog**: https://github.com/ofkm/arcane/compare/v1.6.0...v1.7.0
+
 ## v1.6.0
 
 ### New features

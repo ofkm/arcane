@@ -496,16 +496,6 @@ body {
 	flex-direction: column;
 }
 
-/* iOS keyboard fix: prevent page from becoming scrollable when keyboard appears */
-@supports (-webkit-touch-callout: none) {
-	body {
-		/* On iOS, prevent the body from being scrollable beyond the visual viewport */
-		/* This prevents the auto-scroll that causes position:fixed elements to detach */
-		max-height: 100vh;
-		max-height: 100dvh;
-	}
-}
-
 main {
 	min-width: 0;
 	max-width: 100%;
