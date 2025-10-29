@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"runtime"
@@ -511,5 +512,59 @@ func (h *SystemHandler) ConvertDockerRun(c *gin.Context) {
 		DockerCompose: dockerCompose,
 		EnvVars:       envVars,
 		ServiceName:   serviceName,
+	})
+}
+
+// CheckUpgradeAvailable checks if the local system can be upgraded
+// Remote environments are handled by the proxy middleware
+func (h *SystemHandler) CheckUpgradeAvailable(c *gin.Context) {
+	canUpgrade, err := h.upgradeService.CanUpgrade(c.Request.Context())
+
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"canUpgrade": false,
+			"error":      true,
+			"message":    err.Error(),
+		})
+		slog.Debug("System upgrade check failed", "error", err)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"canUpgrade": canUpgrade,
+		"error":      false,
+		"message":    "System can be upgraded",
+	})
+}
+
+// TriggerUpgrade triggers a system upgrade by spawning the upgrade CLI command
+// This runs the upgrade from outside the current container to avoid self-termination issues
+func (h *SystemHandler) TriggerUpgrade(c *gin.Context) {
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
+		return
+	}
+
+	slog.Info("System upgrade triggered", "user", currentUser.Username, "userId", currentUser.ID)
+
+	err := h.upgradeService.TriggerUpgradeViaCLI(c.Request.Context(), *currentUser)
+	if err != nil {
+		slog.Error("System upgrade failed", "error", err, "user", currentUser.Username)
+
+		statusCode := http.StatusInternalServerError
+		if errors.Is(err, services.ErrUpgradeInProgress) {
+			statusCode = http.StatusConflict
+		}
+
+		c.JSON(statusCode, gin.H{
+			"error":   err.Error(),
+			"message": "Failed to initiate upgrade",
+		})
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"message": "Upgrade initiated successfully. A new container is being created and will replace this one shortly.",
+		"success": true,
 	})
 }
