@@ -43,6 +43,10 @@ ENV DOCKER_GID=998 PUID=2000 PGID=2000
 ENV GIN_MODE=release
 ENV PORT=3552
 ENV ENVIRONMENT=production
+# Multi-distro, multi-arch library path for GPU support
+# Includes paths for: NVIDIA runtime mounts, Debian/Ubuntu (AMD64/ARM64), RHEL/CentOS/Fedora, Arch, and standard fallbacks
+# Covers: NVIDIA GPUs (all distros/architectures), future AMD ROCm support, and Intel GPU support
+ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/opt/rocm/lib:/usr/lib/x86_64-linux-gnu:/usr/lib/aarch64-linux-gnu:/usr/lib64:/usr/lib:/lib64:/lib
 WORKDIR /app
 RUN mkdir -p /app/data && chmod 755 /app/data
 COPY --from=backend-builder /build/arcane .

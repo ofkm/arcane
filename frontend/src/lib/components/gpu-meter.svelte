@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import { Progress } from '$lib/components/ui/progress/index.js';
-	import { Cpu as GpuIcon } from '@lucide/svelte';
+	import GpuIcon from '@lucide/svelte/icons/gpu';
 	import { m } from '$lib/paraglide/messages';
 	import type { GPUStats } from '$lib/types/system-stats.type';
 
@@ -12,9 +12,10 @@
 
 	let { gpus, loading = false }: Props = $props();
 
-	function formatBytes(bytes: number): string {
-		if (bytes === 0) return '0 GB';
-	const gb = bytes / 1024; // MB to GB (using 1024 for binary)
+	function formatBytes(mb: number): string {
+		if (mb === 0) return '0 GB';
+		// Convert MB to GB (1024 MB = 1 GB for binary)
+		const gb = mb / 1024;
 		return `${gb.toFixed(1)} GB`;
 	}
 
@@ -29,10 +30,10 @@
 		<Card.Header icon={GpuIcon} iconVariant="primary" compact {loading}>
 			{#snippet children()}
 				<div class="min-w-0 flex-1">
-					<div class="text-foreground text-sm font-semibold">GPU</div>
+					<div class="text-foreground text-sm font-semibold">{m.dashboard_meter_gpu()}</div>
 					{#if gpus && gpus.length > 0}
 						<div class="text-muted-foreground text-xs">
-							{gpus.length} {gpus.length === 1 ? 'device' : 'devices'}
+							{gpus.length} {gpus.length === 1 ? m.dashboard_meter_gpu_device() : m.dashboard_meter_gpu_devices()}
 						</div>
 					{/if}
 				</div>

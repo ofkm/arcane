@@ -103,16 +103,18 @@
 
 		if (stats.gpus && stats.gpus.length > 0) {
 			// Track average GPU memory usage percentage across all GPUs
-			const totalGpuPercent = stats.gpus.reduce((sum, gpu) => {
-				if (gpu.memoryTotal > 0) {
+			// Filter out GPUs with zero total memory to avoid invalid calculations
+			const validGpus = stats.gpus.filter(gpu => gpu.memoryTotal > 0);
+
+			if (validGpus.length > 0) {
+				const totalGpuPercent = validGpus.reduce((sum, gpu) => {
 					return sum + (gpu.memoryUsed / gpu.memoryTotal) * 100;
+				}, 0);
+				const avgGpuPercent = totalGpuPercent / validGpus.length;
+				historicalData.gpu.push({ date: now, value: avgGpuPercent });
+				if (historicalData.gpu.length > maxPoints) {
+					historicalData.gpu = historicalData.gpu.slice(-maxPoints);
 				}
-				return sum;
-			}, 0);
-			const avgGpuPercent = totalGpuPercent / stats.gpus.length;
-			historicalData.gpu.push({ date: now, value: avgGpuPercent });
-			if (historicalData.gpu.length > maxPoints) {
-				historicalData.gpu = historicalData.gpu.slice(-maxPoints);
 			}
 		}
 
@@ -306,7 +308,7 @@
 	<section>
 		<h2 class="mb-4 text-lg font-semibold tracking-tight">{m.dashboard_system_overview()}</h2>
 		<div class="space-y-3">
-			<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 {currentStats?.gpuCount && currentStats.gpuCount > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}">
 				<MeterMetric
 					title={m.dashboard_meter_cpu()}
 					icon={CpuIcon}
