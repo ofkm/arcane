@@ -255,10 +255,13 @@ func (s *ImageUpdateService) parseImageReference(imageRef string) *ImageParts {
 	// Extract repository (path without registry)
 	repository := ref.Path(named)
 
-	// Extract tag
+	// Extract tag or default to latest
 	tag := "latest"
 	if tagged, ok := named.(ref.NamedTagged); ok {
 		tag = tagged.Tag()
+	} else if _, ok := named.(ref.Digested); ok {
+		// If it's a digest reference, still use "latest" as the tag for registry queries
+		tag = "latest"
 	}
 
 	return &ImageParts{
@@ -541,16 +544,47 @@ func (s *ImageUpdateService) saveUpdateResultByID(ctx context.Context, imageID s
 
 	var repo, tag string
 	if len(dockerImage.RepoTags) > 0 && dockerImage.RepoTags[0] != "<none>:<none>" {
-		parts := strings.SplitN(dockerImage.RepoTags[0], ":", 2)
-		repo = parts[0]
-		if len(parts) > 1 {
-			tag = parts[1]
+		// Use distribution/reference SDK for proper parsing
+		if named, err := ref.ParseNormalizedNamed(dockerImage.RepoTags[0]); err == nil {
+			repo = ref.FamiliarName(named)
+			if tagged, ok := named.(ref.NamedTagged); ok {
+				tag = tagged.Tag()
+			} else {
+				tag = "latest"
+			}
 		} else {
-			tag = "latest"
+			// Fallback for malformed references
+			parts := strings.SplitN(dockerImage.RepoTags[0], ":", 2)
+			repo = parts[0]
+			if len(parts) > 1 {
+				tag = parts[1]
+			} else {
+				tag = "latest"
+			}
 		}
 	} else {
-		repo = "<none>"
-		tag = "<none>"
+		// Attempt to derive repo from RepoDigests if available
+		if len(dockerImage.RepoDigests) > 0 {
+			for _, rd := range dockerImage.RepoDigests {
+				if rd == "<none>@<none>" {
+					continue
+				}
+				if at := strings.LastIndex(rd, "@"); at != -1 {
+					repoCandidate := rd[:at]
+					if repoCandidate != "" {
+						repo = repoCandidate
+						tag = "<none>"
+						break
+					}
+				}
+			}
+		}
+		if repo == "" {
+			repo = "<none>"
+		}
+		if tag == "" {
+			tag = "<none>"
+		}
 	}
 
 	var lastError *string

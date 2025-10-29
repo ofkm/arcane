@@ -12,6 +12,7 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
+	import { Badge } from '$lib/components/ui/badge/index.js';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ImageUpdateItem from '$lib/components/image-update-item.svelte';
@@ -164,7 +165,8 @@
 		},
 		{ accessorKey: 'created', title: m.common_created(), sortable: true, cell: CreatedCell },
 		{ accessorKey: 'size', title: m.common_size(), sortable: true, cell: SizeCell },
-		{ accessorKey: 'repoTags', title: m.images_repository(), sortable: true, cell: RepoCell }
+		{ accessorKey: 'repo', title: m.images_repository(), sortable: true, cell: RepoCell },
+		{ accessorKey: 'repoTags', title: m.common_tags(), cell: TagCell }
 	] satisfies ColumnSpec<ImageSummaryDto>[];
 
 	const mobileFields = [
@@ -173,15 +175,34 @@
 		{ id: 'inUse', label: m.common_in_use(), defaultVisible: true },
 		{ id: 'created', label: m.common_created(), defaultVisible: true },
 		{ id: 'size', label: m.common_size(), defaultVisible: true },
-		{ id: 'repoTags', label: m.images_repository(), defaultVisible: true }
+		{ id: 'repo', label: m.images_repository(), defaultVisible: true },
+		{ id: 'repoTags', label: m.common_tags(), defaultVisible: true }
 	];
 
 	let mobileFieldVisibility = $state<Record<string, boolean>>({});
 </script>
 
 {#snippet RepoCell({ item }: { item: ImageSummaryDto })}
+	{#if item.repo && item.repo !== '<none>'}
+		<a class="font-medium hover:underline" href="/images/{item.id}">{item.repo}</a>
+	{:else}
+		<span class="text-muted-foreground italic">{m.images_untagged()}</span>
+	{/if}
+{/snippet}
+
+{#snippet TagCell({ item }: { item: ImageSummaryDto })}
 	{#if item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>'}
-		<a class="font-medium hover:underline" href="/images/{item.id}">{item.repoTags[0]}</a>
+		<div class="flex flex-wrap gap-1.5">
+			{#each item.repoTags.slice(0, 2) as repoTag}
+				{@const tag = repoTag.split(':').pop() || repoTag}
+				<Badge variant="outline" class="font-mono text-xs">{tag}</Badge>
+			{/each}
+			{#if item.repoTags.length > 2}
+				<Badge variant="outline" class="text-xs">+{item.repoTags.length - 2}</Badge>
+			{/if}
+		</div>
+	{:else if item.tag && item.tag !== '<none>'}
+		<Badge variant="outline" class="font-mono text-xs">{item.tag}</Badge>
 	{:else}
 		<span class="text-muted-foreground italic">{m.images_untagged()}</span>
 	{/if}
@@ -228,8 +249,10 @@
 			component: ImageIcon,
 			variant: item.inUse ? 'emerald' : 'amber'
 		})}
-		title={(item) =>
-			item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>' ? item.repoTags[0] : m.images_untagged()}
+		title={(item) => {
+			if (item.repo && item.repo !== '<none>') return item.repo;
+			return m.images_untagged();
+		}}
 		subtitle={(item) => ((mobileFieldVisibility.id ?? false) ? item.id : null)}
 		badges={[
 			(item: ImageSummaryDto) =>
@@ -249,14 +272,22 @@
 			},
 			{
 				label: m.images_repository(),
-				getValue: (item: ImageSummaryDto) => item.repoTags?.[0] || m.images_untagged(),
+				getValue: (item: ImageSummaryDto) => (item.repo && item.repo !== '<none>' ? item.repo : m.images_untagged()),
 				icon: ImageIcon,
 				iconVariant: 'purple' as const,
-				show:
-					(mobileFieldVisibility.repoTags ?? true) &&
-					item.repoTags &&
-					item.repoTags.length > 0 &&
-					item.repoTags[0] !== '<none>:<none>'
+				show: mobileFieldVisibility.repo ?? true
+			},
+			{
+				label: m.common_tags(),
+				getValue: (item: ImageSummaryDto) => {
+					if (item.repoTags && item.repoTags.length > 0 && item.repoTags[0] !== '<none>:<none>') {
+						return item.repoTags.map((rt) => rt.split(':').pop() || rt).join(', ');
+					}
+					return item.tag && item.tag !== '<none>' ? item.tag : m.images_untagged();
+				},
+				icon: ImageIcon,
+				iconVariant: 'purple' as const,
+				show: mobileFieldVisibility.repoTags ?? true
 			}
 		]}
 		footer={(mobileFieldVisibility.created ?? true)

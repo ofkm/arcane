@@ -13,6 +13,7 @@ import (
 
 	"log/slog"
 
+	ref "github.com/distribution/reference"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
@@ -531,26 +532,49 @@ func mapDockerImagesToDTOs(dockerImages []image.Summary, inUseMap map[string]boo
 
 		if len(di.RepoTags) > 0 {
 			repoTag := di.RepoTags[0]
-			// Use LastIndex to split on the LAST colon, correctly handling registry:port/image:tag
-			lastColonIdx := strings.LastIndex(repoTag, ":")
-			if lastColonIdx != -1 {
-				imageDto.Repo = repoTag[:lastColonIdx]
-				imageDto.Tag = repoTag[lastColonIdx+1:]
-				// Handle edge cases
-				if imageDto.Repo == "" {
-					imageDto.Repo = "<none>"
-				}
-				if imageDto.Tag == "" {
-					imageDto.Tag = "<none>"
+			// Use distribution/reference SDK to properly parse image references
+			if named, err := ref.ParseNormalizedNamed(repoTag); err == nil {
+				imageDto.Repo = ref.FamiliarName(named)
+				if tagged, ok := named.(ref.NamedTagged); ok {
+					imageDto.Tag = tagged.Tag()
+				} else {
+					imageDto.Tag = "latest"
 				}
 			} else {
-				// No colon found, treat entire string as repo with default tag
-				imageDto.Repo = repoTag
-				imageDto.Tag = "latest"
+				// Fallback for malformed references
+				if lastColonIdx := strings.LastIndex(repoTag, ":"); lastColonIdx != -1 {
+					imageDto.Repo = repoTag[:lastColonIdx]
+					imageDto.Tag = repoTag[lastColonIdx+1:]
+				} else {
+					imageDto.Repo = repoTag
+					imageDto.Tag = "latest"
+				}
 			}
 		} else {
-			imageDto.Repo = "<none>"
-			imageDto.Tag = "<none>"
+			// No RepoTags. If we have RepoDigests, derive repository from the part before '@'
+			if len(di.RepoDigests) > 0 {
+				for _, rd := range di.RepoDigests {
+					if rd == "<none>@<none>" {
+						continue
+					}
+					// Format: registry/path/name@sha256:...
+					if at := strings.LastIndex(rd, "@"); at != -1 {
+						candidateRepo := rd[:at]
+						if candidateRepo != "" {
+							imageDto.Repo = candidateRepo
+							imageDto.Tag = "<none>"
+							break
+						}
+					}
+				}
+			}
+			// Fallbacks if no digest-derived repo found
+			if imageDto.Repo == "" {
+				imageDto.Repo = "<none>"
+			}
+			if imageDto.Tag == "" {
+				imageDto.Tag = "<none>"
+			}
 		}
 
 		if updateRecord, exists := updateMap[di.ID]; exists {
