@@ -3,7 +3,6 @@ package services
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -226,14 +225,6 @@ func (s *ProjectService) GetProjectDetails(ctx context.Context, projectID string
 			raw[i] = services[i]
 		}
 		resp.Services = raw
-	}
-
-	// Add formatted schedule windows
-	if proj.UpdateScheduleWindows != nil && *proj.UpdateScheduleWindows != "" {
-		windows, err := s.settingsService.ParseUpdateScheduleWindows(*proj.UpdateScheduleWindows)
-		if err == nil {
-			resp.UpdateScheduleWindowsFormatted = s.settingsService.FormatScheduleWindows(ctx, windows)
-		}
 	}
 
 	return resp, nil
@@ -1062,84 +1053,126 @@ func (s *ProjectService) calculateProjectStatus(services []ProjectServiceInfo) m
 	return models.ProjectStatusUnknown
 }
 
-func (s *ProjectService) UpdateProjectSettings(ctx context.Context, projectID string, updates dto.UpdateProjectSettingsDto) error {
+func (s *ProjectService) GetProjectLabelConfig(ctx context.Context, projectID string) (*dto.ProjectLabelConfigDto, error) {
 	project, err := s.GetProjectFromDatabaseByID(ctx, projectID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	updateMap := make(map[string]interface{})
+	composeFile, err := projects.DetectComposeFile(project.Path)
+	if err != nil {
+		return nil, fmt.Errorf("detect compose file: %w", err)
+	}
 
-	if updates.AutoUpdate != nil {
-		updateMap["auto_update"] = updates.AutoUpdate
+	// Get all service labels
+	allServiceLabels, err := projects.GetAllServiceLabels(composeFile)
+	if err != nil {
+		return nil, fmt.Errorf("get all service labels: %w", err)
 	}
-	if updates.UpdateScheduleEnabled != nil {
-		updateMap["update_schedule_enabled"] = updates.UpdateScheduleEnabled
+
+	config := &dto.ProjectLabelConfigDto{
+		Services: make(map[string]dto.ServiceLabelConfig),
 	}
-	if updates.UpdateScheduleWindows != nil {
-		if err := s.settingsService.ValidateUpdateScheduleWindows(*updates.UpdateScheduleWindows); err != nil {
-			return fmt.Errorf("invalid schedule windows: %w", err)
+
+	// Parse labels for each service
+	for serviceName, labels := range allServiceLabels {
+		serviceConfig := dto.ServiceLabelConfig{}
+
+		// Parse updater enabled/disabled
+		if val, ok := labels["com.ofkm.arcane.updater"]; ok {
+			enabled := val == "true"
+			serviceConfig.AutoUpdate = &enabled
 		}
-		jsonBytes, err := json.Marshal(*updates.UpdateScheduleWindows)
-		if err != nil {
-			return fmt.Errorf("failed to marshal schedule windows: %w", err)
+
+		// Parse cron schedule
+		if val, ok := labels["com.ofkm.arcane.updater.schedule"]; ok && val != "" {
+			serviceConfig.CronSchedule = &val
 		}
-		updateMap["update_schedule_windows"] = string(jsonBytes)
+
+		// Only add service config if it has at least one value
+		if serviceConfig.AutoUpdate != nil || serviceConfig.CronSchedule != nil {
+			config.Services[serviceName] = serviceConfig
+		}
 	}
 
-	if len(updateMap) == 0 {
-		return nil
+	// If all services have the same config, populate top-level fields
+	if len(config.Services) > 0 {
+		var firstConfig *dto.ServiceLabelConfig
+		allSame := true
+
+		for _, svc := range config.Services {
+			if firstConfig == nil {
+				svcCopy := svc
+				firstConfig = &svcCopy
+			} else {
+				if (firstConfig.AutoUpdate == nil) != (svc.AutoUpdate == nil) ||
+					(firstConfig.AutoUpdate != nil && svc.AutoUpdate != nil && *firstConfig.AutoUpdate != *svc.AutoUpdate) ||
+					(firstConfig.CronSchedule == nil) != (svc.CronSchedule == nil) ||
+					(firstConfig.CronSchedule != nil && svc.CronSchedule != nil && *firstConfig.CronSchedule != *svc.CronSchedule) {
+					allSame = false
+					break
+				}
+			}
+		}
+
+		if allSame && firstConfig != nil {
+			config.AutoUpdate = firstConfig.AutoUpdate
+			config.CronSchedule = firstConfig.CronSchedule
+		}
 	}
 
-	if err := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", project.ID).Updates(updateMap).Error; err != nil {
-		return fmt.Errorf("failed to update project settings: %w", err)
-	}
-
-	return nil
+	return config, nil
 }
 
-func (s *ProjectService) ClearProjectSettingOverride(ctx context.Context, projectID string, key string) error {
+func (s *ProjectService) UpdateProjectLabelConfig(ctx context.Context, projectID string, config dto.ProjectLabelConfigDto) error {
 	project, err := s.GetProjectFromDatabaseByID(ctx, projectID)
 	if err != nil {
 		return err
 	}
 
-	columnMap := map[string]string{
-		"autoUpdate":            "auto_update",
-		"updateScheduleEnabled": "update_schedule_enabled",
-		"updateScheduleWindows": "update_schedule_windows",
-	}
-
-	column, ok := columnMap[key]
-	if !ok {
-		return fmt.Errorf("unknown setting key: %s", key)
-	}
-
-	updateMap := map[string]interface{}{
-		column: nil,
-	}
-
-	if err := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", project.ID).Updates(updateMap).Error; err != nil {
-		return fmt.Errorf("failed to clear project setting: %w", err)
-	}
-
-	return nil
-}
-
-func (s *ProjectService) ClearAllProjectSettingOverrides(ctx context.Context, projectID string) error {
-	project, err := s.GetProjectFromDatabaseByID(ctx, projectID)
+	composeFile, err := projects.DetectComposeFile(project.Path)
 	if err != nil {
-		return err
+		return fmt.Errorf("detect compose file: %w", err)
 	}
 
-	updateMap := map[string]any{
-		"auto_update":             nil,
-		"update_schedule_enabled": nil,
-		"update_schedule_windows": nil,
-	}
+	// If top-level config is provided and no per-service config, apply to all services
+	if (config.AutoUpdate != nil || config.CronSchedule != nil) && len(config.Services) == 0 {
+		labelsToAdd := map[string]string{}
 
-	if err := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", project.ID).Updates(updateMap).Error; err != nil {
-		return fmt.Errorf("failed to clear project settings: %w", err)
+		if config.AutoUpdate != nil {
+			labelsToAdd["com.ofkm.arcane.updater"] = fmt.Sprintf("%t", *config.AutoUpdate)
+		}
+
+		if config.CronSchedule != nil && *config.CronSchedule != "" {
+			labelsToAdd["com.ofkm.arcane.updater.schedule"] = *config.CronSchedule
+		}
+
+		if err := projects.UpdateServiceLabels(composeFile, labelsToAdd); err != nil {
+			return fmt.Errorf("update service labels: %w", err)
+		}
+	} else if len(config.Services) > 0 {
+		// Per-service configuration
+		serviceLabels := make(map[string]map[string]string)
+
+		for serviceName, svcConfig := range config.Services {
+			labels := make(map[string]string)
+
+			if svcConfig.AutoUpdate != nil {
+				labels["com.ofkm.arcane.updater"] = fmt.Sprintf("%t", *svcConfig.AutoUpdate)
+			}
+
+			if svcConfig.CronSchedule != nil && *svcConfig.CronSchedule != "" {
+				labels["com.ofkm.arcane.updater.schedule"] = *svcConfig.CronSchedule
+			}
+
+			if len(labels) > 0 {
+				serviceLabels[serviceName] = labels
+			}
+		}
+
+		if err := projects.UpdateServiceLabelsPerService(composeFile, serviceLabels); err != nil {
+			return fmt.Errorf("update per-service labels: %w", err)
+		}
 	}
 
 	return nil

@@ -149,30 +149,24 @@ func (j *AutoUpdateJob) executeProjectSpecificUpdates(ctx context.Context) error
 
 func (j *AutoUpdateJob) shouldUpdateProject(ctx context.Context, project *models.Project) (bool, error) {
 	autoUpdate := j.settingsService.GetBoolSetting(ctx, "autoUpdate", false)
-	if project.AutoUpdate != nil {
-		autoUpdate = *project.AutoUpdate
-	}
 
-	// If auto-update is disabled for this project, skip
+	// If global auto-update is disabled, skip
 	if !autoUpdate {
 		return false, nil
 	}
 
 	scheduleEnabled := j.settingsService.GetBoolSetting(ctx, "updateScheduleEnabled", false)
-	if project.UpdateScheduleEnabled != nil {
-		scheduleEnabled = *project.UpdateScheduleEnabled
-	}
 
-	// If schedule is enabled, check if we're within the update window
+	// If global schedule is enabled, check if we're within the update window
 	if scheduleEnabled {
-		withinWindow, err := j.updaterService.IsWithinUpdateWindow(ctx, project)
+		withinWindow, err := j.updaterService.IsWithinUpdateWindow(ctx, nil)
 		if err != nil {
 			return false, err
 		}
 		return withinWindow, nil
 	}
 
-	// If schedule is disabled, always allow updates
+	// If schedule is disabled, allow updates (container-level cron schedules will be checked separately)
 	return true, nil
 }
 

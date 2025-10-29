@@ -13,10 +13,10 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
-	"github.com/ofkm/arcane-backend/internal/models"
-
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
+	"github.com/ofkm/arcane-backend/internal/models"
+	"github.com/robfig/cron/v3"
 )
 
 type UpdaterService struct {
@@ -213,23 +213,6 @@ func (s *UpdaterService) ApplyPending(ctx context.Context, dryRun bool, bypassSc
 func (s *UpdaterService) ApplyPendingForProject(ctx context.Context, project *models.Project, dryRun bool) (*dto.UpdaterRunResult, error) {
 	start := time.Now()
 	out := &dto.UpdaterRunResult{Items: []dto.UpdaterItem{}}
-
-	// Check if this project is within its update window
-	withinWindow, err := s.IsWithinUpdateWindow(ctx, project)
-	if err != nil {
-		slog.WarnContext(ctx, "Failed to check update window for project, proceeding anyway",
-			"projectID", project.ID, "projectName", project.Name, "error", err)
-	} else if !withinWindow {
-		nextWindow, _ := s.GetNextUpdateWindow(ctx, project)
-		var nextStr string
-		if nextWindow != nil {
-			nextStr = nextWindow.Format(time.RFC3339)
-		}
-		slog.InfoContext(ctx, "Project not within update window, skipping update",
-			"projectID", project.ID, "projectName", project.Name, "nextWindow", nextStr)
-		out.Duration = time.Since(start).String()
-		return out, nil
-	}
 
 	// Get all pending image updates
 	var records []models.ImageUpdateRecord
@@ -523,25 +506,18 @@ func (s *UpdaterService) GetHistory(ctx context.Context, limit int) ([]models.Au
 
 //nolint:gocognit
 func (s *UpdaterService) IsWithinUpdateWindow(ctx context.Context, project *models.Project) (bool, error) {
-	// Determine effective schedule enabled setting (project override or global)
+	// Global schedule enabled setting only (project-level schedules now use container labels)
 	scheduleEnabled := s.settingsService.GetBoolSetting(ctx, "updateScheduleEnabled", false)
-	if project != nil && project.UpdateScheduleEnabled != nil {
-		scheduleEnabled = *project.UpdateScheduleEnabled
-	}
 
 	if !scheduleEnabled {
 		return true, nil
 	}
 
-	// Determine effective schedule windows (project override or global)
+	// Get global schedule windows
 	var windows []models.UpdateScheduleWindow
-	if project != nil && project.UpdateScheduleWindows != nil && *project.UpdateScheduleWindows != "" {
-		windows, _ = s.settingsService.ParseUpdateScheduleWindows(*project.UpdateScheduleWindows)
-	} else {
-		windowsJSON := s.settingsService.GetStringSetting(ctx, "updateScheduleWindows", "")
-		if windowsJSON != "" {
-			windows, _ = s.settingsService.ParseUpdateScheduleWindows(windowsJSON)
-		}
+	windowsJSON := s.settingsService.GetStringSetting(ctx, "updateScheduleWindows", "")
+	if windowsJSON != "" {
+		windows, _ = s.settingsService.ParseUpdateScheduleWindows(windowsJSON)
 	}
 
 	if len(windows) == 0 {
@@ -590,24 +566,18 @@ func (s *UpdaterService) IsWithinUpdateWindow(ctx context.Context, project *mode
 
 //nolint:gocognit
 func (s *UpdaterService) GetNextUpdateWindow(ctx context.Context, project *models.Project) (*time.Time, error) {
+	// Global schedule enabled setting only (project-level schedules now use container labels)
 	scheduleEnabled := s.settingsService.GetBoolSetting(ctx, "updateScheduleEnabled", false)
-	if project != nil && project.UpdateScheduleEnabled != nil {
-		scheduleEnabled = *project.UpdateScheduleEnabled
-	}
 
 	if !scheduleEnabled {
 		return nil, nil
 	}
 
-	// Determine effective schedule windows (project override or global)
+	// Get global schedule windows
 	var windows []models.UpdateScheduleWindow
-	if project != nil && project.UpdateScheduleWindows != nil && *project.UpdateScheduleWindows != "" {
-		windows, _ = s.settingsService.ParseUpdateScheduleWindows(*project.UpdateScheduleWindows)
-	} else {
-		windowsJSON := s.settingsService.GetStringSetting(ctx, "updateScheduleWindows", "")
-		if windowsJSON != "" {
-			windows, _ = s.settingsService.ParseUpdateScheduleWindows(windowsJSON)
-		}
+	windowsJSON := s.settingsService.GetStringSetting(ctx, "updateScheduleWindows", "")
+	if windowsJSON != "" {
+		windows, _ = s.settingsService.ParseUpdateScheduleWindows(windowsJSON)
 	}
 
 	if len(windows) == 0 {
@@ -665,25 +635,11 @@ func (s *UpdaterService) GetNextUpdateWindow(ctx context.Context, project *model
 }
 
 func (s *UpdaterService) GetUpdateEligibilityStatus(ctx context.Context, projectID string) (*dto.UpdateEligibilityStatus, error) {
-	var project *models.Project
-
-	// If projectID is provided, fetch the project
-	if projectID != "" {
-		var err error
-		project, err = s.projectService.GetProjectFromDatabaseByID(ctx, projectID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get project: %w", err)
-		}
-	}
-
-	// Check if schedule is enabled
+	// Check if global schedule is enabled (project-level schedules now use container labels)
 	scheduleEnabled := s.settingsService.GetBoolSetting(ctx, "updateScheduleEnabled", false)
-	if project != nil && project.UpdateScheduleEnabled != nil {
-		scheduleEnabled = *project.UpdateScheduleEnabled
-	}
 
 	// Get window status
-	withinWindow, err := s.IsWithinUpdateWindow(ctx, project)
+	withinWindow, err := s.IsWithinUpdateWindow(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -696,7 +652,7 @@ func (s *UpdaterService) GetUpdateEligibilityStatus(ctx context.Context, project
 	// If not within window, get next window time
 	switch {
 	case !withinWindow && scheduleEnabled:
-		nextWindow, _ := s.GetNextUpdateWindow(ctx, project)
+		nextWindow, _ := s.GetNextUpdateWindow(ctx, nil)
 		if nextWindow != nil {
 			timestamp := nextWindow.Unix()
 			status.NextWindowStart = &timestamp
@@ -802,10 +758,14 @@ func (s *UpdaterService) stripDigest(ref string) string {
 	return ref
 }
 
-const arcaneUpdaterLabel = "com.ofkm.arcane.updater"
+const (
+	arcaneUpdaterLabel         = "com.ofkm.arcane.updater"
+	arcaneUpdaterScheduleLabel = "com.ofkm.arcane.updater.schedule"
+)
 
 // isUpdateDisabled returns true if the special label is present and evaluates to false.
 // Accepts false/0/no/off (case-insensitive) as "disabled". Default is enabled.
+// If label is explicitly "true", it enables updates even if global updates are disabled (override).
 func (s *UpdaterService) isUpdateDisabled(labels map[string]string) bool {
 	if labels == nil {
 		return false
@@ -823,6 +783,42 @@ func (s *UpdaterService) isUpdateDisabled(labels map[string]string) bool {
 	return false
 }
 
+// isWithinCronSchedule checks if current time matches the cron expression from container labels
+// Returns true if no schedule is set (updates allowed anytime) or if current time matches schedule
+func (s *UpdaterService) isWithinCronSchedule(labels map[string]string) bool {
+	if labels == nil {
+		return true
+	}
+
+	var cronExpr string
+	for k, v := range labels {
+		if strings.EqualFold(k, arcaneUpdaterScheduleLabel) {
+			cronExpr = strings.TrimSpace(v)
+			break
+		}
+	}
+
+	if cronExpr == "" {
+		return true // No schedule = always allowed
+	}
+
+	// Parse cron expression
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	schedule, err := parser.Parse(cronExpr)
+	if err != nil {
+		slog.Warn("invalid cron expression in container label", "cron", cronExpr, "err", err)
+		return false
+	}
+
+	// Check if current time matches schedule
+	// We check if the next scheduled time from 1 minute ago is within the current minute
+	now := time.Now()
+	next := schedule.Next(now.Add(-1 * time.Minute))
+
+	// If next run is within the current minute window, we're in the schedule
+	return next.Before(now.Add(1 * time.Minute))
+}
+
 // collectUsedImagesFromContainers adds normalized image tags from non-opted-out running containers.
 func (s *UpdaterService) collectUsedImagesFromContainers(ctx context.Context, dcli *client.Client, out map[string]struct{}) error {
 	if dcli == nil {
@@ -838,6 +834,11 @@ func (s *UpdaterService) collectUsedImagesFromContainers(ctx context.Context, dc
 			slog.DebugContext(ctx, "collectUsedImagesFromContainers: container opted out by labels", "containerId", c.ID)
 			continue
 		}
+		// Check cron schedule from labels
+		if !s.isWithinCronSchedule(c.Labels) {
+			slog.DebugContext(ctx, "collectUsedImagesFromContainers: container not within cron schedule", "containerId", c.ID)
+			continue
+		}
 		inspect, err := dcli.ContainerInspect(ctx, c.ID)
 		if err != nil {
 			slog.DebugContext(ctx, "collectUsedImagesFromContainers: container inspect failed", "containerId", c.ID, "err", err)
@@ -845,6 +846,10 @@ func (s *UpdaterService) collectUsedImagesFromContainers(ctx context.Context, dc
 		}
 		if inspect.Config != nil && s.isUpdateDisabled(inspect.Config.Labels) {
 			slog.DebugContext(ctx, "collectUsedImagesFromContainers: container inspect labels opted out", "containerId", c.ID)
+			continue
+		}
+		if inspect.Config != nil && !s.isWithinCronSchedule(inspect.Config.Labels) {
+			slog.DebugContext(ctx, "collectUsedImagesFromContainers: container inspect labels not within cron schedule", "containerId", c.ID)
 			continue
 		}
 		for _, t := range s.getNormalizedTagsForContainer(ctx, dcli, inspect) {
@@ -1020,6 +1025,7 @@ func (s *UpdaterService) resolveLocalImageIDsForRef(ctx context.Context, ref str
 	return ids, nil
 }
 
+//nolint:gocognit
 func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldIDToNewRef map[string]string, oldRefToNewRef map[string]string) ([]dto.AutoUpdateResourceResult, error) {
 	dcli, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -1040,12 +1046,20 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 			continue
 		}
 
+		// Check cron schedule from labels
+		if !s.isWithinCronSchedule(c.Labels) {
+			continue
+		}
+
 		inspect, err := dcli.ContainerInspect(ctx, c.ID)
 		if err != nil {
 			continue
 		}
 		// Also honor labels from full inspect
 		if inspect.Config != nil && s.isUpdateDisabled(inspect.Config.Labels) {
+			continue
+		}
+		if inspect.Config != nil && !s.isWithinCronSchedule(inspect.Config.Labels) {
 			continue
 		}
 

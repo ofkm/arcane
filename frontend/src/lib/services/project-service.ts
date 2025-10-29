@@ -1,6 +1,6 @@
 import BaseAPIService from './api-service';
 import { environmentStore } from '$lib/stores/environment.store.svelte';
-import type { Project, ProjectStatusCounts, ProjectSettingsUpdate } from '$lib/types/project.type';
+import type { Project, ProjectStatusCounts, ProjectLabelConfig } from '$lib/types/project.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import { transformPaginationParams } from '$lib/utils/params.util';
 
@@ -10,20 +10,6 @@ export class ProjectService extends BaseAPIService {
 		const params = transformPaginationParams(options);
 		const res = await this.api.get(`/environments/${envId}/projects`, { params });
 		const data = res.data;
-
-		if (data.data && Array.isArray(data.data)) {
-			data.data = data.data.map((project: Project) => {
-				if (project.updateScheduleWindows && typeof project.updateScheduleWindows === 'string') {
-					try {
-						project.updateScheduleWindows = JSON.parse(project.updateScheduleWindows);
-					} catch (e) {
-						console.error('Failed to parse updateScheduleWindows for project:', project.id, e);
-						project.updateScheduleWindows = null;
-					}
-				}
-				return project;
-			});
-		}
 
 		return data;
 	}
@@ -55,16 +41,6 @@ export class ProjectService extends BaseAPIService {
 		);
 
 		const project = response.project ? response.project : (response as Project);
-
-		if (project.updateScheduleWindows && typeof project.updateScheduleWindows === 'string') {
-			try {
-				project.updateScheduleWindows = JSON.parse(project.updateScheduleWindows);
-			} catch (e) {
-				console.error('Failed to parse updateScheduleWindows:', e);
-				project.updateScheduleWindows = null;
-			}
-		}
-
 		return project;
 	}
 
@@ -180,19 +156,14 @@ export class ProjectService extends BaseAPIService {
 		);
 	}
 
-	async updateProjectSettings(projectId: string, settings: ProjectSettingsUpdate): Promise<void> {
+	async getProjectLabelConfig(projectId: string): Promise<ProjectLabelConfig> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		await this.handleResponse(this.api.put(`/environments/${envId}/projects/${projectId}/settings`, settings));
+		return this.handleResponse(this.api.get(`/environments/${envId}/projects/${projectId}/labels`));
 	}
 
-	async clearProjectSettingOverride(projectId: string, key: string): Promise<void> {
+	async updateProjectLabelConfig(projectId: string, config: ProjectLabelConfig): Promise<void> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		await this.handleResponse(this.api.delete(`/environments/${envId}/projects/${projectId}/settings/${key}`));
-	}
-
-	async clearAllProjectSettingOverrides(projectId: string): Promise<void> {
-		const envId = await environmentStore.getCurrentEnvironmentId();
-		await this.handleResponse(this.api.delete(`/environments/${envId}/projects/${projectId}/settings`));
+		await this.handleResponse(this.api.put(`/environments/${envId}/projects/${projectId}/labels`, config));
 	}
 }
 

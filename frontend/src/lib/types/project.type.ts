@@ -1,5 +1,3 @@
-import type { UpdateScheduleWindow, FormattedScheduleWindow } from './settings.type';
-
 export interface NetworkSettings {
 	Networks: Record<
 		string,
@@ -38,10 +36,6 @@ export interface Project {
 	services?: ProjectService[];
 	composeContent?: string;
 	envContent?: string;
-	autoUpdate?: boolean | null;
-	updateScheduleEnabled?: boolean | null;
-	updateScheduleWindows?: UpdateScheduleWindow[] | null;
-	updateScheduleWindowsFormatted?: FormattedScheduleWindow[];
 }
 
 export interface ProjectStatusCounts {
@@ -50,8 +44,13 @@ export interface ProjectStatusCounts {
 	totalProjects: number;
 }
 
-export interface ProjectSettingsUpdate {
+export interface ProjectLabelConfig {
 	autoUpdate?: boolean;
-	updateScheduleEnabled?: boolean;
-	updateScheduleWindows?: UpdateScheduleWindow[];
+	cronSchedule?: string;
+	services?: Record<string, ServiceLabelConfig>;
+}
+
+export interface ServiceLabelConfig {
+	autoUpdate?: boolean;
+	cronSchedule?: string;
 }

@@ -1,20 +1,18 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import * as Card from '$lib/components/ui/card';
-	import UpdateScheduleEditor from '$lib/components/update-schedule-editor.svelte';
+	import * as Alert from '$lib/components/ui/alert';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
+	import { Switch } from '$lib/components/ui/switch';
 	import { m } from '$lib/paraglide/messages';
 	import { toast } from 'svelte-sonner';
 	import { projectService } from '$lib/services/project-service';
-	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
-	import GlobeIcon from '@lucide/svelte/icons/globe';
-	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import SaveIcon from '@lucide/svelte/icons/save';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
-	import settingsStore from '$lib/stores/config-store';
-	import type { Project, ProjectSettingsUpdate } from '$lib/types/project.type';
-	import { z } from 'zod/v4';
-	import { createForm } from '$lib/utils/form.utils';
-	import { cn } from '$lib/utils';
+	import InfoIcon from '@lucide/svelte/icons/info';
+	import type { Project, ProjectLabelConfig } from '$lib/types/project.type';
+	import { onMount } from 'svelte';
 
 	interface Props {
 		project: Project;
@@ -23,207 +21,179 @@
 
 	let { project, onUpdate }: Props = $props();
 
-	const globalSettings = $derived($settingsStore);
+	// Cron presets
+	const cronPresets = [
+		{ label: 'Immediate (no schedule)', value: '' },
+		{ label: 'Daily at 2 AM', value: '0 2 * * *' },
+		{ label: 'Weekdays at 2 AM', value: '0 2 * * 1-5' },
+		{ label: 'Weekends at 2 AM', value: '0 2 * * 0,6' },
+		{ label: 'Every 6 hours', value: '0 */6 * * *' }
+	];
 
-	const isUpdateSettingsOverridden = $derived(
-		(project.autoUpdate !== null && project.autoUpdate !== undefined) ||
-			(project.updateScheduleEnabled !== null && project.updateScheduleEnabled !== undefined)
-	);
-
-	const currentSettings = $derived({
-		autoUpdate: project.autoUpdate ?? globalSettings?.autoUpdate ?? false,
-		updateScheduleEnabled: project.updateScheduleEnabled ?? globalSettings?.updateScheduleEnabled ?? false,
-		updateScheduleWindows: project.updateScheduleWindows ?? globalSettings?.updateScheduleWindows ?? []
-	});
-
-	const formSchema = z.object({
-		autoUpdate: z.boolean(),
-		updateScheduleEnabled: z.boolean(),
-		updateScheduleWindows: z.array(
-			z.object({
-				days: z.array(z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])),
-				startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
-				endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
-				timezone: z.string().min(1)
-			})
-		)
-	});
-
-	let hasChanges = $state(false);
 	let isLoading = $state(false);
-	let isOverrideEnabled = $state(false);
+	let hasChanges = $state(false);
+	let autoUpdate = $state(true);
+	let cronSchedule = $state('');
+	let selectedPreset = $state('');
+	let initialConfig: ProjectLabelConfig | null = $state(null);
 
-	// Initialize override state
+	onMount(async () => {
+		try {
+			const config = await projectService.getProjectLabelConfig(project.id);
+			autoUpdate = config.autoUpdate ?? true;
+			cronSchedule = config.cronSchedule ?? '';
+			selectedPreset = cronPresets.find((p) => p.value === cronSchedule)?.value ?? (cronSchedule ? 'custom' : '');
+			initialConfig = { autoUpdate, cronSchedule };
+		} catch (error) {
+			console.error('Failed to load label config:', error);
+			toast.error('Failed to load label configuration');
+		}
+	});
+
 	$effect(() => {
-		isOverrideEnabled = isUpdateSettingsOverridden;
+		if (initialConfig) {
+			hasChanges =
+				autoUpdate !== initialConfig.autoUpdate ||
+				cronSchedule !== initialConfig.cronSchedule;
+		}
 	});
 
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
-	const formHasChanges = $derived(
-		(!isOverrideEnabled && isUpdateSettingsOverridden) ||
-			(isOverrideEnabled && !isUpdateSettingsOverridden) ||
-			(isOverrideEnabled &&
-				($formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
-					$formInputs.updateScheduleEnabled.value !== currentSettings.updateScheduleEnabled ||
-					JSON.stringify($formInputs.updateScheduleWindows.value) !== JSON.stringify(currentSettings.updateScheduleWindows)))
-	);
-
-	$effect(() => {
-		hasChanges = formHasChanges;
-	});
-
-	const globalSettingsDescription = $derived(() => {
-		const autoUpdate = globalSettings?.autoUpdate ?? false;
-		const scheduleEnabled = globalSettings?.updateScheduleEnabled ?? false;
-		const mode = !autoUpdate
-			? m.update_schedule_mode_never()
-			: scheduleEnabled
-				? m.update_schedule_mode_scheduled()
-				: m.update_schedule_mode_immediate();
-		return mode;
-	});
-
-	function enableOverride() {
-		isOverrideEnabled = true;
-		$formInputs.autoUpdate.value = globalSettings?.autoUpdate ?? false;
-		$formInputs.updateScheduleEnabled.value = globalSettings?.updateScheduleEnabled ?? false;
-		$formInputs.updateScheduleWindows.value = globalSettings?.updateScheduleWindows ?? [];
-	}
-
-	function clearOverride() {
-		isOverrideEnabled = false;
-		$formInputs.autoUpdate.value = globalSettings?.autoUpdate ?? false;
-		$formInputs.updateScheduleEnabled.value = globalSettings?.updateScheduleEnabled ?? false;
-		$formInputs.updateScheduleWindows.value = globalSettings?.updateScheduleWindows ?? [];
+	function selectPreset(preset: string) {
+		if (preset === 'custom') {
+			selectedPreset = 'custom';
+			return;
+		}
+		selectedPreset = preset;
+		cronSchedule = preset;
 	}
 
 	function resetForm() {
-		isOverrideEnabled = isUpdateSettingsOverridden;
-		$formInputs.autoUpdate.value = currentSettings.autoUpdate;
-		$formInputs.updateScheduleEnabled.value = currentSettings.updateScheduleEnabled;
-		$formInputs.updateScheduleWindows.value = currentSettings.updateScheduleWindows;
+		if (initialConfig) {
+			autoUpdate = initialConfig.autoUpdate ?? true;
+			cronSchedule = initialConfig.cronSchedule ?? '';
+			selectedPreset = cronPresets.find((p) => p.value === cronSchedule)?.value ?? (cronSchedule ? 'custom' : '');
+		}
 	}
 
 	async function saveSettings() {
-		const formData = form.validate();
-		if (!formData) {
-			toast.error(m.project_settings_validation_error());
-			return;
-		}
-
 		isLoading = true;
 		try {
-			const clearPromises: Promise<void>[] = [];
-
-			// Clear overrides if switching back to global
-			if (!isOverrideEnabled && isUpdateSettingsOverridden) {
-				clearPromises.push(
-					projectService.clearProjectSettingOverride(project.id, 'autoUpdate'),
-					projectService.clearProjectSettingOverride(project.id, 'updateScheduleEnabled'),
-					projectService.clearProjectSettingOverride(project.id, 'updateScheduleWindows')
-				);
-			}
-
-			if (clearPromises.length > 0) {
-				await Promise.all(clearPromises);
-			}
-
-			// Save new override values if enabled
-			if (isOverrideEnabled) {
-				const updates: ProjectSettingsUpdate = {
-					autoUpdate: formData.autoUpdate,
-					updateScheduleEnabled: formData.updateScheduleEnabled,
-					updateScheduleWindows: formData.updateScheduleWindows
-				};
-				await projectService.updateProjectSettings(project.id, updates);
-			}
-
-			toast.success(m.project_settings_save_success());
+			const config: ProjectLabelConfig = {
+				autoUpdate,
+				cronSchedule: cronSchedule || undefined
+			};
+			
+			await projectService.updateProjectLabelConfig(project.id, config);
+			initialConfig = { autoUpdate, cronSchedule };
+			toast.success('Compose file updated successfully');
 			onUpdate?.();
 		} catch (error) {
 			console.error('Failed to save settings:', error);
-			toast.error(m.project_settings_save_error());
+			toast.error('Failed to update labels');
 		} finally {
 			isLoading = false;
 		}
+	}
+
+	function getCronDescription(cron: string): string {
+		if (!cron) return 'Immediate (no schedule)';
+		const preset = cronPresets.find((p) => p.value === cron);
+		return preset ? preset.label : cron;
 	}
 </script>
 
 <div class="space-y-6">
 	<div class="flex justify-end gap-2">
-		<Button size="sm" variant="outline" onclick={resetForm} disabled={isLoading || !hasChanges}>
-			<RotateCcwIcon class="mr-2 size-4" />
-			{m.common_reset()}
+		<Button variant="outline" size="sm" disabled={!hasChanges || isLoading} onclick={resetForm}>
+			<RotateCcwIcon class="mr-2 h-4 w-4" />
+			Reset
 		</Button>
-		<Button size="sm" onclick={saveSettings} disabled={isLoading || !hasChanges}>
-			<SaveIcon class="mr-2 size-4" />
-			{m.common_save()}
+		<Button size="sm" disabled={!hasChanges || isLoading} onclick={saveSettings}>
+			<SaveIcon class="mr-2 h-4 w-4" />
+			Save
 		</Button>
 	</div>
 
 	<Card.Root>
-		<Card.Header icon={RefreshCwIcon}>
-			<div class="flex flex-col space-y-1.5">
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<Card.Title>{m.docker_auto_updates_title()}</Card.Title>
-					{#if globalSettings?.pollingEnabled}
-						<div class="bg-muted/30 flex items-center gap-2 rounded-full border p-0.5">
-							<button
-								class={cn(
-									'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all',
-									!isOverrideEnabled
-										? 'bg-primary text-primary-foreground shadow-sm'
-										: 'text-muted-foreground hover:bg-background/50'
-								)}
-								onclick={clearOverride}
-								title={m.project_settings_use_global()}
-								type="button"
-							>
-								<GlobeIcon class="size-3" />
-								<span>{m.common_global()}</span>
-							</button>
-							<button
-								class={cn(
-									'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all',
-									isOverrideEnabled
-										? 'bg-primary text-primary-foreground shadow-sm'
-										: 'text-muted-foreground hover:bg-background/50'
-								)}
-								onclick={enableOverride}
-								title={m.project_settings_use_project()}
-								type="button"
-							>
-								<SettingsIcon class="size-3" />
-								<span>{m.project_settings_project_label()}</span>
-							</button>
-						</div>
-					{/if}
+		<Card.Header>
+			<div class="flex items-start justify-between">
+				<div class="space-y-1">
+					<Card.Title>Auto-Update Configuration</Card.Title>
+					<Card.Description>Configure auto-update behavior via compose file labels. Changes are written to your compose file.</Card.Description>
 				</div>
-				<Card.Description>
-					{#if globalSettings?.pollingEnabled}
-						{#if isOverrideEnabled}
-							{m.project_settings_description()}
-						{:else}
-							Using global settings: <strong>{globalSettingsDescription()}</strong>
-						{/if}
-					{:else}
-						{m.project_settings_description()}
-					{/if}
-				</Card.Description>
 			</div>
 		</Card.Header>
-		{#if globalSettings?.pollingEnabled && isOverrideEnabled}
-			<Card.Content class="p-4">
-				<Card.Root variant="subtle">
-					<Card.Content class="p-4">
-						<UpdateScheduleEditor
-							bind:autoUpdate={$formInputs.autoUpdate.value}
-							bind:scheduleEnabled={$formInputs.updateScheduleEnabled.value}
-							bind:windows={$formInputs.updateScheduleWindows.value}
-						/>
-					</Card.Content>
-				</Card.Root>
-			</Card.Content>
-		{/if}
+		<Card.Content class="space-y-6">
+			<!-- Enable Auto-Updates -->
+			<div class="flex items-center justify-between space-x-2">
+				<div class="space-y-0.5">
+					<Label for="auto-update">Enable Auto-Updates</Label>
+					<p class="text-sm text-muted-foreground">Allow this project's containers to be automatically updated</p>
+				</div>
+				<Switch id="auto-update" bind:checked={autoUpdate} />
+			</div>
+
+			{#if autoUpdate}
+				<!-- Cron Schedule -->
+				<div class="space-y-3">
+					<div class="space-y-1">
+						<Label for="cron-schedule">Update Schedule (Cron)</Label>
+						<p class="text-sm text-muted-foreground">Enter a cron expression or use quick presets below</p>
+					</div>
+
+					<!-- Preset Buttons -->
+					<div class="flex flex-wrap gap-2">
+						{#each cronPresets as preset}
+							<Button
+								variant={selectedPreset === preset.value ? 'default' : 'outline'}
+								size="sm"
+								onclick={() => selectPreset(preset.value)}
+							>
+								{preset.label}
+							</Button>
+						{/each}
+						<Button
+							variant={selectedPreset === 'custom' ? 'default' : 'outline'}
+							size="sm"
+							onclick={() => selectPreset('custom')}
+						>
+							Custom
+						</Button>
+					</div>
+
+					<!-- Custom Cron Input -->
+					{#if selectedPreset === 'custom' || (selectedPreset && !cronPresets.find((p) => p.value === selectedPreset))}
+						<div class="space-y-2">
+							<Input
+								id="cron-schedule"
+								bind:value={cronSchedule}
+								placeholder="Enter cron expression (e.g., 0 2 * * *)"
+								class="font-mono"
+							/>
+							{#if cronSchedule}
+								<p class="text-sm text-muted-foreground">
+									Updates will run: {getCronDescription(cronSchedule)}
+								</p>
+							{/if}
+						</div>
+					{:else if cronSchedule}
+						<p class="text-sm text-muted-foreground">
+							Updates will run: {getCronDescription(cronSchedule)}
+						</p>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Redeploy Warning -->
+			{#if hasChanges}
+				<Alert.Root>
+					<InfoIcon class="h-4 w-4" />
+					<Alert.Title>Info</Alert.Title>
+					<Alert.Description>
+						Redeploy project to apply label changes to running containers
+					</Alert.Description>
+				</Alert.Root>
+			{/if}
+		</Card.Content>
 	</Card.Root>
 </div>
