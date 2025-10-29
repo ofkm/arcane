@@ -3,6 +3,7 @@
 	import { Progress } from '$lib/components/ui/progress/index.js';
 	import GpuIcon from '@lucide/svelte/icons/gpu';
 	import { m } from '$lib/paraglide/messages';
+	import bytes from 'bytes';
 	import type { GPUStats } from '$lib/types/system-stats.type';
 
 	interface Props {
@@ -13,10 +14,9 @@
 	let { gpus, loading = false }: Props = $props();
 
 	function formatBytes(mb: number): string {
-		if (mb === 0) return '0 GB';
-		// Convert MB to GB (1024 MB = 1 GB for binary)
-		const gb = mb / 1024;
-		return `${gb.toFixed(1)} GB`;
+		// Convert MB to bytes (1 MB = 1024 * 1024 bytes)
+		const bytesValue = mb * 1024 * 1024;
+		return bytes.format(bytesValue, { unitSeparator: ' ' }) ?? '-';
 	}
 
 	function getPercentage(used: number, total: number): number {
