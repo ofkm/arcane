@@ -83,6 +83,7 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		AutoUpdateInterval:         models.SettingVariable{Value: "1440"},
 		PollingEnabled:             models.SettingVariable{Value: "true"},
 		PollingInterval:            models.SettingVariable{Value: "60"},
+		UpdateScheduleCron:         models.SettingVariable{Value: ""},
 		PruneMode:                  models.SettingVariable{Value: "dangling"},
 		BaseServerURL:              models.SettingVariable{Value: "http://localhost"},
 		EnableGravatar:             models.SettingVariable{Value: "true"},
@@ -347,7 +348,7 @@ func (s *SettingsService) UpdateSettings(ctx context.Context, updates dto.Update
 		switch key {
 		case "pollingEnabled", "pollingInterval":
 			changedPolling = true
-		case "autoUpdate", "autoUpdateInterval", "updateScheduleEnabled", "updateScheduleWindows":
+		case "autoUpdate", "autoUpdateInterval", "updateScheduleEnabled", "updateScheduleCron":
 			changedAutoUpdate = true
 		}
 	}

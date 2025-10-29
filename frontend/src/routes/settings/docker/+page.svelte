@@ -19,7 +19,7 @@
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
-	import UpdateScheduleEditor from '$lib/components/update-schedule-editor.svelte';
+	import CronScheduleEditor from '$lib/components/cron-schedule-editor.svelte';
 
 	let { data } = $props();
 	let currentSettings = $state<Settings>(data.settings!);
@@ -33,14 +33,7 @@
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
 		updateScheduleEnabled: z.boolean(),
-		updateScheduleWindows: z.array(
-			z.object({
-				days: z.array(z.enum(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])),
-				startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
-				endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format'),
-				timezone: z.string().min(1)
-			})
-		),
+		updateScheduleCron: z.string().optional(),
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		defaultShell: z.string()
 	});
@@ -124,7 +117,7 @@
 			$formInputs.dockerPruneMode.value != currentSettings.dockerPruneMode ||
 			$formInputs.defaultShell.value != currentSettings.defaultShell ||
 			$formInputs.updateScheduleEnabled.value !== currentSettings.updateScheduleEnabled ||
-			JSON.stringify($formInputs.updateScheduleWindows.value) !== JSON.stringify(currentSettings.updateScheduleWindows || [])
+			$formInputs.updateScheduleCron?.value !== currentSettings.updateScheduleCron
 	);
 
 	$effect(() => {
@@ -183,7 +176,7 @@
 		$formInputs.dockerPruneMode.value = currentSettings.dockerPruneMode;
 		$formInputs.defaultShell.value = currentSettings.defaultShell;
 		$formInputs.updateScheduleEnabled.value = currentSettings.updateScheduleEnabled;
-		$formInputs.updateScheduleWindows.value = currentSettings.updateScheduleWindows || [];
+		$formInputs.updateScheduleCron!.value = currentSettings.updateScheduleCron;
 	}
 
 	onMount(() => {
@@ -265,10 +258,10 @@
 							</div>
 						</Card.Header>
 						<Card.Content class="px-3 py-4 sm:px-6">
-							<UpdateScheduleEditor
+							<CronScheduleEditor
 								bind:autoUpdate={$formInputs.autoUpdate.value}
 								bind:scheduleEnabled={$formInputs.updateScheduleEnabled.value}
-								bind:windows={$formInputs.updateScheduleWindows.value}
+								bind:cronSchedule={$formInputs.updateScheduleCron!.value}
 								disabled={isReadOnly}
 							/>
 						</Card.Content>

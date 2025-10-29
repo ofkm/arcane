@@ -17,7 +17,7 @@ type UpdateSettingsDto struct {
 	AutoUpdate                 *string `json:"autoUpdate,omitempty"`
 	AutoUpdateInterval         *string `json:"autoUpdateInterval,omitempty"`
 	UpdateScheduleEnabled      *string `json:"updateScheduleEnabled,omitempty"`
-	UpdateScheduleWindows      *string `json:"updateScheduleWindows,omitempty"`
+	UpdateScheduleCron         *string `json:"updateScheduleCron,omitempty"`
 	PollingEnabled             *string `json:"pollingEnabled,omitempty"`
 	PollingInterval            *string `json:"pollingInterval,omitempty"`
 	PruneMode                  *string `json:"dockerPruneMode,omitempty" binding:"omitempty,oneof=all dangling"`

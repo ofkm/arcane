@@ -109,8 +109,7 @@ export default class SettingsService extends BaseAPIService {
 		if (
 			key === 'onboardingSteps' ||
 			key === 'registryCredentials' ||
-			key === 'templateRegistries' ||
-			key === 'updateScheduleWindows'
+			key === 'templateRegistries'
 		) {
 			try {
 				return JSON.parse(value);

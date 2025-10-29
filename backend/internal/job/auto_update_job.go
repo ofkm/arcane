@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/go-co-op/gocron/v2"
-	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/services"
 )
 
@@ -96,25 +95,6 @@ func (j *AutoUpdateJob) executeProjectSpecificUpdates(ctx context.Context) error
 
 		projectsProcessed++
 
-		// Check if this project should be updated based on its settings
-		shouldUpdate, err := j.shouldUpdateProject(ctx, &project)
-		if err != nil {
-			slog.ErrorContext(ctx, "failed to check project update settings",
-				slog.String("projectID", project.ID),
-				slog.String("projectName", project.Name),
-				slog.Any("err", err))
-			totalFailed++
-			continue
-		}
-
-		if !shouldUpdate {
-			slog.DebugContext(ctx, "project not eligible for update",
-				slog.String("projectID", project.ID),
-				slog.String("projectName", project.Name))
-			totalSkipped++
-			continue
-		}
-
 		// Apply updates for this specific project
 		result, err := j.updaterService.ApplyPendingForProject(ctx, &project, false)
 		if err != nil {
@@ -145,29 +125,6 @@ func (j *AutoUpdateJob) executeProjectSpecificUpdates(ctx context.Context) error
 		slog.Int("projects_errors", totalFailed))
 
 	return nil
-}
-
-func (j *AutoUpdateJob) shouldUpdateProject(ctx context.Context, project *models.Project) (bool, error) {
-	autoUpdate := j.settingsService.GetBoolSetting(ctx, "autoUpdate", false)
-
-	// If global auto-update is disabled, skip
-	if !autoUpdate {
-		return false, nil
-	}
-
-	scheduleEnabled := j.settingsService.GetBoolSetting(ctx, "updateScheduleEnabled", false)
-
-	// If global schedule is enabled, check if we're within the update window
-	if scheduleEnabled {
-		withinWindow, err := j.updaterService.IsWithinUpdateWindow(ctx, nil)
-		if err != nil {
-			return false, err
-		}
-		return withinWindow, nil
-	}
-
-	// If schedule is disabled, allow updates (container-level cron schedules will be checked separately)
-	return true, nil
 }
 
 func (j *AutoUpdateJob) Reschedule(ctx context.Context) error {

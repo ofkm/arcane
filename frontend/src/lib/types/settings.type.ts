@@ -13,7 +13,7 @@ export type Settings = {
 	autoUpdate: boolean;
 	pollingEnabled: boolean;
 	updateScheduleEnabled: boolean;
-	updateScheduleWindows: UpdateScheduleWindow[];
+	updateScheduleCron?: string;
 	pollingInterval: number;
 	dockerPruneMode: 'all' | 'dangling';
 	baseServerUrl: string;
@@ -67,16 +67,4 @@ export interface OidcConfig {
 export interface OidcStatusInfo {
 	envForced: boolean;
 	envConfigured: boolean;
-}
-
-export interface UpdateScheduleWindow {
-	days: ('monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday')[];
-	startTime: string; // e.g., "02:00"
-	endTime: string; // e.g., "06:00"
-	timezone: string; // e.g., "UTC"
-}
-
-export interface FormattedScheduleWindow extends UpdateScheduleWindow {
-	displayText: string; // e.g., "Mon-Fri 02:00-06:00 UTC"
-	daysText: string; // e.g., "Mon-Fri" or "Mon, Wed, Fri"
 }
