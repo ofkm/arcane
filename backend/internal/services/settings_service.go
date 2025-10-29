@@ -796,18 +796,18 @@ func (s *SettingsService) GetTimezones(ctx context.Context) (*dto.TimezoneListRe
 		"Pacific/Saipan", "Pacific/Tahiti", "Pacific/Tarawa", "Pacific/Tongatapu",
 		"Pacific/Wake", "Pacific/Wallis",
 	}
-	
+
 	allTimezones := make([]dto.TimezoneOption, 0, len(timezoneNames))
-	
+
 	for _, tzName := range timezoneNames {
 		loc, err := time.LoadLocation(tzName)
 		if err != nil {
 			continue
 		}
-		
+
 		now := time.Now().In(loc)
 		_, offset := now.Zone()
-		
+
 		hours := offset / 3600
 		minutes := (offset % 3600) / 60
 		sign := "+"
@@ -816,9 +816,9 @@ func (s *SettingsService) GetTimezones(ctx context.Context) (*dto.TimezoneListRe
 			hours = -hours
 			minutes = -minutes
 		}
-		
+
 		offsetStr := fmt.Sprintf("UTC%s%02d:%02d", sign, hours, minutes)
-		
+
 		allTimezones = append(allTimezones, dto.TimezoneOption{
 			Value:  tzName,
 			Label:  tzName,
@@ -834,11 +834,11 @@ func (s *SettingsService) GetTimezones(ctx context.Context) (*dto.TimezoneListRe
 
 func (s *SettingsService) FormatScheduleWindows(ctx context.Context, windows []models.UpdateScheduleWindow) []dto.FormattedScheduleWindow {
 	formatted := make([]dto.FormattedScheduleWindow, len(windows))
-	
+
 	for i, window := range windows {
 		daysText := formatDays(window.Days)
 		displayText := fmt.Sprintf("%s %s-%s %s", daysText, window.StartTime, window.EndTime, window.Timezone)
-		
+
 		formatted[i] = dto.FormattedScheduleWindow{
 			Days:        window.Days,
 			StartTime:   window.StartTime,
@@ -848,7 +848,7 @@ func (s *SettingsService) FormatScheduleWindows(ctx context.Context, windows []m
 			DaysText:    daysText,
 		}
 	}
-	
+
 	return formatted
 }
 
@@ -859,30 +859,30 @@ func formatDays(days []string) string {
 	if len(days) == 7 {
 		return "Every day"
 	}
-	
+
 	dayOrder := map[string]int{
 		"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
 		"friday": 4, "saturday": 5, "sunday": 6,
 	}
-	
+
 	dayAbbrevations := map[string]string{
 		"monday": "Mon", "tuesday": "Tue", "wednesday": "Wed", "thursday": "Thu",
 		"friday": "Fri", "saturday": "Sat", "sunday": "Sun",
 	}
-	
+
 	// Sort days by order
 	sortedDays := make([]string, len(days))
 	copy(sortedDays, days)
 	sort.Slice(sortedDays, func(i, j int) bool {
 		return dayOrder[strings.ToLower(sortedDays[i])] < dayOrder[strings.ToLower(sortedDays[j])]
 	})
-	
+
 	// Check if consecutive
 	indices := make([]int, len(sortedDays))
 	for i, day := range sortedDays {
 		indices[i] = dayOrder[strings.ToLower(day)]
 	}
-	
+
 	isConsecutive := true
 	for i := 1; i < len(indices); i++ {
 		if indices[i] != indices[i-1]+1 {
@@ -890,13 +890,13 @@ func formatDays(days []string) string {
 			break
 		}
 	}
-	
+
 	if isConsecutive && len(sortedDays) > 2 {
 		first := dayAbbrevations[strings.ToLower(sortedDays[0])]
 		last := dayAbbrevations[strings.ToLower(sortedDays[len(sortedDays)-1])]
 		return fmt.Sprintf("%s-%s", first, last)
 	}
-	
+
 	// Format as comma-separated
 	abbrevs := make([]string, len(sortedDays))
 	for i, day := range sortedDays {

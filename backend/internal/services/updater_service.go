@@ -666,7 +666,7 @@ func (s *UpdaterService) GetNextUpdateWindow(ctx context.Context, project *model
 
 func (s *UpdaterService) GetUpdateEligibilityStatus(ctx context.Context, projectID string) (*dto.UpdateEligibilityStatus, error) {
 	var project *models.Project
-	
+
 	// If projectID is provided, fetch the project
 	if projectID != "" {
 		var err error
@@ -694,7 +694,8 @@ func (s *UpdaterService) GetUpdateEligibilityStatus(ctx context.Context, project
 	}
 
 	// If not within window, get next window time
-	if !withinWindow && scheduleEnabled {
+	switch {
+	case !withinWindow && scheduleEnabled:
 		nextWindow, _ := s.GetNextUpdateWindow(ctx, project)
 		if nextWindow != nil {
 			timestamp := nextWindow.Unix()
@@ -703,9 +704,9 @@ func (s *UpdaterService) GetUpdateEligibilityStatus(ctx context.Context, project
 		} else {
 			status.Reason = "No update windows configured"
 		}
-	} else if !scheduleEnabled {
+	case !scheduleEnabled:
 		status.Reason = "Schedule not enabled, updates allowed anytime"
-	} else {
+	default:
 		status.Reason = "Within scheduled update window"
 	}
 

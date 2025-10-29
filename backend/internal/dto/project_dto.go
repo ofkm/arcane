@@ -48,10 +48,10 @@ type ProjectDetailsDto struct {
 	UpdatedAt      string  `json:"updatedAt"`
 	Services       []any   `json:"services,omitempty"`
 
-	AutoUpdate                     *bool                      `json:"autoUpdate,omitempty"`
-	UpdateScheduleEnabled          *bool                      `json:"updateScheduleEnabled,omitempty"`
-	UpdateScheduleWindows          *string                    `json:"updateScheduleWindows,omitempty"`
-	UpdateScheduleWindowsFormatted []FormattedScheduleWindow  `json:"updateScheduleWindowsFormatted,omitempty"`
+	AutoUpdate                     *bool                     `json:"autoUpdate,omitempty"`
+	UpdateScheduleEnabled          *bool                     `json:"updateScheduleEnabled,omitempty"`
+	UpdateScheduleWindows          *string                   `json:"updateScheduleWindows,omitempty"`
+	UpdateScheduleWindowsFormatted []FormattedScheduleWindow `json:"updateScheduleWindowsFormatted,omitempty"`
 }
 
 type DestroyProjectDto struct {
