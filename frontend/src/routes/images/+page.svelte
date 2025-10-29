@@ -88,10 +88,9 @@
 		});
 	}
 
-	const selectedEnvStore = environmentStore.selected;
 	let lastEnvId: string | null = null;
 	$effect(() => {
-		const env = selectedEnvStore as Environment | null;
+		const env = environmentStore.selected;
 		if (!env) return;
 		if (lastEnvId === null) {
 			lastEnvId = env.id;

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ArcaneTable from '$lib/components/arcane-table/arcane-table.svelte';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
@@ -258,21 +257,17 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root class="flex flex-col gap-6 py-3">
-	<Card.Content class="px-6 py-5">
-		<ArcaneTable
-			persistKey="arcane-events-table"
-			items={events}
-			bind:requestOptions
-			bind:selectedIds
-			bind:mobileFieldVisibility
-			onRefresh={async (options) => (events = await eventService.getEvents(options))}
-			{columns}
-			{mobileFields}
-			rowActions={RowActions}
-			mobileCard={EventMobileCardSnippet}
-		/>
-	</Card.Content>
-</Card.Root>
+<ArcaneTable
+	persistKey="arcane-events-table"
+	items={events}
+	bind:requestOptions
+	bind:selectedIds
+	bind:mobileFieldVisibility
+	onRefresh={async (options) => (events = await eventService.getEvents(options))}
+	{columns}
+	{mobileFields}
+	rowActions={RowActions}
+	mobileCard={EventMobileCardSnippet}
+/>
 
 <EventDetailsDialog bind:open={detailsOpen} event={detailsEvent} />

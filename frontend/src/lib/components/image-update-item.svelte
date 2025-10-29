@@ -137,7 +137,7 @@
 
 {#snippet iconCircle(Icon: Component, gradientFrom: string, gradientTo: string, shadowColor: string)}
 	<div
-		class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br {gradientFrom} {gradientTo} shadow-lg {shadowColor}"
+		class="flex h-10 w-10 items-center justify-center rounded-full bg-linear-to-br {gradientFrom} {gradientTo} shadow-lg {shadowColor}"
 	>
 		<Icon class="size-5 text-white" />
 	</div>
@@ -193,7 +193,7 @@
 {/snippet}
 
 {#snippet errorState()}
-	<div class="bg-gradient-to-br from-rose-50 to-red-50/40 p-4 dark:from-rose-950/20 dark:to-red-950/10">
+	<div class="bg-linear-to-br from-rose-50 to-red-50/40 p-4 dark:from-rose-950/20 dark:to-red-950/10">
 		<div class="flex items-start gap-3">
 			{@render iconCircle(TriangleAlertIcon, 'from-rose-500', 'to-red-500', 'shadow-red-500/25')}
 			<div class="flex-1">
@@ -207,7 +207,7 @@
 		<div class="space-y-3">
 			<div class="text-xs text-gray-600 dark:text-gray-300">
 				<span class="font-medium">{m.image_update_error_label()}</span>
-				<span class="ml-1 break-words">{updateInfo?.error}</span>
+				<span class="ml-1 wrap-break-word">{updateInfo?.error}</span>
 			</div>
 			{#if repo && tag}
 				<div class="text-xs text-gray-500 dark:text-gray-400">
@@ -220,7 +220,7 @@
 {/snippet}
 
 {#snippet successState()}
-	<div class="bg-gradient-to-br from-emerald-50 to-green-50/30 p-4 dark:from-emerald-950/20 dark:to-green-950/10">
+	<div class="bg-linear-to-br from-emerald-50 to-green-50/30 p-4 dark:from-emerald-950/20 dark:to-green-950/10">
 		<div class="flex items-start gap-3">
 			{@render iconCircle(CircleCheckIcon, 'from-emerald-500', 'to-green-500', 'shadow-emerald-500/25')}
 			<div class="flex-1">
@@ -247,7 +247,7 @@
 {/snippet}
 
 {#snippet digestUpdateState()}
-	<div class="bg-gradient-to-br from-blue-50 to-cyan-50/30 p-4 dark:from-blue-950/20 dark:to-cyan-950/10">
+	<div class="bg-linear-to-br from-blue-50 to-cyan-50/30 p-4 dark:from-blue-950/20 dark:to-cyan-950/10">
 		<div class="flex items-start gap-3">
 			{@render iconCircle(CircleArrowUpIcon, 'from-blue-500', 'to-cyan-500', 'shadow-blue-500/25')}
 			<div class="flex-1">
@@ -283,7 +283,7 @@
 {/snippet}
 
 {#snippet versionUpdateState()}
-	<div class="bg-gradient-to-br from-amber-50 to-yellow-50/30 p-4 dark:from-amber-950/20 dark:to-yellow-950/10">
+	<div class="bg-linear-to-br from-amber-50 to-yellow-50/30 p-4 dark:from-amber-950/20 dark:to-yellow-950/10">
 		<div class="flex items-start gap-3">
 			{@render iconCircle(CircleFadingArrowUpIcon, 'from-amber-500', 'to-yellow-500', 'shadow-amber-500/25')}
 			<div class="flex-1">
@@ -319,7 +319,7 @@
 {/snippet}
 
 {#snippet loadingState()}
-	<div class="bg-gradient-to-br from-blue-50 to-cyan-50/30 p-4 dark:from-blue-950/20 dark:to-cyan-950/10">
+	<div class="bg-linear-to-br from-blue-50 to-cyan-50/30 p-4 dark:from-blue-950/20 dark:to-cyan-950/10">
 		<div class="flex items-center gap-3">
 			{@render iconCircle(Spinner, 'from-blue-500', 'to-cyan-500', 'shadow-blue-500/25')}
 			<div>
@@ -331,7 +331,7 @@
 {/snippet}
 
 {#snippet unknownState()}
-	<div class="bg-gradient-to-br from-gray-50 to-slate-50/30 p-4 dark:from-gray-900/20 dark:to-slate-900/10">
+	<div class="bg-linear-to-br from-gray-50 to-slate-50/30 p-4 dark:from-gray-900/20 dark:to-slate-900/10">
 		<div class="flex items-center gap-3">
 			{@render iconCircle(TriangleAlertIcon, 'from-gray-400', 'to-slate-500', 'shadow-gray-400/25')}
 			<div>

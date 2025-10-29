@@ -17,6 +17,7 @@ export class MobileNavGestures {
 	private scrollTimeout: ReturnType<typeof setTimeout> | null = null;
 	private flickDetectTimeout: ReturnType<typeof setTimeout> | null = null;
 	private touchStartY: number | null = null;
+	private touchStartX: number | null = null;
 	private isInteractiveTouch = false;
 	private readonly touchMoveThreshold = 6;
 	private readonly scrollThreshold = 10;
@@ -59,18 +60,27 @@ export class MobileNavGestures {
 		if (target && target.closest && target.closest('button, a, input, select, textarea, [role="button"], [contenteditable]')) {
 			this.isInteractiveTouch = true;
 			this.touchStartY = null;
+			this.touchStartX = null;
 			return;
 		}
 		this.isInteractiveTouch = false;
 		this.touchStartY = t.clientY;
+		this.touchStartX = t.clientX;
 	};
 
 	private handleTouchMove = (e: TouchEvent) => {
-		if (this.options.menuOpen || this.isInteractiveTouch || this.touchStartY === null) return;
+		if (this.options.menuOpen || this.isInteractiveTouch || this.touchStartY === null || this.touchStartX === null) return;
 		const t = e.touches?.[0];
 		if (!t) return;
 		const deltaY = t.clientY - this.touchStartY;
-		if (Math.abs(deltaY) < this.touchMoveThreshold) return;
+		const deltaX = t.clientX - this.touchStartX;
+		
+		if (Math.abs(deltaY) < this.touchMoveThreshold && Math.abs(deltaX) < this.touchMoveThreshold) return;
+
+		// If horizontal movement is dominant, ignore this touch sequence
+		if (Math.abs(deltaX) > Math.abs(deltaY)) {
+			return;
+		}
 
 		if (deltaY < 0) {
 			this.handlers.onVisibilityChange(false);
@@ -79,17 +89,26 @@ export class MobileNavGestures {
 		}
 
 		this.touchStartY = t.clientY;
+		this.touchStartX = t.clientX;
 	};
 
 	private handleTouchEnd = () => {
 		this.touchStartY = null;
+		this.touchStartX = null;
 		this.isInteractiveTouch = false;
 	};
 
-	private handleScroll = () => {
+	private handleScroll = (e?: Event) => {
 		const currentScrollY = window.scrollY;
 		const prevScrollY = this.lastScrollY;
 		const scrollDiff = currentScrollY - prevScrollY;
+
+		if (e && e.target && e.target !== document && e.target !== window) {
+			const target = e.target as HTMLElement;
+			if (target.scrollLeft !== undefined && target.scrollLeft > 0) {
+				return;
+			}
+		}
 
 		if (this.scrollTimeout) {
 			clearTimeout(this.scrollTimeout);
@@ -162,10 +181,11 @@ export class MobileNavGestures {
 			return () => {};
 		}
 
-		window.addEventListener('scroll', this.handleScroll, { passive: true });
+		const scrollHandler = (e: Event) => this.handleScroll(e);
+		window.addEventListener('scroll', scrollHandler, { passive: true, capture: true });
 
 		return () => {
-			window.removeEventListener('scroll', this.handleScroll);
+			window.removeEventListener('scroll', scrollHandler, { capture: true });
 			if (this.scrollTimeout) {
 				clearTimeout(this.scrollTimeout);
 			}

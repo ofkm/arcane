@@ -63,7 +63,7 @@
 									<Avatar.Image src={getDefaultProfilePicture()} alt={user.displayName} />
 								{/if}
 								<Avatar.Fallback
-									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-gradient-to-br"
+									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-linear-to-br"
 								>
 									{user.displayName?.charAt(0).toUpperCase()}
 								</Avatar.Fallback>
@@ -78,7 +78,12 @@
 					</Sidebar.MenuButton>
 				{/snippet}
 			</DropdownMenu.Trigger>
-			<DropdownMenu.Content class="min-w-56 rounded-2xl p-0 bubble-shadow glass glass-subtle border border-border/20" side="right" align="end" sideOffset={12}>
+			<DropdownMenu.Content
+				class="border-border/20 min-w-56 rounded-2xl border p-0 shadow-lg backdrop-blur-(--glass-blur-popup) backdrop-saturate-150"
+				side="right"
+				align="end"
+				sideOffset={12}
+			>
 				<div
 					role="group"
 					tabindex="-1"
@@ -93,7 +98,7 @@
 						}
 					}}
 				>
-					<DropdownMenu.Label class="px-4 pt-3 pb-3 font-normal border-b border-border/10">
+					<DropdownMenu.Label class="border-border/10 border-b px-4 pt-3 pb-3 font-normal">
 						<div class="flex items-center gap-3 text-left text-sm">
 							<Avatar.Root class="size-8 shrink-0 rounded-lg">
 								{#if $settingsStore.enableGravatar}
@@ -108,7 +113,7 @@
 									<Avatar.Image src={getDefaultProfilePicture()} alt={user.displayName} />
 								{/if}
 								<Avatar.Fallback
-									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-gradient-to-br"
+									class="from-primary/20 to-primary/10 text-primary border-primary/20 rounded-lg border bg-linear-to-br"
 								>
 									{user.displayName?.charAt(0).toUpperCase()}
 								</Avatar.Fallback>
@@ -135,7 +140,7 @@
 						<Button.Root
 							variant="ghost"
 							class={cn(
-								'text-muted-foreground flex w-full items-center rounded-xl text-sm font-medium transition-all duration-200 hover:bg-gradient-to-br',
+								'text-muted-foreground flex w-full items-center rounded-xl text-sm font-medium transition-all duration-200 hover:bg-linear-to-br',
 								'h-11 justify-start gap-3 px-3 py-2.5'
 							)}
 							title={m.common_toggle_theme()}

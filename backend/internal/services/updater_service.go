@@ -20,14 +20,15 @@ import (
 )
 
 type UpdaterService struct {
-	db                 *database.DB
-	settingsService    *SettingsService
-	dockerService      *DockerClientService
-	projectService     *ProjectService
-	imageUpdateService *ImageUpdateService
-	registryService    *ContainerRegistryService
-	eventService       *EventService
-	imageService       *ImageService
+	db                  *database.DB
+	settingsService     *SettingsService
+	dockerService       *DockerClientService
+	projectService      *ProjectService
+	imageUpdateService  *ImageUpdateService
+	registryService     *ContainerRegistryService
+	eventService        *EventService
+	imageService        *ImageService
+	notificationService *NotificationService
 
 	updatingContainers map[string]bool
 	updatingProjects   map[string]bool
@@ -42,18 +43,20 @@ func NewUpdaterService(
 	registries *ContainerRegistryService,
 	events *EventService,
 	imageSvc *ImageService,
+	notifications *NotificationService,
 ) *UpdaterService {
 	return &UpdaterService{
-		db:                 db,
-		settingsService:    settings,
-		dockerService:      docker,
-		projectService:     projects,
-		imageUpdateService: imageUpdates,
-		registryService:    registries,
-		eventService:       events,
-		imageService:       imageSvc,
-		updatingContainers: map[string]bool{},
-		updatingProjects:   map[string]bool{},
+		db:                  db,
+		settingsService:     settings,
+		dockerService:       docker,
+		projectService:      projects,
+		imageUpdateService:  imageUpdates,
+		registryService:     registries,
+		eventService:        events,
+		imageService:        imageSvc,
+		notificationService: notifications,
+		updatingContainers:  map[string]bool{},
+		updatingProjects:    map[string]bool{},
 	}
 }
 
@@ -747,6 +750,17 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 			res.UpdateAvailable = true
 			res.UpdateApplied = true
 			slog.DebugContext(ctx, "restartContainersUsingOldIDs: update succeeded", "containerId", c.ID)
+
+			// Send notification after successful container update
+			if s.notificationService != nil {
+				if notifErr := s.notificationService.SendContainerUpdateNotification(ctx, name, newRef, match, s.normalizeRef(newRef)); notifErr != nil {
+					slog.WarnContext(ctx, "Failed to send container update notification",
+						slog.String("containerId", c.ID),
+						slog.String("containerName", name),
+						slog.String("imageRef", newRef),
+						slog.String("error", notifErr.Error()))
+				}
+			}
 		}
 		results = append(results, res)
 	}

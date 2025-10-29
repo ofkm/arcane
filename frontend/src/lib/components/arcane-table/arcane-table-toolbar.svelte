@@ -42,7 +42,7 @@
 	const hasSelection = $derived(!selectionDisabled && (selectedIds?.length ?? 0) > 0);
 </script>
 
-<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+<div class="flex flex-col gap-2 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
 	<div class="flex flex-col gap-2 sm:flex-1 sm:flex-row sm:items-center sm:justify-between">
 		<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:space-x-2">
 			<div class="flex items-center gap-2">

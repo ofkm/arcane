@@ -524,6 +524,7 @@ func (s *AuthService) ChangePassword(ctx context.Context, userID, currentPasswor
 	}
 
 	user.PasswordHash = hashedPassword
+	user.RequiresPasswordChange = false
 	_, err = s.userService.UpdateUser(ctx, user)
 	return err
 }

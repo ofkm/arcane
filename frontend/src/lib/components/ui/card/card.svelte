@@ -28,11 +28,13 @@
 	function getVariantClasses(variant: 'default' | 'subtle' | 'outlined') {
 		switch (variant) {
 			case 'default':
-				return 'glass glass-subtle ring-border/30 shadow-sm dark:shadow-none';
+				return 'backdrop-blur-sm bg-card/90 shadow-sm';
 			case 'subtle':
-				return 'glass-subtle border-transparent';
+				return 'backdrop-blur-sm bg-card/60';
 			case 'outlined':
-				return 'glass glass-strong border-border/50';
+				return 'backdrop-blur-lg bg-card/60 border-border/50';
+			default:
+				return 'backdrop-blur-sm bg-card/90 shadow-sm';
 		}
 	}
 </script>

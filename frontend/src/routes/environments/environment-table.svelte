@@ -7,8 +7,8 @@
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import MonitorIcon from '@lucide/svelte/icons/monitor';
+	import DownloadIcon from '@lucide/svelte/icons/download';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
-	import * as Card from '$lib/components/ui/card/index.js';
 	import { goto } from '$app/navigation';
 	import { openConfirmDialog } from '$lib/components/confirm-dialog';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -21,6 +21,8 @@
 	import { m } from '$lib/paraglide/messages';
 	import { environmentManagementService } from '$lib/services/env-mgmt-service';
 	import CloudIcon from '@lucide/svelte/icons/cloud';
+	import environmentUpgradeService from '$lib/services/api/environment-upgrade-service';
+	import UpgradeConfirmationDialog from '$lib/components/dialogs/upgrade-confirmation-dialog.svelte';
 
 	let {
 		environments = $bindable(),
@@ -32,7 +34,10 @@
 		requestOptions: SearchPaginationSortRequest;
 	} = $props();
 
-	let isLoading = $state({ removing: false, testing: false });
+	let isLoading = $state({ removing: false, testing: false, upgrading: false });
+	let upgradingEnvironmentId = $state<string | null>(null);
+	let showUpgradeDialog = $state(false);
+	let selectedEnvironmentForUpgrade = $state<Environment | null>(null);
 
 	async function handleDeleteSelected(ids: string[]) {
 		if (!ids?.length) return;
@@ -118,6 +123,40 @@
 			}
 		});
 		isLoading.testing = false;
+	}
+
+	async function handleUpgradeClick(environment: Environment) {
+		selectedEnvironmentForUpgrade = environment;
+		showUpgradeDialog = true;
+	}
+
+	async function handleConfirmUpgrade() {
+		if (!selectedEnvironmentForUpgrade) return;
+
+		const envId = selectedEnvironmentForUpgrade.id;
+		const envName = selectedEnvironmentForUpgrade.name;
+
+		isLoading.upgrading = true;
+		upgradingEnvironmentId = envId;
+		showUpgradeDialog = false;
+
+		try {
+			const result = await environmentUpgradeService.triggerEnvironmentUpgrade(envId);
+
+			if (result.success) {
+				toast.success(m.upgrade_success());
+				toast.info(`Environment "${envName}" is upgrading and will restart shortly.`);
+			} else {
+				toast.error(result.error || m.upgrade_failed({ error: 'Unknown error' }));
+			}
+		} catch (error: any) {
+			const errorMessage = error?.response?.data?.error || error?.message || 'Unknown error';
+			toast.error(m.upgrade_failed({ error: errorMessage }));
+		} finally {
+			isLoading.upgrading = false;
+			upgradingEnvironmentId = null;
+			selectedEnvironmentForUpgrade = null;
+		}
 	}
 
 	const columns = [
@@ -235,6 +274,16 @@
 					<EyeIcon class="size-4" />
 					{m.common_view_details()}
 				</DropdownMenu.Item>
+				{#if item.status === 'online'}
+					<DropdownMenu.Separator />
+					<DropdownMenu.Item
+						onclick={() => handleUpgradeClick(item)}
+						disabled={isLoading.upgrading || upgradingEnvironmentId === item.id}
+					>
+						<DownloadIcon class="size-4" />
+						{upgradingEnvironmentId === item.id ? m.upgrade_in_progress() : m.upgrade_to_version({ version: 'Latest' })}
+					</DropdownMenu.Item>
+				{/if}
 				<DropdownMenu.Separator />
 				<DropdownMenu.Item
 					variant="destructive"
@@ -249,20 +298,25 @@
 	</DropdownMenu.Root>
 {/snippet}
 
-<Card.Root class="flex flex-col gap-6 py-3">
-	<Card.Content class="px-6 py-5">
-		<ArcaneTable
-			persistKey="arcane-environments-table"
-			items={environments}
-			bind:requestOptions
-			bind:selectedIds
-			bind:mobileFieldVisibility
-			onRemoveSelected={(ids) => handleDeleteSelected(ids)}
-			onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
-			{columns}
-			{mobileFields}
-			rowActions={RowActions}
-			mobileCard={EnvironmentMobileCardSnippet}
-		/>
-	</Card.Content>
-</Card.Root>
+<ArcaneTable
+	persistKey="arcane-environments-table"
+	items={environments}
+	bind:requestOptions
+	bind:selectedIds
+	bind:mobileFieldVisibility
+	onRemoveSelected={(ids) => handleDeleteSelected(ids)}
+	onRefresh={async (options) => (environments = await environmentManagementService.getEnvironments(options))}
+	{columns}
+	{mobileFields}
+	rowActions={RowActions}
+	mobileCard={EnvironmentMobileCardSnippet}
+/>
+
+<UpgradeConfirmationDialog
+	bind:open={showUpgradeDialog}
+	version="Latest"
+	onConfirm={handleConfirmUpgrade}
+	environmentName={selectedEnvironmentForUpgrade?.name}
+	environmentId={selectedEnvironmentForUpgrade?.id}
+	bind:upgrading={isLoading.upgrading}
+/>

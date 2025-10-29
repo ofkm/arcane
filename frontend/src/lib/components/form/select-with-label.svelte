@@ -9,6 +9,7 @@
 		value = $bindable<string>(),
 		label,
 		description,
+		error,
 		disabled = false,
 		placeholder = m.common_select_option(),
 		options = [],
@@ -20,6 +21,7 @@
 		value: string;
 		label: string;
 		description?: string;
+		error?: string | null;
 		disabled?: boolean;
 		placeholder?: string;
 		options: { label: string; value: string; description?: string }[];
@@ -36,7 +38,7 @@
 	</Label>
 
 	<Select.Root type="single" bind:value {name} {disabled} onValueChange={(v) => onValueChange?.(v)}>
-		<Select.Trigger class="w-full" {id}>
+		<Select.Trigger class="w-full {error ? 'border-destructive' : ''}" {id}>
 			<span>{selectedLabel}</span>
 		</Select.Trigger>
 
@@ -70,6 +72,9 @@
 		</Select.Content>
 	</Select.Root>
 
+	{#if error}
+		<p class="text-destructive text-[0.8rem] font-medium">{error}</p>
+	{/if}
 	{#if description}
 		<p class="text-muted-foreground text-[0.8rem]">{description}</p>
 	{/if}

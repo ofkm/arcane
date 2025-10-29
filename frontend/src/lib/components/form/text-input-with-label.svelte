@@ -10,6 +10,7 @@
 		placeholder = '',
 		description,
 		helpText,
+		error,
 		disabled = false,
 		type = 'text',
 		autocomplete = 'off',
@@ -23,6 +24,7 @@
 		placeholder?: string;
 		description?: string;
 		helpText?: string;
+		error?: string | null;
 		disabled?: boolean;
 		type?: 'text' | 'email' | 'password' | 'number' | 'url';
 		autocomplete?: HTMLInputElement['autocomplete'];
@@ -32,8 +34,14 @@
 
 	function handleInput(e: Event) {
 		const target = e.target as HTMLInputElement;
-		value = target.value;
-		onChange?.(value);
+		if (type === 'number') {
+			const numValue = target.value === '' ? '' : Number(target.value);
+			value = numValue;
+			onChange?.(target.value);
+		} else {
+			value = target.value;
+			onChange?.(target.value);
+		}
 	}
 </script>
 
@@ -42,8 +50,22 @@
 		{label}{#if required}<span class="text-destructive ml-0.5">*</span>{/if}
 	</Label>
 
-	<Input {id} {name} bind:value {placeholder} {disabled} {type} {autocomplete} {required} oninput={handleInput} />
+	<Input
+		{id}
+		{name}
+		bind:value
+		{placeholder}
+		{disabled}
+		{type}
+		{autocomplete}
+		{required}
+		oninput={handleInput}
+		class={error ? 'border-destructive' : ''}
+	/>
 
+	{#if error}
+		<p class="text-destructive text-[0.8rem] font-medium">{error}</p>
+	{/if}
 	{#if description}
 		<p class="text-muted-foreground text-[0.8rem]">{description}</p>
 	{/if}

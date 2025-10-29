@@ -82,7 +82,7 @@
 					const settings = await settingsService.getSettings();
 					settingsStore.set(settings);
 					toast.success('Successfully logged in!');
-					goto(!settings.onboardingCompleted ? '/onboarding/welcome' : redirectTo, { replaceState: true });
+					goto(redirectTo, { replaceState: true });
 				}
 
 				await invalidateAll();

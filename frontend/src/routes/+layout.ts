@@ -40,15 +40,21 @@ export const load = async () => {
 	});
 
 	let versionInformation: AppVersionInformation = {
-		currentVersion: versionService.getCurrentVersion()
+		currentVersion: versionService.getCurrentVersion(),
+		displayVersion: versionService.getCurrentVersion(),
+		revision: 'unknown',
+		isSemverVersion: false
 	};
 
 	try {
 		const info = await versionService.getVersionInformation();
 		versionInformation = {
 			currentVersion: info.currentVersion,
+			displayVersion: info.displayVersion,
+			revision: info.revision,
+			isSemverVersion: info.isSemverVersion,
 			newestVersion: info.newestVersion,
-			updateAvailable: info.newestVersion ? info.newestVersion !== info.currentVersion : false,
+			updateAvailable: info.updateAvailable,
 			releaseUrl: info.releaseUrl
 		};
 	} catch {}

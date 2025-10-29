@@ -100,130 +100,145 @@
 	}
 </script>
 
-<Card.Root variant="subtle" class={className} onclick={onclick ? () => onclick(item) : undefined}>
-	<Card.Content class={cn('flex flex-col', compact ? 'gap-1.5 p-2' : 'gap-3 p-4')}>
-		<!-- Main Row -->
-		<div class="flex items-start gap-3">
-			{#if resolvedIcon}
-				{@const IconComponent = resolvedIcon.component}
-				<div
-					class={cn(
-						'flex shrink-0 items-center justify-center rounded-lg',
-						compact ? 'size-7' : 'size-9',
-						getIconBgClass(resolvedIcon.variant)
-					)}
-				>
-					<IconComponent class={cn(getIconTextClass(resolvedIcon.variant), compact ? 'size-3.5' : 'size-4')} />
-				</div>
-			{/if}
-			<div class="min-w-0 flex-1">
-				<h3 class={cn('truncate leading-tight font-medium', compact ? 'text-[13px]' : 'text-[15px]')} title={title(item)}>
-					{title(item)}
-				</h3>
-				{#if subtitle}
-					{@const subtitleValue = subtitle(item)}
-					{#if subtitleValue}
-						<p class={cn('text-muted-foreground mt-0.5 truncate', compact ? 'text-[10px]' : 'text-xs')}>
-							{subtitleValue}
-						</p>
+<div class={cn('group relative w-full px-3 py-3', className)}>
+	<Card.Root
+		variant="subtle"
+		class={cn(
+			'overflow-hidden text-left transition-all duration-200',
+			onclick && 'cursor-pointer hover:border-white/20 hover:shadow-md'
+		)}
+		onclick={onclick ? () => onclick(item) : undefined}
+	>
+		<Card.Content class={cn('flex flex-col text-left', compact ? 'gap-3 p-3' : 'gap-4 p-4')}>
+			<!-- Main Row -->
+			<div class="flex items-start gap-4">
+				{#if resolvedIcon}
+					{@const IconComponent = resolvedIcon.component}
+					<div
+						class={cn(
+							'flex shrink-0 items-center justify-center rounded-xl ring-1 backdrop-blur-sm transition-transform duration-200 ring-inset group-hover:scale-105',
+							compact ? 'size-9' : 'size-11',
+							getIconBgClass(resolvedIcon.variant),
+							'ring-white/5'
+						)}
+					>
+						<IconComponent class={cn(getIconTextClass(resolvedIcon.variant), compact ? 'size-4.5' : 'size-5')} />
+					</div>
+				{/if}
+				<div class="min-w-0 flex-1">
+					<h3 class={cn('truncate leading-snug font-semibold', compact ? 'text-sm' : 'text-[15px]')} title={title(item)}>
+						{title(item)}
+					</h3>
+					{#if subtitle}
+						{@const subtitleValue = subtitle(item)}
+						{#if subtitleValue}
+							<p
+								class={cn(
+									'text-muted-foreground mt-1.5 truncate leading-relaxed font-medium',
+									compact ? 'text-[11px]' : 'text-xs'
+								)}
+							>
+								{subtitleValue}
+							</p>
+						{/if}
 					{/if}
-				{/if}
+				</div>
+				<div class="flex shrink-0 items-center gap-2">
+					{#each resolvedBadges as badge}
+						<StatusBadge variant={badge.variant} text={badge.text} size="sm" />
+					{/each}
+					{#if rowActions}
+						{@render rowActions({ item })}
+					{/if}
+				</div>
 			</div>
-			<div class="flex flex-shrink-0 items-center gap-2">
-				{#each resolvedBadges as badge}
-					<StatusBadge variant={badge.variant} text={badge.text} size="sm" />
-				{/each}
-				{#if rowActions}
-					{@render rowActions({ item })}
-				{/if}
-			</div>
-		</div>
 
-		<!-- Additional Fields -->
-		{#if visibleFields.length > 0}
-			{#if !compact}
-				<div class="flex flex-wrap gap-x-4 gap-y-3">
+			<!-- Additional Fields -->
+			{#if visibleFields.length > 0}
+				{#if !compact}
+					<div class="-mx-4 flex flex-wrap gap-x-6 gap-y-4 px-4">
+						{#each visibleFields as field}
+							{@const value = field.getValue(item)}
+							{#if value !== null && value !== undefined}
+								<div class="flex min-w-0 flex-1 basis-[150px] items-start gap-3">
+									{#if field.icon}
+										{@const FieldIcon = field.icon}
+										<div
+											class={cn(
+												'flex size-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-white/5 backdrop-blur-sm ring-inset',
+												field.iconVariant ? getIconBgClass(field.iconVariant) : 'bg-muted/40'
+											)}
+										>
+											<FieldIcon
+												class={cn(field.iconVariant ? getIconTextClass(field.iconVariant) : 'text-muted-foreground', 'size-4')}
+											/>
+										</div>
+									{/if}
+									<div class="min-w-0 flex-1 pt-0.5">
+										<div class="text-muted-foreground/70 mb-1 text-[10px] leading-tight font-semibold tracking-wider uppercase">
+											{field.label}
+										</div>
+										<div class="text-sm leading-snug font-medium">
+											{#if field.type === 'badge' && field.badgeVariant}
+												<StatusBadge variant={field.badgeVariant} text={String(value)} />
+											{:else if field.type === 'mono'}
+												<span class="font-mono text-xs">{value}</span>
+											{:else if field.type === 'component' && field.component}
+												{@render field.component(value)}
+											{:else}
+												{value}
+											{/if}
+										</div>
+									</div>
+								</div>
+							{/if}
+						{/each}
+					</div>
+				{:else}
 					{#each visibleFields as field}
 						{@const value = field.getValue(item)}
 						{#if value !== null && value !== undefined}
-							<div class="flex min-w-0 flex-1 basis-[160px] items-start gap-2.5">
-								{#if field.icon}
-									{@const FieldIcon = field.icon}
-									<div
-										class={cn(
-											'flex size-7 shrink-0 items-center justify-center rounded-lg',
-											field.iconVariant ? getIconBgClass(field.iconVariant) : 'bg-muted/40'
-										)}
-									>
-										<FieldIcon
-											class={cn(field.iconVariant ? getIconTextClass(field.iconVariant) : 'text-muted-foreground', 'size-3.5')}
-										/>
-									</div>
+							<div class="flex items-baseline gap-2">
+								<span class="text-muted-foreground/70 text-[10px] font-semibold tracking-wider uppercase">{field.label}:</span>
+								{#if field.type === 'badge' && field.badgeVariant}
+									<StatusBadge variant={field.badgeVariant} text={String(value)} size="sm" />
+								{:else if field.type === 'mono'}
+									<span class="text-muted-foreground truncate font-mono text-[11px] leading-tight">{value}</span>
+								{:else if field.type === 'component' && field.component}
+									<span class="text-muted-foreground min-w-0 flex-1 text-[11px] leading-tight">
+										{@render field.component(value)}
+									</span>
+								{:else}
+									<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
+										{value}
+									</span>
 								{/if}
-								<div class="min-w-0 flex-1">
-									<div class="text-muted-foreground/80 text-[10px] font-medium tracking-wide uppercase">
-										{field.label}
-									</div>
-									<div class="mt-0.5 text-xs font-medium">
-										{#if field.type === 'badge' && field.badgeVariant}
-											<StatusBadge variant={field.badgeVariant} text={String(value)} />
-										{:else if field.type === 'mono'}
-											<span class="font-mono">{value}</span>
-										{:else if field.type === 'component' && field.component}
-											{@render field.component(value)}
-										{:else}
-											{value}
-										{/if}
-									</div>
-								</div>
 							</div>
 						{/if}
 					{/each}
-				</div>
-			{:else}
-				{#each visibleFields as field}
-					{@const value = field.getValue(item)}
-					{#if value !== null && value !== undefined}
-						<div class="flex items-baseline gap-1.5">
-							<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">{field.label}:</span>
-							{#if field.type === 'badge' && field.badgeVariant}
-								<StatusBadge variant={field.badgeVariant} text={String(value)} size="sm" />
-							{:else if field.type === 'mono'}
-								<span class="text-muted-foreground truncate font-mono text-[11px] leading-tight">{value}</span>
-							{:else if field.type === 'component' && field.component}
-								<span class="text-muted-foreground min-w-0 flex-1 text-[11px] leading-tight">
-									{@render field.component(value)}
-								</span>
-							{:else}
-								<span class="text-muted-foreground min-w-0 flex-1 truncate text-[11px] leading-tight">
-									{value}
-								</span>
-							{/if}
-						</div>
-					{/if}
-				{/each}
+				{/if}
+			{/if}
+
+			<!-- Custom children content -->
+			{#if children}
+				{@render children()}
+			{/if}
+		</Card.Content>
+
+		{#if !compact && footer}
+			{@const footerValue = footer.getValue(item)}
+			{#if footerValue}
+				{@const FooterIcon = footer.icon}
+				<Card.Footer class="bg-muted/30 border-border/40 flex items-center gap-3 border-t px-4 py-3.5 backdrop-blur-sm">
+					<FooterIcon class="text-muted-foreground size-4" />
+					<span class="text-muted-foreground/70 text-[10px] font-semibold tracking-wider uppercase">
+						{footer.label}
+					</span>
+					<span class="text-foreground ml-auto font-mono text-xs font-medium">
+						{footerValue}
+					</span>
+				</Card.Footer>
 			{/if}
 		{/if}
-
-		<!-- Custom children content -->
-		{#if children}
-			{@render children()}
-		{/if}
-	</Card.Content>
-
-	{#if !compact && footer}
-		{@const footerValue = footer.getValue(item)}
-		{#if footerValue}
-			{@const FooterIcon = footer.icon}
-			<Card.Footer class="border-border/50 flex items-center gap-2 border-t py-3">
-				<FooterIcon class="text-muted-foreground size-3.5" />
-				<span class="text-muted-foreground text-[10px] font-medium tracking-wide uppercase">
-					{footer.label}
-				</span>
-				<span class="text-muted-foreground ml-auto font-mono text-[11px]">
-					{footerValue}
-				</span>
-			</Card.Footer>
-		{/if}
-	{/if}
-</Card.Root>
+	</Card.Root>
+</div>

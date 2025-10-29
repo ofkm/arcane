@@ -54,6 +54,7 @@
 		pruning: false,
 		loadingStats: true,
 		loadingDockerInfo: false,
+		loadingContainers: false,
 		loadingImages: false
 	});
 
@@ -306,7 +307,15 @@
 	</div>
 
 	<section>
-		<h2 class="mb-4 text-lg font-semibold tracking-tight">{m.dashboard_system_overview()}</h2>
+		<div class="mb-4 flex items-center justify-between gap-4">
+			<h2 class="text-lg font-semibold tracking-tight">{m.dashboard_system_overview()}</h2>
+			{#if currentStats?.hostname}
+				<div class="text-muted-foreground flex items-center gap-2 text-sm">
+					<span class="text-muted-foreground/70">Hostname:</span>
+					<code class="bg-muted rounded px-2 py-0.5 font-mono text-xs">{currentStats.hostname}</code>
+				</div>
+			{/if}
+		</div>
 		<div class="space-y-3">
 			<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 {currentStats?.gpuCount && currentStats.gpuCount > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}">
 				<MeterMetric
@@ -367,7 +376,7 @@
 	<section>
 		<h2 class="mb-4 text-lg font-semibold tracking-tight">Resources</h2>
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-			<DashboardContainerTable bind:containers isLoading={isLoading.loadingStats} />
+			<DashboardContainerTable bind:containers isLoading={isLoading.loadingContainers} />
 			<DashboardImageTable bind:images isLoading={isLoading.loadingImages} />
 		</div>
 	</section>

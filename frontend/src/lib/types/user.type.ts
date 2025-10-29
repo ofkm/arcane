@@ -12,11 +12,12 @@ export type User = {
 	updatedAt?: string;
 	oidcSubjectId?: string;
 	locale?: Locale;
+	requiresPasswordChange?: boolean;
 };
 
 export type CreateUser = Omit<
 	User,
-	'id' | 'createdAt' | 'updatedAt' | 'lastLogin' | 'oidcSubjectId' | 'passwordHash' | 'requirePasswordChange' | 'roles'
+	'id' | 'createdAt' | 'updatedAt' | 'lastLogin' | 'oidcSubjectId' | 'passwordHash' | 'requiresPasswordChange' | 'roles'
 > & {
 	password: string;
 	roles?: string[];

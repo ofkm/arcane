@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/config"
@@ -12,17 +13,55 @@ import (
 )
 
 type SettingsHandler struct {
-	settingsService *services.SettingsService
+	settingsService       *services.SettingsService
+	settingsSearchService *services.SettingsSearchService
 }
 
-func NewSettingsHandler(group *gin.RouterGroup, settingsService *services.SettingsService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &SettingsHandler{settingsService: settingsService}
+func NewSettingsHandler(group *gin.RouterGroup, settingsService *services.SettingsService, settingsSearchService *services.SettingsSearchService, authMiddleware *middleware.AuthMiddleware) {
+	handler := &SettingsHandler{
+		settingsService:       settingsService,
+		settingsSearchService: settingsSearchService,
+	}
 
 	apiGroup := group.Group("/environments/:id/settings")
 
 	apiGroup.GET("/public", handler.GetPublicSettings)
 	apiGroup.GET("", authMiddleware.WithAdminNotRequired().Add(), handler.GetSettings)
 	apiGroup.PUT("", authMiddleware.WithAdminRequired().Add(), handler.UpdateSettings)
+
+	// Also expose top-level settings search and categories endpoints under /api/settings
+	top := group.Group("/settings")
+	top.POST("/search", authMiddleware.WithAdminNotRequired().Add(), handler.Search)
+	top.GET("/categories", authMiddleware.WithAdminNotRequired().Add(), handler.GetCategories)
+}
+
+// Search delegates to the settings search service and returns relevance-scored results
+func (h *SettingsHandler) Search(c *gin.Context) {
+	var req dto.SettingsSearchRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    dto.MessageDto{Message: "Invalid request format"},
+		})
+		return
+	}
+
+	if strings.TrimSpace(req.Query) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    dto.MessageDto{Message: "Query parameter is required"},
+		})
+		return
+	}
+
+	results := h.settingsSearchService.Search(req.Query)
+	c.JSON(http.StatusOK, results)
+}
+
+// GetCategories returns all available settings categories with metadata
+func (h *SettingsHandler) GetCategories(c *gin.Context) {
+	categories := h.settingsSearchService.GetSettingsCategories()
+	c.JSON(http.StatusOK, categories)
 }
 
 func (h *SettingsHandler) GetSettings(c *gin.Context) {
@@ -36,7 +75,7 @@ func (h *SettingsHandler) GetSettings(c *gin.Context) {
 		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to map settings",
+			"data":    dto.MessageDto{Message: "Failed to map settings"},
 		})
 		return
 	}
@@ -58,7 +97,7 @@ func (h *SettingsHandler) GetPublicSettings(c *gin.Context) {
 		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to map settings",
+			"data":    dto.MessageDto{Message: "Failed to map settings"},
 		})
 		return
 	}
@@ -79,7 +118,7 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid request format",
+			"data":    dto.MessageDto{Message: "Invalid request format"},
 		})
 		return
 	}
@@ -90,7 +129,7 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 			req.AuthOidcConfig != nil {
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
-				"error":   "Authentication settings can only be updated from the main environment",
+				"data":    dto.MessageDto{Message: "Authentication settings can only be updated from the main environment"},
 			})
 			return
 		}
@@ -100,7 +139,7 @@ func (h *SettingsHandler) UpdateSettings(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to update settings",
+			"data":    dto.MessageDto{Message: "Failed to update settings"},
 		})
 		return
 	}

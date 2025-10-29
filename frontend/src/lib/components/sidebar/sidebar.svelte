@@ -54,7 +54,7 @@
 		<div class="relative">
 			<SidebarLogo {isCollapsed} {versionInformation} />
 			{#if !isCollapsed}
-				<div class="absolute right-0 top-0 -mr-1 -mt-1">
+				<div class="absolute top-0 right-0 -mt-1 -mr-1">
 					<SidebarPinButton />
 				</div>
 			{/if}
@@ -76,7 +76,13 @@
 		{/if}
 	</Sidebar.Content>
 	<Sidebar.Footer>
-		<SidebarUpdatebanner {isCollapsed} {versionInformation} updateAvailable={versionInformation.updateAvailable} />
+		<SidebarUpdatebanner
+			{isCollapsed}
+			{versionInformation}
+			updateAvailable={versionInformation.updateAvailable}
+			user={effectiveUser}
+			debug={false}
+		/>
 		{#if effectiveUser}
 			{#if isCollapsed}
 				<div class="px-0 pb-2">
@@ -104,7 +110,9 @@
 		{/if}
 		<div class={`flex items-center justify-center ${isCollapsed ? 'px-1' : 'px-4'}`}>
 			<span class="text-muted-foreground/60 text-xs font-medium">
-				{m.sidebar_version({ version: versionInformation?.currentVersion ?? m.common_unknown() })}
+				{m.sidebar_version({
+					version: versionInformation?.displayVersion ?? versionInformation?.currentVersion ?? m.common_unknown()
+				})}
 			</span>
 		</div>
 	</Sidebar.Footer>
