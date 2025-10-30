@@ -1,9 +1,8 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import { z } from 'zod/v4';
-	import { getContext, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
-	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import NavigationIcon from '@lucide/svelte/icons/navigation';
@@ -13,18 +12,15 @@
 	import settingsStore from '$lib/stores/config-store';
 	import { m } from '$lib/paraglide/messages';
 	import { navigationSettingsOverridesStore, resetNavigationVisibility } from '$lib/utils/navigation.utils';
-	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import { Switch } from '$lib/components/ui/switch/index.js';
 	import { useSidebar } from '$lib/components/ui/sidebar/context.svelte.js';
+	import { UseSettingsForm } from '$lib/hooks/use-settings-form.svelte';
 
 	let { data } = $props();
-	let currentSettings = $state(data.settings!);
-	let hasChanges = $state(false);
-	let isLoading = $state(false);
+	const currentSettings = $derived($settingsStore || data.settings!);
+	const isReadOnly = $derived.by(() => $settingsStore?.uiConfigDisabled);
 
-	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
-	const formState = getContext('settingsFormState') as any;
 	const formSchema = z.object({
 		mobileNavigationMode: z.enum(['floating', 'docked']),
 		mobileNavigationShowLabels: z.boolean(),
@@ -44,19 +40,12 @@
 	}
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
-	const formHasChanges = $derived.by(
-		() =>
+
+	const settingsForm = new UseSettingsForm({
+		hasChangesChecker: () =>
 			$formInputs.mobileNavigationMode.value !== currentSettings.mobileNavigationMode ||
 			$formInputs.mobileNavigationShowLabels.value !== currentSettings.mobileNavigationShowLabels ||
 			$formInputs.sidebarHoverExpansion.value !== currentSettings.sidebarHoverExpansion
-	);
-
-	$effect(() => {
-		hasChanges = formHasChanges;
-		if (formState) {
-			formState.hasChanges = hasChanges;
-			formState.isLoading = isLoading;
-		}
 	});
 
 	function setLocalOverride(key: 'mode' | 'showLabels', value: any) {
@@ -88,55 +77,30 @@
 		toast.success(`Local override cleared for ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
 	}
 
-	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
-		try {
-			await settingsService.updateSettings(updatedSettings as any);
-			currentSettings = { ...currentSettings, ...updatedSettings };
-			settingsStore.set(currentSettings);
-			settingsStore.reload();
-		} catch (error) {
-			console.error('Error updating navigation settings:', error);
-			throw error;
-		}
-	}
-
 	async function onSubmit() {
-		const formData = form.validate();
-		if (!formData) {
+		const data = form.validate();
+		if (!data) {
 			toast.error('Please check the form for errors');
 			return;
 		}
-		isLoading = true;
+		settingsForm.setLoading(true);
 
-		// Check if mode changed (which affects scroll-to-hide behavior)
-		const modeChanged = formData.mobileNavigationMode !== currentSettings.mobileNavigationMode;
-
-		await updateSettingsConfig(formData)
-			.then(() => {
-				toast.success(m.navigation_settings_saved());
-
-				// Reset navigation bar visibility if mode changed
-				if (modeChanged) {
-					resetNavigationVisibility();
-				}
-			})
+		await settingsForm
+			.updateSettings(data)
+			.then(() => toast.success(m.navigation_settings_saved()))
 			.catch((error) => {
 				console.error('Failed to save navigation settings:', error);
 				toast.error('Failed to save navigation settings. Please try again.');
 			})
-			.finally(() => (isLoading = false));
+			.finally(() => settingsForm.setLoading(false));
 	}
-
 	function resetForm() {
 		$formInputs.mobileNavigationMode.value = currentSettings.mobileNavigationMode;
 		$formInputs.mobileNavigationShowLabels.value = currentSettings.mobileNavigationShowLabels;
 	}
 
 	onMount(() => {
-		if (formState) {
-			formState.saveFunction = onSubmit;
-			formState.resetFunction = resetForm;
-		}
+		settingsForm.registerFormActions(onSubmit, resetForm);
 	});
 </script>
 

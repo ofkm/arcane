@@ -76,9 +76,15 @@
 							<span class="text-muted-foreground font-medium">
 								{percentage.toFixed(1)}%
 							</span>
-							{#if showAbsoluteValues && currentValue !== undefined && maxValue !== undefined}
+							{#if showAbsoluteValues}
 								<span class="text-muted-foreground/70 font-mono text-[10px]">
-									{formatAbsoluteValue(currentValue)} / {formatAbsoluteValue(maxValue)}
+									{#if currentValue !== undefined && maxValue !== undefined && formatAbsoluteValue}
+										{#if maxValue === 100}
+											{formatAbsoluteValue(0)}
+										{:else}
+											{formatAbsoluteValue(currentValue)} / {formatAbsoluteValue(maxValue)}
+										{/if}
+									{/if}
 								</span>
 							{/if}
 						{/if}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import { z } from 'zod/v4';
-	import { getContext, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
 	import { Button } from '$lib/components/ui/button';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
@@ -16,16 +16,13 @@
 	import KeyIcon from '@lucide/svelte/icons/key';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
-	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
+	import { UseSettingsForm } from '$lib/hooks/use-settings-form.svelte';
 
 	let { data }: { data: PageData } = $props();
-	let currentSettings = $state<Settings>(data.settings!);
-	let hasChanges = $state(false);
-	let isLoading = $state(false);
-
+	const currentSettings = $derived<Settings>($settingsStore || data.settings!);
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
-	const formState = getContext('settingsFormState') as any;
+
 	const formSchema = z
 		.object({
 			authLocalEnabled: z.boolean(),
@@ -62,36 +59,16 @@
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
-	const formHasChanges = $derived.by(
-		() =>
+	const settingsForm = new UseSettingsForm({
+		hasChangesChecker: () =>
 			$formInputs.authLocalEnabled.value !== currentSettings.authLocalEnabled ||
 			$formInputs.authOidcEnabled.value !== currentSettings.authOidcEnabled ||
 			$formInputs.authSessionTimeout.value !== currentSettings.authSessionTimeout ||
 			$formInputs.authPasswordPolicy.value !== currentSettings.authPasswordPolicy
-	);
-
-	$effect(() => {
-		hasChanges = formHasChanges;
-		if (formState) {
-			formState.hasChanges = hasChanges;
-			formState.isLoading = isLoading;
-		}
 	});
 
 	// Helper: treat OIDC as active if forced by server or enabled in form
 	const isOidcActive = () => $formInputs.authOidcEnabled.value || data.oidcStatus.envForced;
-
-	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
-		try {
-			await settingsService.updateSettings(updatedSettings as any);
-			currentSettings = { ...currentSettings, ...updatedSettings };
-			settingsStore.set(currentSettings);
-			settingsStore.reload();
-		} catch (error) {
-			console.error('Error updating settings:', error);
-			throw error;
-		}
-	}
 
 	async function onSubmit() {
 		const formData = form.validate();
@@ -100,7 +77,7 @@
 			return;
 		}
 
-		isLoading = true;
+		settingsForm.setLoading(true);
 
 		let authOidcConfig = currentSettings.authOidcConfig;
 		if (formData.authOidcEnabled && !data.oidcStatus.envForced) {
@@ -114,19 +91,20 @@
 			});
 		}
 
-		await updateSettingsConfig({
-			authLocalEnabled: formData.authLocalEnabled,
-			authOidcEnabled: formData.authOidcEnabled,
-			authSessionTimeout: formData.authSessionTimeout,
-			authPasswordPolicy: formData.authPasswordPolicy,
-			...(formData.authOidcEnabled && !data.oidcStatus.envForced && { authOidcConfig })
-		})
+		await settingsForm
+			.updateSettings({
+				authLocalEnabled: formData.authLocalEnabled,
+				authOidcEnabled: formData.authOidcEnabled,
+				authSessionTimeout: formData.authSessionTimeout,
+				authPasswordPolicy: formData.authPasswordPolicy,
+				...(formData.authOidcEnabled && !data.oidcStatus.envForced && { authOidcConfig })
+			})
 			.then(() => toast.success(m.security_settings_saved()))
-			.catch((error) => {
+			.catch((error: any) => {
 				console.error('Failed to save settings:', error);
 				toast.error('Failed to save settings. Please try again.');
 			})
-			.finally(() => (isLoading = false));
+			.finally(() => settingsForm.setLoading(false));
 	}
 
 	function resetForm() {
@@ -174,12 +152,12 @@
 
 	async function handleSaveOidcConfig() {
 		try {
-			isLoading = true;
+			settingsForm.setLoading(true);
 			$formInputs.authOidcEnabled.value = true;
 
 			const formData = form.validate();
 			if (!formData) {
-				isLoading = false;
+				settingsForm.setLoading(false);
 				return;
 			}
 
@@ -192,7 +170,7 @@
 				adminValue: oidcConfigForm.adminValue || ''
 			});
 
-			await updateSettingsConfig({
+			await settingsForm.updateSettings({
 				authOidcEnabled: true,
 				authOidcConfig
 			});
@@ -200,15 +178,12 @@
 			toast.success(m.security_oidc_saved());
 			showOidcConfigDialog = false;
 		} finally {
-			isLoading = false;
+			settingsForm.setLoading(false);
 		}
 	}
 
 	onMount(() => {
-		if (formState) {
-			formState.saveFunction = onSubmit;
-			formState.resetFunction = resetForm;
-		}
+		settingsForm.registerFormActions(onSubmit, resetForm);
 	});
 </script>
 

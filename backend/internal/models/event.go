@@ -16,10 +16,12 @@ const (
 	EventTypeContainerCreate  EventType = "container.create"
 	EventTypeContainerScan    EventType = "container.scan"
 	EventTypeContainerUpdate  EventType = "container.update"
+	EventTypeContainerError   EventType = "container.error"
 
 	EventTypeImagePull   EventType = "image.pull"
 	EventTypeImageDelete EventType = "image.delete"
 	EventTypeImageScan   EventType = "image.scan"
+	EventTypeImageError  EventType = "image.error"
 
 	EventTypeProjectDeploy EventType = "project.deploy"
 	EventTypeProjectDelete EventType = "project.delete"
@@ -27,12 +29,15 @@ const (
 	EventTypeProjectStop   EventType = "project.stop"
 	EventTypeProjectCreate EventType = "project.create"
 	EventTypeProjectUpdate EventType = "project.update"
+	EventTypeProjectError  EventType = "project.error"
 
 	EventTypeVolumeCreate EventType = "volume.create"
 	EventTypeVolumeDelete EventType = "volume.delete"
+	EventTypeVolumeError  EventType = "volume.error"
 
 	EventTypeNetworkCreate EventType = "network.create"
 	EventTypeNetworkDelete EventType = "network.delete"
+	EventTypeNetworkError  EventType = "network.error"
 
 	EventTypeSystemPrune      EventType = "system.prune"
 	EventTypeUserLogin        EventType = "user.login"

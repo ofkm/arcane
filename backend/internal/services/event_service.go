@@ -10,6 +10,8 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type EventService struct {
@@ -324,6 +326,42 @@ func (s *EventService) LogNetworkEvent(ctx context.Context, eventType models.Eve
 	return err
 }
 
+func (s *EventService) LogErrorEvent(ctx context.Context, eventType models.EventType, resourceType, resourceID, resourceName, userID, username, environmentID string, err error, metadata models.JSON) {
+	if err == nil {
+		return
+	}
+
+	if metadata == nil {
+		metadata = models.JSON{}
+	}
+	metadata["error"] = err.Error()
+
+	titleCaser := cases.Title(language.English)
+	title := fmt.Sprintf("%s error", titleCaser.String(resourceType))
+	if resourceName != "" {
+		title = fmt.Sprintf("%s error: %s", titleCaser.String(resourceType), resourceName)
+	}
+
+	description := fmt.Sprintf("Failed to perform operation on %s: %s", resourceType, err.Error())
+
+	_, logErr := s.CreateEvent(ctx, CreateEventRequest{
+		Type:          eventType,
+		Severity:      models.EventSeverityError,
+		Title:         title,
+		Description:   description,
+		ResourceType:  &resourceType,
+		ResourceID:    &resourceID,
+		ResourceName:  &resourceName,
+		UserID:        &userID,
+		Username:      &username,
+		EnvironmentID: &environmentID,
+		Metadata:      metadata,
+	})
+	if logErr != nil {
+		fmt.Printf("Failed to log error event: %v\n", logErr)
+	}
+}
+
 func (s *EventService) toEventDto(event *models.Event) *dto.EventDto {
 	var metadata map[string]interface{}
 	if event.Metadata != nil {
@@ -365,12 +403,16 @@ func (s *EventService) generateEventTitle(eventType models.EventType, resourceNa
 		return fmt.Sprintf("Container scanned: %s", resourceName)
 	case models.EventTypeContainerUpdate:
 		return fmt.Sprintf("Container updated: %s", resourceName)
+	case models.EventTypeContainerError:
+		return fmt.Sprintf("Container error: %s", resourceName)
 	case models.EventTypeImagePull:
 		return fmt.Sprintf("Image pulled: %s", resourceName)
 	case models.EventTypeImageDelete:
 		return fmt.Sprintf("Image deleted: %s", resourceName)
 	case models.EventTypeImageScan:
 		return fmt.Sprintf("Image scanned: %s", resourceName)
+	case models.EventTypeImageError:
+		return fmt.Sprintf("Image error: %s", resourceName)
 	case models.EventTypeProjectDeploy:
 		return fmt.Sprintf("Project deployed: %s", resourceName)
 	case models.EventTypeProjectDelete:
@@ -383,14 +425,20 @@ func (s *EventService) generateEventTitle(eventType models.EventType, resourceNa
 		return fmt.Sprintf("Project created: %s", resourceName)
 	case models.EventTypeProjectUpdate:
 		return fmt.Sprintf("Project updated: %s", resourceName)
+	case models.EventTypeProjectError:
+		return fmt.Sprintf("Project error: %s", resourceName)
 	case models.EventTypeVolumeCreate:
 		return fmt.Sprintf("Volume created: %s", resourceName)
 	case models.EventTypeVolumeDelete:
 		return fmt.Sprintf("Volume deleted: %s", resourceName)
+	case models.EventTypeVolumeError:
+		return fmt.Sprintf("Volume error: %s", resourceName)
 	case models.EventTypeNetworkCreate:
 		return fmt.Sprintf("Network created: %s", resourceName)
 	case models.EventTypeNetworkDelete:
 		return fmt.Sprintf("Network deleted: %s", resourceName)
+	case models.EventTypeNetworkError:
+		return fmt.Sprintf("Network error: %s", resourceName)
 	case models.EventTypeSystemPrune:
 		return "System prune completed"
 	case models.EventTypeSystemAutoUpdate:
@@ -422,10 +470,14 @@ func (s *EventService) generateEventDescription(eventType models.EventType, reso
 		return fmt.Sprintf("Container '%s' has been created", resourceName)
 	case models.EventTypeContainerUpdate:
 		return fmt.Sprintf("Container '%s' has been updated", resourceName)
+	case models.EventTypeContainerError:
+		return fmt.Sprintf("An error occurred with container '%s'", resourceName)
 	case models.EventTypeImagePull:
 		return fmt.Sprintf("Image '%s' has been pulled", resourceName)
 	case models.EventTypeImageDelete:
 		return fmt.Sprintf("Image '%s' has been deleted", resourceName)
+	case models.EventTypeImageError:
+		return fmt.Sprintf("An error occurred with image '%s'", resourceName)
 	case models.EventTypeProjectDeploy:
 		return fmt.Sprintf("Project '%s' has been deployed", resourceName)
 	case models.EventTypeProjectDelete:
@@ -438,14 +490,20 @@ func (s *EventService) generateEventDescription(eventType models.EventType, reso
 		return fmt.Sprintf("Project '%s' has been created", resourceName)
 	case models.EventTypeProjectUpdate:
 		return fmt.Sprintf("Project '%s' has been updated", resourceName)
+	case models.EventTypeProjectError:
+		return fmt.Sprintf("An error occurred with project '%s'", resourceName)
 	case models.EventTypeVolumeCreate:
 		return fmt.Sprintf("Volume '%s' has been created", resourceName)
 	case models.EventTypeVolumeDelete:
 		return fmt.Sprintf("Volume '%s' has been deleted", resourceName)
+	case models.EventTypeVolumeError:
+		return fmt.Sprintf("An error occurred with volume '%s'", resourceName)
 	case models.EventTypeNetworkCreate:
 		return fmt.Sprintf("Network '%s' has been created", resourceName)
 	case models.EventTypeNetworkDelete:
 		return fmt.Sprintf("Network '%s' has been deleted", resourceName)
+	case models.EventTypeNetworkError:
+		return fmt.Sprintf("An error occurred with network '%s'", resourceName)
 	case models.EventTypeSystemPrune:
 		return "System resources have been pruned"
 	case models.EventTypeSystemAutoUpdate:
@@ -469,6 +527,8 @@ func (s *EventService) getEventSeverity(eventType models.EventType) models.Event
 		return models.EventSeveritySuccess
 	case models.EventTypeContainerStop, models.EventTypeContainerRestart, models.EventTypeContainerScan, models.EventTypeContainerUpdate, models.EventTypeImageScan, models.EventTypeProjectStop, models.EventTypeProjectUpdate, models.EventTypeSystemPrune, models.EventTypeSystemAutoUpdate, models.EventTypeSystemUpgrade, models.EventTypeUserLogin, models.EventTypeUserLogout:
 		return models.EventSeverityInfo
+	case models.EventTypeContainerError, models.EventTypeImageError, models.EventTypeProjectError, models.EventTypeVolumeError, models.EventTypeNetworkError:
+		return models.EventSeverityError
 	default:
 		return models.EventSeverityInfo
 	}

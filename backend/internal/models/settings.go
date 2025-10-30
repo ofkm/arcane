@@ -82,6 +82,9 @@ type Settings struct {
 	SidebarHoverExpansion      SettingVariable `key:"sidebarHoverExpansion,public,local" meta:"label=Sidebar Hover Expansion;type=boolean;keywords=sidebar,hover,expansion,expand,desktop,mouse,over,collapsed,collapsible,icon,labels,text,preview,peek,tooltip,overlay,temporary,quick,access,navigation,menu,items,submenu,nested;category=navigation;description=Expand sidebar on hover in desktop mode"`
 	GlassEffectEnabled         SettingVariable `key:"glassEffectEnabled,public,local" meta:"label=Glass Effect;type=boolean;keywords=glass,glassmorphism,blur,backdrop,frosted,effect,gradient,ambient,design,ui,appearance,modern,visual,style,theme,transparency,translucent;category=navigation;description=Enable modern glassmorphism design with blur, gradients, and ambient effects"`
 
+	// Notifications category (placeholder for category metadata only - actual settings managed via notification service)
+	NotificationsCategoryPlaceholder SettingVariable `key:"notificationsCategory,internal" meta:"label=Notifications;type=internal;keywords=notifications,alerts,email,discord,webhooks,events,messages;category=notifications;description=Configure notification providers and alerts" catmeta:"id=notifications;title=Notifications;icon=bell;url=/settings/notifications;description=Configure email and Discord notifications for container and image updates"`
+
 	InstanceID SettingVariable `key:"instanceId,internal" meta:"label=Instance ID;type=text;keywords=instance,id,uuid,identifier;category=internal;description=Unique instance identifier"`
 }
 

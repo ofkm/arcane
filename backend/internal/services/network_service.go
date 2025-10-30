@@ -46,12 +46,14 @@ func (s *NetworkService) GetNetworkByID(ctx context.Context, id string) (*networ
 func (s *NetworkService) CreateNetwork(ctx context.Context, name string, options network.CreateOptions, user models.User) (*network.CreateResponse, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
+		s.eventService.LogErrorEvent(ctx, models.EventTypeNetworkError, "network", "", name, user.ID, user.Username, "0", err, models.JSON{"action": "create", "driver": options.Driver})
 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
 	response, err := dockerClient.NetworkCreate(ctx, name, options)
 	if err != nil {
+		s.eventService.LogErrorEvent(ctx, models.EventTypeNetworkError, "network", "", name, user.ID, user.Username, "0", err, models.JSON{"action": "create", "driver": options.Driver})
 		return nil, fmt.Errorf("failed to create network: %w", err)
 	}
 
@@ -70,19 +72,21 @@ func (s *NetworkService) CreateNetwork(ctx context.Context, name string, options
 func (s *NetworkService) RemoveNetwork(ctx context.Context, id string, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
+		s.eventService.LogErrorEvent(ctx, models.EventTypeNetworkError, "network", id, "", user.ID, user.Username, "0", err, models.JSON{"action": "delete"})
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
-	networkDetails, inspectErr := dockerClient.NetworkInspect(ctx, id, network.InspectOptions{})
+	networkInfo, err := dockerClient.NetworkInspect(ctx, id, network.InspectOptions{})
 	var networkName string
-	if inspectErr == nil {
-		networkName = networkDetails.Name
+	if err == nil {
+		networkName = networkInfo.Name
 	} else {
 		networkName = id
 	}
 
 	if err := dockerClient.NetworkRemove(ctx, id); err != nil {
+		s.eventService.LogErrorEvent(ctx, models.EventTypeNetworkError, "network", id, networkName, user.ID, user.Username, "0", err, models.JSON{"action": "delete"})
 		return fmt.Errorf("failed to remove network: %w", err)
 	}
 
@@ -91,7 +95,7 @@ func (s *NetworkService) RemoveNetwork(ctx context.Context, id string, user mode
 		"networkId": id,
 	}
 	if logErr := s.eventService.LogNetworkEvent(ctx, models.EventTypeNetworkDelete, id, networkName, user.ID, user.Username, "0", metadata); logErr != nil {
-		fmt.Printf("Could not log network deletion action: %s\n", logErr)
+		fmt.Printf("Could not log network delete action: %s\n", logErr)
 	}
 
 	return nil
