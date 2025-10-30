@@ -9,6 +9,12 @@ import (
 	"github.com/goccy/go-yaml"
 )
 
+// Security Model for Include Files:
+// - READ: Docker Compose allows include files from anywhere (parent dirs, absolute paths, etc.)
+//         We allow reading from any path to maintain compatibility with standard Docker Compose behavior
+// - WRITE/DELETE: Restricted to files within the project directory only for security
+//         This prevents malicious users from modifying files outside the project scope
+
 type IncludeFile struct {
 	Path         string `json:"path"`
 	RelativePath string `json:"relative_path"`
@@ -116,16 +122,17 @@ func ValidateIncludePathForRead(includePath string) error {
 }
 
 // ValidateIncludePathForWrite ensures the include path is safe for write operations
-// Only allows writing within the project directory OR to files that already exist
-func ValidateIncludePathForWrite(projectDir, includePath string, allowExisting bool) error {
+// Returns the validated absolute path to prevent recomputation after validation
+// Only allows writing within the project directory
+func ValidateIncludePathForWrite(projectDir, includePath string) (string, error) {
 	if includePath == "" {
-		return fmt.Errorf("include path cannot be empty")
+		return "", fmt.Errorf("include path cannot be empty")
 	}
 
 	// Resolve project directory to absolute path
 	absProjectDir, err := filepath.Abs(projectDir)
 	if err != nil {
-		return fmt.Errorf("invalid project directory: %w", err)
+		return "", fmt.Errorf("invalid project directory: %w", err)
 	}
 	absProjectDir = filepath.Clean(absProjectDir)
 
@@ -139,58 +146,42 @@ func ValidateIncludePathForWrite(projectDir, includePath string, allowExisting b
 
 	absFullPath, err := filepath.Abs(fullPath)
 	if err != nil {
-		return fmt.Errorf("invalid include path: %w", err)
+		return "", fmt.Errorf("invalid include path: %w", err)
 	}
 	absFullPath = filepath.Clean(absFullPath)
 
 	// Prevent targeting the project directory itself
 	if absFullPath == absProjectDir {
-		return fmt.Errorf("include path cannot be the project directory itself")
+		return "", fmt.Errorf("include path cannot be the project directory itself")
 	}
 
 	// Check if path is within project directory
 	projectPrefix := absProjectDir + string(filepath.Separator)
 	isWithinProject := strings.HasPrefix(absFullPath+string(filepath.Separator), projectPrefix)
 
-	if isWithinProject {
-		// Path is within project - allow write
-		return nil
+	if !isWithinProject {
+		return "", fmt.Errorf("write access denied: path is outside project directory")
 	}
 
-	// Path is outside project - only allow if file already exists and allowExisting is true
-	if allowExisting {
-		if _, err := os.Stat(absFullPath); err == nil {
-			// File exists - allow write to existing file
-			return nil
-		}
-	}
-
-	return fmt.Errorf("write access denied: path is outside project directory and file does not exist")
+	return absFullPath, nil
 }
 
 // WriteIncludeFile writes content to an include file path
 func WriteIncludeFile(projectDir, includePath, content string) error {
-	// Allow writing to existing files or files within project
-	if err := ValidateIncludePathForWrite(projectDir, includePath, true); err != nil {
+	// Get validated absolute path - only allows writes within project
+	validatedPath, err := ValidateIncludePathForWrite(projectDir, includePath)
+	if err != nil {
 		return err
 	}
 
-	var fullPath string
-	if filepath.IsAbs(includePath) {
-		fullPath = includePath
-	} else {
-		fullPath = filepath.Join(projectDir, includePath)
-	}
+	// Use the validated path for all operations
+	dir := filepath.Dir(validatedPath)
 
-	fullPath = filepath.Clean(fullPath)
-
-	dir := filepath.Dir(fullPath)
-	
 	// Only validate that the directory path is not empty or current directory
 	if dir == "" || dir == "." {
 		return fmt.Errorf("invalid include path: cannot create directory '%s'", dir)
 	}
-	
+
 	// Only create directory if it doesn't exist
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
@@ -198,7 +189,7 @@ func WriteIncludeFile(projectDir, includePath, content string) error {
 		}
 	}
 
-	if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(validatedPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write include file: %w", err)
 	}
 
@@ -207,21 +198,14 @@ func WriteIncludeFile(projectDir, includePath, content string) error {
 
 // DeleteIncludeFile removes an include file
 func DeleteIncludeFile(projectDir, includePath string) error {
-	// Only allow deleting files within project directory
-	if err := ValidateIncludePathForWrite(projectDir, includePath, false); err != nil {
+	// Get validated absolute path - only allows deletes within project
+	validatedPath, err := ValidateIncludePathForWrite(projectDir, includePath)
+	if err != nil {
 		return err
 	}
 
-	var fullPath string
-	if filepath.IsAbs(includePath) {
-		fullPath = includePath
-	} else {
-		fullPath = filepath.Join(projectDir, includePath)
-	}
-
-	fullPath = filepath.Clean(fullPath)
-
-	if err := os.Remove(fullPath); err != nil && !os.IsNotExist(err) {
+	// Use the validated path for the operation
+	if err := os.Remove(validatedPath); err != nil && !os.IsNotExist(err) {
 		return fmt.Errorf("failed to delete include file: %w", err)
 	}
 
