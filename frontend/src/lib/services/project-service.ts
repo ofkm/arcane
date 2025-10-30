@@ -48,13 +48,22 @@ export class ProjectService extends BaseAPIService {
 		return res.data.data;
 	}
 
-	async updateProject(projectId: string, name: string, composeContent: string, envContent?: string): Promise<Project> {
+	async updateProject(
+		projectId: string,
+		name?: string,
+		composeContent?: string,
+		envContent?: string,
+		settings?: Partial<ProjectSettings>
+	): Promise<Project> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		const payload = {
-			name,
-			composeContent,
-			envContent
-		};
+		const payload: any = {};
+		
+		// Only include fields that are provided (not undefined)
+		if (name !== undefined) payload.name = name;
+		if (composeContent !== undefined) payload.composeContent = composeContent;
+		if (envContent !== undefined) payload.envContent = envContent;
+		if (settings !== undefined) payload.settings = settings;
+		
 		return this.handleResponse(this.api.put(`/environments/${envId}/projects/${projectId}`, payload));
 	}
 
@@ -151,17 +160,6 @@ export class ProjectService extends BaseAPIService {
 				}
 			})
 		);
-	}
-
-	async updateProjectSettings(projectId: string, settings: Partial<ProjectSettings>): Promise<Project> {
-		const envId = await environmentStore.getCurrentEnvironmentId();
-		const res = await this.api.put(`/environments/${envId}/projects/${projectId}/settings`, settings);
-		return res.data;
-	}
-
-	async deleteProjectSettings(projectId: string): Promise<void> {
-		const envId = await environmentStore.getCurrentEnvironmentId();
-		await this.api.delete(`/environments/${envId}/projects/${projectId}/settings`);
 	}
 }
 

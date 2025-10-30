@@ -508,10 +508,7 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 	}
 
 	// Load project settings for label injection
-	var settings *models.ProjectSettings
-	if proj, psErr := s.GetProjectSettings(ctx, projectID); psErr == nil && proj != nil {
-		settings = &proj.ProjectSettings
-	}
+	settings := &projectFromDb.ProjectSettings
 
 	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory, settings)
 	if loadErr != nil {
@@ -769,7 +766,7 @@ func (s *ProjectService) RestartProject(ctx context.Context, projectID string, u
 	return s.updateProjectStatusandCountsInternal(ctx, projectID, models.ProjectStatusRunning)
 }
 
-func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, name *string, composeContent, envContent *string) (*models.Project, error) {
+func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, name *string, composeContent, envContent *string, settings *dto.ProjectSettingsDto) (*models.Project, error) {
 	var proj models.Project
 	if err := s.db.WithContext(ctx).First(&proj, "id = ?", projectID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -788,6 +785,12 @@ func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, na
 		if newName := strings.TrimSpace(*name); newName != "" && proj.Name != newName {
 			proj.Name = newName
 		}
+	}
+
+	// Update settings if provided
+	if settings != nil {
+		proj.AutoUpdate = settings.AutoUpdate
+		proj.AutoUpdateCron = settings.AutoUpdateCron
 	}
 
 	switch {
@@ -1069,48 +1072,4 @@ func (s *ProjectService) calculateProjectStatus(services []ProjectServiceInfo) m
 		return models.ProjectStatusStopped
 	}
 	return models.ProjectStatusUnknown
-}
-
-func (s *ProjectService) GetProjectSettings(ctx context.Context, projectID string) (*models.Project, error) {
-	var project models.Project
-	err := s.db.WithContext(ctx).Where("id = ?", projectID).First(&project).Error
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("project not found")
-		}
-		return nil, err
-	}
-	return &project, nil
-}
-
-func (s *ProjectService) UpdateProjectSettings(ctx context.Context, projectID string, autoUpdate *bool, cron *string) error {
-	updates := map[string]interface{}{
-		"auto_update":      autoUpdate,
-		"auto_update_cron": cron,
-	}
-
-	result := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", projectID).Updates(updates)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("project not found")
-	}
-	return nil
-}
-
-func (s *ProjectService) ClearProjectSettings(ctx context.Context, projectID string) error {
-	updates := map[string]interface{}{
-		"auto_update":      nil,
-		"auto_update_cron": nil,
-	}
-
-	result := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", projectID).Updates(updates)
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return fmt.Errorf("project not found")
-	}
-	return nil
 }

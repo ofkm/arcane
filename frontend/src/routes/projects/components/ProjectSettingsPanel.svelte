@@ -60,18 +60,17 @@
 		isSaving = true;
 
 		try {
-			if (autoUpdate === null) {
-				// Delete project settings to revert to global
-				await projectService.deleteProjectSettings(id);
-				toast.success(m.project_settings_updated());
-			} else {
-				// Update/create project settings
-				await projectService.updateProjectSettings(id, {
+			await projectService.updateProject(
+				id,
+				undefined,
+				undefined,
+				undefined,
+				{
 					autoUpdate,
 					autoUpdateCron: normalizeEmptyValue(autoUpdateCron)
-				});
-				toast.success(m.project_settings_updated());
-			}
+				}
+			);
+			toast.success(m.project_settings_updated());
 			// Notify parent to reload project data
 			await onUpdate?.();
 		} catch (error) {

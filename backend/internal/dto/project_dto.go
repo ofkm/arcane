@@ -7,9 +7,10 @@ type CreateProjectDto struct {
 }
 
 type UpdateProjectDto struct {
-	Name           *string `json:"name,omitempty"`
-	ComposeContent *string `json:"composeContent,omitempty"`
-	EnvContent     *string `json:"envContent,omitempty"`
+	Name           *string             `json:"name,omitempty"`
+	ComposeContent *string             `json:"composeContent,omitempty"`
+	EnvContent     *string             `json:"envContent,omitempty"`
+	Settings       *ProjectSettingsDto `json:"settings,omitempty"`
 }
 
 type CreateProjectReponseDto struct {

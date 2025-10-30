@@ -294,9 +294,9 @@
 				{/if}
 			</Tabs.Content>
 
-			<Tabs.Content value="settings" class="h-full">
-				<ProjectSettingsPanel id={project.id} settings={project.settings} onUpdate={invalidateAll} />
-			</Tabs.Content>
+		<Tabs.Content value="settings" class="h-full">
+			<ProjectSettingsPanel id={project.id} settings={project.settings} onUpdate={invalidateAll} />
+		</Tabs.Content>
 		{/snippet}
 	</TabbedPageLayout>
 {:else if !data.error}

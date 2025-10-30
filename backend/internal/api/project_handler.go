@@ -62,10 +62,6 @@ func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectS
 		apiGroup.PUT("/:projectId", handler.UpdateProject)
 		apiGroup.POST("/:projectId/restart", handler.RestartProject)
 		apiGroup.GET("/:projectId/logs/ws", handler.GetProjectLogsWS)
-		apiGroup.GET("/:projectId/settings", handler.GetProjectSettings)
-		apiGroup.PUT("/:projectId/settings", handler.UpdateProjectSettings)
-		apiGroup.DELETE("/:projectId/settings", handler.DeleteProjectSettings)
-
 	}
 }
 
@@ -283,7 +279,7 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 		return
 	}
 
-	if _, err := h.projectService.UpdateProject(c.Request.Context(), projectID, req.Name, req.ComposeContent, req.EnvContent); err != nil {
+	if _, err := h.projectService.UpdateProject(c.Request.Context(), projectID, req.Name, req.ComposeContent, req.EnvContent, req.Settings); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
 	}
@@ -424,64 +420,4 @@ func (h *ProjectHandler) GetProjectStatusCounts(c *gin.Context) {
 		"success": true,
 		"data":    out,
 	})
-}
-
-func (h *ProjectHandler) GetProjectSettings(c *gin.Context) {
-	projectID := c.Param("projectId")
-
-	settings, err := h.projectService.GetProjectSettings(c.Request.Context(), projectID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, dto.ProjectSettingsDto{
-		AutoUpdate:     settings.AutoUpdate,
-		AutoUpdateCron: settings.AutoUpdateCron,
-	})
-}
-
-func (h *ProjectHandler) UpdateProjectSettings(c *gin.Context) {
-	projectID := c.Param("projectId")
-
-	var req dto.ProjectSettingsDto
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	err := h.projectService.UpdateProjectSettings(
-		c.Request.Context(),
-		projectID,
-		req.AutoUpdate,
-		req.AutoUpdateCron,
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	// Return the updated settings
-	settings, err := h.projectService.GetProjectSettings(c.Request.Context(), projectID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, dto.ProjectSettingsDto{
-		AutoUpdate:     settings.AutoUpdate,
-		AutoUpdateCron: settings.AutoUpdateCron,
-	})
-}
-
-func (h *ProjectHandler) DeleteProjectSettings(c *gin.Context) {
-	projectID := c.Param("projectId")
-
-	err := h.projectService.ClearProjectSettings(c.Request.Context(), projectID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.Status(http.StatusNoContent)
 }
