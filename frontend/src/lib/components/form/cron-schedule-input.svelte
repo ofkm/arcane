@@ -1,128 +1,156 @@
 <script lang="ts">
 	import { Label } from '$lib/components/ui/label';
 	import { Input } from '$lib/components/ui/input';
-	import { Badge } from '$lib/components/ui/badge';
+	import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '$lib/components/ui/collapsible';
 	import { m } from '$lib/paraglide/messages';
 	import { commonCronPresets, cronToHumanReadable, validateCronExpression, type CronPreset } from '$lib/utils/cron.utils';
+	import ClockIcon from '@lucide/svelte/icons/clock';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import CheckIcon from '@lucide/svelte/icons/check';
 
 	let {
 		value = $bindable<string | null>(),
 		label,
-		description,
 		error,
 		disabled = false
 	}: {
 		value: string | null;
 		label: string;
-		description?: string;
 		error?: string | null;
 		disabled?: boolean;
 	} = $props();
 
-	const presetChips: CronPreset[] = [
-		...commonCronPresets,
-		{ value: 'custom', label: m.cron_custom(), description: '' }
-	];
+	const presetChips: CronPreset[] = [...commonCronPresets, { value: 'custom', label: m.cron_custom(), description: '' }];
 
-	function getInitialMode(): string | null {
-		if (!value || value.trim() === '') return null;
-		const preset = commonCronPresets.find((p) => p.value === value);
-		return preset ? preset.value : 'custom';
-	}
-
-	let selectedMode = $state<string | null>(getInitialMode());	
-	let customValue = $state<string>(value || '');
+	let isOpen = $state(false);
 	let validationError = $state<string | null>(null);
+	let isEditingCustom = $state(false);
 
-	$effect(() => {
-		if (selectedMode === 'custom') {
+	const isCustomMode = $derived.by(() => {
+		if (isEditingCustom) return true;
+		if (!value || value.trim() === '') return false;
+		return !commonCronPresets.some((p) => p.value === value);
+	});
+
+	const selectedPreset = $derived(commonCronPresets.find((p) => p.value === value));
+
+	const displayText = $derived.by(() => {
+		if (!value || value.trim() === '') {
+			return m.cron_immediate();
+		}
+		if (isCustomMode) {
+			return cronToHumanReadable(value);
+		}
+		return selectedPreset?.label || m.cron_immediate();
+	});
+
+	function selectPreset(presetValue: string | null) {
+		if (disabled) return;
+
+		if (presetValue === 'custom') {
+			// Keep dropdown open for custom input, pre-fill with current value
+			isEditingCustom = true;
 			return;
 		}
 
-		if (selectedMode === null) {
-			value = '';
-		} else {
-			value = selectedMode;
-		}
-	});
+		// User selected a preset, exit custom mode
+		isEditingCustom = false;
+		value = presetValue || '';
+		isOpen = false;
+	}
+
+	function handleCustomInput() {
+		// Mark as editing when user types in custom field
+		isEditingCustom = true;
+	}
 
 	$effect(() => {
-		if (selectedMode === 'custom' && customValue) {
-			const validation = validateCronExpression(customValue);
-			if (!validation.valid) {
-				validationError = validation.error || m.cron_invalid();
-			} else {
-				validationError = null;
-				value = customValue;
-			}
+		if (isCustomMode && value) {
+			const validation = validateCronExpression(value);
+			validationError = validation.valid ? null : validation.error || m.cron_invalid();
 		} else {
 			validationError = null;
 		}
 	});
 
-	const humanReadable = $derived(
-		selectedMode === 'custom' && customValue ? cronToHumanReadable(customValue) : null
-	);
-
-	function selectMode(mode: string | null) {
-		if (disabled) return;
-		selectedMode = mode;
-		if (mode === 'custom') {
-			customValue = value || '';
+	// When dropdown closes, check if we should exit custom mode
+	$effect(() => {
+		if (!isOpen && isEditingCustom) {
+			// If the final value matches a preset, switch to that preset
+			if (value && commonCronPresets.some((p) => p.value === value)) {
+				isEditingCustom = false;
+			}
 		}
-	}
+	});
 </script>
 
-<div class="grid gap-3">
-	<Label for="cron-schedule" class="text-sm leading-none font-medium">
-		{label}
-	</Label>
-
-	<div class="flex flex-wrap gap-2">
-		{#each presetChips as chip (chip.value)}
-			<Badge
-				variant={selectedMode === chip.value ? 'default' : 'outline'}
-				class="cursor-pointer px-3 py-1.5 transition-colors {selectedMode === chip.value
-					? 'hover:opacity-90'
-					: 'hover:bg-accent hover:text-accent-foreground'} {disabled
-					? 'opacity-50 cursor-not-allowed'
-					: ''}"
-				onclick={() => selectMode(chip.value)}
-			>
-				{chip.label}
-			</Badge>
-		{/each}
+<div class="space-y-2">
+	<div class="flex items-center justify-between gap-2">
+		<Label for="cron-schedule" class="text-sm font-medium">
+			{label}
+		</Label>
 	</div>
 
-	{#if selectedMode === 'custom'}
-		<div class="space-y-2 border-primary/20 border-l-2 pl-3 animate-in fade-in slide-in-from-top-2 duration-200">
-			<Input
-				type="text"
-				bind:value={customValue}
-				placeholder="0 2 * * *"
+	<Collapsible bind:open={isOpen} class="space-y-2">
+		<div class="flex items-center gap-2">
+			<CollapsibleTrigger
+				class="bg-card hover:bg-accent/50 flex flex-1 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm transition-colors {disabled
+					? 'cursor-not-allowed opacity-50'
+					: ''}"
 				{disabled}
-				class={validationError ? 'border-destructive' : ''}
-			/>
-			<p class="text-muted-foreground text-xs">
-				Format: minute hour day month weekday (e.g., "0 2 * * 6,0" for weekends at 2am)
-			</p>
-			
-			{#if humanReadable && !validationError}
-				<div class="bg-muted/50 rounded-md px-3 py-2 text-sm">
-					<span class="text-muted-foreground">Schedule: </span>
-					<span class="font-medium">{humanReadable}</span>
+			>
+				<div class="flex min-w-0 items-center gap-2">
+					<ClockIcon class="text-muted-foreground size-4 shrink-0" />
+					<span class="truncate font-medium">{displayText}</span>
+				</div>
+				<ChevronDownIcon
+					class="text-muted-foreground size-4 shrink-0 transition-transform duration-200 {isOpen ? 'rotate-180' : ''}"
+				/>
+			</CollapsibleTrigger>
+		</div>
+
+		<CollapsibleContent class="space-y-2">
+			<div class="bg-muted/30 flex flex-col gap-1 rounded-lg border p-2 sm:grid sm:grid-cols-2 sm:gap-2">
+				{#each presetChips as chip (chip.value)}
+					{@const normalizedValue = value || null}
+					{@const normalizedChipValue = chip.value || null}
+					{@const isSelected = chip.value === 'custom' ? isCustomMode : !isCustomMode && normalizedChipValue === normalizedValue}
+					<button
+						type="button"
+						class="bg-card hover:bg-accent flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-all {isSelected
+							? 'border-primary bg-primary/5 font-medium'
+							: 'border-border'} {disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}"
+						onclick={() => selectPreset(chip.value)}
+						{disabled}
+					>
+						{#if isSelected}
+							<CheckIcon class="text-primary size-3.5 shrink-0" />
+						{:else}
+							<div class="size-3.5 shrink-0"></div>
+						{/if}
+						<span class="truncate">{chip.label}</span>
+					</button>
+				{/each}
+			</div>
+
+			{#if isCustomMode}
+				<div class="border-primary/20 bg-accent/20 space-y-2 rounded-lg border p-3">
+					<Input
+						id="custom-cron"
+						type="text"
+						bind:value
+						placeholder="0 2 * * *"
+						{disabled}
+						class={validationError ? 'border-destructive' : ''}
+						oninput={handleCustomInput}
+					/>
+					<p class="text-muted-foreground text-xs">{m.cron_format_help()}</p>
 				</div>
 			{/if}
-		</div>
-	{/if}
+		</CollapsibleContent>
+	</Collapsible>
 
 	{#if error || validationError}
-		<p class="text-destructive text-[0.8rem] font-medium">{error || validationError}</p>
-	{/if}
-
-	{#if description && !error && !validationError}
-		<p class="text-muted-foreground text-[0.8rem]">
-			{description}
-		</p>
+		<p class="text-destructive text-xs font-medium">{error || validationError}</p>
 	{/if}
 </div>

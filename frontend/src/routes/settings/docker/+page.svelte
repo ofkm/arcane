@@ -230,24 +230,23 @@
 						</Card.Header>
 						<Card.Content class="px-3 py-4 sm:px-6">
 							<div class="space-y-3">
-							<SwitchWithLabel
-								id="autoUpdateSwitch"
-								label={m.docker_auto_update_label()}
-								description={m.docker_auto_update_description()}
-								error={$formInputs.autoUpdate.error}
-								bind:checked={$formInputs.autoUpdate.value}
-							/>
+								<SwitchWithLabel
+									id="autoUpdateSwitch"
+									label={m.docker_auto_update_label()}
+									description={m.docker_auto_update_description()}
+									error={$formInputs.autoUpdate.error}
+									bind:checked={$formInputs.autoUpdate.value}
+								/>
 
-							{#if $formInputs.autoUpdate.value}
-								<div class="border-primary/20 border-l-2 pl-3">
-									<CronScheduleInput
-										bind:value={$formInputs.autoUpdateCron.value}
-										label="Update Schedule"
-										description={m.cron_help_text()}
-										error={$formInputs.autoUpdateCron.error}
-									/>
-								</div>
-							{/if}
+								{#if $formInputs.autoUpdate.value}
+									<div class="border-primary/20 border-l-2 pl-3">
+										<CronScheduleInput
+											bind:value={$formInputs.autoUpdateCron.value}
+											label={m.project_settings_update_schedule()}
+											error={$formInputs.autoUpdateCron.error}
+										/>
+									</div>
+								{/if}
 							</div>
 						</Card.Content>
 					</Card.Root>
