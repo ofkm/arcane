@@ -1,3 +1,34 @@
+## v1.7.1
+
+### Bug fixes
+
+* mobile overscroll issues([fa0a7d2](https://github.com/ofkm/arcane/commit/fa0a7d254cf2339a55ba76303b585d43b93dda1c) by @kmendell)
+* use correct background colors for components when glass is disabled([615c21f](https://github.com/ofkm/arcane/commit/615c21f13244a95c00bdb22e62209a8876b16a89) by @kmendell)
+* event details dialog header padding([55dca66](https://github.com/ofkm/arcane/commit/55dca6690e811e06cbb9e4cd159fefb4847903fc) by @kmendell)
+* cpu count not showing under cpu meter([30cab56](https://github.com/ofkm/arcane/commit/30cab5657f79cccf9e07fb4394ced5db9e4d8f31) by @kmendell)
+* settings state not persisted acorss settings pages([46bbe93](https://github.com/ofkm/arcane/commit/46bbe93c862d8f7014e2303f8280e33a293dae10) by @kmendell)
+* notification settings does not show on the settings overview page([6354f9c](https://github.com/ofkm/arcane/commit/6354f9c3cf73a7fe96815b39634d3ad54feecfd2) by @kmendell)
+* properly log error events to event table([caef210](https://github.com/ofkm/arcane/commit/caef21052fb92be51588da7eff5d301612f2e59a) by @kmendell)
+
+### Other
+
+* bump svelte from 5.42.3 to 5.43.0 in the prod-dependencies group ([#796](https://github.com/ofkm/arcane/pull/796) by @dependabot[bot])
+* bump @types/node from 24.9.1 to 24.9.2 in the dev-dependencies group ([#797](https://github.com/ofkm/arcane/pull/797) by @dependabot[bot])
+* Configure Renovate ([#803](https://github.com/ofkm/arcane/pull/803) by @renovate[bot])
+* remove dependabot config([019f3d6](https://github.com/ofkm/arcane/commit/019f3d6ee8279cf3173de51a048121721e45616e) by @kmendell)
+* update renovate config to include semantic commit type for chores([a2f24ce](https://github.com/ofkm/arcane/commit/a2f24ce4f1c836a6a89fec0525fa9fff8d3674d1) by @kmendell)
+* disable renovate dashboard([dc79404](https://github.com/ofkm/arcane/commit/dc7940466ac2a8672797434208b9b8d255431757) by @kmendell)
+* update dependency @sveltejs/kit to v2.48.3 ([#802](https://github.com/ofkm/arcane/pull/802) by @renovate[bot])
+* update dependency @eslint/compat to v1.4.1 ([#801](https://github.com/ofkm/arcane/pull/801) by @renovate[bot])
+* upgrade github.com/shirou/gopsutil to v4([57fa42c](https://github.com/ofkm/arcane/commit/57fa42c4f18c1eb1854d46b939694e2ec4561599) by @kmendell)
+* layout and design of docker info dialog([3004447](https://github.com/ofkm/arcane/commit/300444703d6770f5372a28c2cec852ddaeeeca7d) by @kmendell)
+* use SettingsForm hook for managing settings logic and state([e09a808](https://github.com/ofkm/arcane/commit/e09a808d09f7f1593969be11a43707224d6c7398) by @kmendell)
+* fix backend linter([d36f6ad](https://github.com/ofkm/arcane/commit/d36f6ad566d504ad03126a52583c1493bff8fe54) by @kmendell)
+
+
+
+**Full Changelog**: https://github.com/ofkm/arcane/compare/v1.7.0...v1.7.1
+
 ## v1.7.0
 
 ### New features
