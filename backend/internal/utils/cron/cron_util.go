@@ -52,8 +52,20 @@ func ValidateCronExpression(expr string) (err error) {
 }
 
 func validateFieldRange(field string, min, max int, fieldName string) error {
-	// Skip wildcards and step values
-	if field == "*" || strings.Contains(field, "*/") {
+	// Skip wildcards but validate step values
+	if field == "*" {
+		return nil
+	}
+	// Validate step values like */6
+	if strings.HasPrefix(field, "*/") {
+		stepStr := strings.TrimPrefix(field, "*/")
+		step, err := strconv.Atoi(stepStr)
+		if err != nil {
+			return fmt.Errorf("invalid cron expression: %s field has invalid step value", fieldName)
+		}
+		if step <= 0 || step > max {
+			return fmt.Errorf("invalid cron expression: %s field step value %d out of range [1-%d]", fieldName, step, max)
+		}
 		return nil
 	}
 
