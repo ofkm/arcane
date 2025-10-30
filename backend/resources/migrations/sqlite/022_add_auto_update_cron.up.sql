@@ -1,5 +1,3 @@
-BEGIN TRANSACTION;
-
 -- Step 1: Create new settings table without auto_update_interval
 CREATE TABLE settings_new (
     key TEXT PRIMARY KEY,
@@ -23,5 +21,3 @@ INSERT OR IGNORE INTO settings (key, value) VALUES ('autoUpdateCron', '');
 -- Step 6: Add auto_update and auto_update_cron columns to projects table
 ALTER TABLE projects ADD COLUMN auto_update BOOLEAN;
 ALTER TABLE projects ADD COLUMN auto_update_cron TEXT;
-
-COMMIT;

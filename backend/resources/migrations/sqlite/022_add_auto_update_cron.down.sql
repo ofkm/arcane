@@ -1,5 +1,3 @@
-BEGIN TRANSACTION;
-
 -- Step 1: Create new projects table without auto_update columns
 CREATE TABLE projects_new (
     id TEXT PRIMARY KEY,
@@ -30,5 +28,3 @@ DELETE FROM settings WHERE key = 'autoUpdateCron';
 
 -- Step 6: Re-add auto_update_interval setting
 INSERT OR IGNORE INTO settings (key, value) VALUES ('autoUpdateInterval', '1440');
-
-COMMIT;
