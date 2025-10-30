@@ -7,6 +7,7 @@
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import CheckIcon from '@lucide/svelte/icons/check';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
 
 	let {
 		value = $bindable<string | null>(),
@@ -20,7 +21,10 @@
 		disabled?: boolean;
 	} = $props();
 
-	const presetChips: CronPreset[] = [...commonCronPresets, { value: 'custom', label: m.cron_custom(), description: '' }];
+	const presetChips: CronPreset[] = [
+		...commonCronPresets,
+		{ value: 'custom', label: m.cron_custom(), description: '', icon: SettingsIcon }
+	];
 
 	let isOpen = $state(false);
 	let validationError = $state<string | null>(null);
@@ -110,23 +114,27 @@
 		</div>
 
 		<CollapsibleContent class="space-y-2">
-			<div class="bg-muted/30 flex flex-col gap-1 rounded-lg border p-2 sm:grid sm:grid-cols-2 sm:gap-2">
+			<div class="bg-muted/30 flex flex-col gap-2 rounded-lg border p-2 sm:grid sm:grid-cols-2 sm:gap-2">
 				{#each presetChips as chip (chip.value)}
 					{@const normalizedValue = value || null}
 					{@const normalizedChipValue = chip.value || null}
 					{@const isSelected = chip.value === 'custom' ? isCustomMode : !isCustomMode && normalizedChipValue === normalizedValue}
 					<button
 						type="button"
-						class="bg-card hover:bg-accent flex items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-all {isSelected
+						class="bg-card hover:bg-accent flex min-h-[44px] items-center gap-2.5 rounded-md border px-3.5 py-2.5 text-left text-sm transition-all {isSelected
 							? 'border-primary bg-primary/5 font-medium'
 							: 'border-border'} {disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}"
 						onclick={() => selectPreset(chip.value)}
 						{disabled}
 					>
 						{#if isSelected}
-							<CheckIcon class="text-primary size-3.5 shrink-0" />
+							<CheckIcon class="text-primary size-4 shrink-0" />
 						{:else}
-							<div class="size-3.5 shrink-0"></div>
+							<div class="size-4 shrink-0"></div>
+						{/if}
+						{#if chip.icon}
+							{@const Icon = chip.icon}
+							<Icon class="text-muted-foreground size-4 shrink-0" />
 						{/if}
 						<span class="truncate">{chip.label}</span>
 					</button>
