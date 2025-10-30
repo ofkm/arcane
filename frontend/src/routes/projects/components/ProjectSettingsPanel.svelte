@@ -1,7 +1,6 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import { z } from 'zod/v4';
-	import { onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
 	import { toast } from 'svelte-sonner';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
@@ -10,7 +9,7 @@
 	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import { projectService } from '$lib/services/project-service';
 	import settingsStore from '$lib/stores/config-store';
-	import type { Project, ProjectSettings } from '$lib/types/project.type';
+	import type { ProjectSettings } from '$lib/types/project.type';
 	import { Button } from '$lib/components/ui/button';
 	import * as ButtonGroup from '$lib/components/ui/button-group';
 	import SaveIcon from '@lucide/svelte/icons/save';
@@ -83,8 +82,6 @@
 	}
 
 	function resetForm() {
-		// Reset handled by formData being derived from initialSettings
-		// This forces a re-render with original values
 		$formInputs.autoUpdate.value = initialSettings.autoUpdate;
 		$formInputs.autoUpdateCron.value = normalizeEmptyValue(initialSettings.autoUpdateCron);
 	}
@@ -163,35 +160,6 @@
 					</div>
 				</Card.Content>
 			{/if}
-		</Card.Root>
-
-		<Card.Root>
-			<Card.Header icon={GlobeIcon}>
-				<div class="flex flex-col space-y-1.5">
-					<Card.Title>{m.project_settings_service_level_title()}</Card.Title>
-					<Card.Description>{m.project_settings_service_level_description()}</Card.Description>
-				</div>
-			</Card.Header>
-			<Card.Content class="px-3 py-4 sm:px-6">
-				<div class="space-y-3 text-sm">
-					<p class="text-muted-foreground">
-						{m.project_settings_service_intro()}
-						<code class="bg-muted rounded px-1.5 py-0.5 text-xs">com.ofkm.arcane.updater</code>
-						{m.project_settings_service_label_text()}
-					</p>
-					<ul class="text-muted-foreground list-inside list-disc space-y-1.5 pl-2">
-						<li>
-							<code class="bg-muted rounded px-1.5 py-0.5 text-xs">com.ofkm.arcane.updater.updater: false</code>
-							- {m.project_settings_never_update()}
-						</li>
-						<li>
-							<code class="bg-muted rounded px-1.5 py-0.5 text-xs">com.ofkm.arcane.updater.updater: true</code>
-							- {m.project_settings_always_update()}
-						</li>
-						<li>{m.project_settings_no_label()}</li>
-					</ul>
-				</div>
-			</Card.Content>
 		</Card.Root>
 	</fieldset>
 </div>
