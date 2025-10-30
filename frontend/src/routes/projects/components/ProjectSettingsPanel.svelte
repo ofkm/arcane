@@ -35,28 +35,28 @@
 	<fieldset class="relative space-y-4 sm:space-y-6">
 		<Card.Root>
 			<Card.Header icon={ZapIcon}>
-				<div class="flex flex-col space-y-3">
-					<div class="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-						<Card.Title>{m.project_settings_auto_update_title()}</Card.Title>
+				<div class="flex w-full flex-col space-y-3">
+					<div class="flex flex-row items-center justify-between gap-3">
+						<Card.Title class="flex-1">{m.project_settings_auto_update_title()}</Card.Title>
 						<ButtonGroup.ButtonGroup class="shrink-0">
 							<Button
-								variant={!hasAutoUpdate ? 'default' : 'outline'}
+								variant={!hasAutoUpdate ? 'default' : 'ghost'}
 								size="sm"
-								class="h-8 text-xs"
+								class="h-7 px-2.5 text-xs"
 								onclick={() => (autoUpdate = null)}
 							>
-								<GlobeIcon class="mr-1.5 size-3.5" />
+								<GlobeIcon class="mr-1 size-3" />
 								{m.project_settings_global()}
 							</Button>
 							<Button
-								variant={hasAutoUpdate ? 'default' : 'outline'}
+								variant={hasAutoUpdate ? 'default' : 'ghost'}
 								size="sm"
-								class="h-8 text-xs"
+								class="h-7 px-2.5 text-xs"
 								onclick={() => {
 									autoUpdate = globalAutoUpdate ?? true;
 								}}
 							>
-								<ZapIcon class="mr-1.5 size-3.5" />
+								<ZapIcon class="mr-1 size-3" />
 								{m.project_settings_project()}
 							</Button>
 						</ButtonGroup.ButtonGroup>
