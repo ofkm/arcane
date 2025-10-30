@@ -1,10 +1,7 @@
--- Remove auto_update and auto_update_cron columns from projects table
-ALTER TABLE projects DROP COLUMN IF EXISTS auto_update_cron;
-ALTER TABLE projects DROP COLUMN IF EXISTS auto_update;
+-- Remove auto_update_cron column
+ALTER TABLE projects DROP COLUMN auto_update_cron;
 
--- Remove auto_update_cron column from settings
-ALTER TABLE settings DROP COLUMN IF EXISTS auto_update_cron;
-
--- Re-add auto_update_interval column to settings
-ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_update_interval TEXT DEFAULT '1440';
+-- Restore auto_update as NOT NULL with default
+ALTER TABLE projects DROP COLUMN auto_update;
+ALTER TABLE projects ADD COLUMN auto_update BOOLEAN NOT NULL DEFAULT false;
 
