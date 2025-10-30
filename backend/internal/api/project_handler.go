@@ -34,7 +34,7 @@ type projectLogStream struct {
 	seq    atomic.Uint64
 }
 
-func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
+func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectService, projectSettingsService *services.ProjectSettingsService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
 
 	handler := &ProjectHandler{
 		projectService: projectService,
@@ -45,6 +45,8 @@ func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectS
 			EnableCompression: true,
 		},
 	}
+
+	settingsHandler := NewProjectSettingsHandler(projectSettingsService)
 
 	apiGroup := group.Group("/environments/:id/projects")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -62,6 +64,9 @@ func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectS
 		apiGroup.PUT("/:projectId", handler.UpdateProject)
 		apiGroup.POST("/:projectId/restart", handler.RestartProject)
 		apiGroup.GET("/:projectId/logs/ws", handler.GetProjectLogsWS)
+		apiGroup.GET("/:projectId/settings", settingsHandler.GetProjectSettings)
+		apiGroup.PUT("/:projectId/settings", settingsHandler.UpdateProjectSettings)
+		apiGroup.DELETE("/:projectId/settings", settingsHandler.DeleteProjectSettings)
 
 	}
 }

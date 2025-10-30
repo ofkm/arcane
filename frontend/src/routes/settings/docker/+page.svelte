@@ -15,6 +15,7 @@
 	import TrashIcon from '@lucide/svelte/icons/trash';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
+	import CronScheduleInput from '$lib/components/form/cron-schedule-input.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { SettingsPageLayout } from '$lib/layouts';
@@ -28,7 +29,7 @@
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
-		autoUpdateInterval: z.number().int(),
+		autoUpdateCron: z.string().nullable(),
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		defaultShell: z.string()
 	});
@@ -109,9 +110,9 @@
 			$formInputs.pollingEnabled.value !== currentSettings.pollingEnabled ||
 			$formInputs.pollingInterval.value !== currentSettings.pollingInterval ||
 			$formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
-			$formInputs.autoUpdateInterval.value != currentSettings.autoUpdateInterval ||
-			$formInputs.dockerPruneMode.value != currentSettings.dockerPruneMode ||
-			$formInputs.defaultShell.value != currentSettings.defaultShell
+			$formInputs.autoUpdateCron.value !== currentSettings.autoUpdateCron ||
+			$formInputs.dockerPruneMode.value !== currentSettings.dockerPruneMode ||
+			$formInputs.defaultShell.value !== currentSettings.defaultShell
 	});
 
 	$effect(() => {
@@ -147,7 +148,7 @@
 		$formInputs.pollingEnabled.value = currentSettings.pollingEnabled;
 		$formInputs.pollingInterval.value = currentSettings.pollingInterval;
 		$formInputs.autoUpdate.value = currentSettings.autoUpdate;
-		$formInputs.autoUpdateInterval.value = currentSettings.autoUpdateInterval;
+		$formInputs.autoUpdateCron.value = currentSettings.autoUpdateCron;
 		$formInputs.dockerPruneMode.value = currentSettings.dockerPruneMode;
 		$formInputs.defaultShell.value = currentSettings.defaultShell;
 	}
@@ -229,26 +230,24 @@
 						</Card.Header>
 						<Card.Content class="px-3 py-4 sm:px-6">
 							<div class="space-y-3">
-								<SwitchWithLabel
-									id="autoUpdateSwitch"
-									label={m.docker_auto_update_label()}
-									description={m.docker_auto_update_description()}
-									error={$formInputs.autoUpdate.error}
-									bind:checked={$formInputs.autoUpdate.value}
-								/>
+							<SwitchWithLabel
+								id="autoUpdateSwitch"
+								label={m.docker_auto_update_label()}
+								description={m.docker_auto_update_description()}
+								error={$formInputs.autoUpdate.error}
+								bind:checked={$formInputs.autoUpdate.value}
+							/>
 
-								{#if $formInputs.autoUpdate.value}
-									<div class="border-primary/20 border-l-2 pl-3">
-										<TextInputWithLabel
-											bind:value={$formInputs.autoUpdateInterval.value}
-											error={$formInputs.autoUpdateInterval.error}
-											label={m.docker_auto_update_interval_label()}
-											placeholder={m.docker_auto_update_interval_placeholder()}
-											helpText={m.docker_auto_update_interval_description()}
-											type="number"
-										/>
-									</div>
-								{/if}
+							{#if $formInputs.autoUpdate.value}
+								<div class="border-primary/20 border-l-2 pl-3">
+									<CronScheduleInput
+										bind:value={$formInputs.autoUpdateCron.value}
+										label="Update Schedule"
+										description={m.cron_help_text()}
+										error={$formInputs.autoUpdateCron.error}
+									/>
+								</div>
+							{/if}
 							</div>
 						</Card.Content>
 					</Card.Root>
