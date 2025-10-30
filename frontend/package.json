@@ -1,7 +1,7 @@
 {
   "name": "arcane-frontend",
   "private": true,
-  "version": "1.7.0",
+  "version": "1.7.1",
   "type": "module",
   "packageManager": "pnpm@10.20.0",
   "scripts": {
