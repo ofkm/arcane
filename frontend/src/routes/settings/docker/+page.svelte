@@ -5,7 +5,7 @@
 	import { toast } from 'svelte-sonner';
 	import type { Settings } from '$lib/types/settings.type';
 	import { z } from 'zod/v4';
-	import { getContext, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
@@ -17,16 +17,13 @@
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
-	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
+	import { UseSettingsForm } from '$lib/hooks/use-settings-form.svelte';
 
 	let { data } = $props();
-	let currentSettings = $state<Settings>(data.settings!);
-	let hasChanges = $state(false);
-	let isLoading = $state(false);
+	const currentSettings = $derived<Settings>($settingsStore || data.settings!);
+	const isReadOnly = $derived.by(() => $settingsStore?.uiConfigDisabled);
 
-	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
-	const formState = getContext('settingsFormState') as any;
 	const formSchema = z.object({
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
@@ -107,22 +104,14 @@
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
-	const formHasChanges = $derived.by(
-		() =>
+	const settingsForm = new UseSettingsForm({
+		hasChangesChecker: () =>
 			$formInputs.pollingEnabled.value !== currentSettings.pollingEnabled ||
 			$formInputs.pollingInterval.value !== currentSettings.pollingInterval ||
 			$formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
 			$formInputs.autoUpdateInterval.value != currentSettings.autoUpdateInterval ||
 			$formInputs.dockerPruneMode.value != currentSettings.dockerPruneMode ||
 			$formInputs.defaultShell.value != currentSettings.defaultShell
-	);
-
-	$effect(() => {
-		hasChanges = formHasChanges;
-		if (formState) {
-			formState.hasChanges = hasChanges;
-			formState.isLoading = isLoading;
-		}
 	});
 
 	$effect(() => {
@@ -137,35 +126,23 @@
 		}
 	});
 
-	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
-		try {
-			await settingsService.updateSettings(updatedSettings as any);
-			currentSettings = { ...currentSettings, ...updatedSettings };
-			settingsStore.set(currentSettings);
-			settingsStore.reload();
-		} catch (error) {
-			console.error('Error updating settings:', error);
-			throw error;
-		}
-	}
-
 	async function onSubmit() {
-		const formData = form.validate();
-		if (!formData) {
+		const data = form.validate();
+		if (!data) {
 			toast.error('Please check the form for errors');
 			return;
 		}
-		isLoading = true;
+		settingsForm.setLoading(true);
 
-		await updateSettingsConfig(formData)
+		await settingsForm
+			.updateSettings(data)
 			.then(() => toast.success(m.general_settings_saved()))
 			.catch((error) => {
-				console.error('Failed to save settings:', error);
-				toast.error('Failed to save settings. Please try again.');
+				console.error('Failed to save Docker settings:', error);
+				toast.error('Failed to save Docker settings. Please try again.');
 			})
-			.finally(() => (isLoading = false));
+			.finally(() => settingsForm.setLoading(false));
 	}
-
 	function resetForm() {
 		$formInputs.pollingEnabled.value = currentSettings.pollingEnabled;
 		$formInputs.pollingInterval.value = currentSettings.pollingInterval;
@@ -176,10 +153,7 @@
 	}
 
 	onMount(() => {
-		if (formState) {
-			formState.saveFunction = onSubmit;
-			formState.resetFunction = resetForm;
-		}
+		settingsForm.registerFormActions(onSubmit, resetForm);
 	});
 </script>
 

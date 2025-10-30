@@ -72,7 +72,7 @@
 
 <ResponsiveDialog bind:open contentClass="sm:max-w-[980px]">
 	{#snippet children()}
-		<div class="space-y-4">
+		<div class="space-y-4 pt-4">
 			{@render headerContent()}
 			{@render infoCards()}
 			{@render metadataSection()}
