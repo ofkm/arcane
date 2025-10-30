@@ -514,92 +514,97 @@ func buildUpdateMap(records []models.ImageUpdateRecord) map[string]*models.Image
 	return updateMap
 }
 
+func parseRepoAndTagFromRepoTag(repoTag string) (repo, tag string) {
+	if named, err := ref.ParseNormalizedNamed(repoTag); err == nil {
+		repo = ref.FamiliarName(named)
+		if tagged, ok := named.(ref.NamedTagged); ok {
+			tag = tagged.Tag()
+		} else {
+			tag = "latest"
+		}
+		return repo, tag
+	}
+
+	if lastColonIdx := strings.LastIndex(repoTag, ":"); lastColonIdx != -1 {
+		return repoTag[:lastColonIdx], repoTag[lastColonIdx+1:]
+	}
+	return repoTag, "latest"
+}
+
+func parseRepoFromDigests(repoDigests []string) (repo string, found bool) {
+	for _, rd := range repoDigests {
+		if rd == "<none>@<none>" {
+			continue
+		}
+		if at := strings.LastIndex(rd, "@"); at != -1 {
+			candidateRepo := rd[:at]
+			if candidateRepo != "" {
+				return candidateRepo, true
+			}
+		}
+	}
+	return "", false
+}
+
+func determineRepoAndTag(di image.Summary) (repo, tag string) {
+	if len(di.RepoTags) > 0 {
+		return parseRepoAndTagFromRepoTag(di.RepoTags[0])
+	}
+
+	if len(di.RepoDigests) > 0 {
+		if r, found := parseRepoFromDigests(di.RepoDigests); found {
+			return r, "<none>"
+		}
+	}
+
+	return "<none>", "<none>"
+}
+
+func stringPtrValue(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func buildUpdateInfo(updateRecord *models.ImageUpdateRecord) *dto.ImageUpdateInfoDto {
+	return &dto.ImageUpdateInfoDto{
+		HasUpdate:      updateRecord.HasUpdate,
+		UpdateType:     updateRecord.UpdateType,
+		CurrentVersion: updateRecord.CurrentVersion,
+		LatestVersion:  stringPtrValue(updateRecord.LatestVersion),
+		CurrentDigest:  stringPtrValue(updateRecord.CurrentDigest),
+		LatestDigest:   stringPtrValue(updateRecord.LatestDigest),
+		CheckTime:      updateRecord.CheckTime,
+		ResponseTimeMs: updateRecord.ResponseTimeMs,
+		Error:          stringPtrValue(updateRecord.LastError),
+		AuthMethod:     stringPtrValue(updateRecord.AuthMethod),
+		AuthUsername:   stringPtrValue(updateRecord.AuthUsername),
+		AuthRegistry:   stringPtrValue(updateRecord.AuthRegistry),
+		UsedCredential: updateRecord.UsedCredential,
+	}
+}
+
 func mapDockerImagesToDTOs(dockerImages []image.Summary, inUseMap map[string]bool, updateMap map[string]*models.ImageUpdateRecord) []dto.ImageSummaryDto {
 	items := make([]dto.ImageSummaryDto, 0, len(dockerImages))
 	for _, di := range dockerImages {
-		inUse := inUseMap[di.ID]
+		repo, tag := determineRepoAndTag(di)
 
 		imageDto := dto.ImageSummaryDto{
 			ID:          di.ID,
+			Repo:        repo,
+			Tag:         tag,
 			RepoTags:    di.RepoTags,
 			RepoDigests: di.RepoDigests,
 			Created:     di.Created,
 			Size:        di.Size,
 			VirtualSize: di.SharedSize,
 			Labels:      convertLabels(di.Labels),
-			InUse:       inUse,
-		}
-
-		if len(di.RepoTags) > 0 {
-			repoTag := di.RepoTags[0]
-			// Use distribution/reference SDK to properly parse image references
-			if named, err := ref.ParseNormalizedNamed(repoTag); err == nil {
-				imageDto.Repo = ref.FamiliarName(named)
-				if tagged, ok := named.(ref.NamedTagged); ok {
-					imageDto.Tag = tagged.Tag()
-				} else {
-					imageDto.Tag = "latest"
-				}
-			} else {
-				// Fallback for malformed references
-				if lastColonIdx := strings.LastIndex(repoTag, ":"); lastColonIdx != -1 {
-					imageDto.Repo = repoTag[:lastColonIdx]
-					imageDto.Tag = repoTag[lastColonIdx+1:]
-				} else {
-					imageDto.Repo = repoTag
-					imageDto.Tag = "latest"
-				}
-			}
-		} else {
-			// No RepoTags. If we have RepoDigests, derive repository from the part before '@'
-			if len(di.RepoDigests) > 0 {
-				for _, rd := range di.RepoDigests {
-					if rd == "<none>@<none>" {
-						continue
-					}
-					// Format: registry/path/name@sha256:...
-					if at := strings.LastIndex(rd, "@"); at != -1 {
-						candidateRepo := rd[:at]
-						if candidateRepo != "" {
-							imageDto.Repo = candidateRepo
-							imageDto.Tag = "<none>"
-							break
-						}
-					}
-				}
-			}
-			// Fallbacks if no digest-derived repo found
-			if imageDto.Repo == "" {
-				imageDto.Repo = "<none>"
-			}
-			if imageDto.Tag == "" {
-				imageDto.Tag = "<none>"
-			}
+			InUse:       inUseMap[di.ID],
 		}
 
 		if updateRecord, exists := updateMap[di.ID]; exists {
-			sp := func(p *string) string {
-				if p == nil {
-					return ""
-				}
-				return *p
-			}
-
-			imageDto.UpdateInfo = &dto.ImageUpdateInfoDto{
-				HasUpdate:      updateRecord.HasUpdate,
-				UpdateType:     updateRecord.UpdateType,
-				CurrentVersion: updateRecord.CurrentVersion,
-				LatestVersion:  sp(updateRecord.LatestVersion),
-				CurrentDigest:  sp(updateRecord.CurrentDigest),
-				LatestDigest:   sp(updateRecord.LatestDigest),
-				CheckTime:      updateRecord.CheckTime,
-				ResponseTimeMs: updateRecord.ResponseTimeMs,
-				Error:          sp(updateRecord.LastError),
-				AuthMethod:     sp(updateRecord.AuthMethod),
-				AuthUsername:   sp(updateRecord.AuthUsername),
-				AuthRegistry:   sp(updateRecord.AuthRegistry),
-				UsedCredential: updateRecord.UsedCredential,
-			}
+			imageDto.UpdateInfo = buildUpdateInfo(updateRecord)
 		}
 
 		items = append(items, imageDto)
