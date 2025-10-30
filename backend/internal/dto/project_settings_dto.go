@@ -1,9 +1,9 @@
 package dto
 
 type ProjectSettingsDto struct {
-	ProjectID      string  `json:"project_id"`
-	AutoUpdate     *bool   `json:"auto_update"`      // NULL = follow global
-	AutoUpdateCron *string `json:"auto_update_cron"` // NULL = immediate
+	ProjectID      string  `json:"projectId"`
+	AutoUpdate     *bool   `json:"autoUpdate"`     // NULL = follow global
+	AutoUpdateCron *string `json:"autoUpdateCron"` // NULL = immediate
 }
 
 type UpdateProjectSettingsDto struct {

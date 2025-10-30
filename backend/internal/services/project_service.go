@@ -24,18 +24,20 @@ import (
 )
 
 type ProjectService struct {
-	db              *database.DB
-	settingsService *SettingsService
-	eventService    *EventService
-	imageService    *ImageService
+	db                     *database.DB
+	settingsService        *SettingsService
+	projectSettingsService *ProjectSettingsService
+	eventService           *EventService
+	imageService           *ImageService
 }
 
-func NewProjectService(db *database.DB, settingsService *SettingsService, eventService *EventService, imageService *ImageService) *ProjectService {
+func NewProjectService(db *database.DB, settingsService *SettingsService, projectSettingsService *ProjectSettingsService, eventService *EventService, imageService *ImageService) *ProjectService {
 	return &ProjectService{
-		db:              db,
-		settingsService: settingsService,
-		eventService:    eventService,
-		imageService:    imageService,
+		db:                     db,
+		settingsService:        settingsService,
+		projectSettingsService: projectSettingsService,
+		eventService:           eventService,
+		imageService:           imageService,
 	}
 }
 
@@ -503,7 +505,13 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 		projectsDirectory = "data/projects"
 	}
 
-	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory)
+	// Load project settings for label injection
+	projectSettings, psErr := s.projectSettingsService.GetProjectSettings(ctx, projectID)
+	if psErr != nil {
+		slog.WarnContext(ctx, "failed to load project settings, will use defaults", "error", psErr)
+	}
+
+	project, loadErr := projects.LoadComposeProjectWithSettings(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory, projectSettings)
 	if loadErr != nil {
 		return fmt.Errorf("failed to load compose project from %s: %w", projectFromDb.Path, loadErr)
 	}

@@ -8,6 +8,7 @@
 	import LayersIcon from '@lucide/svelte/icons/layers';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogsIcon from '@lucide/svelte/icons/logs';
+	import SquarePenIcon from '@lucide/svelte/icons/square-pen';
 	import { type TabItem } from '$lib/components/tab-bar/index.js';
 	import TabbedPageLayout from '$lib/layouts/tabbed-page-layout.svelte';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
@@ -26,6 +27,7 @@
 	import ServicesGrid from '../components/ServicesGrid.svelte';
 	import CodePanel from '../components/CodePanel.svelte';
 	import ProjectsLogsPanel from '../components/ProjectLogsPanel.svelte';
+	import ProjectSettingsPanel from '../components/ProjectSettingsPanel.svelte';
 	import { projectService } from '$lib/services/project-service';
 
 	let { data } = $props();
@@ -76,7 +78,7 @@
 
 	let autoScrollStackLogs = $state(true);
 
-	let selectedTab = $state<'services' | 'compose' | 'logs'>('compose');
+	let selectedTab = $state<'services' | 'compose' | 'logs' | 'settings'>('compose');
 	let composeOpen = $state(true);
 	let envOpen = $state(true);
 
@@ -90,20 +92,25 @@
 		{
 			value: 'compose',
 			label: m.common_configuration(),
-			icon: SettingsIcon
+			icon: SquarePenIcon
 		},
 		{
 			value: 'logs',
 			label: m.compose_nav_logs(),
 			icon: LogsIcon,
 			disabled: project?.status !== 'running'
+		},
+		{
+			value: 'settings',
+			label: m.settings_title(),
+			icon: SettingsIcon
 		}
 	]);
 
 	let nameInputRef = $state<HTMLInputElement | null>(null);
 
 	type ComposeUIPrefs = {
-		tab: 'services' | 'compose' | 'logs';
+		tab: 'services' | 'compose' | 'logs' | 'settings';
 		composeOpen: boolean;
 		envOpen: boolean;
 		autoScroll: boolean;
@@ -179,7 +186,7 @@
 		{tabItems}
 		{selectedTab}
 		onTabChange={(value) => {
-			selectedTab = value as 'services' | 'compose' | 'logs';
+			selectedTab = value as 'services' | 'compose' | 'logs' | 'settings';
 			persistPrefs();
 		}}
 	>
@@ -285,6 +292,10 @@
 				{:else}
 					<div class="text-muted-foreground py-12 text-center">{m.compose_logs_title()} Unavailable</div>
 				{/if}
+			</Tabs.Content>
+
+			<Tabs.Content value="settings" class="h-full">
+				<ProjectSettingsPanel {projectId} />
 			</Tabs.Content>
 		{/snippet}
 	</TabbedPageLayout>

@@ -19,7 +19,7 @@ func NewProjectSettingsHandler(projectSettingsService *services.ProjectSettingsS
 }
 
 func (h *ProjectSettingsHandler) GetProjectSettings(c *gin.Context) {
-	projectID := c.Param("id")
+	projectID := c.Param("projectId")
 
 	settings, err := h.projectSettingsService.GetProjectSettings(c.Request.Context(), projectID)
 	if err != nil {
@@ -44,7 +44,7 @@ func (h *ProjectSettingsHandler) GetProjectSettings(c *gin.Context) {
 }
 
 func (h *ProjectSettingsHandler) UpdateProjectSettings(c *gin.Context) {
-	projectID := c.Param("id")
+	projectID := c.Param("projectId")
 
 	var req dto.UpdateProjectSettingsDto
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -78,7 +78,7 @@ func (h *ProjectSettingsHandler) UpdateProjectSettings(c *gin.Context) {
 }
 
 func (h *ProjectSettingsHandler) DeleteProjectSettings(c *gin.Context) {
-	projectID := c.Param("id")
+	projectID := c.Param("projectId")
 
 	err := h.projectSettingsService.DeleteProjectSettings(c.Request.Context(), projectID)
 	if err != nil {

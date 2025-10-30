@@ -6,10 +6,12 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/compose-spec/compose-go/v2/loader"
 	composetypes "github.com/compose-spec/compose-go/v2/types"
 	"github.com/docker/compose/v2/pkg/api"
+	"github.com/ofkm/arcane-backend/internal/models"
 )
 
 var ComposeFileCandidates = []string{
@@ -38,6 +40,10 @@ func DetectComposeFile(dir string) (string, error) {
 }
 
 func LoadComposeProject(ctx context.Context, composeFile, projectName, projectsDirectory string) (*composetypes.Project, error) {
+	return LoadComposeProjectWithSettings(ctx, composeFile, projectName, projectsDirectory, nil)
+}
+
+func LoadComposeProjectWithSettings(ctx context.Context, composeFile, projectName, projectsDirectory string, projectSettings *models.ProjectSettings) (*composetypes.Project, error) {
 	workdir := filepath.Dir(composeFile)
 
 	projectsDir := projectsDirectory
@@ -72,13 +78,15 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName, projectsD
 
 	project = project.WithoutUnnecessaryResources()
 
-	injectServiceConfiguration(project, injectionVars, workdir, composeFile)
+	injectServiceConfiguration(project, injectionVars, workdir, composeFile, projectSettings)
 
 	project.ComposeFiles = []string{composeFile}
 	return project, nil
 }
 
-func injectServiceConfiguration(project *composetypes.Project, injectionVars EnvMap, workdir, composeFile string) {
+const UpdaterLabel = "com.ofkm.arcane.updater"
+
+func injectServiceConfiguration(project *composetypes.Project, injectionVars EnvMap, workdir, composeFile string, projectSettings *models.ProjectSettings) {
 	for i, s := range project.Services {
 		// Initialize environment if nil
 		if s.Environment == nil {
@@ -102,6 +110,12 @@ func injectServiceConfiguration(project *composetypes.Project, injectionVars Env
 		s.CustomLabels[api.OneoffLabel] = "False"
 		s.CustomLabels[api.WorkingDirLabel] = workdir
 		s.CustomLabels[api.ConfigFilesLabel] = composeFile
+
+		if _, hasManualLabel := s.CustomLabels[UpdaterLabel]; !hasManualLabel {
+			if projectSettings != nil && projectSettings.AutoUpdate != nil {
+				s.CustomLabels[UpdaterLabel] = strconv.FormatBool(*projectSettings.AutoUpdate)
+			}
+		}
 
 		project.Services[i] = s
 	}

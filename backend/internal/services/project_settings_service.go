@@ -41,13 +41,22 @@ func (s *ProjectSettingsService) UpsertProjectSettings(ctx context.Context, proj
 		AutoUpdateCron: cron,
 	}
 
-	return s.db.WithContext(ctx).
-		Where("project_id = ?", projectID).
-		Assign(map[string]interface{}{
-			"auto_update":      autoUpdate,
-			"auto_update_cron": cron,
-		}).
-		FirstOrCreate(settings).Error
+	// Check if record exists
+	var existing models.ProjectSettings
+	err := s.db.WithContext(ctx).Where("project_id = ?", projectID).First(&existing).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		// Create new record
+		return s.db.WithContext(ctx).Create(settings).Error
+	} else if err != nil {
+		return err
+	}
+
+	// Update existing record
+	return s.db.WithContext(ctx).Model(&existing).Updates(map[string]interface{}{
+		"auto_update":      autoUpdate,
+		"auto_update_cron": cron,
+	}).Error
 }
 
 func (s *ProjectSettingsService) DeleteProjectSettings(ctx context.Context, projectID string) error {
