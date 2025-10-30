@@ -166,6 +166,10 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	response.CreatedAt = proj.CreatedAt.Format(time.RFC3339)
 	response.UpdatedAt = proj.UpdatedAt.Format(time.RFC3339)
 	response.DirName = utils.DerefString(proj.DirName)
+	response.Settings = &dto.ProjectSettingsDto{
+		AutoUpdate:     proj.AutoUpdate,
+		AutoUpdateCron: proj.AutoUpdateCron,
+	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
@@ -425,23 +429,22 @@ func (h *ProjectHandler) GetProjectStatusCounts(c *gin.Context) {
 func (h *ProjectHandler) GetProjectSettings(c *gin.Context) {
 	projectID := c.Param("projectId")
 
-	project, err := h.projectService.GetProjectSettings(c.Request.Context(), projectID)
+	settings, err := h.projectService.GetProjectSettings(c.Request.Context(), projectID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, dto.ProjectSettingsDto{
-		ProjectID:      projectID,
-		AutoUpdate:     project.AutoUpdate,
-		AutoUpdateCron: project.AutoUpdateCron,
+		AutoUpdate:     settings.AutoUpdate,
+		AutoUpdateCron: settings.AutoUpdateCron,
 	})
 }
 
 func (h *ProjectHandler) UpdateProjectSettings(c *gin.Context) {
 	projectID := c.Param("projectId")
 
-	var req dto.UpdateProjectSettingsDto
+	var req dto.ProjectSettingsDto
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -459,16 +462,15 @@ func (h *ProjectHandler) UpdateProjectSettings(c *gin.Context) {
 	}
 
 	// Return the updated settings
-	project, err := h.projectService.GetProjectSettings(c.Request.Context(), projectID)
+	settings, err := h.projectService.GetProjectSettings(c.Request.Context(), projectID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, dto.ProjectSettingsDto{
-		ProjectID:      projectID,
-		AutoUpdate:     project.AutoUpdate,
-		AutoUpdateCron: project.AutoUpdateCron,
+		AutoUpdate:     settings.AutoUpdate,
+		AutoUpdateCron: settings.AutoUpdateCron,
 	})
 }
 

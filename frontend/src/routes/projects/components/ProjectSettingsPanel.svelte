@@ -8,19 +8,17 @@
 	import CronScheduleInput from '$lib/components/form/cron-schedule-input.svelte';
 	import ZapIcon from '@lucide/svelte/icons/zap';
 	import GlobeIcon from '@lucide/svelte/icons/globe';
-	import { projectSettingsService } from '$lib/services/project-settings-service';
+	import { projectService } from '$lib/services/project-service';
 	import settingsStore from '$lib/stores/config-store';
-	import type { ProjectSettings } from '$lib/types/project-settings.type';
+	import type { Project, ProjectSettings } from '$lib/types/project.type';
 	import { Button } from '$lib/components/ui/button';
 	import * as ButtonGroup from '$lib/components/ui/button-group';
 	import SaveIcon from '@lucide/svelte/icons/save';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import { m } from '$lib/paraglide/messages';
 
-	let { projectId }: { projectId: string } = $props();
+	let { id, settings, onUpdate }: { id: string; settings: ProjectSettings; onUpdate?: () => Promise<void> } = $props();
 
-	let projectSettings = $state<ProjectSettings | null>(null);
-	let isLoading = $state(true);
 	let isSaving = $state(false);
 
 	const globalSettings = $derived($settingsStore);
@@ -31,54 +29,25 @@
 		autoUpdateCron: z.string().nullable()
 	});
 
-	let currentSettings = $state({
-		autoUpdate: null as boolean | null,
-		autoUpdateCron: null as string | null
-	});
-
-	let formData = $derived(currentSettings);
-	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
-
 	const normalizeEmptyValue = (val: string | null | undefined): string | null => {
 		return val === '' || val === null || val === undefined ? null : val;
 	};
 
+	const initialSettings = $derived<ProjectSettings>(settings || { autoUpdate: null, autoUpdateCron: null });
+
+	let formData = $derived({
+		autoUpdate: initialSettings.autoUpdate,
+		autoUpdateCron: normalizeEmptyValue(initialSettings.autoUpdateCron)
+	});
+
+	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
+
 	let hasChanges = $derived(
-		$formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
-			normalizeEmptyValue($formInputs.autoUpdateCron.value) !== normalizeEmptyValue(currentSettings.autoUpdateCron)
+		$formInputs.autoUpdate.value !== initialSettings.autoUpdate ||
+			normalizeEmptyValue($formInputs.autoUpdateCron.value) !== normalizeEmptyValue(initialSettings.autoUpdateCron)
 	);
 
 	const hasAutoUpdate = $derived($formInputs.autoUpdate.value !== null);
-
-	async function loadSettings() {
-		isLoading = true;
-		try {
-			const settings = await projectSettingsService.getProjectSettings(projectId);
-			projectSettings = settings;
-			updateCurrentSettings(settings);
-		} catch (error: any) {
-			if (error?.status === 404) {
-				projectSettings = {
-					projectId,
-					autoUpdate: null,
-					autoUpdateCron: null
-				};
-				updateCurrentSettings(projectSettings);
-			} else {
-				toast.error(m.project_settings_load_failed());
-				console.error(error);
-			}
-		} finally {
-			isLoading = false;
-		}
-	}
-
-	function updateCurrentSettings(settings: ProjectSettings) {
-		currentSettings = {
-			autoUpdate: settings.autoUpdate,
-			autoUpdateCron: normalizeEmptyValue(settings.autoUpdateCron)
-		};
-	}
 
 	async function onSubmit() {
 		const validated = form.validate();
@@ -93,19 +62,18 @@
 		try {
 			if (autoUpdate === null) {
 				// Delete project settings to revert to global
-				await projectSettingsService.deleteProjectSettings(projectId);
+				await projectService.deleteProjectSettings(id);
 				toast.success(m.project_settings_updated());
-				await loadSettings();
 			} else {
 				// Update/create project settings
-				const updated = await projectSettingsService.updateProjectSettings(projectId, {
+				await projectService.updateProjectSettings(id, {
 					autoUpdate,
 					autoUpdateCron: normalizeEmptyValue(autoUpdateCron)
 				});
 				toast.success(m.project_settings_updated());
-				projectSettings = updated;
-				updateCurrentSettings(updated);
 			}
+			// Notify parent to reload project data
+			await onUpdate?.();
 		} catch (error) {
 			console.error('Failed to save settings:', error);
 			toast.error(m.project_settings_update_failed());
@@ -115,14 +83,11 @@
 	}
 
 	function resetForm() {
-		if (projectSettings) {
-			updateCurrentSettings(projectSettings);
-		}
+		// Reset handled by formData being derived from initialSettings
+		// This forces a re-render with original values
+		$formInputs.autoUpdate.value = initialSettings.autoUpdate;
+		$formInputs.autoUpdateCron.value = normalizeEmptyValue(initialSettings.autoUpdateCron);
 	}
-
-	onMount(async () => {
-		await loadSettings();
-	});
 </script>
 
 <div class="space-y-4 p-4 sm:space-y-6 sm:p-6">

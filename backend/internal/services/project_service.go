@@ -219,6 +219,10 @@ func (s *ProjectService) GetProjectDetails(ctx context.Context, projectID string
 	resp.ServiceCount = serviceCount
 	resp.RunningCount = runningCount
 	resp.DirName = utils.DerefString(proj.DirName)
+	resp.Settings = &dto.ProjectSettingsDto{
+		AutoUpdate:     proj.AutoUpdate,
+		AutoUpdateCron: proj.AutoUpdateCron,
+	}
 	if serr == nil && services != nil {
 		raw := make([]any, len(services))
 		for i := range services {
@@ -981,6 +985,10 @@ func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, pro
 					RunningCount: displayRunningCount,
 					CreatedAt:    proj.CreatedAt.Format(time.RFC3339),
 					UpdatedAt:    proj.UpdatedAt.Format(time.RFC3339),
+					Settings: &dto.ProjectSettingsDto{
+						AutoUpdate:     proj.AutoUpdate,
+						AutoUpdateCron: proj.AutoUpdateCron,
+					},
 				},
 			}
 		}(i, project)
@@ -1013,6 +1021,10 @@ func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, pro
 					RunningCount: proj.RunningCount,
 					CreatedAt:    proj.CreatedAt.Format(time.RFC3339),
 					UpdatedAt:    proj.UpdatedAt.Format(time.RFC3339),
+					Settings: &dto.ProjectSettingsDto{
+						AutoUpdate:     proj.AutoUpdate,
+						AutoUpdateCron: proj.AutoUpdateCron,
+					},
 				}
 			}
 			return results

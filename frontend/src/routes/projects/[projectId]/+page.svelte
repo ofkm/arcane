@@ -295,7 +295,7 @@
 			</Tabs.Content>
 
 			<Tabs.Content value="settings" class="h-full">
-				<ProjectSettingsPanel {projectId} />
+				<ProjectSettingsPanel id={project.id} settings={project.settings} onUpdate={invalidateAll} />
 			</Tabs.Content>
 		{/snippet}
 	</TabbedPageLayout>

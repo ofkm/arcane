@@ -1,6 +1,6 @@
 import BaseAPIService from './api-service';
 import { environmentStore } from '$lib/stores/environment.store.svelte';
-import type { Project, ProjectStatusCounts } from '$lib/types/project.type';
+import type { Project, ProjectSettings, ProjectStatusCounts } from '$lib/types/project.type';
 import type { SearchPaginationSortRequest, Paginated } from '$lib/types/pagination.type';
 import { transformPaginationParams } from '$lib/utils/params.util';
 
@@ -151,6 +151,17 @@ export class ProjectService extends BaseAPIService {
 				}
 			})
 		);
+	}
+
+	async updateProjectSettings(projectId: string, settings: Partial<ProjectSettings>): Promise<Project> {
+		const envId = await environmentStore.getCurrentEnvironmentId();
+		const res = await this.api.put(`/environments/${envId}/projects/${projectId}/settings`, settings);
+		return res.data;
+	}
+
+	async deleteProjectSettings(projectId: string): Promise<void> {
+		const envId = await environmentStore.getCurrentEnvironmentId();
+		await this.api.delete(`/environments/${envId}/projects/${projectId}/settings`);
 	}
 }
 
