@@ -507,10 +507,7 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 		projectsDirectory = "data/projects"
 	}
 
-	// Load project settings for label injection
-	settings := &projectFromDb.ProjectSettings
-
-	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory, settings)
+	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory, &projectFromDb.ProjectSettings)
 	if loadErr != nil {
 		return fmt.Errorf("failed to load compose project from %s: %w", projectFromDb.Path, loadErr)
 	}
@@ -781,19 +778,11 @@ func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, na
 		return nil, fmt.Errorf("failed to get projects directory: %w", err)
 	}
 
-	if name != nil {
+	switch {
+	case name != nil:
 		if newName := strings.TrimSpace(*name); newName != "" && proj.Name != newName {
 			proj.Name = newName
 		}
-	}
-
-	// Update settings if provided
-	if settings != nil {
-		proj.AutoUpdate = settings.AutoUpdate
-		proj.AutoUpdateCron = settings.AutoUpdateCron
-	}
-
-	switch {
 	case composeContent != nil:
 		if err := fs.SaveOrUpdateProjectFiles(projectsDirectory, proj.Path, *composeContent, envContent); err != nil {
 			return nil, fmt.Errorf("failed to save project files: %w", err)
@@ -809,6 +798,9 @@ func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, na
 				return nil, err
 			}
 		}
+	case settings != nil:
+		proj.AutoUpdate = settings.AutoUpdate
+		proj.AutoUpdateCron = settings.AutoUpdateCron
 	}
 
 	if err := s.db.WithContext(ctx).Save(&proj).Error; err != nil {
