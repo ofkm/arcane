@@ -13,34 +13,34 @@ type UpdateProjectDto struct {
 }
 
 type CreateProjectReponseDto struct {
-	ID           string              `json:"id"`
-	Name         string              `json:"name"`
-	DirName      string              `json:"dirName,omitempty"`
-	Path         string              `json:"path"`
-	Status       string              `json:"status"`
-	StatusReason *string             `json:"statusReason,omitempty"`
-	ServiceCount int                 `json:"serviceCount"`
-	RunningCount int                 `json:"runningCount"`
-	CreatedAt    string              `json:"createdAt"`
-	UpdatedAt    string              `json:"updatedAt"`
-	Settings     *ProjectSettingsDto `json:"settings,omitempty"`
+	ID           string             `json:"id"`
+	Name         string             `json:"name"`
+	DirName      string             `json:"dirName,omitempty"`
+	Path         string             `json:"path"`
+	Status       string             `json:"status"`
+	StatusReason *string            `json:"statusReason,omitempty"`
+	ServiceCount int                `json:"serviceCount"`
+	RunningCount int                `json:"runningCount"`
+	CreatedAt    string             `json:"createdAt"`
+	UpdatedAt    string             `json:"updatedAt"`
+	Settings     ProjectSettingsDto `json:"settings"`
 }
 
 type ProjectDetailsDto struct {
-	ID             string              `json:"id"`
-	Name           string              `json:"name"`
-	DirName        string              `json:"dirName,omitempty"`
-	Path           string              `json:"path"`
-	ComposeContent string              `json:"composeContent,omitempty"`
-	EnvContent     string              `json:"envContent,omitempty"`
-	Status         string              `json:"status"`
-	StatusReason   *string             `json:"statusReason,omitempty"`
-	ServiceCount   int                 `json:"serviceCount"`
-	RunningCount   int                 `json:"runningCount"`
-	CreatedAt      string              `json:"createdAt"`
-	UpdatedAt      string              `json:"updatedAt"`
-	Services       []any               `json:"services,omitempty"`
-	Settings       *ProjectSettingsDto `json:"settings,omitempty"`
+	ID             string             `json:"id"`
+	Name           string             `json:"name"`
+	DirName        string             `json:"dirName,omitempty"`
+	Path           string             `json:"path"`
+	ComposeContent string             `json:"composeContent,omitempty"`
+	EnvContent     string             `json:"envContent,omitempty"`
+	Status         string             `json:"status"`
+	StatusReason   *string            `json:"statusReason,omitempty"`
+	ServiceCount   int                `json:"serviceCount"`
+	RunningCount   int                `json:"runningCount"`
+	CreatedAt      string             `json:"createdAt"`
+	UpdatedAt      string             `json:"updatedAt"`
+	Services       []any              `json:"services,omitempty"`
+	Settings       ProjectSettingsDto `json:"settings"`
 }
 
 type DestroyProjectDto struct {

@@ -166,7 +166,7 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	response.CreatedAt = proj.CreatedAt.Format(time.RFC3339)
 	response.UpdatedAt = proj.UpdatedAt.Format(time.RFC3339)
 	response.DirName = utils.DerefString(proj.DirName)
-	response.Settings = &dto.ProjectSettingsDto{
+	response.Settings = dto.ProjectSettingsDto{
 		AutoUpdate:     proj.AutoUpdate,
 		AutoUpdateCron: proj.AutoUpdateCron,
 	}
