@@ -73,9 +73,10 @@
 			toast.success(m.project_settings_updated());
 			// Notify parent to reload project data
 			await onUpdate?.();
-		} catch (error) {
+		} catch (error: any) {
 			console.error('Failed to save settings:', error);
-			toast.error(m.project_settings_update_failed());
+			const errorMessage = error?.response?.data?.error || error?.message || m.project_settings_update_failed();
+			toast.error(errorMessage);
 		} finally {
 			isSaving = false;
 		}

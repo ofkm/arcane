@@ -63,27 +63,6 @@ export const commonCronPresets: CronPreset[] = [
 ];
 
 /**
- * Basic client-side validation for cron expressions
- */
-export function validateCronExpression(expr: string): { valid: boolean; error?: string } {
-	if (!expr || expr.trim() === '') {
-		return { valid: true }; // Empty is valid (immediate mode)
-	}
-
-	const parts = expr.trim().split(/\s+/);
-	
-	// Standard cron has 5 fields: minute hour day month weekday
-	if (parts.length !== 5) {
-		return {
-			valid: false,
-			error: m.cron_invalid()
-		};
-	}
-
-	return { valid: true };
-}
-
-/**
  * Convert cron expression to human-readable text with i18n support
  */
 export function cronToHumanReadable(expr: string | null): string {

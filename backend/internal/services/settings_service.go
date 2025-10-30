@@ -22,6 +22,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/cron"
 )
 
 type SettingsService struct {
@@ -313,6 +314,13 @@ func (s *SettingsService) UpdateSettings(ctx context.Context, updates dto.Update
 		var value string
 		if fieldValue.Kind() == reflect.Ptr {
 			value = fieldValue.Elem().String()
+		}
+
+		// Validate cron expression if this is the autoUpdateCron field
+		if key == "autoUpdateCron" && value != "" {
+			if err := cron.ValidateCronExpression(value); err != nil {
+				return nil, err
+			}
 		}
 
 		// Determine the actual value to use and save

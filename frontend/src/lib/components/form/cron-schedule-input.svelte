@@ -3,7 +3,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '$lib/components/ui/collapsible';
 	import { m } from '$lib/paraglide/messages';
-	import { commonCronPresets, cronToHumanReadable, validateCronExpression, type CronPreset } from '$lib/utils/cron.utils';
+	import { commonCronPresets, cronToHumanReadable, type CronPreset } from '$lib/utils/cron.utils';
 	import ClockIcon from '@lucide/svelte/icons/clock';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import CheckIcon from '@lucide/svelte/icons/check';
@@ -27,7 +27,6 @@
 	];
 
 	let isOpen = $state(false);
-	let validationError = $state<string | null>(null);
 	let isEditingCustom = $state(false);
 
 	const isCustomMode = $derived.by(() => {
@@ -67,15 +66,6 @@
 		// Mark as editing when user types in custom field
 		isEditingCustom = true;
 	}
-
-	$effect(() => {
-		if (isCustomMode && value) {
-			const validation = validateCronExpression(value);
-			validationError = validation.valid ? null : validation.error || m.cron_invalid();
-		} else {
-			validationError = null;
-		}
-	});
 
 	// When dropdown closes, check if we should exit custom mode
 	$effect(() => {
@@ -149,7 +139,6 @@
 						bind:value
 						placeholder="0 2 * * *"
 						{disabled}
-						class={validationError ? 'border-destructive' : ''}
 						oninput={handleCustomInput}
 					/>
 					<p class="text-muted-foreground text-xs">{m.cron_format_help()}</p>
@@ -158,7 +147,7 @@
 		</CollapsibleContent>
 	</Collapsible>
 
-	{#if error || validationError}
-		<p class="text-destructive text-xs font-medium">{error || validationError}</p>
+	{#if error}
+		<p class="text-destructive text-xs font-medium">{error}</p>
 	{/if}
 </div>

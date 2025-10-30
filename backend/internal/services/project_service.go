@@ -17,6 +17,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils"
+	"github.com/ofkm/arcane-backend/internal/utils/cron"
 	"github.com/ofkm/arcane-backend/internal/utils/fs"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 	"github.com/ofkm/arcane-backend/internal/utils/projects"
@@ -778,11 +779,26 @@ func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, na
 		return nil, fmt.Errorf("failed to get projects directory: %w", err)
 	}
 
-	switch {
-	case name != nil:
+	// Update name if provided
+	if name != nil {
 		if newName := strings.TrimSpace(*name); newName != "" && proj.Name != newName {
 			proj.Name = newName
 		}
+	}
+
+	// Update settings if provided
+	if settings != nil {
+		if settings.AutoUpdateCron != nil && *settings.AutoUpdateCron != "" {
+			if err := cron.ValidateCronExpression(*settings.AutoUpdateCron); err != nil {
+				return nil, err
+			}
+		}
+		proj.AutoUpdate = settings.AutoUpdate
+		proj.AutoUpdateCron = settings.AutoUpdateCron
+	}
+
+	// Update compose/env files if provided
+	switch {
 	case composeContent != nil:
 		if err := fs.SaveOrUpdateProjectFiles(projectsDirectory, proj.Path, *composeContent, envContent); err != nil {
 			return nil, fmt.Errorf("failed to save project files: %w", err)
@@ -798,9 +814,6 @@ func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, na
 				return nil, err
 			}
 		}
-	case settings != nil:
-		proj.AutoUpdate = settings.AutoUpdate
-		proj.AutoUpdateCron = settings.AutoUpdateCron
 	}
 
 	if err := s.db.WithContext(ctx).Save(&proj).Error; err != nil {
