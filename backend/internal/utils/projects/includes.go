@@ -106,33 +106,72 @@ func parseIncludeItem(item interface{}, baseDir string) (IncludeFile, error) {
 	}, nil
 }
 
-// ValidateIncludePath ensures the include path is safe (no path traversal outside project)
-func ValidateIncludePath(projectDir, includePath string) error {
+// ValidateIncludePathForRead validates that an include path is safe to read
+// Allows reading from anywhere (Docker Compose includes can reference external files)
+func ValidateIncludePathForRead(includePath string) error {
+	if includePath == "" {
+		return fmt.Errorf("include path cannot be empty")
+	}
+	return nil
+}
+
+// ValidateIncludePathForWrite ensures the include path is safe for write operations
+// Only allows writing within the project directory OR to files that already exist
+func ValidateIncludePathForWrite(projectDir, includePath string, allowExisting bool) error {
+	if includePath == "" {
+		return fmt.Errorf("include path cannot be empty")
+	}
+
+	// Resolve project directory to absolute path
+	absProjectDir, err := filepath.Abs(projectDir)
+	if err != nil {
+		return fmt.Errorf("invalid project directory: %w", err)
+	}
+	absProjectDir = filepath.Clean(absProjectDir)
+
+	// Resolve include path to absolute path
 	var fullPath string
 	if filepath.IsAbs(includePath) {
 		fullPath = includePath
 	} else {
-		fullPath = filepath.Join(projectDir, includePath)
+		fullPath = filepath.Join(absProjectDir, includePath)
 	}
 
-	fullPath = filepath.Clean(fullPath)
-	projectDir = filepath.Clean(projectDir)
-
-	relPath, err := filepath.Rel(projectDir, fullPath)
+	absFullPath, err := filepath.Abs(fullPath)
 	if err != nil {
 		return fmt.Errorf("invalid include path: %w", err)
 	}
+	absFullPath = filepath.Clean(absFullPath)
 
-	if strings.HasPrefix(relPath, "..") {
-		return fmt.Errorf("include path cannot reference files outside project directory")
+	// Prevent targeting the project directory itself
+	if absFullPath == absProjectDir {
+		return fmt.Errorf("include path cannot be the project directory itself")
 	}
 
-	return nil
+	// Check if path is within project directory
+	projectPrefix := absProjectDir + string(filepath.Separator)
+	isWithinProject := strings.HasPrefix(absFullPath+string(filepath.Separator), projectPrefix)
+
+	if isWithinProject {
+		// Path is within project - allow write
+		return nil
+	}
+
+	// Path is outside project - only allow if file already exists and allowExisting is true
+	if allowExisting {
+		if _, err := os.Stat(absFullPath); err == nil {
+			// File exists - allow write to existing file
+			return nil
+		}
+	}
+
+	return fmt.Errorf("write access denied: path is outside project directory and file does not exist")
 }
 
 // WriteIncludeFile writes content to an include file path
 func WriteIncludeFile(projectDir, includePath, content string) error {
-	if err := ValidateIncludePath(projectDir, includePath); err != nil {
+	// Allow writing to existing files or files within project
+	if err := ValidateIncludePathForWrite(projectDir, includePath, true); err != nil {
 		return err
 	}
 
@@ -146,8 +185,17 @@ func WriteIncludeFile(projectDir, includePath, content string) error {
 	fullPath = filepath.Clean(fullPath)
 
 	dir := filepath.Dir(fullPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
+	
+	// Only validate that the directory path is not empty or current directory
+	if dir == "" || dir == "." {
+		return fmt.Errorf("invalid include path: cannot create directory '%s'", dir)
+	}
+	
+	// Only create directory if it doesn't exist
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory: %w", err)
+		}
 	}
 
 	if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
@@ -159,7 +207,8 @@ func WriteIncludeFile(projectDir, includePath, content string) error {
 
 // DeleteIncludeFile removes an include file
 func DeleteIncludeFile(projectDir, includePath string) error {
-	if err := ValidateIncludePath(projectDir, includePath); err != nil {
+	// Only allow deleting files within project directory
+	if err := ValidateIncludePathForWrite(projectDir, includePath, false); err != nil {
 		return err
 	}
 
