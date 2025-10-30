@@ -16,16 +16,17 @@ RUN pnpm -C frontend build
 # Stage 2: Build Backend
 FROM golang:1.25-alpine AS backend-builder
 ARG BUILD_TAGS
-ARG VERSION
-ARG REVISION
 WORKDIR /build
 RUN apk add --no-cache ca-certificates curl git tzdata
+COPY ./.version ./VERSION
 COPY ./backend/go.mod ./backend/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY ./backend ./
 COPY --from=frontend-builder /build/frontend/dist ./frontend/dist
-RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 \
-    GOOS=linux \
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    VERSION=$(cat VERSION | tr -d '[:space:]') && \
+    REVISION=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") && \
+    CGO_ENABLED=0 GOOS=linux \
     go build \
     -tags "${BUILD_TAGS}" \
     -ldflags "-w -s -X github.com/ofkm/arcane-backend/internal/config.Version=${VERSION} -X github.com/ofkm/arcane-backend/internal/config.Revision=${REVISION}" \
