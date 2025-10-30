@@ -169,25 +169,6 @@ func SanitizeForEmail(s string) string {
 	return string(safe)
 }
 
-// BuildSimpleMessage constructs a simple email message with headers
-func BuildSimpleMessage(fromAddress string, toAddresses []string, subject string, body string) string {
-	var buf bytes.Buffer
-
-	// Add headers
-	buf.WriteString(fmt.Sprintf("From: %s\r\n", fromAddress))
-	buf.WriteString(fmt.Sprintf("To: %s\r\n", strings.Join(toAddresses, ", ")))
-	buf.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
-	buf.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().Format(time.RFC1123Z)))
-	buf.WriteString("MIME-Version: 1.0\r\n")
-	buf.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
-	buf.WriteString("\r\n")
-
-	// Add body
-	buf.WriteString(body)
-
-	return buf.String()
-}
-
 // BuildMultipartMessage constructs a MIME multipart email message with both HTML and text parts
 func BuildMultipartMessage(fromAddress string, toAddresses []string, subject string, htmlBody string, textBody string) string {
 	var buf bytes.Buffer

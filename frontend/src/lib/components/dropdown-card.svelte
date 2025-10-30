@@ -64,9 +64,9 @@
 
 <Card.Root>
 	<Card.Header
-		icon={icon}
+		{icon}
 		enableHover
-		class="border-b cursor-pointer select-none"
+		class="cursor-pointer border-b select-none"
 		role="button"
 		tabindex={0}
 		onclick={onHeaderClick}
