@@ -34,7 +34,7 @@ type projectLogStream struct {
 	seq    atomic.Uint64
 }
 
-func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectService, projectSettingsService *services.ProjectSettingsService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
+func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectService, authMiddleware *middleware.AuthMiddleware, cfg *config.Config) {
 
 	handler := &ProjectHandler{
 		projectService: projectService,
@@ -46,7 +46,7 @@ func NewProjectHandler(group *gin.RouterGroup, projectService *services.ProjectS
 		},
 	}
 
-	settingsHandler := NewProjectSettingsHandler(projectSettingsService)
+	settingsHandler := NewProjectSettingsHandler(projectService)
 
 	apiGroup := group.Group("/environments/:id/projects")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())

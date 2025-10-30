@@ -1,3 +1,5 @@
+BEGIN TRANSACTION;
+
 -- Step 1: Create new settings table without auto_update_interval
 CREATE TABLE settings_new (
     key TEXT PRIMARY KEY,
@@ -18,15 +20,8 @@ ALTER TABLE settings_new RENAME TO settings;
 -- Step 5: Add auto_update_cron setting if it doesn't exist
 INSERT OR IGNORE INTO settings (key, value) VALUES ('autoUpdateCron', '');
 
--- Step 6: Create project_settings table
-CREATE TABLE IF NOT EXISTS project_settings (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL UNIQUE,
-    auto_update BOOLEAN,
-    auto_update_cron TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-);
+-- Step 6: Add auto_update and auto_update_cron columns to projects table
+ALTER TABLE projects ADD COLUMN auto_update BOOLEAN;
+ALTER TABLE projects ADD COLUMN auto_update_cron TEXT;
 
-CREATE INDEX IF NOT EXISTS idx_project_settings_project_id ON project_settings(project_id);
+COMMIT;

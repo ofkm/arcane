@@ -15,7 +15,6 @@ type Services struct {
 	AppImages         *services.ApplicationImagesService
 	User              *services.UserService
 	Project           *services.ProjectService
-	ProjectSettings   *services.ProjectSettingsService
 	Environment       *services.EnvironmentService
 	Settings          *services.SettingsService
 	SettingsSearch    *services.SettingsSearchService
@@ -56,8 +55,7 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs.Notification = services.NewNotificationService(db, cfg)
 	svcs.ImageUpdate = services.NewImageUpdateService(db, svcs.Settings, svcs.ContainerRegistry, svcs.Docker, svcs.Event, svcs.Notification)
 	svcs.Image = services.NewImageService(db, svcs.Docker, svcs.ContainerRegistry, svcs.ImageUpdate, svcs.Event)
-	svcs.ProjectSettings = services.NewProjectSettingsService(db, svcs.Settings)
-	svcs.Project = services.NewProjectService(db, svcs.Settings, svcs.ProjectSettings, svcs.Event, svcs.Image)
+	svcs.Project = services.NewProjectService(db, svcs.Settings, svcs.Event, svcs.Image)
 	svcs.Environment = services.NewEnvironmentService(db, httpClient)
 	svcs.Container = services.NewContainerService(db, svcs.Event, svcs.Docker)
 	svcs.Volume = services.NewVolumeService(db, svcs.Docker, svcs.Event)

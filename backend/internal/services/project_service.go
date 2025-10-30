@@ -24,20 +24,18 @@ import (
 )
 
 type ProjectService struct {
-	db                     *database.DB
-	settingsService        *SettingsService
-	projectSettingsService *ProjectSettingsService
-	eventService           *EventService
-	imageService           *ImageService
+	db              *database.DB
+	settingsService *SettingsService
+	eventService    *EventService
+	imageService    *ImageService
 }
 
-func NewProjectService(db *database.DB, settingsService *SettingsService, projectSettingsService *ProjectSettingsService, eventService *EventService, imageService *ImageService) *ProjectService {
+func NewProjectService(db *database.DB, settingsService *SettingsService, eventService *EventService, imageService *ImageService) *ProjectService {
 	return &ProjectService{
-		db:                     db,
-		settingsService:        settingsService,
-		projectSettingsService: projectSettingsService,
-		eventService:           eventService,
-		imageService:           imageService,
+		db:              db,
+		settingsService: settingsService,
+		eventService:    eventService,
+		imageService:    imageService,
 	}
 }
 
@@ -132,7 +130,7 @@ func (s *ProjectService) GetProjectServices(ctx context.Context, projectID strin
 		projectsDirectory = "data/projects"
 	}
 
-	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory)
+	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory, &projectFromDb.ProjectSettings)
 	if loadErr != nil {
 		return []ProjectServiceInfo{}, fmt.Errorf("failed to load compose project from %s: %w", projectFromDb.Path, loadErr)
 	}
@@ -506,12 +504,12 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 	}
 
 	// Load project settings for label injection
-	projectSettings, psErr := s.projectSettingsService.GetProjectSettings(ctx, projectID)
-	if psErr != nil {
-		slog.WarnContext(ctx, "failed to load project settings, will use defaults", "error", psErr)
+	var settings *models.ProjectSettings
+	if proj, psErr := s.GetProjectSettings(ctx, projectID); psErr == nil && proj != nil {
+		settings = &proj.ProjectSettings
 	}
 
-	project, loadErr := projects.LoadComposeProjectWithSettings(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory, projectSettings)
+	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory, settings)
 	if loadErr != nil {
 		return fmt.Errorf("failed to load compose project from %s: %w", projectFromDb.Path, loadErr)
 	}
@@ -1059,4 +1057,48 @@ func (s *ProjectService) calculateProjectStatus(services []ProjectServiceInfo) m
 		return models.ProjectStatusStopped
 	}
 	return models.ProjectStatusUnknown
+}
+
+func (s *ProjectService) GetProjectSettings(ctx context.Context, projectID string) (*models.Project, error) {
+	var project models.Project
+	err := s.db.WithContext(ctx).Where("id = ?", projectID).First(&project).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("project not found")
+		}
+		return nil, err
+	}
+	return &project, nil
+}
+
+func (s *ProjectService) UpdateProjectSettings(ctx context.Context, projectID string, autoUpdate *bool, cron *string) error {
+	updates := map[string]interface{}{
+		"auto_update":      autoUpdate,
+		"auto_update_cron": cron,
+	}
+
+	result := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", projectID).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("project not found")
+	}
+	return nil
+}
+
+func (s *ProjectService) ClearProjectSettings(ctx context.Context, projectID string) error {
+	updates := map[string]interface{}{
+		"auto_update":      nil,
+		"auto_update_cron": nil,
+	}
+
+	result := s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", projectID).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("project not found")
+	}
+	return nil
 }

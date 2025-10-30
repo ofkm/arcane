@@ -1,19 +1,14 @@
--- Remove auto_update_interval column
+BEGIN;
+
+-- Remove auto_update_interval column from settings
 ALTER TABLE settings DROP COLUMN IF EXISTS auto_update_interval;
 
--- Add auto_update_cron column
+-- Add auto_update_cron column to settings
 ALTER TABLE settings ADD COLUMN IF NOT EXISTS auto_update_cron TEXT;
 
--- Create project_settings table
-CREATE TABLE IF NOT EXISTS project_settings (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL UNIQUE,
-    auto_update BOOLEAN,
-    auto_update_cron TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_project_settings_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-);
+-- Add auto_update and auto_update_cron columns to projects table
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS auto_update BOOLEAN;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS auto_update_cron TEXT;
 
-CREATE INDEX IF NOT EXISTS idx_project_settings_project_id ON project_settings(project_id);
+COMMIT;
 
