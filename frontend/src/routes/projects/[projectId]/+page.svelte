@@ -9,6 +9,7 @@
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogsIcon from '@lucide/svelte/icons/logs';
 	import SquarePenIcon from '@lucide/svelte/icons/square-pen';
+	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import { type TabItem } from '$lib/components/tab-bar/index.js';
 	import TabbedPageLayout from '$lib/layouts/tabbed-page-layout.svelte';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
@@ -50,6 +51,11 @@
 	let originalName = $state(data.editorState.originalName);
 	let originalComposeContent = $state(data.editorState.originalComposeContent);
 	let originalEnvContent = $state(data.editorState.originalEnvContent || '');
+	let originalSettings = $state(data.editorState.originalSettings || { autoUpdate: null, autoUpdateCron: null });
+
+	const normalizeEmptyValue = (val: string | null | undefined): string | null => {
+		return val === '' || val === null || val === undefined ? null : val;
+	};
 
 	const formSchema = z.object({
 		name: z
@@ -57,21 +63,52 @@
 			.min(1, 'Project name is required')
 			.regex(/^[a-z0-9_-]+$/i, 'Only letters, numbers, hyphens, and underscores are allowed'),
 		composeContent: z.string().min(1, 'Compose content is required'),
-		envContent: z.string().optional().default('')
+		envContent: z.string().optional().default(''),
+		autoUpdate: z.boolean().nullable(),
+		autoUpdateCron: z.string().nullable()
 	});
 
 	let formData = $derived({
 		name: editorState.name,
 		composeContent: editorState.composeContent,
-		envContent: editorState.envContent || ''
+		envContent: editorState.envContent || '',
+		autoUpdate: project?.settings?.autoUpdate ?? null,
+		autoUpdateCron: normalizeEmptyValue(project?.settings?.autoUpdateCron ?? null)
 	});
 
 	let { inputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
 
+	// Sync settings with form inputs for two-way binding
+	// Initialize from project settings
+	let autoUpdate = $state<boolean | null>(null);
+	let autoUpdateCron = $state<string | null>(null);
+
+	// Initialize from project when available
+	$effect(() => {
+		if (project?.settings) {
+			autoUpdate = project.settings.autoUpdate ?? null;
+			autoUpdateCron = normalizeEmptyValue(project.settings.autoUpdateCron ?? null);
+		}
+	});
+
+	// Sync form inputs with state
+	$effect(() => {
+		autoUpdate = $inputs.autoUpdate.value;
+		autoUpdateCron = $inputs.autoUpdateCron.value;
+	});
+
+	// Sync state back to form inputs
+	$effect(() => {
+		$inputs.autoUpdate.value = autoUpdate;
+		$inputs.autoUpdateCron.value = autoUpdateCron;
+	});
+
 	let hasChanges = $derived(
 		$inputs.name.value !== originalName ||
 			$inputs.composeContent.value !== originalComposeContent ||
-			$inputs.envContent.value !== originalEnvContent
+			$inputs.envContent.value !== originalEnvContent ||
+			$inputs.autoUpdate.value !== originalSettings.autoUpdate ||
+			normalizeEmptyValue($inputs.autoUpdateCron.value) !== normalizeEmptyValue(originalSettings.autoUpdateCron)
 	);
 
 	let canEditName = $derived(!isLoading.saving && project?.status !== 'running' && project?.status !== 'partially running');
@@ -144,10 +181,15 @@
 		const validated = form.validate();
 		if (!validated) return;
 
-		const { name, composeContent, envContent } = validated;
+		const { name, composeContent, envContent, autoUpdate, autoUpdateCron } = validated;
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(projectService.updateProject(projectId, name, composeContent, envContent)),
+			result: await tryCatch(
+				projectService.updateProject(projectId, name, composeContent, envContent, {
+					autoUpdate,
+					autoUpdateCron: normalizeEmptyValue(autoUpdateCron)
+				})
+			),
 			message: 'Failed to Save Project',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async (updatedStack: Project) => {
@@ -155,10 +197,19 @@
 				originalName = updatedStack.name;
 				originalComposeContent = $inputs.composeContent.value;
 				originalEnvContent = $inputs.envContent.value;
+				originalSettings = updatedStack.settings || { autoUpdate: null, autoUpdateCron: null };
 				await new Promise((resolve) => setTimeout(resolve, 200));
 				await invalidateAll();
 			}
 		});
+	}
+
+	function handleReset() {
+		$inputs.name.value = originalName;
+		$inputs.composeContent.value = originalComposeContent;
+		$inputs.envContent.value = originalEnvContent;
+		$inputs.autoUpdate.value = originalSettings.autoUpdate;
+		$inputs.autoUpdateCron.value = normalizeEmptyValue(originalSettings.autoUpdateCron);
 	}
 
 	function saveNameIfChanged() {
@@ -232,6 +283,14 @@
 			<div class="flex items-center gap-2">
 				{#if hasChanges}
 					<ArcaneButton
+						action="reset"
+						loading={isLoading.saving}
+						onclick={handleReset}
+						disabled={isLoading.saving}
+						customLabel={m.common_reset()}
+						loadingLabel={m.common_resetting()}
+					/>
+					<ArcaneButton
 						action="save"
 						loading={isLoading.saving}
 						onclick={handleSaveChanges}
@@ -294,9 +353,9 @@
 				{/if}
 			</Tabs.Content>
 
-		<Tabs.Content value="settings" class="h-full">
-			<ProjectSettingsPanel id={project.id} settings={project.settings} onUpdate={invalidateAll} />
-		</Tabs.Content>
+			<Tabs.Content value="settings" class="h-full">
+				<ProjectSettingsPanel bind:autoUpdate bind:autoUpdateCron />
+			</Tabs.Content>
 		{/snippet}
 	</TabbedPageLayout>
 {:else if !data.error}
