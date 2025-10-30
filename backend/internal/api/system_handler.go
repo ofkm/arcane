@@ -34,16 +34,15 @@ import (
 )
 
 const (
-	mebibytesInAMegabyte = 1.048576
-	gpuCacheDuration     = 30 * time.Second
+	gpuCacheDuration = 30 * time.Second
 )
 
 // GPUStats represents statistics for a single GPU
 type GPUStats struct {
 	Name        string  `json:"name"`
 	Index       int     `json:"index"`
-	MemoryUsed  float64 `json:"memoryUsed"`  // in MB
-	MemoryTotal float64 `json:"memoryTotal"` // in MB
+	MemoryUsed  float64 `json:"memoryUsed"`  // in bytes
+	MemoryTotal float64 `json:"memoryTotal"` // in bytes
 }
 
 type SystemHandler struct {
@@ -69,10 +68,6 @@ type SystemHandler struct {
 		gpuType   string // "nvidia", "amd", "intel", "jetson", or ""
 		toolPath  string
 	}
-	nvidiaSmi      bool
-	rocmSmi        bool
-	intelGpuTop    bool
-	tegrastats     bool
 	detectionDone  bool
 	detectionMutex sync.Mutex
 }
@@ -579,7 +574,11 @@ func (h *SystemHandler) TriggerUpgrade(c *gin.Context) {
 // getGPUStats collects and returns GPU statistics for all available GPUs
 func (h *SystemHandler) getGPUStats(ctx context.Context) ([]GPUStats, error) {
 	// Check if we need to detect GPUs
-	if !h.detectionDone {
+	h.detectionMutex.Lock()
+	done := h.detectionDone
+	h.detectionMutex.Unlock()
+
+	if !done {
 		if err := h.detectGPUs(ctx); err != nil {
 			return nil, err
 		}
@@ -638,7 +637,6 @@ func (h *SystemHandler) detectGPUs(ctx context.Context) error {
 
 	// Check for NVIDIA
 	if path, err := exec.LookPath("nvidia-smi"); err == nil {
-		h.nvidiaSmi = true
 		h.gpuDetectionCache.Lock()
 		h.gpuDetectionCache.detected = true
 		h.gpuDetectionCache.gpuType = "nvidia"
@@ -652,7 +650,6 @@ func (h *SystemHandler) detectGPUs(ctx context.Context) error {
 
 	// Check for AMD ROCm
 	if path, err := exec.LookPath("rocm-smi"); err == nil {
-		h.rocmSmi = true
 		h.gpuDetectionCache.Lock()
 		h.gpuDetectionCache.detected = true
 		h.gpuDetectionCache.gpuType = "amd"
@@ -666,7 +663,6 @@ func (h *SystemHandler) detectGPUs(ctx context.Context) error {
 
 	// Check for NVIDIA Jetson
 	if path, err := exec.LookPath("tegrastats"); err == nil {
-		h.tegrastats = true
 		h.gpuDetectionCache.Lock()
 		h.gpuDetectionCache.detected = true
 		h.gpuDetectionCache.gpuType = "jetson"
@@ -680,7 +676,6 @@ func (h *SystemHandler) detectGPUs(ctx context.Context) error {
 
 	// Check for Intel GPU
 	if path, err := exec.LookPath("intel_gpu_top"); err == nil {
-		h.intelGpuTop = true
 		h.gpuDetectionCache.Lock()
 		h.gpuDetectionCache.detected = true
 		h.gpuDetectionCache.gpuType = "intel"
@@ -753,12 +748,12 @@ func (h *SystemHandler) parseNvidiaOutput(ctx context.Context, output []byte) ([
 			continue
 		}
 
-		// nvidia-smi returns MiB, convert to MB
+		// nvidia-smi returns MiB (mebibytes), convert to bytes (1 MiB = 1024*1024 bytes)
 		stats = append(stats, GPUStats{
 			Name:        name,
 			Index:       index,
-			MemoryUsed:  memUsed / mebibytesInAMegabyte,
-			MemoryTotal: memTotal / mebibytesInAMegabyte,
+			MemoryUsed:  memUsed * 1024 * 1024,
+			MemoryTotal: memTotal * 1024 * 1024,
 		})
 	}
 
@@ -818,15 +813,12 @@ func (h *SystemHandler) parseROCmOutput(ctx context.Context, output []byte) ([]G
 			continue
 		}
 
-		// Convert bytes to MB
-		memUsedMB := memUsedBytes / (1024 * 1024)
-		memTotalMB := memTotalBytes / (1024 * 1024)
-
+		// ROCm already returns bytes, use directly
 		stats = append(stats, GPUStats{
 			Name:        fmt.Sprintf("AMD GPU %s", gpuID),
 			Index:       index,
-			MemoryUsed:  memUsedMB,
-			MemoryTotal: memTotalMB,
+			MemoryUsed:  memUsedBytes,
+			MemoryTotal: memTotalBytes,
 		})
 		index++
 	}
@@ -917,12 +909,13 @@ func (h *SystemHandler) parseJetsonOutput(ctx context.Context, output []byte) ([
 							used, _ := strconv.ParseFloat(memValues[0], 64)
 							total, _ := strconv.ParseFloat(memValues[1], 64)
 
+							// tegrastats returns MB, convert to bytes
 							return []GPUStats{
 								{
 									Name:        "NVIDIA Jetson",
 									Index:       0,
-									MemoryUsed:  used,
-									MemoryTotal: total,
+									MemoryUsed:  used * 1024 * 1024,
+									MemoryTotal: total * 1024 * 1024,
 								},
 							}, nil
 						}

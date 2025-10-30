@@ -13,15 +13,13 @@
 
 	let { gpus, loading = false }: Props = $props();
 
-	function formatBytes(mb: number): string {
-		// Convert MB to bytes (1 MB = 1024 * 1024 bytes)
-		const bytesValue = mb * 1024 * 1024;
+	function formatBytes(bytesValue: number): string {
 		return bytes.format(bytesValue, { unitSeparator: ' ' }) ?? '-';
 	}
 
 	function getPercentage(used: number, total: number): number {
 		if (total === 0) return 0;
-		return (used / total) * 100;
+		return Math.min(100, (used / total) * 100);
 	}
 </script>
 

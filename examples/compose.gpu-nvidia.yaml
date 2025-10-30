@@ -22,11 +22,7 @@ services:
               count: all
               capabilities: [gpu]
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "curl -fsS http://localhost:3552/api/health >/dev/null || exit 1",
-        ]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3552/api/health >/dev/null || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 5
