@@ -138,9 +138,10 @@
 		await settingsForm
 			.updateSettings(data)
 			.then(() => toast.success(m.general_settings_saved()))
-			.catch((error) => {
+			.catch((error: any) => {
 				console.error('Failed to save Docker settings:', error);
-				toast.error('Failed to save Docker settings. Please try again.');
+				const errorMessage = error?.response?.data?.error || error?.message || 'Failed to save Docker settings. Please try again.';
+				toast.error(errorMessage);
 			})
 			.finally(() => settingsForm.setLoading(false));
 	}
