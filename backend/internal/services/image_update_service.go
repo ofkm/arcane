@@ -530,6 +530,78 @@ func (s *ImageUpdateService) saveUpdateResult(ctx context.Context, imageRef stri
 	return s.saveUpdateResultByID(ctx, imageID, result)
 }
 
+func extractRepoAndTagFromImage(dockerImage image.InspectResponse) (repo, tag string) {
+	if len(dockerImage.RepoTags) > 0 && dockerImage.RepoTags[0] != "<none>:<none>" {
+		if named, err := ref.ParseNormalizedNamed(dockerImage.RepoTags[0]); err == nil {
+			repo = ref.FamiliarName(named)
+			if tagged, ok := named.(ref.NamedTagged); ok {
+				tag = tagged.Tag()
+			} else {
+				tag = "latest"
+			}
+			return repo, tag
+		}
+
+		parts := strings.SplitN(dockerImage.RepoTags[0], ":", 2)
+		repo = parts[0]
+		if len(parts) > 1 {
+			tag = parts[1]
+		} else {
+			tag = "latest"
+		}
+		return repo, tag
+	}
+
+	if len(dockerImage.RepoDigests) > 0 {
+		for _, rd := range dockerImage.RepoDigests {
+			if rd == "<none>@<none>" {
+				continue
+			}
+			if at := strings.LastIndex(rd, "@"); at != -1 {
+				repoCandidate := rd[:at]
+				if repoCandidate != "" {
+					return repoCandidate, "<none>"
+				}
+			}
+		}
+	}
+
+	return "<none>", "<none>"
+}
+
+func stringToPtr(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
+}
+
+func buildImageUpdateRecord(imageID, repo, tag string, result *dto.ImageUpdateResponse) *models.ImageUpdateRecord {
+	currentVersion := result.CurrentVersion
+	if currentVersion == "" {
+		currentVersion = tag
+	}
+
+	return &models.ImageUpdateRecord{
+		ID:             imageID,
+		Repository:     repo,
+		Tag:            tag,
+		HasUpdate:      result.HasUpdate,
+		UpdateType:     result.UpdateType,
+		CurrentVersion: currentVersion,
+		LatestVersion:  stringToPtr(result.LatestVersion),
+		CurrentDigest:  stringToPtr(result.CurrentDigest),
+		LatestDigest:   stringToPtr(result.LatestDigest),
+		CheckTime:      result.CheckTime,
+		ResponseTimeMs: result.ResponseTimeMs,
+		LastError:      stringToPtr(result.Error),
+		AuthMethod:     stringToPtr(result.AuthMethod),
+		AuthUsername:   stringToPtr(result.AuthUsername),
+		AuthRegistry:   stringToPtr(result.AuthRegistry),
+		UsedCredential: result.UsedCredential,
+	}
+}
+
 func (s *ImageUpdateService) saveUpdateResultByID(ctx context.Context, imageID string, result *dto.ImageUpdateResponse) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
@@ -542,102 +614,8 @@ func (s *ImageUpdateService) saveUpdateResultByID(ctx context.Context, imageID s
 		return fmt.Errorf("failed to inspect image: %w", err)
 	}
 
-	var repo, tag string
-	if len(dockerImage.RepoTags) > 0 && dockerImage.RepoTags[0] != "<none>:<none>" {
-		// Use distribution/reference SDK for proper parsing
-		if named, err := ref.ParseNormalizedNamed(dockerImage.RepoTags[0]); err == nil {
-			repo = ref.FamiliarName(named)
-			if tagged, ok := named.(ref.NamedTagged); ok {
-				tag = tagged.Tag()
-			} else {
-				tag = "latest"
-			}
-		} else {
-			// Fallback for malformed references
-			parts := strings.SplitN(dockerImage.RepoTags[0], ":", 2)
-			repo = parts[0]
-			if len(parts) > 1 {
-				tag = parts[1]
-			} else {
-				tag = "latest"
-			}
-		}
-	} else {
-		// Attempt to derive repo from RepoDigests if available
-		if len(dockerImage.RepoDigests) > 0 {
-			for _, rd := range dockerImage.RepoDigests {
-				if rd == "<none>@<none>" {
-					continue
-				}
-				if at := strings.LastIndex(rd, "@"); at != -1 {
-					repoCandidate := rd[:at]
-					if repoCandidate != "" {
-						repo = repoCandidate
-						tag = "<none>"
-						break
-					}
-				}
-			}
-		}
-		if repo == "" {
-			repo = "<none>"
-		}
-		if tag == "" {
-			tag = "<none>"
-		}
-	}
-
-	var lastError *string
-	if result.Error != "" {
-		lastError = &result.Error
-	}
-	var latestVersion *string
-	if result.LatestVersion != "" {
-		latestVersion = &result.LatestVersion
-	}
-	var currentDigest *string
-	if result.CurrentDigest != "" {
-		currentDigest = &result.CurrentDigest
-	}
-	var latestDigest *string
-	if result.LatestDigest != "" {
-		latestDigest = &result.LatestDigest
-	}
-
-	currentVersion := result.CurrentVersion
-	if currentVersion == "" {
-		currentVersion = tag
-	}
-
-	var authMethod, authUsername, authRegistry *string
-	if result.AuthMethod != "" {
-		authMethod = &result.AuthMethod
-	}
-	if result.AuthUsername != "" {
-		authUsername = &result.AuthUsername
-	}
-	if result.AuthRegistry != "" {
-		authRegistry = &result.AuthRegistry
-	}
-
-	updateRecord := &models.ImageUpdateRecord{
-		ID:             imageID,
-		Repository:     repo,
-		Tag:            tag,
-		HasUpdate:      result.HasUpdate,
-		UpdateType:     result.UpdateType,
-		CurrentVersion: currentVersion,
-		LatestVersion:  latestVersion,
-		CurrentDigest:  currentDigest,
-		LatestDigest:   latestDigest,
-		CheckTime:      result.CheckTime,
-		ResponseTimeMs: result.ResponseTimeMs,
-		LastError:      lastError,
-		AuthMethod:     authMethod,
-		AuthUsername:   authUsername,
-		AuthRegistry:   authRegistry,
-		UsedCredential: result.UsedCredential,
-	}
+	repo, tag := extractRepoAndTagFromImage(dockerImage)
+	updateRecord := buildImageUpdateRecord(imageID, repo, tag, result)
 
 	return s.db.WithContext(ctx).Save(updateRecord).Error
 }
