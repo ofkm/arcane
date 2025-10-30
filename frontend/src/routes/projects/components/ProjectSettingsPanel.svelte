@@ -11,7 +11,6 @@
 	import { projectSettingsService } from '$lib/services/project-settings-service';
 	import settingsStore from '$lib/stores/config-store';
 	import type { ProjectSettings } from '$lib/types/project-settings.type';
-	import { cronToHumanReadable } from '$lib/utils/cron.utils';
 	import { Button } from '$lib/components/ui/button';
 	import * as ButtonGroup from '$lib/components/ui/button-group';
 	import SaveIcon from '@lucide/svelte/icons/save';
@@ -192,7 +191,7 @@
 								<CronScheduleInput
 									bind:value={$formInputs.autoUpdateCron.value}
 									label={m.project_settings_update_schedule()}
-									description={m.project_settings_schedule_description()}
+									error={$formInputs.autoUpdateCron.error}
 								/>
 							</div>
 						{/if}
