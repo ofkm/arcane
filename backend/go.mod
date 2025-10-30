@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3
-	github.com/compose-spec/compose-go/v2 v2.9.0
+	github.com/compose-spec/compose-go/v2 v2.9.1
 	github.com/coreos/go-oidc/v3 v3.16.0
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v28.5.1+incompatible
@@ -36,6 +36,7 @@ require (
 	golang.org/x/crypto v0.43.0
 	golang.org/x/oauth2 v0.32.0
 	golang.org/x/sync v0.17.0
+	golang.org/x/text v0.30.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.0
 )
@@ -238,7 +239,6 @@ require (
 	golang.org/x/net v0.45.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/term v0.36.0 // indirect
-	golang.org/x/text v0.30.0 // indirect
 	golang.org/x/time v0.13.0 // indirect
 	golang.org/x/tools v0.37.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250908214217-97024824d090 // indirect
