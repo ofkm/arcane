@@ -15,6 +15,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { environmentManagementService } from '$lib/services/env-mgmt-service.js';
 	import { environmentStore } from '$lib/stores/environment.store.svelte';
+	import { cronToHumanReadable } from '$lib/utils/cron.utils';
 
 	let { data } = $props();
 	let { environment, settings } = $derived(data);
@@ -264,7 +265,7 @@
 											{#if settings.autoUpdate}
 												<div>
 													<Label class="text-muted-foreground text-sm font-medium">{m.docker_auto_update_interval_label()}</Label>
-													<div class="mt-1 text-sm">{settings.autoUpdateInterval} min</div>
+													<div class="mt-1 text-sm">{cronToHumanReadable(settings.autoUpdateCron)}</div>
 												</div>
 											{/if}
 											<div>

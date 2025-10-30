@@ -64,29 +64,3 @@ func (s *ProjectSettingsService) DeleteProjectSettings(ctx context.Context, proj
 		Where("project_id = ?", projectID).
 		Delete(&models.ProjectSettings{}).Error
 }
-
-func (s *ProjectSettingsService) getEffectiveSettings(ctx context.Context, projectID string) (autoUpdate bool, cron *string, err error) {
-	// 1. Try to get project settings
-	projectSettings, err := s.GetProjectSettings(ctx, projectID)
-	if err != nil {
-		return false, nil, err
-	}
-
-	// 2. If project has explicit settings, use those
-	if projectSettings != nil && projectSettings.AutoUpdate != nil {
-		autoUpdate = *projectSettings.AutoUpdate
-		cron = projectSettings.AutoUpdateCron
-		return autoUpdate, cron, nil
-	}
-
-	// 3. Fall back to global settings
-	globalSettings := s.settingsService.GetSettingsConfig()
-	autoUpdate = globalSettings.AutoUpdate.IsTrue()
-
-	if globalSettings.AutoUpdateCron.Value != "" {
-		cronValue := globalSettings.AutoUpdateCron.Value
-		cron = &cronValue
-	}
-
-	return autoUpdate, cron, nil
-}

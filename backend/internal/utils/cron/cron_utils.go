@@ -1,10 +1,12 @@
 package cron
 
 import (
+	"fmt"
+
 	"github.com/go-co-op/gocron/v2"
 )
 
-func ValidateCronExpression(expr string) error {
+func ValidateCronExpression(expr string) (err error) {
 	if expr == "" {
 		return nil // Empty is valid (means immediate updates)
 	}
@@ -13,7 +15,8 @@ func ValidateCronExpression(expr string) error {
 	// gocron.CronJob will panic if the expression is invalid, so we recover
 	defer func() {
 		if r := recover(); r != nil {
-			// Expression is invalid
+			// Expression is invalid - convert panic to error
+			err = fmt.Errorf("invalid cron expression: %v", r)
 		}
 	}()
 
