@@ -207,6 +207,23 @@ func WriteIncludeFile(projectDir, includePath, content string) error {
 		return fmt.Errorf("invalid include path: cannot create directory '%s'", dir)
 	}
 
+	// Additional check: ensure 'dir' is inside the project directory
+	absProjectDir, err := filepath.Abs(projectDir)
+	if err != nil {
+		return fmt.Errorf("invalid project directory: %w", err)
+	}
+	absProjectDir = filepath.Clean(absProjectDir)
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("invalid include directory: %w", err)
+	}
+	absDir = filepath.Clean(absDir)
+	projectPrefix := absProjectDir + string(filepath.Separator)
+	isWithinProject := strings.HasPrefix(absDir+string(filepath.Separator), projectPrefix)
+	if !isWithinProject {
+		return fmt.Errorf("write access denied: include directory is outside project directory")
+	}
+
 	// Only create directory if it doesn't exist
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		if err := os.MkdirAll(dir, 0755); err != nil {
