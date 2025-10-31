@@ -15,7 +15,21 @@
 	import { m } from '$lib/paraglide/messages';
 	import { environmentManagementService } from '$lib/services/env-mgmt-service.js';
 	import { environmentStore } from '$lib/stores/environment.store.svelte';
-	import { cronToHumanReadable } from '$lib/utils/cron.utils';
+
+	function cronToHumanReadable(expr: string | null): string {
+		if (!expr || expr.trim() === '') return m.cron_immediate();
+
+		const presets: Record<string, () => string> = {
+			'0 2 * * 6,0': () => m.cron_weekends_at({ hour: '2am' }),
+			'0 3 * * 1-5': () => m.cron_weekdays_at({ hour: '3am' }),
+			'0 0 * * *': () => m.cron_daily_at({ time: 'midnight' }),
+			'0 2 * * *': () => m.cron_daily_at({ time: '2am' }),
+			'0 */6 * * *': () => m.cron_every_n_hours({ hours: '6' }),
+			'0 */12 * * *': () => m.cron_every_n_hours({ hours: '12' })
+		};
+
+		return presets[expr.trim()]?.() ?? expr.trim();
+	}
 
 	let { data } = $props();
 	let { environment, settings } = $derived(data);

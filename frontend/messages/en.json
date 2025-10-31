@@ -887,7 +887,7 @@
 	"docker_auto_update_description": "Automatically update containers when newer images are found",
 	"docker_rate_limit_warning_title": "Rate Limiting Warning",
 	"docker_rate_limit_warning_description": "Polling intervals below 30 minutes may trigger registry rate limits. Prefer longer intervals in production.",
-	
+
 	"_comment_cron": "=== CRON SCHEDULING ===",
 	"cron_immediate": "Immediate",
 	"cron_immediate_description": "Updates will be applied as soon as new images are detected",
@@ -897,8 +897,8 @@
 	"cron_every_n_hours": "Every {hours} hours",
 	"cron_custom": "Custom schedule",
 	"cron_invalid": "Invalid cron expression",
-	"cron_format_help": "Format: minute hour day month weekday (e.g., \"0 2 * * 6,0\")",
-	
+	"cron_help_text": "Enter a 5-field cron expression (minute hour day month weekday)",
+
 	"_comment_project_settings": "=== PROJECT SETTINGS ===",
 	"project_settings_title": "Project Settings",
 	"project_settings_auto_update_title": "Auto-Update",

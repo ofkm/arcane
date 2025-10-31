@@ -1,7 +1,8 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
-	import CronScheduleInput from '$lib/components/form/cron-schedule-input.svelte';
+	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
+	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import ZapIcon from '@lucide/svelte/icons/zap';
 	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import settingsStore from '$lib/stores/config-store';
@@ -27,6 +28,65 @@
 	$effect(() => {
 		if (autoUpdateCron !== undefined && autoUpdateCron !== normalizeEmptyValue(autoUpdateCron)) {
 			autoUpdateCron = normalizeEmptyValue(autoUpdateCron);
+		}
+	});
+
+	const cronScheduleOptions = [
+		{
+			value: null,
+			label: m.cron_immediate(),
+			description: m.cron_immediate_description()
+		},
+		{
+			value: '0 2 * * 6,0',
+			label: m.cron_weekends_at({ hour: '2am' }),
+			description: m.cron_weekends_at({ hour: '2am' })
+		},
+		{
+			value: '0 3 * * 1-5',
+			label: m.cron_weekdays_at({ hour: '3am' }),
+			description: m.cron_weekdays_at({ hour: '3am' })
+		},
+		{
+			value: '0 0 * * *',
+			label: m.cron_daily_at({ time: 'midnight' }),
+			description: m.cron_daily_at({ time: 'midnight' })
+		},
+		{
+			value: '0 2 * * *',
+			label: m.cron_daily_at({ time: '2am' }),
+			description: m.cron_daily_at({ time: '2am' })
+		},
+		{
+			value: '0 */6 * * *',
+			label: m.cron_every_n_hours({ hours: '6' }),
+			description: m.cron_every_n_hours({ hours: '6' })
+		},
+		{
+			value: '0 */12 * * *',
+			label: m.cron_every_n_hours({ hours: '12' }),
+			description: m.cron_every_n_hours({ hours: '12' })
+		},
+		{
+			value: 'custom',
+			label: m.custom(),
+			description: 'Enter a custom cron expression'
+		}
+	] as const;
+
+	let cronScheduleMode = $state<string | null>(
+		(() => {
+			const cron = autoUpdateCron;
+			if (!cron || cron.trim() === '') return null; // Default to immediate
+			const found = cronScheduleOptions.find((o) => o.value === cron);
+			return found?.value ?? 'custom';
+		})()
+	);
+
+	// Update the actual cron value when mode changes
+	$effect(() => {
+		if (cronScheduleMode !== 'custom' && cronScheduleMode !== null) {
+			autoUpdateCron = cronScheduleMode;
 		}
 	});
 </script>
@@ -82,8 +142,32 @@
 						/>
 
 						{#if autoUpdate}
-							<div class="border-primary/20 border-l-2 pl-3">
-								<CronScheduleInput bind:value={autoUpdateCron as string | null} label={m.project_settings_update_schedule()} />
+							<div class="border-primary/20 space-y-3 border-l-2 pl-3">
+								<SelectWithLabel
+									id="cronScheduleMode"
+									name="cronScheduleMode"
+									value={cronScheduleMode ?? 'null'}
+									onValueChange={(v) => (cronScheduleMode = v === 'null' ? null : v)}
+									label={m.project_settings_update_schedule()}
+									placeholder={m.docker_polling_interval_placeholder_select()}
+									options={cronScheduleOptions.map(({ value, label, description }) => ({
+										value: value === null ? 'null' : value,
+										label,
+										description
+									}))}
+								/>
+
+								{#if cronScheduleMode === 'custom'}
+									<TextInputWithLabel
+										value={autoUpdateCron ?? ''}
+										error={null}
+										label={m.custom()}
+										placeholder="0 2 * * *"
+										helpText={m.cron_help_text()}
+										type="text"
+										onChange={(v) => (autoUpdateCron = v || null)}
+									/>
+								{/if}
 							</div>
 						{/if}
 					</div>

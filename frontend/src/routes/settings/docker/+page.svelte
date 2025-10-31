@@ -15,7 +15,6 @@
 	import TrashIcon from '@lucide/svelte/icons/trash';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
-	import CronScheduleInput from '$lib/components/form/cron-schedule-input.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { SettingsPageLayout } from '$lib/layouts';
@@ -25,11 +24,27 @@
 	const currentSettings = $derived<Settings>($settingsStore || data.settings!);
 	const isReadOnly = $derived.by(() => $settingsStore?.uiConfigDisabled);
 
+	const cronExpressionSchema = z
+		.string()
+		.nullable()
+		.default(null)
+		.refine(
+			(val) => {
+				if (!val || val.trim() === '') return true;
+				const cronRegex =
+					/^(\*|[0-5]?\d|[0-5]?\d-[0-5]?\d|[0-5]?\d\/[0-5]?\d|\*\/[0-5]?\d|[0-5]?\d(,[0-5]?\d)+)\s+(\*|[01]?\d|2[0-3]|[01]?\d-[01]?\d|[01]?\d\/[01]?\d|\*\/[01]?\d|[01]?\d(,[01]?\d)+)\s+(\*|[1-9]|[12]\d|3[01]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[1-9]|1[0-2]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[0-6]|[0-6]-[0-6]|[0-6]\/[0-6]|\*\/[0-6]|[0-6](,[0-6])+)$/;
+				return cronRegex.test(val.trim());
+			},
+			{
+				message: 'Invalid cron expression format. Expected 5 fields: minute hour day month weekday'
+			}
+		);
+
 	const formSchema = z.object({
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
-		autoUpdateCron: z.string().nullable(),
+		autoUpdateCron: cronExpressionSchema,
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		defaultShell: z.string()
 	});
@@ -101,7 +116,59 @@
 		{ value: '/bin/zsh', label: '/bin/zsh', description: m.docker_shell_zsh_description() }
 	];
 
+	const cronScheduleOptions = [
+		{
+			value: null,
+			label: m.cron_immediate(),
+			description: m.cron_immediate_description()
+		},
+		{
+			value: '0 2 * * 6,0',
+			label: m.cron_weekends_at({ hour: '2am' }),
+			description: m.cron_weekends_at({ hour: '2am' })
+		},
+		{
+			value: '0 3 * * 1-5',
+			label: m.cron_weekdays_at({ hour: '3am' }),
+			description: m.cron_weekdays_at({ hour: '3am' })
+		},
+		{
+			value: '0 0 * * *',
+			label: m.cron_daily_at({ time: 'midnight' }),
+			description: m.cron_daily_at({ time: 'midnight' })
+		},
+		{
+			value: '0 2 * * *',
+			label: m.cron_daily_at({ time: '2am' }),
+			description: m.cron_daily_at({ time: '2am' })
+		},
+		{
+			value: '0 */6 * * *',
+			label: m.cron_every_n_hours({ hours: '6' }),
+			description: m.cron_every_n_hours({ hours: '6' })
+		},
+		{
+			value: '0 */12 * * *',
+			label: m.cron_every_n_hours({ hours: '12' }),
+			description: m.cron_every_n_hours({ hours: '12' })
+		},
+		{
+			value: 'custom',
+			label: m.custom(),
+			description: 'Enter a custom cron expression'
+		}
+	] as const;
+
 	let shellSelectValue = $state<string>(shellOptions.find((o) => o.value === currentSettings.defaultShell)?.value ?? 'custom');
+
+	let cronScheduleMode = $state<string | null>(
+		(() => {
+			const cron = currentSettings.autoUpdateCron;
+			if (!cron || cron.trim() === '') return null; // Default to immediate
+			const found = cronScheduleOptions.find((o) => o.value === cron);
+			return found?.value ?? 'custom';
+		})()
+	);
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
@@ -127,6 +194,12 @@
 		}
 	});
 
+	$effect(() => {
+		if (cronScheduleMode !== 'custom' && cronScheduleMode !== null) {
+			$formInputs.autoUpdateCron.value = cronScheduleMode;
+		}
+	});
+
 	async function onSubmit() {
 		const data = form.validate();
 		if (!data) {
@@ -140,7 +213,8 @@
 			.then(() => toast.success(m.general_settings_saved()))
 			.catch((error: any) => {
 				console.error('Failed to save Docker settings:', error);
-				const errorMessage = error?.response?.data?.error || error?.message || 'Failed to save Docker settings. Please try again.';
+				const errorMessage =
+					error?.response?.data?.error || error?.message || 'Failed to save Docker settings. Please try again.';
 				toast.error(errorMessage);
 			})
 			.finally(() => settingsForm.setLoading(false));
@@ -240,12 +314,32 @@
 								/>
 
 								{#if $formInputs.autoUpdate.value}
-									<div class="border-primary/20 border-l-2 pl-3">
-										<CronScheduleInput
-											bind:value={$formInputs.autoUpdateCron.value}
+									<div class="border-primary/20 space-y-3 border-l-2 pl-3">
+										<SelectWithLabel
+											id="cronScheduleMode"
+											name="cronScheduleMode"
+											value={cronScheduleMode ?? 'null'}
+											onValueChange={(v) => (cronScheduleMode = v === 'null' ? null : v)}
 											label={m.project_settings_update_schedule()}
-											error={$formInputs.autoUpdateCron.error}
+											placeholder={m.docker_polling_interval_placeholder_select()}
+											options={cronScheduleOptions.map(({ value, label, description }) => ({
+												value: value === null ? 'null' : value,
+												label,
+												description
+											}))}
 										/>
+
+										{#if cronScheduleMode === 'custom'}
+											<TextInputWithLabel
+												value={$formInputs.autoUpdateCron.value ?? ''}
+												error={$formInputs.autoUpdateCron.error}
+												label={m.custom()}
+												placeholder="0 2 * * *"
+												helpText={m.cron_help_text()}
+												type="text"
+												onChange={(v) => ($formInputs.autoUpdateCron.value = v || null)}
+											/>
+										{/if}
 									</div>
 								{/if}
 							</div>
