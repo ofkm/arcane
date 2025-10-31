@@ -14,7 +14,7 @@ func ValidateCronExpression(expr string) error {
 
 	// Create a parser that accepts standard 5-field cron expressions
 	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
-	
+
 	// Try to parse the expression
 	_, err := parser.Parse(expr)
 	if err != nil {
