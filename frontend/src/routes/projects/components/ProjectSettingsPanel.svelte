@@ -85,7 +85,7 @@
 
 	// Update the actual cron value when mode changes
 	$effect(() => {
-		if (cronScheduleMode !== 'custom' && cronScheduleMode !== null) {
+		if (cronScheduleMode !== 'custom') {
 			autoUpdateCron = cronScheduleMode;
 		}
 	});

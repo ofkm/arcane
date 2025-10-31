@@ -195,7 +195,7 @@
 	});
 
 	$effect(() => {
-		if (cronScheduleMode !== 'custom' && cronScheduleMode !== null) {
+		if (cronScheduleMode !== 'custom') {
 			$formInputs.autoUpdateCron.value = cronScheduleMode;
 		}
 	});
