@@ -14,7 +14,7 @@ var (
 // NormalizeContainerLine parses a raw container log line into level + cleaned message.
 // It extracts Docker's timestamp if present (when timestamps=true in Docker API).
 func NormalizeContainerLine(raw string) (level string, msg string, timestamp string) {
-	line := StripANSI(strings.TrimRight(raw, "\r\n"))
+	line := strings.TrimRight(raw, "\r\n")
 
 	level = "stdout"
 	switch {

@@ -307,6 +307,8 @@
 					maxValue={100}
 					formatValue={(v) => `${v.toFixed(1)}`}
 					loading={isLoading.loadingStats || !hasInitialStatsLoaded}
+					showAbsoluteValues={true}
+					formatAbsoluteValue={() => `${currentStats?.cpuCount || 0} ${m.common_cpus()}`}
 				/>
 
 				<MeterMetric

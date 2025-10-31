@@ -1,7 +1,7 @@
 {
   "name": "arcane-frontend",
   "private": true,
-  "version": "1.7.0",
+  "version": "1.7.2",
   "type": "module",
   "packageManager": "pnpm@10.20.0",
   "scripts": {
@@ -28,6 +28,7 @@
     "@uiw/codemirror-themes": "^4.25.2",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/xterm": "^5.5.0",
+    "ansi-to-html": "^0.7.2",
     "axios": "^1.13.1",
     "codemirror": "^6.0.2",
     "date-fns": "^4.1.0",

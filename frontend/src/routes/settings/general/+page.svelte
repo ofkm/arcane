@@ -1,9 +1,8 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import { z } from 'zod/v4';
-	import { getContext, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
-	import type { Settings } from '$lib/types/settings.type';
 	import { toast } from 'svelte-sonner';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
 	import { m } from '$lib/paraglide/messages';
@@ -13,20 +12,18 @@
 	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import settingsStore from '$lib/stores/config-store';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
-	import { settingsService } from '$lib/services/settings-service';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import AccentColorPicker from '$lib/components/accent-color/accent-color-picker.svelte';
 	import { applyAccentColor } from '$lib/utils/accent-color-util';
 	import SparklesIcon from '@lucide/svelte/icons/sparkles';
 	import { Switch } from '$lib/components/ui/switch/index.js';
+	import { UseSettingsForm } from '$lib/hooks/use-settings-form.svelte';
 
 	let { data } = $props();
-	let hasChanges = $state(false);
-	let isLoading = $state(false);
 
-	let currentSettings = $state(data.settings!);
-	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
-	const formState = getContext('settingsFormState') as any;
+	const currentSettings = $derived($settingsStore || data.settings!);
+	const isReadOnly = $derived.by(() => $settingsStore?.uiConfigDisabled);
+
 	const formSchema = z.object({
 		projectsDirectory: z.string().min(1, m.general_projects_directory_required()),
 		baseServerUrl: z.string().min(1, m.general_base_url_required()),
@@ -37,34 +34,14 @@
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
-	const formHasChanges = $derived.by(
-		() =>
+	const settingsForm = new UseSettingsForm({
+		hasChangesChecker: () =>
 			$formInputs.projectsDirectory.value !== currentSettings.projectsDirectory ||
 			$formInputs.baseServerUrl.value !== currentSettings.baseServerUrl ||
 			$formInputs.enableGravatar.value !== currentSettings.enableGravatar ||
 			$formInputs.accentColor.value !== currentSettings.accentColor ||
 			$formInputs.glassEffectEnabled.value !== currentSettings.glassEffectEnabled
-	);
-
-	$effect(() => {
-		hasChanges = formHasChanges;
-		if (formState) {
-			formState.hasChanges = hasChanges;
-			formState.isLoading = isLoading;
-		}
 	});
-
-	async function updateSettingsConfig(updatedSettings: Partial<Settings>) {
-		try {
-			await settingsService.updateSettings(updatedSettings as any);
-			currentSettings = { ...currentSettings, ...updatedSettings };
-			settingsStore.set(currentSettings);
-			settingsStore.reload();
-		} catch (error) {
-			console.error('Error updating settings:', error);
-			throw error;
-		}
-	}
 
 	async function onSubmit() {
 		const data = form.validate();
@@ -72,31 +49,29 @@
 			toast.error('Please check the form for errors');
 			return;
 		}
-		isLoading = true;
+		settingsForm.setLoading(true);
 
-		await updateSettingsConfig(data)
+		await settingsForm
+			.updateSettings(data)
 			.then(() => toast.success(m.general_settings_saved()))
 			.catch((error) => {
 				console.error('Failed to save settings:', error);
 				toast.error('Failed to save settings. Please try again.');
 			})
-			.finally(() => (isLoading = false));
+			.finally(() => settingsForm.setLoading(false));
 	}
 
 	function resetForm() {
-		$formInputs.projectsDirectory.value = data.settings!.projectsDirectory;
-		$formInputs.baseServerUrl.value = data.settings!.baseServerUrl;
-		$formInputs.enableGravatar.value = data.settings!.enableGravatar;
-		$formInputs.accentColor.value = data.settings!.accentColor;
-		$formInputs.glassEffectEnabled.value = data.settings!.glassEffectEnabled;
-		applyAccentColor(data.settings!.accentColor);
+		$formInputs.projectsDirectory.value = currentSettings.projectsDirectory;
+		$formInputs.baseServerUrl.value = currentSettings.baseServerUrl;
+		$formInputs.enableGravatar.value = currentSettings.enableGravatar;
+		$formInputs.accentColor.value = currentSettings.accentColor;
+		$formInputs.glassEffectEnabled.value = currentSettings.glassEffectEnabled;
+		applyAccentColor(currentSettings.accentColor);
 	}
 
 	onMount(() => {
-		if (formState) {
-			formState.saveFunction = onSubmit;
-			formState.resetFunction = resetForm;
-		}
+		settingsForm.registerFormActions(onSubmit, resetForm);
 	});
 </script>
 

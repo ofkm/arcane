@@ -13,6 +13,7 @@ import (
 
 	"log/slog"
 
+	ref "github.com/distribution/reference"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
@@ -59,6 +60,7 @@ func (s *ImageService) GetImageByID(ctx context.Context, id string) (*image.Insp
 func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, user models.User) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
+		s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", id, "", user.ID, user.Username, "0", err, models.JSON{"action": "delete", "force": force})
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
@@ -78,6 +80,7 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, u
 
 	_, err = dockerClient.ImageRemove(ctx, id, options)
 	if err != nil {
+		s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", id, imageName, user.ID, user.Username, "0", err, models.JSON{"action": "delete", "force": force})
 		return fmt.Errorf("failed to remove image: %w", err)
 	}
 
@@ -100,6 +103,7 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, u
 func (s *ImageService) PullImage(ctx context.Context, imageName string, progressWriter io.Writer, user models.User, externalCreds []dto.ContainerRegistryCredential) error {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
+		s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", "", imageName, user.ID, user.Username, "0", err, models.JSON{"action": "pull"})
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
@@ -122,6 +126,7 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 			slog.String("image", imageName),
 			slog.Bool("hasAuth", pullOptions.RegistryAuth != ""),
 			slog.String("error", err.Error()))
+		s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", "", imageName, user.ID, user.Username, "0", err, models.JSON{"action": "pull"})
 		return fmt.Errorf("failed to initiate image pull for %s: %w", imageName, err)
 	}
 	defer reader.Close()
@@ -132,9 +137,11 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		if _, writeErr := progressWriter.Write(line); writeErr != nil {
+			s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", "", imageName, user.ID, user.Username, "0", writeErr, models.JSON{"action": "pull", "step": "write_progress"})
 			return fmt.Errorf("error writing pull progress for %s: %w", imageName, writeErr)
 		}
 		if _, writeErr := progressWriter.Write([]byte("\n")); writeErr != nil {
+			s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", "", imageName, user.ID, user.Username, "0", writeErr, models.JSON{"action": "pull", "step": "write_newline"})
 			return fmt.Errorf("error writing newline for %s: %w", imageName, writeErr)
 		}
 
@@ -145,8 +152,10 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	if scanErr := scanner.Err(); scanErr != nil {
 		if errors.Is(scanErr, context.Canceled) || strings.Contains(scanErr.Error(), "context canceled") {
 			slog.Debug("image pull stream canceled", slog.String("image", imageName), slog.Any("err", scanErr))
+			s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", "", imageName, user.ID, user.Username, "0", scanErr, models.JSON{"action": "pull", "step": "canceled"})
 			return fmt.Errorf("image pull stream canceled for %s: %w", imageName, scanErr)
 		}
+		s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", "", imageName, user.ID, user.Username, "0", scanErr, models.JSON{"action": "pull", "step": "read_stream"})
 		return fmt.Errorf("error reading image pull stream for %s: %w", imageName, scanErr)
 	}
 
@@ -505,69 +514,97 @@ func buildUpdateMap(records []models.ImageUpdateRecord) map[string]*models.Image
 	return updateMap
 }
 
+func parseRepoAndTagFromRepoTag(repoTag string) (repo, tag string) {
+	if named, err := ref.ParseNormalizedNamed(repoTag); err == nil {
+		repo = ref.FamiliarName(named)
+		if tagged, ok := named.(ref.NamedTagged); ok {
+			tag = tagged.Tag()
+		} else {
+			tag = "latest"
+		}
+		return repo, tag
+	}
+
+	if lastColonIdx := strings.LastIndex(repoTag, ":"); lastColonIdx != -1 {
+		return repoTag[:lastColonIdx], repoTag[lastColonIdx+1:]
+	}
+	return repoTag, "latest"
+}
+
+func parseRepoFromDigests(repoDigests []string) (repo string, found bool) {
+	for _, rd := range repoDigests {
+		if rd == "<none>@<none>" {
+			continue
+		}
+		if at := strings.LastIndex(rd, "@"); at != -1 {
+			candidateRepo := rd[:at]
+			if candidateRepo != "" {
+				return candidateRepo, true
+			}
+		}
+	}
+	return "", false
+}
+
+func determineRepoAndTag(di image.Summary) (repo, tag string) {
+	if len(di.RepoTags) > 0 {
+		return parseRepoAndTagFromRepoTag(di.RepoTags[0])
+	}
+
+	if len(di.RepoDigests) > 0 {
+		if r, found := parseRepoFromDigests(di.RepoDigests); found {
+			return r, "<none>"
+		}
+	}
+
+	return "<none>", "<none>"
+}
+
+func stringPtrValue(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func buildUpdateInfo(updateRecord *models.ImageUpdateRecord) *dto.ImageUpdateInfoDto {
+	return &dto.ImageUpdateInfoDto{
+		HasUpdate:      updateRecord.HasUpdate,
+		UpdateType:     updateRecord.UpdateType,
+		CurrentVersion: updateRecord.CurrentVersion,
+		LatestVersion:  stringPtrValue(updateRecord.LatestVersion),
+		CurrentDigest:  stringPtrValue(updateRecord.CurrentDigest),
+		LatestDigest:   stringPtrValue(updateRecord.LatestDigest),
+		CheckTime:      updateRecord.CheckTime,
+		ResponseTimeMs: updateRecord.ResponseTimeMs,
+		Error:          stringPtrValue(updateRecord.LastError),
+		AuthMethod:     stringPtrValue(updateRecord.AuthMethod),
+		AuthUsername:   stringPtrValue(updateRecord.AuthUsername),
+		AuthRegistry:   stringPtrValue(updateRecord.AuthRegistry),
+		UsedCredential: updateRecord.UsedCredential,
+	}
+}
+
 func mapDockerImagesToDTOs(dockerImages []image.Summary, inUseMap map[string]bool, updateMap map[string]*models.ImageUpdateRecord) []dto.ImageSummaryDto {
 	items := make([]dto.ImageSummaryDto, 0, len(dockerImages))
 	for _, di := range dockerImages {
-		inUse := inUseMap[di.ID]
+		repo, tag := determineRepoAndTag(di)
 
 		imageDto := dto.ImageSummaryDto{
 			ID:          di.ID,
+			Repo:        repo,
+			Tag:         tag,
 			RepoTags:    di.RepoTags,
 			RepoDigests: di.RepoDigests,
 			Created:     di.Created,
 			Size:        di.Size,
 			VirtualSize: di.SharedSize,
 			Labels:      convertLabels(di.Labels),
-			InUse:       inUse,
-		}
-
-		if len(di.RepoTags) > 0 {
-			repoTag := di.RepoTags[0]
-			// Use LastIndex to split on the LAST colon, correctly handling registry:port/image:tag
-			lastColonIdx := strings.LastIndex(repoTag, ":")
-			if lastColonIdx != -1 {
-				imageDto.Repo = repoTag[:lastColonIdx]
-				imageDto.Tag = repoTag[lastColonIdx+1:]
-				// Handle edge cases
-				if imageDto.Repo == "" {
-					imageDto.Repo = "<none>"
-				}
-				if imageDto.Tag == "" {
-					imageDto.Tag = "<none>"
-				}
-			} else {
-				// No colon found, treat entire string as repo with default tag
-				imageDto.Repo = repoTag
-				imageDto.Tag = "latest"
-			}
-		} else {
-			imageDto.Repo = "<none>"
-			imageDto.Tag = "<none>"
+			InUse:       inUseMap[di.ID],
 		}
 
 		if updateRecord, exists := updateMap[di.ID]; exists {
-			sp := func(p *string) string {
-				if p == nil {
-					return ""
-				}
-				return *p
-			}
-
-			imageDto.UpdateInfo = &dto.ImageUpdateInfoDto{
-				HasUpdate:      updateRecord.HasUpdate,
-				UpdateType:     updateRecord.UpdateType,
-				CurrentVersion: updateRecord.CurrentVersion,
-				LatestVersion:  sp(updateRecord.LatestVersion),
-				CurrentDigest:  sp(updateRecord.CurrentDigest),
-				LatestDigest:   sp(updateRecord.LatestDigest),
-				CheckTime:      updateRecord.CheckTime,
-				ResponseTimeMs: updateRecord.ResponseTimeMs,
-				Error:          sp(updateRecord.LastError),
-				AuthMethod:     sp(updateRecord.AuthMethod),
-				AuthUsername:   sp(updateRecord.AuthUsername),
-				AuthRegistry:   sp(updateRecord.AuthRegistry),
-				UsedCredential: updateRecord.UsedCredential,
-			}
+			imageDto.UpdateInfo = buildUpdateInfo(updateRecord)
 		}
 
 		items = append(items, imageDto)

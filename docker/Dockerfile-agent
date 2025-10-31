@@ -4,20 +4,20 @@ ARG REVISION="unknown"
 
 FROM golang:1.25-alpine AS agent-builder
 ARG BUILD_TAGS="exclude_frontend"
-ARG VERSION
-ARG REVISION
 WORKDIR /build
 
 RUN apk add --no-cache git ca-certificates tzdata curl
 
+COPY ./.version ./VERSION
 COPY ./backend/go.mod ./backend/go.sum ./
 RUN go mod download
 
 COPY ./backend ./backend
 
 WORKDIR /build/backend
-RUN CGO_ENABLED=0 \
-    GOOS=linux \
+RUN VERSION=$(cat ../VERSION | tr -d '[:space:]') && \
+    REVISION=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") && \
+    CGO_ENABLED=0 GOOS=linux \
     go build \
     -tags "${BUILD_TAGS}" \
     -ldflags "-w -s -X github.com/ofkm/arcane-backend/internal/config.Version=${VERSION} -X github.com/ofkm/arcane-backend/internal/config.Revision=${REVISION}" \

@@ -4,11 +4,11 @@ go 1.25.0
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3
-	github.com/compose-spec/compose-go/v2 v2.9.0
+	github.com/compose-spec/compose-go/v2 v2.9.1
 	github.com/coreos/go-oidc/v3 v3.16.0
 	github.com/distribution/reference v0.6.0
 	github.com/docker/cli v28.5.1+incompatible
-	github.com/docker/compose/v2 v2.40.2
+	github.com/docker/compose/v2 v2.40.3
 	github.com/docker/distribution v2.8.3+incompatible
 	github.com/docker/docker v28.5.1+incompatible
 	github.com/docker/go-connections v0.6.0
@@ -30,12 +30,13 @@ require (
 	github.com/lmittmann/tint v1.1.2
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/samber/slog-gin v1.18.0
-	github.com/shirou/gopsutil/v3 v3.24.5
+	github.com/shirou/gopsutil/v4 v4.25.9
 	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.43.0
 	golang.org/x/oauth2 v0.32.0
 	golang.org/x/sync v0.17.0
+	golang.org/x/text v0.30.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.0
 )
@@ -85,6 +86,7 @@ require (
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/ebitengine/purego v0.9.0 // indirect
 	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
@@ -195,7 +197,6 @@ require (
 	github.com/secure-systems-lab/go-securesystemslib v0.9.1 // indirect
 	github.com/serialx/hashring v0.0.0-20200727003509-22c0c7ab6b1b // indirect
 	github.com/shibumi/go-pathspec v1.3.0 // indirect
-	github.com/shoenig/go-m1cpu v0.1.7 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
@@ -238,7 +239,6 @@ require (
 	golang.org/x/net v0.45.0 // indirect
 	golang.org/x/sys v0.37.0 // indirect
 	golang.org/x/term v0.36.0 // indirect
-	golang.org/x/text v0.30.0 // indirect
 	golang.org/x/time v0.13.0 // indirect
 	golang.org/x/tools v0.37.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250908214217-97024824d090 // indirect

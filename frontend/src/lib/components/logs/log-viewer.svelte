@@ -4,6 +4,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { ReconnectingWebSocket } from '$lib/utils/ws';
 	import { cn } from '$lib/utils';
+	import { ansiToHtml } from '$lib/utils/ansi';
 	import { onDestroy } from 'svelte';
 
 	interface LogEntry {
@@ -408,7 +409,7 @@
 						</span>
 					</div>
 					<div class="text-sm break-words whitespace-pre-wrap text-gray-300">
-						{log.message}
+						{@html ansiToHtml(log.message)}
 					</div>
 				</div>
 
@@ -428,7 +429,7 @@
 						{log.level.toUpperCase()}
 					</span>
 					<span class="flex-1 break-words whitespace-pre-wrap text-gray-300">
-						{log.message}
+						{@html ansiToHtml(log.message)}
 					</span>
 				</div>
 			{/each}
