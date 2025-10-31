@@ -74,7 +74,7 @@ export class MobileNavGestures {
 		if (!t) return;
 		const deltaY = t.clientY - this.touchStartY;
 		const deltaX = t.clientX - this.touchStartX;
-		
+
 		if (Math.abs(deltaY) < this.touchMoveThreshold && Math.abs(deltaX) < this.touchMoveThreshold) return;
 
 		// If horizontal movement is dominant, ignore this touch sequence
