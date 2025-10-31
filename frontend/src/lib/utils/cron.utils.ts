@@ -1,5 +1,6 @@
 import { m } from '$lib/paraglide/messages';
 import type { Component } from 'svelte';
+import { z } from 'zod/v4';
 import ZapIcon from '@lucide/svelte/icons/zap';
 import CalendarIcon from '@lucide/svelte/icons/calendar';
 import BriefcaseIcon from '@lucide/svelte/icons/briefcase';
@@ -63,6 +64,29 @@ export const commonCronPresets: CronPreset[] = [
 ];
 
 /**
+ * Zod schema for cron expressions
+ * Basic 5-field cron validation (minute hour day month weekday)
+ * Backend will perform more thorough validation
+ */
+export const cronExpressionSchema = z
+	.string()
+	.nullable()
+	.optional()
+	.refine(
+		(val) => {
+			if (!val || val.trim() === '') return true; // Empty is valid (immediate)
+			
+			// Basic 5-part cron regex: minute hour day month weekday
+			const cronRegex = /^(\*|[0-5]?\d|[0-5]?\d-[0-5]?\d|[0-5]?\d\/[0-5]?\d|\*\/[0-5]?\d|[0-5]?\d(,[0-5]?\d)+)\s+(\*|[01]?\d|2[0-3]|[01]?\d-[01]?\d|[01]?\d\/[01]?\d|\*\/[01]?\d|[01]?\d(,[01]?\d)+)\s+(\*|[1-9]|[12]\d|3[01]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[1-9]|1[0-2]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[0-6]|[0-6]-[0-6]|[0-6]\/[0-6]|\*\/[0-6]|[0-6](,[0-6])+)$/;
+			
+			return cronRegex.test(val.trim());
+		},
+		{
+			message: 'Invalid cron expression format. Expected 5 fields: minute hour day month weekday'
+		}
+	);
+
+/**
  * Convert cron expression to human-readable text with i18n support
  */
 export function cronToHumanReadable(expr: string | null): string {
@@ -78,57 +102,7 @@ export function cronToHumanReadable(expr: string | null): string {
 		return preset.label;
 	}
 
-	// Try to parse common patterns
-	const parts = normalized.split(/\s+/);
-	if (parts.length !== 5) {
-		return normalized; // Fallback to showing the expression
-	}
-
-	const [minute, hour, day, month, weekday] = parts;
-
-	// Pattern: Weekends at specific time (e.g., "0 2 * * 6,0")
-	if (day === '*' && month === '*' && (weekday === '6,0' || weekday === '0,6')) {
-		const hourNum = parseInt(hour);
-		if (!isNaN(hourNum) && minute === '0') {
-			const time = formatHour(hourNum);
-			return m.cron_weekends_at({ hour: time });
-		}
-	}
-
-	// Pattern: Weekdays at specific time (e.g., "0 3 * * 1-5")
-	if (day === '*' && month === '*' && weekday === '1-5') {
-		const hourNum = parseInt(hour);
-		if (!isNaN(hourNum) && minute === '0') {
-			const time = formatHour(hourNum);
-			return m.cron_weekdays_at({ hour: time });
-		}
-	}
-
-	// Pattern: Daily at specific time (e.g., "0 2 * * *")
-	if (day === '*' && month === '*' && weekday === '*') {
-		const hourNum = parseInt(hour);
-		if (!isNaN(hourNum) && minute === '0') {
-			const time = formatHour(hourNum);
-			return m.cron_daily_at({ time });
-		}
-	}
-
-	// Pattern: Every N hours (e.g., "0 */6 * * *")
-	if (day === '*' && month === '*' && weekday === '*' && minute === '0' && hour.startsWith('*/')) {
-		const hours = hour.substring(2);
-		return m.cron_every_n_hours({ hours });
-	}
-
-	// Fallback: return the expression itself
+	// Return expression as-is (backend will validate)
 	return normalized;
 }
 
-/**
- * Format hour number to human-readable time
- */
-function formatHour(hour: number): string {
-	if (hour === 0) return 'midnight';
-	if (hour === 12) return 'noon';
-	if (hour < 12) return `${hour}am`;
-	return `${hour - 12}pm`;
-}
