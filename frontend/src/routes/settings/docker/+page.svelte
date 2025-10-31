@@ -19,26 +19,11 @@
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import { UseSettingsForm } from '$lib/hooks/use-settings-form.svelte';
+	import { commonCronPresets, cronExpressionSchema } from '$lib/utils/cron.utils';
 
 	let { data } = $props();
 	const currentSettings = $derived<Settings>($settingsStore || data.settings!);
 	const isReadOnly = $derived.by(() => $settingsStore?.uiConfigDisabled);
-
-	const cronExpressionSchema = z
-		.string()
-		.nullable()
-		.default(null)
-		.refine(
-			(val) => {
-				if (!val || val.trim() === '') return true;
-				const cronRegex =
-					/^(\*|[0-5]?\d|[0-5]?\d-[0-5]?\d|[0-5]?\d\/[0-5]?\d|\*\/[0-5]?\d|[0-5]?\d(,[0-5]?\d)+)\s+(\*|[01]?\d|2[0-3]|[01]?\d-[01]?\d|[01]?\d\/[01]?\d|\*\/[01]?\d|[01]?\d(,[01]?\d)+)\s+(\*|[1-9]|[12]\d|3[01]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[1-9]|1[0-2]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[0-6]|[0-6]-[0-6]|[0-6]\/[0-6]|\*\/[0-6]|[0-6](,[0-6])+)$/;
-				return cronRegex.test(val.trim());
-			},
-			{
-				message: 'Invalid cron expression format. Expected 5 fields: minute hour day month weekday'
-			}
-		);
 
 	const formSchema = z.object({
 		pollingEnabled: z.boolean(),
@@ -117,45 +102,11 @@
 	];
 
 	const cronScheduleOptions = [
-		{
-			value: null,
-			label: m.cron_immediate(),
-			description: m.cron_immediate_description()
-		},
-		{
-			value: '0 2 * * 6,0',
-			label: m.cron_weekends_at({ hour: '2am' }),
-			description: m.cron_weekends_at({ hour: '2am' })
-		},
-		{
-			value: '0 3 * * 1-5',
-			label: m.cron_weekdays_at({ hour: '3am' }),
-			description: m.cron_weekdays_at({ hour: '3am' })
-		},
-		{
-			value: '0 0 * * *',
-			label: m.cron_daily_at({ time: 'midnight' }),
-			description: m.cron_daily_at({ time: 'midnight' })
-		},
-		{
-			value: '0 2 * * *',
-			label: m.cron_daily_at({ time: '2am' }),
-			description: m.cron_daily_at({ time: '2am' })
-		},
-		{
-			value: '0 */6 * * *',
-			label: m.cron_every_n_hours({ hours: '6' }),
-			description: m.cron_every_n_hours({ hours: '6' })
-		},
-		{
-			value: '0 */12 * * *',
-			label: m.cron_every_n_hours({ hours: '12' }),
-			description: m.cron_every_n_hours({ hours: '12' })
-		},
+		...commonCronPresets,
 		{
 			value: 'custom',
 			label: m.custom(),
-			description: 'Enter a custom cron expression'
+			description: m.cron_custom_description()
 		}
 	] as const;
 

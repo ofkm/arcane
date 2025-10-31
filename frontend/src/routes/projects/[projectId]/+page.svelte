@@ -9,7 +9,6 @@
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogsIcon from '@lucide/svelte/icons/logs';
 	import SquarePenIcon from '@lucide/svelte/icons/square-pen';
-	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 	import { type TabItem } from '$lib/components/tab-bar/index.js';
 	import TabbedPageLayout from '$lib/layouts/tabbed-page-layout.svelte';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
@@ -30,6 +29,7 @@
 	import ProjectsLogsPanel from '../components/ProjectLogsPanel.svelte';
 	import ProjectSettingsPanel from '../components/ProjectSettingsPanel.svelte';
 	import { projectService } from '$lib/services/project-service';
+	import { cronExpressionSchema } from '$lib/utils/cron.utils';
 
 	let { data } = $props();
 	let projectId = $derived(data.projectId);
@@ -65,7 +65,7 @@
 		composeContent: z.string().min(1, 'Compose content is required'),
 		envContent: z.string().optional().default(''),
 		autoUpdate: z.boolean().nullable(),
-		autoUpdateCron: z.string().nullable()
+		autoUpdateCron: cronExpressionSchema
 	});
 
 	let formData = $derived({

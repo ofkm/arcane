@@ -896,6 +896,7 @@
 	"cron_daily_at": "Daily at {time}",
 	"cron_every_n_hours": "Every {hours} hours",
 	"cron_custom": "Custom schedule",
+	"cron_custom_description": "Enter a custom cron expression",
 	"cron_invalid": "Invalid cron expression",
 	"cron_help_text": "Enter a 5-field cron expression (minute hour day month weekday)",
 

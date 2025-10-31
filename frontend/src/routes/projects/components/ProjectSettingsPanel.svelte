@@ -9,6 +9,7 @@
 	import * as ButtonGroup from '$lib/components/ui/button-group';
 	import { Button } from '$lib/components/ui/button';
 	import { m } from '$lib/paraglide/messages';
+	import { commonCronPresets } from '$lib/utils/cron.utils';
 
 	let {
 		autoUpdate = $bindable(),
@@ -32,45 +33,11 @@
 	});
 
 	const cronScheduleOptions = [
-		{
-			value: null,
-			label: m.cron_immediate(),
-			description: m.cron_immediate_description()
-		},
-		{
-			value: '0 2 * * 6,0',
-			label: m.cron_weekends_at({ hour: '2am' }),
-			description: m.cron_weekends_at({ hour: '2am' })
-		},
-		{
-			value: '0 3 * * 1-5',
-			label: m.cron_weekdays_at({ hour: '3am' }),
-			description: m.cron_weekdays_at({ hour: '3am' })
-		},
-		{
-			value: '0 0 * * *',
-			label: m.cron_daily_at({ time: 'midnight' }),
-			description: m.cron_daily_at({ time: 'midnight' })
-		},
-		{
-			value: '0 2 * * *',
-			label: m.cron_daily_at({ time: '2am' }),
-			description: m.cron_daily_at({ time: '2am' })
-		},
-		{
-			value: '0 */6 * * *',
-			label: m.cron_every_n_hours({ hours: '6' }),
-			description: m.cron_every_n_hours({ hours: '6' })
-		},
-		{
-			value: '0 */12 * * *',
-			label: m.cron_every_n_hours({ hours: '12' }),
-			description: m.cron_every_n_hours({ hours: '12' })
-		},
+		...commonCronPresets,
 		{
 			value: 'custom',
 			label: m.custom(),
-			description: 'Enter a custom cron expression'
+			description: m.cron_custom_description()
 		}
 	] as const;
 
