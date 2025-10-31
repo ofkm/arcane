@@ -147,7 +147,7 @@
 
 	$effect(() => {
 		if (cronScheduleMode !== 'custom') {
-			$formInputs.autoUpdateCron.value = cronScheduleMode;
+			$formInputs.autoUpdateCron.value = cronScheduleMode === null ? '' : cronScheduleMode;
 		}
 	});
 
@@ -160,7 +160,10 @@
 		settingsForm.setLoading(true);
 
 		await settingsForm
-			.updateSettings(data)
+			.updateSettings({
+				...data,
+				autoUpdateCron: data.autoUpdateCron === null ? '' : data.autoUpdateCron
+			})
 			.then(() => toast.success(m.general_settings_saved()))
 			.catch((error: any) => {
 				console.error('Failed to save Docker settings:', error);
