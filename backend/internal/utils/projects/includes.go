@@ -129,12 +129,17 @@ func ValidateIncludePathForWrite(projectDir, includePath string) (string, error)
 		return "", fmt.Errorf("include path cannot be empty")
 	}
 
-	// Resolve project directory to absolute path
+	// Resolve project directory to absolute path and evaluate symlinks
 	absProjectDir, err := filepath.Abs(projectDir)
 	if err != nil {
 		return "", fmt.Errorf("invalid project directory: %w", err)
 	}
 	absProjectDir = filepath.Clean(absProjectDir)
+
+	// Try to resolve symlinks for the project directory if it exists
+	if evalProjectDir, err := filepath.EvalSymlinks(absProjectDir); err == nil {
+		absProjectDir = evalProjectDir
+	}
 
 	// Resolve include path to absolute path
 	var fullPath string
@@ -150,14 +155,34 @@ func ValidateIncludePathForWrite(projectDir, includePath string) (string, error)
 	}
 	absFullPath = filepath.Clean(absFullPath)
 
+	// Resolve symlinks in the include path to prevent symlink-based path traversal attacks
+	// For parent directories, we evaluate what exists up to the file itself
+	evalPath := absFullPath
+	if evalFullPath, err := filepath.EvalSymlinks(absFullPath); err == nil {
+		evalPath = evalFullPath
+	} else if !os.IsNotExist(err) {
+		// If error is not "file doesn't exist", it's a real error
+		return "", fmt.Errorf("failed to resolve include path: %w", err)
+	} else {
+		// File doesn't exist yet - evaluate parent directory symlinks
+		dir := filepath.Dir(absFullPath)
+		if evalDir, err := filepath.EvalSymlinks(dir); err == nil {
+			evalPath = filepath.Join(evalDir, filepath.Base(absFullPath))
+		} else if !os.IsNotExist(err) {
+			return "", fmt.Errorf("failed to resolve parent directory: %w", err)
+		}
+		// If parent also doesn't exist, use the original path
+		// The validation will still catch if it's outside the project
+	}
+
 	// Prevent targeting the project directory itself
-	if absFullPath == absProjectDir {
+	if evalPath == absProjectDir {
 		return "", fmt.Errorf("include path cannot be the project directory itself")
 	}
 
-	// Check if path is within project directory
+	// Check if resolved path is within project directory
 	projectPrefix := absProjectDir + string(filepath.Separator)
-	isWithinProject := strings.HasPrefix(absFullPath+string(filepath.Separator), projectPrefix)
+	isWithinProject := strings.HasPrefix(evalPath+string(filepath.Separator), projectPrefix)
 
 	if !isWithinProject {
 		return "", fmt.Errorf("write access denied: path is outside project directory")
