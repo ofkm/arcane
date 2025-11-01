@@ -30,7 +30,7 @@ require (
 	github.com/lmittmann/tint v1.1.2
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/samber/slog-gin v1.18.0
-	github.com/shirou/gopsutil/v4 v4.25.9
+	github.com/shirou/gopsutil/v4 v4.25.10
 	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.43.0
