@@ -280,16 +280,7 @@
 		open = newOpenState;
 		if (!newOpenState) {
 			// Reset form data
-			Object.keys($inputs).forEach((key) => {
-				const input = $inputs[key as keyof typeof $inputs];
-				if (typeof input.value === 'boolean') {
-					input.value = formData[key as keyof typeof formData] as boolean;
-				} else if (typeof input.value === 'number') {
-					input.value = formData[key as keyof typeof formData] as number;
-				} else {
-					input.value = formData[key as keyof typeof formData] as string;
-				}
-			});
+			form.reset();
 			envVars = [{ key: '', value: '' }];
 			portMappings = [{ container: '', host: '', protocol: 'tcp' }];
 			volumeMounts = [{ source: '', destination: '', readonly: false }];
