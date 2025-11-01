@@ -5,6 +5,7 @@
 
 import type { Command } from '../types';
 import { goto } from '$app/navigation';
+import { page } from '$app/state';
 import { navigationItems } from '$lib/config/navigation-config';
 import type { NavigationItem } from '$lib/config/navigation-config';
 import NavigationIcon from '@lucide/svelte/icons/navigation';
@@ -42,7 +43,7 @@ function getAllRoutes(): NavigationItem[] {
 /**
  * Create navigation commands as a single nested "Go to" command
  */
-export function createNavigationCommands(): Command[] {
+export function createNavigationCommands(): Command {
 	const routes = getAllRoutes();
 
 	// Create sub-commands for each route
@@ -53,20 +54,22 @@ export function createNavigationCommands(): Command[] {
 		icon: route.icon,
 		keywords: [route.title.toLowerCase(), route.url],
 		action: async () => {
+			const currentPath = page.url.pathname;
+			if (currentPath === route.url) {
+				return;
+			}
 			await goto(route.url);
 		}
 	}));
 
 	// Return a single "Go to" command with all routes as sub-commands
-	return [
-		{
-			id: 'goto',
-			label: 'Go to...',
-			description: 'Navigate to a page',
-			icon: NavigationIcon,
-			category: 'Navigation',
-			keywords: ['navigate', 'go', 'open', 'page', 'route'],
-			subCommands: subCommands
-		}
-	];
+	return {
+		id: 'goto',
+		label: 'Go to...',
+		description: 'Navigate to a page',
+		icon: NavigationIcon,
+		category: 'Navigation',
+		keywords: ['navigate', 'go', 'open', 'page', 'route'],
+		subCommands: subCommands
+	};
 }

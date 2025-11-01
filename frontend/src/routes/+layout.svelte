@@ -42,8 +42,10 @@
 		if (browser) {
 			// Register all commands
 			const unregisterCommands = CommandPallette.commandRegistry.registerMany([
-				...CommandPallette.createNavigationCommands(),
-				...CommandPallette.createHelpCommands()
+				CommandPallette.createNavigationCommands(),
+				CommandPallette.createProjectCommands(),
+				CommandPallette.createContainerCommands(),
+				CommandPallette.createHelpCommands()
 			]);
 
 			// Register command palette keybind (Cmd+K / Ctrl+K)
