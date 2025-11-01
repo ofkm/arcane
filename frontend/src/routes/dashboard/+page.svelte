@@ -12,6 +12,7 @@
 	import type { ReconnectingWebSocket } from '$lib/utils/ws';
 	import MeterMetric from '$lib/components/meter-metric.svelte';
 	import DiskMeter from '$lib/components/disk-meter.svelte';
+	import GpuMeter from '$lib/components/gpu-meter.svelte';
 	import QuickActions from '$lib/components/quick-actions.svelte';
 	import DockerOverview from '$lib/components/docker-overview.svelte';
 	import type { SystemStats } from '$lib/types/system-stats.type';
@@ -65,6 +66,7 @@
 		cpu: [] as Array<{ date: Date; value: number }>,
 		memory: [] as Array<{ date: Date; value: number }>,
 		disk: [] as Array<{ date: Date; value: number }>,
+		gpu: [] as Array<{ date: Date; value: number }>,
 		containers: [] as Array<{ date: Date; value: number }>
 	});
 
@@ -97,6 +99,23 @@
 			historicalData.disk.push({ date: now, value: diskPercent });
 			if (historicalData.disk.length > maxPoints) {
 				historicalData.disk = historicalData.disk.slice(-maxPoints);
+			}
+		}
+
+		if (stats.gpus && stats.gpus.length > 0) {
+			// Track average GPU memory usage percentage across all GPUs
+			// Filter out GPUs with zero total memory to avoid invalid calculations
+			const validGpus = stats.gpus.filter(gpu => gpu.memoryTotal > 0);
+
+			if (validGpus.length > 0) {
+				const totalGpuPercent = validGpus.reduce((sum, gpu) => {
+					return sum + (gpu.memoryUsed / gpu.memoryTotal) * 100;
+				}, 0);
+				const avgGpuPercent = totalGpuPercent / validGpus.length;
+				historicalData.gpu.push({ date: now, value: avgGpuPercent });
+				if (historicalData.gpu.length > maxPoints) {
+					historicalData.gpu = historicalData.gpu.slice(-maxPoints);
+				}
 			}
 		}
 
@@ -137,6 +156,7 @@
 			cpu: [],
 			memory: [],
 			disk: [],
+			gpu: [],
 			containers: []
 		};
 	}
@@ -297,7 +317,7 @@
 			{/if}
 		</div>
 		<div class="space-y-3">
-			<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-2 {currentStats?.gpuCount && currentStats.gpuCount > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}">
 				<MeterMetric
 					title={m.dashboard_meter_cpu()}
 					icon={CpuIcon}
@@ -335,6 +355,13 @@
 					loading={isLoading.loadingStats || !hasInitialStatsLoaded}
 					class="col-span-2 sm:col-span-1"
 				/>
+
+				{#if currentStats?.gpuCount && currentStats.gpuCount > 0}
+					<GpuMeter
+						gpus={currentStats?.gpus}
+						loading={isLoading.loadingStats || !hasInitialStatsLoaded}
+					/>
+				{/if}
 			</div>
 
 			<DockerOverview
