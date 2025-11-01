@@ -1,6 +1,6 @@
 <script lang="ts">
 	import BoxIcon from '@lucide/svelte/icons/box';
-	import CreateContainerSheet from '$lib/components/sheets/create-container-sheet.svelte';
+	import CreateContainerDialog from '$lib/components/dialogs/create-container-dialog.svelte';
 	import { toast } from 'svelte-sonner';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
@@ -8,7 +8,6 @@
 	import ContainerTable from './container-table.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { environmentStore } from '$lib/stores/environment.store.svelte';
-	import type { Environment } from '$lib/types/environment.type';
 	import { imageService } from '$lib/services/image-service';
 	import { ResourcePageLayout, type ActionButton, type StatCardConfig } from '$lib/layouts/index.js';
 
@@ -149,7 +148,7 @@
 	{/snippet}
 
 	{#snippet additionalContent()}
-		<CreateContainerSheet
+		<CreateContainerDialog
 			bind:open={isCreateDialogOpen}
 			availableVolumes={[]}
 			availableNetworks={[]}
