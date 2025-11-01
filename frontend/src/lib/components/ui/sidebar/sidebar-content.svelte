@@ -13,10 +13,9 @@
 	data-slot="sidebar-content"
 	data-sidebar="content"
 	class={cn(
-		'flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto',
-		sidebar.hoverExpansionEnabled
-			? 'group-data-[collapsible=icon]:overflow-hidden group-data-[collapsible=icon]:group-data-[hovered=true]:overflow-x-hidden group-data-[collapsible=icon]:group-data-[hovered=true]:overflow-y-auto'
-			: 'group-data-[collapsible=icon]:overflow-hidden',
+		'scrollbar-hide flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto',
+		sidebar.hoverExpansionEnabled &&
+			'group-data-[collapsible=icon]:overflow-hidden group-data-[collapsible=icon]:group-data-[hovered=true]:overflow-x-hidden group-data-[collapsible=icon]:group-data-[hovered=true]:overflow-y-auto',
 		className
 	)}
 	{...restProps}
