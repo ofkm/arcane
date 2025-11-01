@@ -19,6 +19,7 @@
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import { UseSettingsForm } from '$lib/hooks/use-settings-form.svelte';
+	import { commonCronPresets, cronExpressionSchema } from '$lib/utils/cron.utils';
 
 	let { data } = $props();
 	const currentSettings = $derived<Settings>($settingsStore || data.settings!);
@@ -28,7 +29,7 @@
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
-		autoUpdateInterval: z.number().int(),
+		autoUpdateCron: cronExpressionSchema,
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		defaultShell: z.string()
 	});
@@ -100,7 +101,25 @@
 		{ value: '/bin/zsh', label: '/bin/zsh', description: m.docker_shell_zsh_description() }
 	];
 
+	const cronScheduleOptions = [
+		...commonCronPresets,
+		{
+			value: 'custom',
+			label: m.custom(),
+			description: m.cron_custom_description()
+		}
+	] as const;
+
 	let shellSelectValue = $state<string>(shellOptions.find((o) => o.value === currentSettings.defaultShell)?.value ?? 'custom');
+
+	let cronScheduleMode = $state<string | null>(
+		(() => {
+			const cron = currentSettings.autoUpdateCron;
+			if (!cron || cron.trim() === '') return null; // Default to immediate
+			const found = cronScheduleOptions.find((o) => o.value === cron);
+			return found?.value ?? 'custom';
+		})()
+	);
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
@@ -109,9 +128,9 @@
 			$formInputs.pollingEnabled.value !== currentSettings.pollingEnabled ||
 			$formInputs.pollingInterval.value !== currentSettings.pollingInterval ||
 			$formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
-			$formInputs.autoUpdateInterval.value != currentSettings.autoUpdateInterval ||
-			$formInputs.dockerPruneMode.value != currentSettings.dockerPruneMode ||
-			$formInputs.defaultShell.value != currentSettings.defaultShell
+			$formInputs.autoUpdateCron.value !== currentSettings.autoUpdateCron ||
+			$formInputs.dockerPruneMode.value !== currentSettings.dockerPruneMode ||
+			$formInputs.defaultShell.value !== currentSettings.defaultShell
 	});
 
 	$effect(() => {
@@ -126,6 +145,12 @@
 		}
 	});
 
+	$effect(() => {
+		if (cronScheduleMode !== 'custom') {
+			$formInputs.autoUpdateCron.value = cronScheduleMode === null ? '' : cronScheduleMode;
+		}
+	});
+
 	async function onSubmit() {
 		const data = form.validate();
 		if (!data) {
@@ -135,11 +160,16 @@
 		settingsForm.setLoading(true);
 
 		await settingsForm
-			.updateSettings(data)
+			.updateSettings({
+				...data,
+				autoUpdateCron: data.autoUpdateCron === null ? '' : data.autoUpdateCron
+			})
 			.then(() => toast.success(m.general_settings_saved()))
-			.catch((error) => {
+			.catch((error: any) => {
 				console.error('Failed to save Docker settings:', error);
-				toast.error('Failed to save Docker settings. Please try again.');
+				const errorMessage =
+					error?.response?.data?.error || error?.message || 'Failed to save Docker settings. Please try again.';
+				toast.error(errorMessage);
 			})
 			.finally(() => settingsForm.setLoading(false));
 	}
@@ -147,7 +177,7 @@
 		$formInputs.pollingEnabled.value = currentSettings.pollingEnabled;
 		$formInputs.pollingInterval.value = currentSettings.pollingInterval;
 		$formInputs.autoUpdate.value = currentSettings.autoUpdate;
-		$formInputs.autoUpdateInterval.value = currentSettings.autoUpdateInterval;
+		$formInputs.autoUpdateCron.value = currentSettings.autoUpdateCron;
 		$formInputs.dockerPruneMode.value = currentSettings.dockerPruneMode;
 		$formInputs.defaultShell.value = currentSettings.defaultShell;
 	}
@@ -238,15 +268,32 @@
 								/>
 
 								{#if $formInputs.autoUpdate.value}
-									<div class="border-primary/20 border-l-2 pl-3">
-										<TextInputWithLabel
-											bind:value={$formInputs.autoUpdateInterval.value}
-											error={$formInputs.autoUpdateInterval.error}
-											label={m.docker_auto_update_interval_label()}
-											placeholder={m.docker_auto_update_interval_placeholder()}
-											helpText={m.docker_auto_update_interval_description()}
-											type="number"
+									<div class="border-primary/20 space-y-3 border-l-2 pl-3">
+										<SelectWithLabel
+											id="cronScheduleMode"
+											name="cronScheduleMode"
+											value={cronScheduleMode ?? 'null'}
+											onValueChange={(v) => (cronScheduleMode = v === 'null' ? null : v)}
+											label={m.project_settings_update_schedule()}
+											placeholder={m.docker_polling_interval_placeholder_select()}
+											options={cronScheduleOptions.map(({ value, label, description }) => ({
+												value: value === null ? 'null' : value,
+												label,
+												description
+											}))}
 										/>
+
+										{#if cronScheduleMode === 'custom'}
+											<TextInputWithLabel
+												value={$formInputs.autoUpdateCron.value ?? ''}
+												error={$formInputs.autoUpdateCron.error}
+												label={m.custom()}
+												placeholder="0 2 * * *"
+												helpText={m.cron_help_text()}
+												type="text"
+												onChange={(v) => ($formInputs.autoUpdateCron.value = v || null)}
+											/>
+										{/if}
 									</div>
 								{/if}
 							</div>

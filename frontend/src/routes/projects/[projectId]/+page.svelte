@@ -8,6 +8,7 @@
 	import LayersIcon from '@lucide/svelte/icons/layers';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
 	import LogsIcon from '@lucide/svelte/icons/logs';
+	import SquarePenIcon from '@lucide/svelte/icons/square-pen';
 	import { type TabItem } from '$lib/components/tab-bar/index.js';
 	import TabbedPageLayout from '$lib/layouts/tabbed-page-layout.svelte';
 	import ActionButtons from '$lib/components/action-buttons.svelte';
@@ -26,7 +27,9 @@
 	import ServicesGrid from '../components/ServicesGrid.svelte';
 	import CodePanel from '../components/CodePanel.svelte';
 	import ProjectsLogsPanel from '../components/ProjectLogsPanel.svelte';
+	import ProjectSettingsPanel from '../components/ProjectSettingsPanel.svelte';
 	import { projectService } from '$lib/services/project-service';
+	import { cronExpressionSchema } from '$lib/utils/cron.utils';
 
 	let { data } = $props();
 	let projectId = $derived(data.projectId);
@@ -48,6 +51,11 @@
 	let originalName = $state(data.editorState.originalName);
 	let originalComposeContent = $state(data.editorState.originalComposeContent);
 	let originalEnvContent = $state(data.editorState.originalEnvContent || '');
+	let originalSettings = $state(data.editorState.originalSettings || { autoUpdate: null, autoUpdateCron: null });
+
+	const normalizeEmptyValue = (val: string | null | undefined): string | null => {
+		return val === '' || val === null || val === undefined ? null : val;
+	};
 
 	const formSchema = z.object({
 		name: z
@@ -55,28 +63,59 @@
 			.min(1, 'Project name is required')
 			.regex(/^[a-z0-9_-]+$/i, 'Only letters, numbers, hyphens, and underscores are allowed'),
 		composeContent: z.string().min(1, 'Compose content is required'),
-		envContent: z.string().optional().default('')
+		envContent: z.string().optional().default(''),
+		autoUpdate: z.boolean().nullable(),
+		autoUpdateCron: cronExpressionSchema
 	});
 
 	let formData = $derived({
 		name: editorState.name,
 		composeContent: editorState.composeContent,
-		envContent: editorState.envContent || ''
+		envContent: editorState.envContent || '',
+		autoUpdate: project?.settings?.autoUpdate ?? null,
+		autoUpdateCron: normalizeEmptyValue(project?.settings?.autoUpdateCron ?? null)
 	});
 
 	let { inputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
 
+	// Sync settings with form inputs for two-way binding
+	// Initialize from project settings
+	let autoUpdate = $state<boolean | null>(null);
+	let autoUpdateCron = $state<string | null>(null);
+
+	// Initialize from project when available
+	$effect(() => {
+		if (project?.settings) {
+			autoUpdate = project.settings.autoUpdate ?? null;
+			autoUpdateCron = normalizeEmptyValue(project.settings.autoUpdateCron ?? null);
+		}
+	});
+
+	// Sync form inputs with state
+	$effect(() => {
+		autoUpdate = $inputs.autoUpdate.value;
+		autoUpdateCron = $inputs.autoUpdateCron.value;
+	});
+
+	// Sync state back to form inputs
+	$effect(() => {
+		$inputs.autoUpdate.value = autoUpdate;
+		$inputs.autoUpdateCron.value = autoUpdateCron;
+	});
+
 	let hasChanges = $derived(
 		$inputs.name.value !== originalName ||
 			$inputs.composeContent.value !== originalComposeContent ||
-			$inputs.envContent.value !== originalEnvContent
+			$inputs.envContent.value !== originalEnvContent ||
+			$inputs.autoUpdate.value !== originalSettings.autoUpdate ||
+			normalizeEmptyValue($inputs.autoUpdateCron.value) !== normalizeEmptyValue(originalSettings.autoUpdateCron)
 	);
 
 	let canEditName = $derived(!isLoading.saving && project?.status !== 'running' && project?.status !== 'partially running');
 
 	let autoScrollStackLogs = $state(true);
 
-	let selectedTab = $state<'services' | 'compose' | 'logs'>('compose');
+	let selectedTab = $state<'services' | 'compose' | 'logs' | 'settings'>('compose');
 	let composeOpen = $state(true);
 	let envOpen = $state(true);
 
@@ -90,20 +129,25 @@
 		{
 			value: 'compose',
 			label: m.common_configuration(),
-			icon: SettingsIcon
+			icon: SquarePenIcon
 		},
 		{
 			value: 'logs',
 			label: m.compose_nav_logs(),
 			icon: LogsIcon,
 			disabled: project?.status !== 'running'
+		},
+		{
+			value: 'settings',
+			label: m.settings_title(),
+			icon: SettingsIcon
 		}
 	]);
 
 	let nameInputRef = $state<HTMLInputElement | null>(null);
 
 	type ComposeUIPrefs = {
-		tab: 'services' | 'compose' | 'logs';
+		tab: 'services' | 'compose' | 'logs' | 'settings';
 		composeOpen: boolean;
 		envOpen: boolean;
 		autoScroll: boolean;
@@ -137,10 +181,15 @@
 		const validated = form.validate();
 		if (!validated) return;
 
-		const { name, composeContent, envContent } = validated;
+		const { name, composeContent, envContent, autoUpdate, autoUpdateCron } = validated;
 
 		handleApiResultWithCallbacks({
-			result: await tryCatch(projectService.updateProject(projectId, name, composeContent, envContent)),
+			result: await tryCatch(
+				projectService.updateProject(projectId, name, composeContent, envContent, {
+					autoUpdate,
+					autoUpdateCron: normalizeEmptyValue(autoUpdateCron)
+				})
+			),
 			message: 'Failed to Save Project',
 			setLoadingState: (value) => (isLoading.saving = value),
 			onSuccess: async (updatedStack: Project) => {
@@ -148,10 +197,19 @@
 				originalName = updatedStack.name;
 				originalComposeContent = $inputs.composeContent.value;
 				originalEnvContent = $inputs.envContent.value;
+				originalSettings = updatedStack.settings || { autoUpdate: null, autoUpdateCron: null };
 				await new Promise((resolve) => setTimeout(resolve, 200));
 				await invalidateAll();
 			}
 		});
+	}
+
+	function handleReset() {
+		$inputs.name.value = originalName;
+		$inputs.composeContent.value = originalComposeContent;
+		$inputs.envContent.value = originalEnvContent;
+		$inputs.autoUpdate.value = originalSettings.autoUpdate;
+		$inputs.autoUpdateCron.value = normalizeEmptyValue(originalSettings.autoUpdateCron);
 	}
 
 	function saveNameIfChanged() {
@@ -179,7 +237,7 @@
 		{tabItems}
 		{selectedTab}
 		onTabChange={(value) => {
-			selectedTab = value as 'services' | 'compose' | 'logs';
+			selectedTab = value as 'services' | 'compose' | 'logs' | 'settings';
 			persistPrefs();
 		}}
 	>
@@ -224,6 +282,14 @@
 		{#snippet headerActions()}
 			<div class="flex items-center gap-2">
 				{#if hasChanges}
+					<ArcaneButton
+						action="reset"
+						loading={isLoading.saving}
+						onclick={handleReset}
+						disabled={isLoading.saving}
+						customLabel={m.common_reset()}
+						loadingLabel={m.common_resetting()}
+					/>
 					<ArcaneButton
 						action="save"
 						loading={isLoading.saving}
@@ -285,6 +351,10 @@
 				{:else}
 					<div class="text-muted-foreground py-12 text-center">{m.compose_logs_title()} Unavailable</div>
 				{/if}
+			</Tabs.Content>
+
+			<Tabs.Content value="settings" class="h-full">
+				<ProjectSettingsPanel bind:autoUpdate bind:autoUpdateCron />
 			</Tabs.Content>
 		{/snippet}
 	</TabbedPageLayout>
