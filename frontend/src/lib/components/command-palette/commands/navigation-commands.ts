@@ -53,6 +53,13 @@ export function createNavigationCommands(): Command[] {
 		description: route.url,
 		icon: route.icon,
 		keywords: [route.title.toLowerCase(), route.url],
+		// Add keybinds for specific routes
+		...(route.url === '/dashboard' && { keybind: 'Meta+D' }),
+		...(route.url === '/containers' && { keybind: 'Meta+C' }),
+		...(route.url === '/projects' && { keybind: 'Meta+P' }),
+		...(route.url === '/images' && { keybind: 'Meta+I' }),
+		...(route.url === '/networks' && { keybind: 'Meta+N' }),
+		...(route.url === '/volumes' && { keybind: 'Meta+V' }),
 		action: async () => {
 			const currentPath = page.url.pathname;
 			if (currentPath === route.url) {

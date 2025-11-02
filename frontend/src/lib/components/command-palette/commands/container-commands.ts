@@ -23,7 +23,7 @@ export function createContainerCommands(): Command[] {
 					description: 'Create a new container',
 					icon: ContainerIcon,
 					keywords: ['create', 'add', 'new', 'container', 'docker'],
-					keybind: 'Meta+N',
+					keybind: 'Meta+Shift+C',
 					action: async () => {
 						const currentPath = page.url.pathname;
 						if (currentPath !== '/containers') {

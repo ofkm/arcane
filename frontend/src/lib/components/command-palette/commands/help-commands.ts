@@ -25,6 +25,7 @@ export function createHelpCommands(): Command[] {
 			icon: HelpCircleIcon,
 			category: 'Help',
 			keywords: ['help', 'docs', 'documentation', 'support', 'guide'],
+			keybind: 'Meta+Shift+H',
 			subCommands: [
 				// {
 				// 	id: 'view-keyboard-shortcuts',

@@ -23,6 +23,7 @@ export function createNetworkCommands(): Command[] {
 					description: 'Create a new Docker network',
 					icon: PlusCircleIcon,
 					keywords: ['create', 'add', 'new', 'network', 'docker'],
+					keybind: 'Meta+Shift+N',
 					action: async () => {
 						const currentPath = page.url.pathname;
 						if (currentPath !== '/networks') {

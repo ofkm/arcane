@@ -23,6 +23,7 @@ export function createVolumeCommands(): Command[] {
 					description: 'Create a new Docker volume',
 					icon: PlusCircleIcon,
 					keywords: ['create', 'add', 'new', 'volume', 'storage', 'docker'],
+					keybind: 'Meta+Shift+V',
 					action: async () => {
 						const currentPath = page.url.pathname;
 						if (currentPath !== '/volumes') {
