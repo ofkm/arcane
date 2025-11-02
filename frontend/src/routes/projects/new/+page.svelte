@@ -22,13 +22,11 @@
 	import { m } from '$lib/paraglide/messages';
 	import { projectService } from '$lib/services/project-service.js';
 	import { systemService } from '$lib/services/system-service.js';
-	import { templateService } from '$lib/services/template-service.js';
 	import * as ButtonGroup from '$lib/components/ui/button-group/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import CodePanel from '../components/CodePanel.svelte';
 	import EditableName from '../components/EditableName.svelte';
-	import CreateTemplateDialog from '$lib/components/dialogs/create-template-dialog.svelte';
 
 	let { data } = $props();
 
@@ -36,10 +34,7 @@
 	let converting = $state(false);
 	let showTemplateDialog = $state(false);
 	let showConverterDialog = $state(false);
-	let showCreateTemplateDialog = $state(false);
 	let isLoadingTemplateContent = $state(false);
-	let isSavingTemplate = $state(false);
-	let templateDialogInitialData = $state<{ name?: string; content?: string; envContent?: string }>({});
 
 	const formSchema = z.object({
 		name: z
@@ -128,32 +123,14 @@
 	}
 
 	function openCreateTemplateDialog() {
-		// Capture current form values when opening the dialog
-		templateDialogInitialData = {
-			name: $inputs.name.value,
-			content: $inputs.composeContent.value,
-			envContent: $inputs.envContent.value
-		};
-		showCreateTemplateDialog = true;
-	}
+		// Navigate to templates/new with prefilled data
+		const params = new URLSearchParams();
+		if ($inputs.name.value) params.set('name', $inputs.name.value);
+		if ($inputs.composeContent.value) params.set('content', $inputs.composeContent.value);
+		if ($inputs.envContent.value) params.set('envContent', $inputs.envContent.value);
+		params.set('returnTo', '/projects/new');
 
-	async function handleSaveTemplate(templateData: { name: string; description: string; content: string; envContent: string }) {
-		isSavingTemplate = true;
-		try {
-			await templateService.createTemplate({
-				name: templateData.name,
-				description: templateData.description,
-				content: templateData.content,
-				envContent: templateData.envContent
-			});
-			toast.success(m.common_create_success({ resource: `${m.resource_template()} "${templateData.name}"` }));
-			showCreateTemplateDialog = false;
-		} catch (error) {
-			console.error('Error creating template:', error);
-			toast.error(error instanceof Error ? error.message : m.common_create_failed({ resource: m.resource_template() }));
-		} finally {
-			isSavingTemplate = false;
-		}
+		goto(`/customize/templates/new?${params.toString()}`);
 	}
 
 	const templateBtnClass = arcaneButtonVariants({
@@ -365,14 +342,6 @@
 	templates={data.composeTemplates || []}
 	onSelect={handleTemplateSelect}
 	onDownloadSuccess={invalidateAll}
-/>
-
-<!-- Create Template Dialog -->
-<CreateTemplateDialog
-	bind:open={showCreateTemplateDialog}
-	onSave={handleSaveTemplate}
-	isLoading={isSavingTemplate}
-	initialData={templateDialogInitialData}
 />
 
 <style>
