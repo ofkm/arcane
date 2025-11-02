@@ -184,7 +184,12 @@ class CommandRegistry {
 				for (const subCmd of cmd.subCommands) {
 					const subScore = getMatchScore(subCmd);
 					if (subScore > 0) {
-						results.push({ command: subCmd, score: subScore });
+						// Ensure sub-commands inherit parent category if they don't have one
+						const subCommandWithCategory = {
+							...subCmd,
+							category: subCmd.category || cmd.category || 'General'
+						};
+						results.push({ command: subCommandWithCategory, score: subScore });
 					}
 				}
 			}
