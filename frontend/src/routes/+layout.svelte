@@ -45,6 +45,9 @@
 				CommandPallette.createNavigationCommands(),
 				CommandPallette.createProjectCommands(),
 				CommandPallette.createContainerCommands(),
+				CommandPallette.createImageCommands(),
+				CommandPallette.createVolumeCommands(),
+				CommandPallette.createNetworkCommands(),
 				CommandPallette.createHelpCommands()
 			]);
 
