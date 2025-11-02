@@ -39,6 +39,7 @@
 	let showCreateTemplateDialog = $state(false);
 	let isLoadingTemplateContent = $state(false);
 	let isSavingTemplate = $state(false);
+	let templateDialogInitialData = $state<{ name?: string; content?: string; envContent?: string }>({});
 
 	const formSchema = z.object({
 		name: z
@@ -124,6 +125,16 @@
 
 	function useExample(command: string) {
 		dockerRunCommand = command;
+	}
+
+	function openCreateTemplateDialog() {
+		// Capture current form values when opening the dialog
+		templateDialogInitialData = {
+			name: $inputs.name.value,
+			content: $inputs.composeContent.value,
+			envContent: $inputs.envContent.value
+		};
+		showCreateTemplateDialog = true;
 	}
 
 	async function handleSaveTemplate(templateData: { name: string; description: string; content: string; envContent: string }) {
@@ -231,7 +242,7 @@
 								<DropdownMenu.Item
 									class={dropdownItemClass}
 									disabled={!$inputs.composeContent.value || saving || converting || isLoadingTemplateContent}
-									onclick={() => (showCreateTemplateDialog = true)}
+									onclick={openCreateTemplateDialog}
 								>
 									<WandIcon class="size-4" />
 									{m.templates_create_template()}
@@ -361,11 +372,7 @@
 	bind:open={showCreateTemplateDialog}
 	onSave={handleSaveTemplate}
 	isLoading={isSavingTemplate}
-	initialData={{
-		name: $inputs.name.value,
-		content: $inputs.composeContent.value,
-		envContent: $inputs.envContent.value
-	}}
+	initialData={templateDialogInitialData}
 />
 
 <style>
