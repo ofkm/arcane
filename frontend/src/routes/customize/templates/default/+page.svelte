@@ -14,10 +14,14 @@
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import CodeIcon from '@lucide/svelte/icons/code';
 	import FileTextIcon from '@lucide/svelte/icons/file-text';
+	import TemplateSelectionDialog from '$lib/components/dialogs/template-selection-dialog.svelte';
+	import type { Template } from '$lib/types/template.type';
 
 	let { data } = $props();
 
 	let saving = $state(false);
+	let showTemplateDialog = $state(false);
+	let isLoadingTemplate = $state(false);
 	let originalComposeContent = $state(data.composeTemplate);
 	let originalEnvContent = $state(data.envTemplate);
 
@@ -64,13 +68,37 @@
 		toast.info(m.templates_reset_success());
 	}
 
+	async function handleTemplateSelect(template: Template) {
+		showTemplateDialog = false;
+		isLoadingTemplate = true;
+
+		try {
+			const templateContent = await templateService.getTemplateContent(template.id);
+			$inputs.composeContent.value = templateContent.content ?? template.content ?? '';
+			$inputs.envContent.value = templateContent.envContent ?? template.envContent ?? '';
+			toast.success(m.compose_template_loaded({ name: template.name }));
+		} catch (error) {
+			console.error('Error loading template:', error);
+			toast.error(m.templates_load_failed());
+		} finally {
+			isLoadingTemplate = false;
+		}
+	}
+
 	const actionButtons = $derived<ActionButton[]>([
+		{
+			id: 'template',
+			action: 'template',
+			label: m.common_use_template(),
+			onclick: () => (showTemplateDialog = true),
+			disabled: saving || isLoadingTemplate
+		},
 		{
 			id: 'reset',
 			action: 'restart',
 			label: m.common_reset(),
 			onclick: handleReset,
-			disabled: !hasChanges
+			disabled: !hasChanges || saving || isLoadingTemplate
 		},
 		{
 			id: 'save',
@@ -78,7 +106,7 @@
 			label: m.common_save(),
 			loadingLabel: m.common_saving(),
 			loading: saving,
-			disabled: saving || !hasChanges,
+			disabled: saving || !hasChanges || isLoadingTemplate,
 			onclick: handleSave
 		}
 	]);
@@ -142,3 +170,5 @@
 		{/snippet}
 	</ResourcePageLayout>
 </div>
+
+<TemplateSelectionDialog bind:open={showTemplateDialog} templates={data.templates || []} onSelect={handleTemplateSelect} />
