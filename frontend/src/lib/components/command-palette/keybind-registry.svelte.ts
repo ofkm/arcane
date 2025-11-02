@@ -64,9 +64,7 @@ class KeybindRegistry {
 			.replace(/\s+/g, '')
 			.replace('cmd', 'meta')
 			.replace('command', 'meta')
-			.replace('ctrl', 'control')
-			.replace('alt', 'alt')
-			.replace('shift', 'shift');
+			.replace('ctrl', 'meta');
 	}
 
 	/**
