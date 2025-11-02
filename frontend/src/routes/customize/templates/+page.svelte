@@ -132,16 +132,16 @@
 
 	const actionButtons: ActionButton[] = [
 		{
-			id: 'default',
-			action: 'edit',
-			label: m.templates_edit_default(),
-			onclick: () => goto('/customize/templates/default')
-		},
-		{
 			id: 'create',
 			action: 'create',
 			label: m.templates_create_template(),
 			onclick: () => goto('/customize/templates/new')
+		},
+		{
+			id: 'default',
+			action: 'edit',
+			label: m.templates_edit_default(),
+			onclick: () => goto('/customize/templates/default')
 		},
 		{
 			id: 'refresh',
