@@ -4,9 +4,12 @@
  */
 
 import type { Command } from './types';
+import { keybindRegistry } from './keybind-registry.svelte';
+import { commandPaletteStore } from './command-palette-store.svelte';
 
 class CommandRegistry {
 	private commands = $state<Map<string, Command>>(new Map());
+	private keybindUnregisterFns = new Map<string, () => void>();
 
 	/**
 	 * Register a new command
@@ -14,9 +17,61 @@ class CommandRegistry {
 	register(command: Command): () => void {
 		this.commands.set(command.id, command);
 
+		// Register keybind if provided
+		if (command.keybind) {
+			const keybindKey = typeof command.keybind === 'string' ? command.keybind : command.keybind.key;
+			const keybindDescription = typeof command.keybind === 'string' ? undefined : command.keybind.description;
+
+			const unregisterKeybind = keybindRegistry.register({
+				id: `${command.id}-keybind`,
+				commandId: command.id,
+				key: keybindKey,
+				description: keybindDescription || command.description
+			});
+
+			this.keybindUnregisterFns.set(command.id, unregisterKeybind);
+		}
+
+		// Recursively register keybinds for sub-commands
+		if (command.subCommands) {
+			for (const subCommand of command.subCommands) {
+				if (subCommand.keybind) {
+					const subKeybindKey = typeof subCommand.keybind === 'string' ? subCommand.keybind : subCommand.keybind.key;
+					const subKeybindDescription = typeof subCommand.keybind === 'string' ? undefined : subCommand.keybind.description;
+
+					const unregisterSubKeybind = keybindRegistry.register({
+						id: `${subCommand.id}-keybind`,
+						commandId: subCommand.id,
+						key: subKeybindKey,
+						description: subKeybindDescription || subCommand.description
+					});
+
+					this.keybindUnregisterFns.set(subCommand.id, unregisterSubKeybind);
+				}
+			}
+		}
+
 		// Return unregister function
 		return () => {
 			this.commands.delete(command.id);
+			
+			// Unregister keybinds
+			const unregisterKeybind = this.keybindUnregisterFns.get(command.id);
+			if (unregisterKeybind) {
+				unregisterKeybind();
+				this.keybindUnregisterFns.delete(command.id);
+			}
+
+			// Unregister sub-command keybinds
+			if (command.subCommands) {
+				for (const subCommand of command.subCommands) {
+					const unregisterSubKeybind = this.keybindUnregisterFns.get(subCommand.id);
+					if (unregisterSubKeybind) {
+						unregisterSubKeybind();
+						this.keybindUnregisterFns.delete(subCommand.id);
+					}
+				}
+			}
 		};
 	}
 
@@ -63,7 +118,21 @@ class CommandRegistry {
 	 * Execute a command by ID
 	 */
 	async execute(commandId: string): Promise<void> {
-		const command = this.commands.get(commandId);
+		let command = this.commands.get(commandId);
+		
+		// If not found in top-level commands, search in sub-commands
+		if (!command) {
+			for (const parentCommand of this.commands.values()) {
+				if (parentCommand.subCommands) {
+					const subCommand = parentCommand.subCommands.find((cmd) => cmd.id === commandId);
+					if (subCommand) {
+						command = subCommand;
+						break;
+					}
+				}
+			}
+		}
+
 		if (!command) {
 			console.warn(`Command not found: ${commandId}`);
 			return;
@@ -72,6 +141,12 @@ class CommandRegistry {
 		// Check condition before executing
 		if (command.condition && !command.condition()) {
 			console.warn(`Command condition not met: ${commandId}`);
+			return;
+		}
+
+		// If command has sub-commands, open the palette and navigate into them
+		if (command.subCommands && command.subCommands.length > 0) {
+			commandPaletteStore.showAndNavigateInto(commandId);
 			return;
 		}
 

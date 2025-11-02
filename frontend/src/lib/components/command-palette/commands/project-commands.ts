@@ -24,6 +24,7 @@ export function createProjectCommands(): Command[] {
 					description: 'Create a new project',
 					icon: FolderPlusIcon,
 					keywords: ['create', 'add', 'new', 'project'],
+					keybind: 'Meta+Shift+N',
 					action: async () => {
 						const currentPath = page.url.pathname;
 						if (currentPath !== '/projects/new') {

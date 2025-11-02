@@ -379,29 +379,44 @@
 											</div>
 
 											<!-- Keybind or Arrow for nested -->
-											{#if isParent}
-												<div
-													class={cn(
-														'flex size-7 shrink-0 items-center justify-center rounded-lg transition-all',
-														isSelected
-															? 'bg-primary/10 text-primary'
-															: 'bg-muted/30 text-muted-foreground group-hover:bg-muted/50'
-													)}
-												>
-													<ChevronRightIcon class="size-4" />
-												</div>
-											{:else if keybind}
-												<kbd
-													class={cn(
-														'ml-auto hidden shrink-0 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold shadow-sm ring-1 transition-all sm:inline-block',
-														isSelected
-															? 'bg-primary/10 text-primary ring-primary/20'
-															: 'bg-muted/50 text-muted-foreground ring-border/50 group-hover:bg-muted/70'
-													)}
-												>
-													{keybind}
-												</kbd>
-											{/if}
+											<div class="ml-auto flex shrink-0 items-center gap-2">
+												{#if keybind && isParent}
+													<!-- Show keybind before chevron for parent commands -->
+													<kbd
+														class={cn(
+															'hidden shrink-0 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold shadow-sm ring-1 transition-all sm:inline-block',
+															isSelected
+																? 'bg-primary/10 text-primary ring-primary/20'
+																: 'bg-muted/50 text-muted-foreground ring-border/50 group-hover:bg-muted/70'
+														)}
+													>
+														{keybind}
+													</kbd>
+												{/if}
+												{#if isParent}
+													<div
+														class={cn(
+															'flex size-7 shrink-0 items-center justify-center rounded-lg transition-all',
+															isSelected
+																? 'bg-primary/10 text-primary'
+																: 'bg-muted/30 text-muted-foreground group-hover:bg-muted/50'
+														)}
+													>
+														<ChevronRightIcon class="size-4" />
+													</div>
+												{:else if keybind}
+													<kbd
+														class={cn(
+															'hidden shrink-0 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold shadow-sm ring-1 transition-all sm:inline-block',
+															isSelected
+																? 'bg-primary/10 text-primary ring-primary/20'
+																: 'bg-muted/50 text-muted-foreground ring-border/50 group-hover:bg-muted/70'
+														)}
+													>
+														{keybind}
+													</kbd>
+												{/if}
+											</div>
 										</button>
 									{/each}
 								</div>

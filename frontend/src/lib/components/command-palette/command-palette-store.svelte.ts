@@ -3,6 +3,8 @@
  * Manages the state of the command palette
  */
 
+import { commandRegistry } from './command-registry.svelte';
+
 interface NavigationStackItem {
 	commandId: string;
 	selectedIndex: number;
@@ -122,6 +124,29 @@ class CommandPaletteStore {
 			return null;
 		}
 		return this.navigationStack[this.navigationStack.length - 1].commandId;
+	}
+
+	/**
+	 * Open the command palette and navigate directly into a command's sub-commands
+	 * Properly injects the navigation hierarchy
+	 */
+	showAndNavigateInto(commandId: string): void {
+		// First, find the command in the registry to ensure it exists
+		const command = commandRegistry.get(commandId);
+		if (!command || !command.subCommands || command.subCommands.length === 0) {
+			// If command doesn't exist or has no subcommands, just open normally
+			this.show();
+			return;
+		}
+
+		// Open the palette
+		this.open = true;
+		this.searchQuery = '';
+		this.selectedIndex = 0;
+		this.navigationStack = [];
+
+		// Navigate into the command immediately - this sets up the navigation stack
+		this.navigateInto(commandId, 0);
 	}
 }
 

@@ -23,6 +23,7 @@ export function createImageCommands(): Command[] {
 					description: 'Pull a Docker image',
 					icon: ImagePlusIcon,
 					keywords: ['pull', 'download', 'image', 'docker'],
+					keybind: 'Meta+P',
 					action: async () => {
 						const currentPath = page.url.pathname;
 						if (currentPath !== '/images') {

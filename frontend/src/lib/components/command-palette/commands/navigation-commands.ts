@@ -71,6 +71,7 @@ export function createNavigationCommands(): Command[] {
 			icon: NavigationIcon,
 			category: 'Navigation',
 			keywords: ['navigate', 'go', 'open', 'page', 'route'],
+			keybind: 'Meta+Shift+G',
 			subCommands: subCommands
 		}
 	];

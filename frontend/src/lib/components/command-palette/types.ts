@@ -21,6 +21,8 @@ export interface Command {
 	subCommands?: Command[];
 	/** Optional condition to determine if command should be shown */
 	condition?: () => boolean;
+	/** Optional keybind registered directly with the command */
+	keybind?: string | { key: string; description?: string };
 }
 
 export interface Keybind {

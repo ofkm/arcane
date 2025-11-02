@@ -52,14 +52,6 @@
 				...CommandPallette.createHelpCommands()
 			]);
 
-			// Register command palette keybind (Cmd+K / Ctrl+K)
-			const unregisterKeybind = CommandPallette.keybindRegistry.register({
-				id: 'toggle-command-palette',
-				commandId: 'toggle-command-palette',
-				key: 'Meta+K',
-				description: 'Toggle command palette'
-			});
-
 			// Register the toggle command
 			const unregisterToggleCommand = CommandPallette.commandRegistry.register({
 				id: 'toggle-command-palette',
@@ -67,6 +59,7 @@
 				description: 'Open or close the command palette',
 				category: 'System',
 				keywords: ['command', 'palette', 'search'],
+				keybind: 'Meta+K',
 				action: () => {
 					CommandPallette.commandPaletteStore.toggle();
 				}
@@ -78,7 +71,6 @@
 			// Cleanup on unmount
 			return () => {
 				unregisterCommands();
-				unregisterKeybind();
 				unregisterToggleCommand();
 				CommandPallette.keybindRegistry.stopListening();
 			};
