@@ -7,7 +7,11 @@
 	import SearchIcon from '@lucide/svelte/icons/search';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
+	import CommandIcon from '@lucide/svelte/icons/command';
+	import ShiftIcon from '@lucide/svelte/icons/arrow-big-up';
+	import OptionIcon from '@lucide/svelte/icons/option';
 	import type { Command } from './types';
+	import type { KeybindPart } from './keybind-registry.svelte';
 	import { tick } from 'svelte';
 
 	let inputRef: HTMLInputElement | null = $state(null);
@@ -237,7 +241,7 @@
 	});
 
 	// Get keybind for command
-	function getKeybindForCommand(commandId: string): string | null {
+	function getKeybindForCommand(commandId: string): KeybindPart[] | null {
 		const keybinds = keybindRegistry.getForCommand(commandId);
 		if (keybinds.length > 0) {
 			return keybindRegistry.formatKey(keybinds[0].key);
@@ -336,7 +340,7 @@
 									{#each commands as command}
 										{@const index = getCommandIndex(command)}
 										{@const isSelected = index === selectedIndex}
-										{@const keybind = getKeybindForCommand(command.id)}
+										{@const keybindParts = getKeybindForCommand(command.id)}
 										{@const isParent = hasSubCommands(command)}
 
 										<button
@@ -380,17 +384,30 @@
 
 											<!-- Keybind or Arrow for nested -->
 											<div class="ml-auto flex shrink-0 items-center gap-2">
-												{#if keybind && isParent}
+												{#if keybindParts && keybindParts.length > 0 && isParent}
 													<!-- Show keybind before chevron for parent commands -->
 													<kbd
 														class={cn(
-															'hidden shrink-0 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold shadow-sm ring-1 transition-all sm:inline-block',
+															'hidden shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 font-mono text-xs font-semibold shadow-sm ring-1 transition-all sm:inline-flex',
 															isSelected
 																? 'bg-primary/10 text-primary ring-primary/20'
 																: 'bg-muted/50 text-muted-foreground ring-border/50 group-hover:bg-muted/70'
 														)}
 													>
-														{keybind}
+														{#each keybindParts as part, i}
+															{#if i > 0}
+																<span class="text-[0.6rem] opacity-50">+</span>
+															{/if}
+															{#if part.type === 'command' || part.type === 'control'}
+																<CommandIcon class="size-3" />
+															{:else if part.type === 'shift'}
+																<ShiftIcon class="size-3" />
+															{:else if part.type === 'option'}
+																<OptionIcon class="size-3" />
+															{:else if part.type === 'text'}
+																<span>{part.text}</span>
+															{/if}
+														{/each}
 													</kbd>
 												{/if}
 												{#if isParent}
@@ -404,16 +421,29 @@
 													>
 														<ChevronRightIcon class="size-4" />
 													</div>
-												{:else if keybind}
+												{:else if keybindParts && keybindParts.length > 0}
 													<kbd
 														class={cn(
-															'hidden shrink-0 rounded-lg px-2.5 py-1.5 font-mono text-xs font-semibold shadow-sm ring-1 transition-all sm:inline-block',
+															'hidden shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 font-mono text-xs font-semibold shadow-sm ring-1 transition-all sm:inline-flex',
 															isSelected
 																? 'bg-primary/10 text-primary ring-primary/20'
 																: 'bg-muted/50 text-muted-foreground ring-border/50 group-hover:bg-muted/70'
 														)}
 													>
-														{keybind}
+														{#each keybindParts as part, i}
+															{#if i > 0}
+																<span class="text-[0.6rem] opacity-50">+</span>
+															{/if}
+															{#if part.type === 'command' || part.type === 'control'}
+																<CommandIcon class="size-3" />
+															{:else if part.type === 'shift'}
+																<ShiftIcon class="size-3" />
+															{:else if part.type === 'option'}
+																<OptionIcon class="size-3" />
+															{:else if part.type === 'text'}
+																<span>{part.text}</span>
+															{/if}
+														{/each}
 													</kbd>
 												{/if}
 											</div>

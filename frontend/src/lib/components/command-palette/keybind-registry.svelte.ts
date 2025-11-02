@@ -6,6 +6,16 @@
 import type { Keybind } from './types';
 import { commandRegistry } from './command-registry.svelte';
 
+/**
+ * Keybind part type for rendering
+ */
+export type KeybindPart =
+	| { type: 'command' }
+	| { type: 'control' }
+	| { type: 'shift' }
+	| { type: 'option' }
+	| { type: 'text'; text: string };
+
 class KeybindRegistry {
 	private keybinds = $state<Map<string, Keybind>>(new Map());
 	private isListening = $state(false);
@@ -59,12 +69,7 @@ class KeybindRegistry {
 	 * Normalize a key combination string
 	 */
 	private normalizeKey(key: string): string {
-		return key
-			.toLowerCase()
-			.replace(/\s+/g, '')
-			.replace('cmd', 'meta')
-			.replace('command', 'meta')
-			.replace('ctrl', 'meta');
+		return key.toLowerCase().replace(/\s+/g, '').replace('cmd', 'meta').replace('command', 'meta').replace('ctrl', 'meta');
 	}
 
 	/**
@@ -154,31 +159,31 @@ class KeybindRegistry {
 
 	/**
 	 * Format a key combination for display
+	 * Returns an array of parts that can be rendered with icons
 	 */
-	formatKey(key: string): string {
+	formatKey(key: string): KeybindPart[] {
 		const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
 
-		return key
-			.split('+')
-			.map((part) => {
-				const normalized = part.trim().toLowerCase();
-				switch (normalized) {
-					case 'meta':
-					case 'cmd':
-					case 'command':
-						return isMac ? '⌘' : 'Ctrl';
-					case 'ctrl':
-					case 'control':
-						return isMac ? '⌃' : 'Ctrl';
-					case 'shift':
-						return isMac ? '⇧' : 'Shift';
-					case 'alt':
-						return isMac ? '⌥' : 'Alt';
-					default:
-						return part.charAt(0).toUpperCase() + part.slice(1);
-				}
-			})
-			.join(isMac ? '' : '+');
+		const parts = key.split('+').map((part) => {
+			const normalized = part.trim().toLowerCase();
+			switch (normalized) {
+				case 'meta':
+				case 'cmd':
+				case 'command':
+					return isMac ? { type: 'command' as const } : { type: 'control' as const };
+				case 'ctrl':
+				case 'control':
+					return { type: 'control' as const };
+				case 'shift':
+					return { type: 'shift' as const };
+				case 'alt':
+					return { type: 'option' as const };
+				default:
+					return { type: 'text' as const, text: part.charAt(0).toUpperCase() + part.slice(1) };
+			}
+		});
+
+		return parts;
 	}
 
 	/**
@@ -191,4 +196,3 @@ class KeybindRegistry {
 
 // Export singleton instance
 export const keybindRegistry = new KeybindRegistry();
-
