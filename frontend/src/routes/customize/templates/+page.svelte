@@ -14,6 +14,7 @@
 	import RegistryManager from './components/RegistryManager.svelte';
 	import type { TemplateRegistry } from '$lib/types/template.type';
 	import type { SearchPaginationSortRequest } from '$lib/types/pagination.type';
+	import CreateTemplateDialog from '$lib/components/dialogs/create-template-dialog.svelte';
 
 	let { data } = $props();
 
@@ -38,10 +39,12 @@
 	let isLoading = $state({
 		addingRegistry: false,
 		removing: {} as Record<string, boolean>,
-		updating: {} as Record<string, boolean>
+		updating: {} as Record<string, boolean>,
+		creatingTemplate: false
 	});
 
 	let showAddRegistrySheet = $state(false);
+	let showCreateTemplateDialog = $state(false);
 
 	async function updateRegistry(id: string, updates: { enabled?: boolean }) {
 		if (isLoading.updating[id]) return;
@@ -130,12 +133,38 @@
 		}
 	}
 
+	async function handleCreateTemplate(templateData: { name: string; description: string; content: string; envContent: string }) {
+		isLoading.creatingTemplate = true;
+		try {
+			await templateService.createTemplate({
+				name: templateData.name,
+				description: templateData.description,
+				content: templateData.content,
+				envContent: templateData.envContent
+			});
+			templates = await templateService.getTemplates(requestOptions);
+			showCreateTemplateDialog = false;
+			toast.success(m.common_create_success({ resource: `${m.resource_template()} "${templateData.name}"` }));
+		} catch (error) {
+			console.error('Error creating template:', error);
+			toast.error(error instanceof Error ? error.message : m.common_create_failed({ resource: m.resource_template() }));
+		} finally {
+			isLoading.creatingTemplate = false;
+		}
+	}
+
 	const actionButtons: ActionButton[] = [
 		{
 			id: 'default',
 			action: 'edit',
 			label: m.templates_edit_default(),
 			onclick: () => goto('/customize/templates/default')
+		},
+		{
+			id: 'create',
+			action: 'create',
+			label: m.templates_create_template(),
+			onclick: () => (showCreateTemplateDialog = true)
 		},
 		{
 			id: 'refresh',
@@ -215,6 +244,11 @@
 			bind:open={showAddRegistrySheet}
 			onSubmit={handleRegistrySubmit}
 			isLoading={isLoading.addingRegistry}
+		/>
+		<CreateTemplateDialog
+			bind:open={showCreateTemplateDialog}
+			onSave={handleCreateTemplate}
+			isLoading={isLoading.creatingTemplate}
 		/>
 	{/snippet}
 </ResourcePageLayout>
