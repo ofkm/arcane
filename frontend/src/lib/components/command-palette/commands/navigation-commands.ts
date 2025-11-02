@@ -43,7 +43,7 @@ function getAllRoutes(): NavigationItem[] {
 /**
  * Create navigation commands as a single nested "Go to" command
  */
-export function createNavigationCommands(): Command {
+export function createNavigationCommands(): Command[] {
 	const routes = getAllRoutes();
 
 	// Create sub-commands for each route
@@ -63,13 +63,15 @@ export function createNavigationCommands(): Command {
 	}));
 
 	// Return a single "Go to" command with all routes as sub-commands
-	return {
-		id: 'goto',
-		label: 'Go to...',
-		description: 'Navigate to a page',
-		icon: NavigationIcon,
-		category: 'Navigation',
-		keywords: ['navigate', 'go', 'open', 'page', 'route'],
-		subCommands: subCommands
-	};
+	return [
+		{
+			id: 'goto',
+			label: 'Go to...',
+			description: 'Navigate to a page',
+			icon: NavigationIcon,
+			category: 'Navigation',
+			keywords: ['navigate', 'go', 'open', 'page', 'route'],
+			subCommands: subCommands
+		}
+	];
 }

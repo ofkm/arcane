@@ -7,30 +7,31 @@ import ContainerIcon from '@lucide/svelte/icons/container';
 /**
  * Creates container-related commands
  */
-export function createContainerCommands(): Command {
-	return {
-		id: 'containers',
-		label: 'Containers',
-		description: 'Container management actions',
-		icon: ContainerIcon,
-		keywords: ['container', 'docker'],
-		category: 'Resources',
-		subCommands: [
-			{
-				id: 'containers.create',
-				label: 'Create Container',
-				description: 'Create a new container',
-				icon: ContainerIcon,
-				keywords: ['create', 'add', 'new', 'container', 'docker'],
-				action: async () => {
-					const currentPath = page.url.pathname;
-					if (currentPath !== '/containers') {
-						await goto('/containers');
+export function createContainerCommands(): Command[] {
+	return [
+		{
+			id: 'containers',
+			label: 'Containers',
+			description: 'Container management actions',
+			icon: ContainerIcon,
+			keywords: ['container', 'docker'],
+			category: 'Resources',
+			subCommands: [
+				{
+					id: 'containers.create',
+					label: 'Create Container',
+					description: 'Create a new container',
+					icon: ContainerIcon,
+					keywords: ['create', 'add', 'new', 'container', 'docker'],
+					action: async () => {
+						const currentPath = page.url.pathname;
+						if (currentPath !== '/containers') {
+							await goto('/containers');
+						}
+						window.dispatchEvent(new CustomEvent('command:create-container'));
 					}
-					window.dispatchEvent(new CustomEvent('command:create-container'));
 				}
-			}
-		]
-	};
+			]
+		}
+	];
 }
-
