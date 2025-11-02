@@ -259,12 +259,12 @@
 <DialogPrimitive.Root bind:open={commandPaletteStore.open}>
 	<DialogPrimitive.Portal>
 		<DialogPrimitive.Overlay
-			class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50"
+			class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-98"
 			style="background: color-mix(in oklch, var(--background) 50%, transparent); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);"
 		/>
 
 		<DialogPrimitive.Content
-			class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 bubble bubble-shadow-lg fixed top-[15%] left-[50%] z-50 w-full max-w-2xl translate-x-[-50%] translate-y-[-15%] overflow-hidden duration-200"
+			class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 bubble bubble-shadow-lg fixed top-[15%] left-[50%] z-99 w-full max-w-2xl translate-x-[-50%] translate-y-[-15%] overflow-hidden duration-200"
 		>
 			<div
 				class="flex flex-col"
