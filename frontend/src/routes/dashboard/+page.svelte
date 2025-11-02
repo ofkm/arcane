@@ -113,6 +113,11 @@
 	}
 
 	onMount(() => {
+		const handleOpenPruneDialog = () => {
+			dashboardStates.isPruneDialogOpen = true;
+		};
+		window.addEventListener('command:open-prune-dialog', handleOpenPruneDialog);
+
 		let mounted = true;
 
 		(async () => {
@@ -127,6 +132,7 @@
 			mounted = false;
 			statsWSClient?.close();
 			statsWSClient = null;
+			window.removeEventListener('command:open-prune-dialog', handleOpenPruneDialog);
 		};
 	});
 

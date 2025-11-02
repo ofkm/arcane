@@ -48,6 +48,7 @@
 				CommandPallette.createImageCommands(),
 				CommandPallette.createVolumeCommands(),
 				CommandPallette.createNetworkCommands(),
+				CommandPallette.createSystemCommands(),
 				CommandPallette.createHelpCommands()
 			]);
 
