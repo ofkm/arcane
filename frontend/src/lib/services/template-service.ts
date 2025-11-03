@@ -16,12 +16,6 @@ export default class TemplateService extends BaseAPIService {
 		return response.data?.data ?? [];
 	}
 
-	async getTemplate(id: string): Promise<Template> {
-		const encodedId = encodeURIComponent(id);
-		const response = await this.api.get(`/templates/${encodedId}`);
-		return response.data?.data;
-	}
-
 	async getTemplateContent(id: string): Promise<TemplateContentData> {
 		const encodedId = encodeURIComponent(id);
 		const response = await this.api.get(`/templates/${encodedId}/content`);
