@@ -1,25 +1,23 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
 	import SwitchWithLabel from '$lib/components/form/labeled-switch.svelte';
-	import SelectWithLabel from '$lib/components/form/select-with-label.svelte';
-	import TextInputWithLabel from '$lib/components/form/text-input-with-label.svelte';
 	import ZapIcon from '@lucide/svelte/icons/zap';
 	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import settingsStore from '$lib/stores/config-store';
 	import * as ButtonGroup from '$lib/components/ui/button-group';
 	import { Button } from '$lib/components/ui/button';
 	import { m } from '$lib/paraglide/messages';
-	import { commonCronPresets } from '$lib/utils/cron.utils';
+	import CronScheduleSelect from '$lib/components/cron-schedule-select.svelte';
 
 	let {
 		autoUpdate = $bindable(),
-		autoUpdateCron = $bindable()
-	}: { autoUpdate?: boolean | null; autoUpdateCron?: string | null | undefined } = $props();
+		autoUpdateCron = $bindable<string | null>()
+	}: { autoUpdate?: boolean | null; autoUpdateCron?: string | null } = $props();
 
 	const globalSettings = $derived($settingsStore);
 	const globalAutoUpdate = $derived(globalSettings?.autoUpdate);
 
-	const normalizeEmptyValue = (val: string | null | undefined): string | null => {
+	const normalizeEmptyValue = (val: string | null): string | null => {
 		return val === '' || val === null || val === undefined ? null : val;
 	};
 
@@ -29,31 +27,6 @@
 	$effect(() => {
 		if (autoUpdateCron !== undefined && autoUpdateCron !== normalizeEmptyValue(autoUpdateCron)) {
 			autoUpdateCron = normalizeEmptyValue(autoUpdateCron);
-		}
-	});
-
-	const cronScheduleOptions = [
-		...commonCronPresets,
-		{
-			value: 'custom',
-			label: m.custom(),
-			description: m.cron_custom_description()
-		}
-	] as const;
-
-	let cronScheduleMode = $state<string | null>(
-		(() => {
-			const cron = autoUpdateCron;
-			if (!cron || cron.trim() === '') return null; // Default to immediate
-			const found = cronScheduleOptions.find((o) => o.value === cron);
-			return found?.value ?? 'custom';
-		})()
-	);
-
-	// Update the actual cron value when mode changes
-	$effect(() => {
-		if (cronScheduleMode !== 'custom') {
-			autoUpdateCron = cronScheduleMode;
 		}
 	});
 </script>
@@ -110,31 +83,7 @@
 
 						{#if autoUpdate}
 							<div class="border-primary/20 space-y-3 border-l-2 pl-3">
-								<SelectWithLabel
-									id="cronScheduleMode"
-									name="cronScheduleMode"
-									value={cronScheduleMode ?? 'null'}
-									onValueChange={(v) => (cronScheduleMode = v === 'null' ? null : v)}
-									label={m.project_settings_update_schedule()}
-									placeholder={m.docker_polling_interval_placeholder_select()}
-									options={cronScheduleOptions.map(({ value, label, description }) => ({
-										value: value === null ? 'null' : value,
-										label,
-										description
-									}))}
-								/>
-
-								{#if cronScheduleMode === 'custom'}
-									<TextInputWithLabel
-										value={autoUpdateCron ?? ''}
-										error={null}
-										label={m.custom()}
-										placeholder="0 2 * * *"
-										helpText={m.cron_help_text()}
-										type="text"
-										onChange={(v) => (autoUpdateCron = v || null)}
-									/>
-								{/if}
+								<CronScheduleSelect bind:value={autoUpdateCron} />
 							</div>
 						{/if}
 					</div>

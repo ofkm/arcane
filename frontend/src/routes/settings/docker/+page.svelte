@@ -19,7 +19,7 @@
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import { UseSettingsForm } from '$lib/hooks/use-settings-form.svelte';
-	import { commonCronPresets, cronExpressionSchema } from '$lib/utils/cron.utils';
+	import CronScheduleSelect from '$lib/components/cron-schedule-select.svelte';
 
 	let { data } = $props();
 	const currentSettings = $derived<Settings>($settingsStore || data.settings!);
@@ -29,7 +29,24 @@
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
-		autoUpdateCron: cronExpressionSchema,
+		autoUpdateCron: z
+			.string()
+			.nullable()
+			.default(null)
+			.refine(
+				(val) => {
+					if (!val || val.trim() === '') return true; // Empty is valid (immediate)
+
+					// Basic 5-part cron regex: minute hour day month weekday
+					const cronRegex =
+						/^(\*|[0-5]?\d|[0-5]?\d-[0-5]?\d|[0-5]?\d\/[0-5]?\d|\*\/[0-5]?\d|[0-5]?\d(,[0-5]?\d)+)\s+(\*|[01]?\d|2[0-3]|[01]?\d-[01]?\d|[01]?\d\/[01]?\d|\*\/[01]?\d|[01]?\d(,[01]?\d)+)\s+(\*|[1-9]|[12]\d|3[01]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[1-9]|1[0-2]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[0-6]|[0-6]-[0-6]|[0-6]\/[0-6]|\*\/[0-6]|[0-6](,[0-6])+)$/;
+
+					return cronRegex.test(val.trim());
+				},
+				{
+					message: 'Invalid cron expression format. Expected 5 fields: minute hour day month weekday'
+				}
+			),
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		defaultShell: z.string()
 	});
@@ -101,25 +118,7 @@
 		{ value: '/bin/zsh', label: '/bin/zsh', description: m.docker_shell_zsh_description() }
 	];
 
-	const cronScheduleOptions = [
-		...commonCronPresets,
-		{
-			value: 'custom',
-			label: m.custom(),
-			description: m.cron_custom_description()
-		}
-	] as const;
-
 	let shellSelectValue = $state<string>(shellOptions.find((o) => o.value === currentSettings.defaultShell)?.value ?? 'custom');
-
-	let cronScheduleMode = $state<string | null>(
-		(() => {
-			const cron = currentSettings.autoUpdateCron;
-			if (!cron || cron.trim() === '') return null; // Default to immediate
-			const found = cronScheduleOptions.find((o) => o.value === cron);
-			return found?.value ?? 'custom';
-		})()
-	);
 
 	let { inputs: formInputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, currentSettings));
 
@@ -142,12 +141,6 @@
 	$effect(() => {
 		if (shellSelectValue !== 'custom') {
 			$formInputs.defaultShell.value = shellSelectValue;
-		}
-	});
-
-	$effect(() => {
-		if (cronScheduleMode !== 'custom') {
-			$formInputs.autoUpdateCron.value = cronScheduleMode === null ? '' : cronScheduleMode;
 		}
 	});
 
@@ -269,31 +262,7 @@
 
 								{#if $formInputs.autoUpdate.value}
 									<div class="border-primary/20 space-y-3 border-l-2 pl-3">
-										<SelectWithLabel
-											id="cronScheduleMode"
-											name="cronScheduleMode"
-											value={cronScheduleMode ?? 'null'}
-											onValueChange={(v) => (cronScheduleMode = v === 'null' ? null : v)}
-											label={m.project_settings_update_schedule()}
-											placeholder={m.docker_polling_interval_placeholder_select()}
-											options={cronScheduleOptions.map(({ value, label, description }) => ({
-												value: value === null ? 'null' : value,
-												label,
-												description
-											}))}
-										/>
-
-										{#if cronScheduleMode === 'custom'}
-											<TextInputWithLabel
-												value={$formInputs.autoUpdateCron.value ?? ''}
-												error={$formInputs.autoUpdateCron.error}
-												label={m.custom()}
-												placeholder="0 2 * * *"
-												helpText={m.cron_help_text()}
-												type="text"
-												onChange={(v) => ($formInputs.autoUpdateCron.value = v || null)}
-											/>
-										{/if}
+										<CronScheduleSelect bind:value={$formInputs.autoUpdateCron.value} error={$formInputs.autoUpdateCron.error} />
 									</div>
 								{/if}
 							</div>
