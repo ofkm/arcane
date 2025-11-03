@@ -1255,7 +1255,7 @@
 	"network_subnet_description": "CIDR标记中的网络子网",
 	"network_gateway_description": "网关IP地址",
 	"network_driver_options_placeholder": "parent=eth0\ncom.docker.network.bridge.name=docker0",
-	"network_driver_options_description": "Enter driver-specific options as key=value pairs (e.g., parent=eth0 for macvlan), one per line",
+	"network_driver_options_description": "输入驱动器特定选项作为键=值对(例如macvlan的父键=eth0)，每行一个",
 	"network_interface": "网络接口",
 	"_comment_form_volume": "=== 表单 - 创建数据卷===",
 	"create_volume_title": "创建数据卷",
