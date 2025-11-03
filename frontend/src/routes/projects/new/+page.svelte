@@ -22,6 +22,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { projectService } from '$lib/services/project-service.js';
 	import { systemService } from '$lib/services/system-service.js';
+	import { templateService } from '$lib/services/template-service.js';
 	import * as ButtonGroup from '$lib/components/ui/button-group/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -32,6 +33,7 @@
 
 	let saving = $state(false);
 	let converting = $state(false);
+	let creatingTemplate = $state(false);
 	let showTemplateDialog = $state(false);
 	let showConverterDialog = $state(false);
 	let isLoadingTemplateContent = $state(false);
@@ -122,15 +124,26 @@
 		dockerRunCommand = command;
 	}
 
-	function openCreateTemplateDialog() {
-		// Navigate to templates/new with prefilled data
-		const params = new URLSearchParams();
-		if ($inputs.name.value) params.set('name', $inputs.name.value);
-		if ($inputs.composeContent.value) params.set('content', $inputs.composeContent.value);
-		if ($inputs.envContent.value) params.set('envContent', $inputs.envContent.value);
-		params.set('returnTo', '/projects/new');
+	async function handleCreateTemplate() {
+		const validated = form.validate();
+		if (!validated) return;
 
-		goto(`/customize/templates/new?${params.toString()}`);
+		const { name, composeContent, envContent } = validated;
+
+		handleApiResultWithCallbacks({
+			result: await tryCatch(
+				templateService.createTemplate({
+					name,
+					content: composeContent,
+					envContent
+				})
+			),
+			message: m.common_create_failed({ resource: `${m.resource_template()} "${name}"` }),
+			setLoadingState: (value) => (creatingTemplate = value),
+			onSuccess: async () => {
+				toast.success(m.common_create_success({ resource: `${m.resource_template()} "${name}"` }));
+			}
+		});
 	}
 
 	const templateBtnClass = arcaneButtonVariants({
@@ -218,10 +231,19 @@
 								<DropdownMenu.Separator />
 								<DropdownMenu.Item
 									class={dropdownItemClass}
-									disabled={!$inputs.composeContent.value || saving || converting || isLoadingTemplateContent}
-									onclick={openCreateTemplateDialog}
+									disabled={!$inputs.name.value ||
+										!$inputs.composeContent.value ||
+										saving ||
+										converting ||
+										creatingTemplate ||
+										isLoadingTemplateContent}
+									onclick={handleCreateTemplate}
 								>
-									<WandIcon class="size-4" />
+									{#if creatingTemplate}
+										<Spinner class="size-4" />
+									{:else}
+										<WandIcon class="size-4" />
+									{/if}
 									{m.templates_create_template()}
 								</DropdownMenu.Item>
 							</DropdownMenu.Group>
