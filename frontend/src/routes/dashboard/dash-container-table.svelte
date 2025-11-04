@@ -49,8 +49,7 @@
 {/snippet}
 
 {#snippet StateCell({ item }: { item: ContainerSummaryDto })}
-	{@const stateVariant = getStatusVariant(item.state)}
-	<StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.state)} />
+	<StatusBadge variant={getStatusVariant(item.state)} text={capitalizeFirstLetter(item.state)} />
 {/snippet}
 
 {#snippet DashContainerMobileCard({ row, item }: { row: any; item: ContainerSummaryDto })}

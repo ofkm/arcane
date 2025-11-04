@@ -1,14 +1,20 @@
-export interface NetworkCreateOptions {
+import type { IPAM } from 'dockerode';
+
+export interface NetworkCreateDto {
+	Driver?: string;
+	CheckDuplicate?: boolean;
+	Internal?: boolean;
+	Attachable?: boolean;
+	Ingress?: boolean;
+	IPAM?: IPAM;
+	EnableIPv6?: boolean;
+	Options?: Record<string, string>;
+	Labels?: Record<string, string>;
+}
+
+export interface NetworkCreateRequest {
 	name: string;
-	driver?: string;
-	internal?: boolean;
-	attachable?: boolean;
-	ingress?: boolean;
-	ipam?: IPAMConfig;
-	enableIPv6?: boolean;
-	options?: Record<string, string>;
-	labels?: Record<string, string>;
-	checkDuplicate?: boolean;
+	options: NetworkCreateDto;
 }
 
 export interface NetworkUsageCounts {
@@ -58,19 +64,6 @@ export interface NetworkInspect {
 	Containers?: Record<string, ContainerEndpoint> | null;
 	Options?: Record<string, string> | null;
 	Labels?: Record<string, string> | null;
-}
-
-export interface IPAM {
-	Driver: string;
-	Config?: IPAMSubnetInfo[];
-	Options?: Record<string, string>;
-}
-
-export interface IPAMSubnetInfo {
-	Subnet: string;
-	Gateway?: string;
-	IPRange?: string;
-	AuxAddress?: Record<string, string>;
 }
 
 export interface NetworkEndpointSettings {

@@ -163,8 +163,11 @@
 {/snippet}
 
 {#snippet StatusCell({ item }: { item: Project })}
-	{@const stateVariant = getStatusVariant(item.status)}
-	<StatusBadge variant={stateVariant} text={capitalizeFirstLetter(item.status)} tooltip={getStatusTooltip(item)} />
+	<StatusBadge
+		variant={getStatusVariant(item.status)}
+		text={capitalizeFirstLetter(item.status)}
+		tooltip={getStatusTooltip(item)}
+	/>
 {/snippet}
 
 {#snippet CreatedCell({ value }: { value: unknown })}
