@@ -66,19 +66,6 @@ export interface NetworkInspect {
 	Labels?: Record<string, string> | null;
 }
 
-export interface IPAM {
-	Driver: string;
-	Config?: IPAMSubnetInfo[];
-	Options?: Record<string, string>;
-}
-
-export interface IPAMSubnetInfo {
-	Subnet: string;
-	Gateway?: string;
-	IPRange?: string;
-	AuxAddress?: Record<string, string>;
-}
-
 export interface NetworkEndpointSettings {
 	ipamConfig?: EndpointIPAMConfig;
 	links?: string[];
