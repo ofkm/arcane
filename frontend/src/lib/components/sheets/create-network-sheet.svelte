@@ -37,6 +37,7 @@
 		checkDuplicate: z.boolean().default(true),
 		internal: z.boolean().default(false),
 		networkLabels: z.string().optional().default(''),
+		driverOptions: z.string().optional().default(''),
 		enableIpam: z.boolean().default(false),
 		subnet: z.string().optional().default(''),
 		gateway: z.string().optional().default('')
@@ -48,6 +49,7 @@
 		checkDuplicate: true,
 		internal: false,
 		networkLabels: '',
+		driverOptions: '',
 		enableIpam: false,
 		subnet: '',
 		gateway: ''
@@ -103,12 +105,16 @@
 
 		const finalLabels = { ...textareaLabels, ...dynamicLabels };
 
+		// Parse driver options (e.g., parent=eth0 for macvlan)
+		const driverOptions = parseKeyValuePairs(data.driverOptions || '');
+
 		const options: NetworkCreateOptions = {
 			Name: data.networkName.trim(),
 			Driver: data.networkDriver,
 			CheckDuplicate: data.checkDuplicate,
 			Internal: data.internal,
-			Labels: Object.keys(finalLabels).length > 0 ? finalLabels : undefined
+			Labels: Object.keys(finalLabels).length > 0 ? finalLabels : undefined,
+			Options: Object.keys(driverOptions).length > 0 ? driverOptions : undefined
 		};
 
 		// Add IPAM configuration if enabled
@@ -142,6 +148,7 @@
 			$inputs.checkDuplicate.value = true;
 			$inputs.internal.value = false;
 			$inputs.networkLabels.value = '';
+			$inputs.driverOptions.value = '';
 			$inputs.enableIpam.value = false;
 			$inputs.subnet.value = '';
 			$inputs.gateway.value = '';
@@ -247,6 +254,27 @@
 								{/if}
 								<p class="text-muted-foreground text-xs">{m.network_labels_description()}</p>
 							</div>
+						</div>
+					</Accordion.Content>
+				</Accordion.Item>
+
+				<Accordion.Item value="options">
+					<Accordion.Trigger class="text-sm font-medium">{m.common_driver_options()}</Accordion.Trigger>
+					<Accordion.Content class="pt-4">
+						<div class="space-y-2">
+							<Label for="driver-options" class="text-sm font-medium">{m.common_driver_options()}</Label>
+							<Textarea
+								id="driver-options"
+								placeholder={m.network_driver_options_placeholder()}
+								disabled={isLoading}
+								rows={3}
+								bind:value={$inputs.driverOptions.value}
+								class={$inputs.driverOptions.error ? 'border-destructive' : ''}
+							/>
+							{#if $inputs.driverOptions.error}
+								<p class="text-destructive text-xs">{$inputs.driverOptions.error}</p>
+							{/if}
+							<p class="text-muted-foreground text-xs">{m.network_driver_options_description()}</p>
 						</div>
 					</Accordion.Content>
 				</Accordion.Item>
