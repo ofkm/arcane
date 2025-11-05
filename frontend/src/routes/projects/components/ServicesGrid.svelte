@@ -43,7 +43,6 @@
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 				{#each services as service (service.container_id || service.name)}
 					{@const status = service.status || 'unknown'}
-					{@const variant = getStatusVariant(status)}
 					{@const containerUrl = projectId
 						? `/containers/${service.container_id}?from=project&projectId=${projectId}`
 						: `/containers/${service.container_id}`}
@@ -69,7 +68,7 @@
 												</Badge>
 											</div>
 											<div class="flex flex-wrap items-center gap-3">
-												<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
+												<StatusBadge variant={getStatusVariant(status)} text={capitalizeFirstLetter(status)} />
 												{#if service.health}
 													{@const healthColor = getHealthColor(service.health)}
 													<div class="flex items-center gap-1.5">
@@ -95,7 +94,7 @@
 										<h3 class="text-foreground mb-2 text-base font-semibold">
 											{service.name}
 										</h3>
-										<StatusBadge {variant} text={capitalizeFirstLetter(status)} />
+										<StatusBadge variant={getStatusVariant(status)} text={capitalizeFirstLetter(status)} />
 										<p class="text-muted-foreground mt-2 text-xs">
 											{m.compose_service_not_created()}
 										</p>

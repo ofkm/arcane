@@ -3,6 +3,7 @@
 	import EthernetPortIcon from '@lucide/svelte/icons/ethernet-port';
 	import { toast } from 'svelte-sonner';
 	import type { NetworkCreateOptions } from 'dockerode';
+	import type { NetworkCreateDto } from '$lib/types/network.type';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import CreateNetworkSheet from '$lib/components/sheets/create-network-sheet.svelte';
@@ -58,8 +59,19 @@
 	async function handleCreateNetworkSubmit(options: NetworkCreateOptions) {
 		isLoading.create = true;
 		const name = options.Name?.trim() || m.common_unknown();
+		const dto: NetworkCreateDto = {
+			Driver: options.Driver,
+			CheckDuplicate: options.CheckDuplicate,
+			Internal: options.Internal,
+			Attachable: options.Attachable,
+			Ingress: options.Ingress,
+			IPAM: options.IPAM,
+			EnableIPv6: options.EnableIPv6,
+			Options: options.Options,
+			Labels: options.Labels
+		};
 		handleApiResultWithCallbacks({
-			result: await tryCatch(networkService.createNetwork(options)),
+			result: await tryCatch(networkService.createNetwork(name, dto)),
 			message: m.common_create_failed({ resource: `${m.resource_network()} "${name}"` }),
 			setLoadingState: (value) => (isLoading.create = value),
 			onSuccess: async () => {
