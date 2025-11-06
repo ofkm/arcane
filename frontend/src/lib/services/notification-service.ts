@@ -9,7 +9,7 @@ export default class NotificationService extends BaseAPIService {
 		return res.data;
 	}
 
-	async updateSettings(provider: string, settings: NotificationSettings): Promise<NotificationSettings> {
+	async updateSettings(provider: string, settings: Partial<NotificationSettings>): Promise<NotificationSettings> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
 		const res = await this.api.post(`/environments/${envId}/notifications/settings`, settings);
 		return res.data;

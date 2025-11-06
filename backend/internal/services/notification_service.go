@@ -75,6 +75,78 @@ func (s *NotificationService) CreateOrUpdateSettings(ctx context.Context, provid
 	return &setting, nil
 }
 
+// CreateOrUpdateSettingsEnhanced creates or updates settings with enhanced Apprise support
+func (s *NotificationService) CreateOrUpdateSettingsEnhanced(ctx context.Context, provider models.NotificationProvider, enabled bool, config models.JSON, appriseURLs []string, label string, tags []string) (*models.NotificationSettings, error) {
+	var setting models.NotificationSettings
+
+	err := s.db.WithContext(ctx).Where("provider = ?", provider).First(&setting).Error
+	if err != nil {
+		setting = models.NotificationSettings{
+			Provider:         provider,
+			Enabled:          enabled,
+			Config:           config,
+			AppriseURLs:      appriseURLs,
+			Label:            label,
+			Tags:             tags,
+			ValidationStatus: "pending",
+		}
+		if err := s.db.WithContext(ctx).Create(&setting).Error; err != nil {
+			// Check if it's a missing column error - fall back to basic create
+			if strings.Contains(err.Error(), "no such column") {
+				return s.fallbackCreateEnhanced(ctx, provider, enabled, config, appriseURLs, label, tags)
+			}
+			return nil, fmt.Errorf("failed to create notification settings: %w", err)
+		}
+	} else {
+		setting.Enabled = enabled
+		setting.Config = config
+		setting.AppriseURLs = appriseURLs
+		setting.Label = label
+		setting.Tags = tags
+		setting.ValidationStatus = "pending"
+		setting.LastValidatedAt = nil
+		if err := s.db.WithContext(ctx).Save(&setting).Error; err != nil {
+			// Check if it's a missing column error - fall back to basic update
+			if strings.Contains(err.Error(), "no such column") {
+				return s.fallbackUpdateEnhanced(ctx, provider, enabled, config, appriseURLs, label, tags)
+			}
+			return nil, fmt.Errorf("failed to update notification settings: %w", err)
+		}
+	}
+
+	return &setting, nil
+}
+
+// fallbackCreateEnhanced handles database schema mismatch by falling back to basic create
+func (s *NotificationService) fallbackCreateEnhanced(ctx context.Context, provider models.NotificationProvider, enabled bool, config models.JSON, appriseURLs []string, label string, tags []string) (*models.NotificationSettings, error) {
+	// Merge Apprise URLs into config for fallback
+	enhancedConfig := make(models.JSON)
+	for k, v := range config {
+		enhancedConfig[k] = v
+	}
+	if len(appriseURLs) > 0 {
+		enhancedConfig["appriseUrls"] = appriseURLs
+	}
+	enhancedConfig["events"] = config["events"]
+
+	return s.CreateOrUpdateSettings(ctx, provider, enabled, enhancedConfig)
+}
+
+// fallbackUpdateEnhanced handles database schema mismatch by falling back to basic update
+func (s *NotificationService) fallbackUpdateEnhanced(ctx context.Context, provider models.NotificationProvider, enabled bool, config models.JSON, appriseURLs []string, label string, tags []string) (*models.NotificationSettings, error) {
+	// Merge Apprise URLs into config for fallback
+	enhancedConfig := make(models.JSON)
+	for k, v := range config {
+		enhancedConfig[k] = v
+	}
+	if len(appriseURLs) > 0 {
+		enhancedConfig["appriseUrls"] = appriseURLs
+	}
+	enhancedConfig["events"] = config["events"]
+
+	return s.CreateOrUpdateSettings(ctx, provider, enabled, enhancedConfig)
+}
+
 func (s *NotificationService) DeleteSettings(ctx context.Context, provider models.NotificationProvider) error {
 	if err := s.db.WithContext(ctx).Where("provider = ?", provider).Delete(&models.NotificationSettings{}).Error; err != nil {
 		return fmt.Errorf("failed to delete notification settings: %w", err)
