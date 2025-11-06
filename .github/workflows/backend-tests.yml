@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'backend/**'
+      - "backend/**"
   pull_request:
     branches: [main]
     paths:
-      - 'backend/**'
+      - "backend/**"
 
 jobs:
   test:
@@ -37,7 +37,7 @@ jobs:
 
       - name: Run unit tests
         env:
-          CGO_ENABLED: '1'
+          CGO_ENABLED: "1"
         run: go test -tags=exclude_frontend ./... -race -coverprofile=coverage.out -covermode=atomic -v
 
       - name: Upload coverage artifact
