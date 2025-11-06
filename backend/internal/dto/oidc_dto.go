@@ -37,6 +37,7 @@ type OidcTokenResponse struct {
 type OidcStatusInfo struct {
 	EnvForced     bool `json:"envForced"`
 	EnvConfigured bool `json:"envConfigured"`
+	MergeAccounts bool `json:"mergeAccounts"`
 }
 
 type OidcAuthUrlRequest struct {

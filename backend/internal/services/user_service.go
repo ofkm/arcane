@@ -190,6 +190,17 @@ func (s *UserService) GetUserByOidcSubjectId(ctx context.Context, subjectId stri
 	return &user, nil
 }
 
+func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	var user models.User
+	if err := s.db.WithContext(ctx).Where("email = ?", email).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user by email: %w", err)
+	}
+	return &user, nil
+}
+
 func (s *UserService) UpdateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	if err := s.db.WithContext(ctx).Save(user).Error; err != nil {
 		return nil, fmt.Errorf("failed to update user: %w", err)

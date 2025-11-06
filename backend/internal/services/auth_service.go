@@ -95,8 +95,15 @@ func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error
 }
 
 func (s *AuthService) GetOidcConfigurationStatus(ctx context.Context) (*dto.OidcStatusInfo, error) {
+	settings, err := s.settingsService.GetSettings(ctx)
+	mergeAccounts := false
+	if err == nil {
+		mergeAccounts = settings.AuthOidcMergeAccounts.IsTrue()
+	}
+
 	status := &dto.OidcStatusInfo{
-		EnvForced: s.config.OidcEnabled,
+		EnvForced:     s.config.OidcEnabled,
+		MergeAccounts: mergeAccounts,
 	}
 	if s.config.OidcEnabled {
 		status.EnvConfigured = s.config.OidcClientID != "" && s.config.OidcIssuerURL != ""
@@ -240,6 +247,24 @@ func (s *AuthService) findOrCreateOidcUser(ctx context.Context, userInfo dto.Oid
 	}
 
 	if user == nil {
+		// Check if merge accounts is enabled in settings
+		settings, settingsErr := s.settingsService.GetSettings(ctx)
+		mergeEnabled := settingsErr == nil && settings.AuthOidcMergeAccounts.IsTrue()
+
+		// If merge accounts is enabled, try to find existing user by email
+		if mergeEnabled && userInfo.Email != "" {
+			existingUser, emailErr := s.userService.GetUserByEmail(ctx, userInfo.Email)
+			if emailErr == nil && existingUser != nil {
+				// Found existing user with matching email - merge the accounts
+				slog.Info("Merging OIDC account with existing user", "email", userInfo.Email, "subject", userInfo.Subject)
+				if mergeErr := s.mergeOidcWithExistingUser(ctx, existingUser, userInfo, tokenResp); mergeErr != nil {
+					return nil, false, mergeErr
+				}
+				return existingUser, false, nil
+			}
+		}
+
+		// No existing user found, create new OIDC user
 		created, err := s.createOidcUser(ctx, userInfo, tokenResp)
 		if err != nil {
 			return nil, false, err
@@ -316,6 +341,34 @@ func (s *AuthService) updateOidcUser(ctx context.Context, user *models.User, use
 		user.Roles = removeRole(user.Roles, "admin")
 	}
 
+	s.persistOidcTokens(user, tokenResp)
+
+	now := time.Now()
+	user.LastLogin = &now
+	_, err := s.userService.UpdateUser(ctx, user)
+	return err
+}
+
+func (s *AuthService) mergeOidcWithExistingUser(ctx context.Context, user *models.User, userInfo dto.OidcUserInfo, tokenResp *dto.OidcTokenResponse) error {
+	// Link the OIDC subject ID to the existing user
+	user.OidcSubjectId = &userInfo.Subject
+
+	// Update display name if not set
+	if userInfo.Name != "" && user.DisplayName == nil {
+		user.DisplayName = &userInfo.Name
+	}
+
+	// Update admin role based on OIDC claims
+	wantAdmin := s.isAdminFromOidc(ctx, userInfo, tokenResp)
+	hasAdmin := hasRole(user.Roles, "admin")
+	switch {
+	case wantAdmin && !hasAdmin:
+		user.Roles = addRole(user.Roles, "admin")
+	case !wantAdmin && hasAdmin:
+		user.Roles = removeRole(user.Roles, "admin")
+	}
+
+	// Persist OIDC tokens
 	s.persistOidcTokens(user, tokenResp)
 
 	now := time.Now()
