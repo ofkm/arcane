@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   binaries:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
 
     env:
       DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/arcane
@@ -63,24 +63,16 @@ jobs:
         run: gh release upload ${{ github.ref_name }} backend/.bin/*
 
   manager-image:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     env:
       DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/arcane
     steps:
       - uses: actions/checkout@v5
         with: { fetch-depth: 1 }
-      - uses: docker/setup-qemu-action@v3
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PAT }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          driver: cloud
-          endpoint: "kmendell/ofkm"
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
+
       - name: Lowercase image name
         run: echo "DOCKER_IMAGE_NAME=${DOCKER_IMAGE_NAME,,}" >> "$GITHUB_ENV"
       - uses: docker/login-action@v3
@@ -97,7 +89,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},prefix=v
             type=semver,pattern={{major}},prefix=v
       - id: build
-        uses: docker/build-push-action@v6
+        uses: depot/build-push-action@v1
         with:
           context: .
           file: docker/Dockerfile
@@ -112,16 +104,15 @@ jobs:
       digest: ${{ steps.build.outputs.digest }}
 
   agent-image:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     env:
       AGENT_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/arcane-headless
     steps:
       - uses: actions/checkout@v5
         with: { fetch-depth: 1 }
-      - uses: docker/setup-qemu-action@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
 
       - name: Lowercase image name
         run: echo "AGENT_IMAGE_NAME=${AGENT_IMAGE_NAME,,}" >> "$GITHUB_ENV"
@@ -139,8 +130,9 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},prefix=v
             type=semver,pattern={{major}},prefix=v
       - id: build
-        uses: docker/build-push-action@v6
+        uses: depot/build-push-action@v1
         with:
+          project: np622krb2x
           context: .
           file: docker/Dockerfile-agent
           platforms: linux/amd64,linux/arm64
@@ -154,7 +146,7 @@ jobs:
       digest: ${{ steps.build.outputs.digest }}
 
   publish-release:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     needs: [binaries, manager-image, agent-image]
     permissions:
       contents: write

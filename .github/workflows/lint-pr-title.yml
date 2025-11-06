@@ -1,4 +1,4 @@
-name: 'Validate Pull Request Title'
+name: "Validate Pull Request Title"
 
 on:
   pull_request_target:
@@ -12,7 +12,7 @@ permissions:
 jobs:
   main:
     name: Validate PR title
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     permissions:
       pull-requests: read
     steps:

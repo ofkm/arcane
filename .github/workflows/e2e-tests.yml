@@ -29,7 +29,7 @@ jobs:
     permissions:
       contents: read
       actions: write
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
@@ -60,7 +60,7 @@ jobs:
     permissions:
       contents: read
       actions: write
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     needs: build
     strategy:
       fail-fast: false
