@@ -35,6 +35,7 @@ type Services struct {
 	Event             *services.EventService
 	Version           *services.VersionService
 	Notification      *services.NotificationService
+	Apprise           *services.AppriseService
 }
 
 func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config, httpClient *http.Client) (svcs *Services, dockerSrvice *services.DockerClientService, err error) {
@@ -67,6 +68,7 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs.System = services.NewSystemService(db, svcs.Docker, svcs.Container, svcs.Image, svcs.Volume, svcs.Network, svcs.Settings)
 	svcs.Version = services.NewVersionService(httpClient, cfg.UpdateCheckDisabled, config.Version, config.Revision)
 	svcs.SystemUpgrade = services.NewSystemUpgradeService(svcs.Docker, svcs.Version, svcs.Event)
+	svcs.Apprise = services.NewAppriseService(db)
 
 	return svcs, dockerClient, nil
 }

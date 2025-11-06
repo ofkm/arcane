@@ -126,6 +126,122 @@ func getAppriseConfigSchema() map[string]models.ParamDef {
 	}
 }
 
+// getDiscordConfigSchema returns the configuration schema for Discord provider
+func getDiscordConfigSchema() map[string]models.ParamDef {
+	return map[string]models.ParamDef{
+		"webhookURL": {
+			Name:        "webhookURL",
+			DisplayName: "Discord Webhook URL",
+			Type:        "string",
+			Required:    true,
+			Description: "Discord webhook URL for sending messages to channels",
+			Example:     "https://discord.com/api/webhooks/123456789/channel_id/webhook_token",
+		},
+		"username": {
+			Name:        "username",
+			DisplayName: "Bot Username",
+			Type:        "string",
+			Required:    false,
+			Description: "Username for the Discord bot (max 32 characters)",
+			Example:     "Arcane Bot",
+		},
+		"avatarURL": {
+			Name:        "avatarURL",
+			DisplayName: "Avatar URL",
+			Type:        "string",
+			Required:    false,
+			Description: "URL for the bot's avatar image",
+			Example:     "https://example.com/avatar.png",
+		},
+		"content": {
+			Name:        "content",
+			DisplayName: "Default Content",
+			Type:        "string",
+			Required:    false,
+			Description: "Default message content to send with notifications",
+			Example:     "Notification from Arcane",
+		},
+	}
+}
+
+// getEmailConfigSchema returns the configuration schema for Email provider
+func getEmailConfigSchema() map[string]models.ParamDef {
+	return map[string]models.ParamDef{
+		"smtpHost": {
+			Name:        "smtpHost",
+			DisplayName: "SMTP Host",
+			Type:        "string",
+			Required:    true,
+			Description: "SMTP server hostname",
+			Example:     "smtp.gmail.com",
+		},
+		"smtpPort": {
+			Name:        "smtpPort",
+			DisplayName: "SMTP Port",
+			Type:        "integer",
+			Required:    true,
+			Description: "SMTP server port (usually 587 for TLS or 465 for SSL)",
+			Example:     "587",
+		},
+		"fromAddress": {
+			Name:        "fromAddress",
+			DisplayName: "From Address",
+			Type:        "string",
+			Required:    true,
+			Description: "Email address to send from",
+			Example:     "noreply@example.com",
+		},
+		"fromName": {
+			Name:        "fromName",
+			DisplayName: "From Name",
+			Type:        "string",
+			Required:    false,
+			Description: "Display name for the sender",
+			Example:     "Arcane Notifications",
+		},
+		"toAddresses": {
+			Name:        "toAddresses",
+			DisplayName: "To Addresses",
+			Type:        "array",
+			Required:    true,
+			Description: "Array of recipient email addresses",
+			Example:     "[]string{\"user@example.com\", \"admin@example.com\"}",
+		},
+		"username": {
+			Name:        "username",
+			DisplayName: "Username",
+			Type:        "string",
+			Required:    false,
+			Description: "SMTP authentication username (if different from fromAddress)",
+			Example:     "noreply@example.com",
+		},
+		"password": {
+			Name:        "password",
+			DisplayName: "Password",
+			Type:        "string",
+			Required:    false,
+			Description: "SMTP authentication password or app password",
+			Example:     "app-specific-password",
+		},
+		"useTLS": {
+			Name:        "useTLS",
+			DisplayName: "Use TLS",
+			Type:        "boolean",
+			Required:    false,
+			Description: "Use TLS encryption (recommended for port 587)",
+			Example:     "true",
+		},
+		"useSSL": {
+			Name:        "useSSL",
+			DisplayName: "Use SSL",
+			Type:        "boolean",
+			Required:    false,
+			Description: "Use SSL encryption (for port 465)",
+			Example:     "false",
+		},
+	}
+}
+
 func (r *ProviderRegistry) registerProvider(provider Provider) {
 	r.providers[provider.Name()] = provider
 }

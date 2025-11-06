@@ -61,15 +61,9 @@ func (h *NotificationHandler) GetAllSettings(c *gin.Context) {
 			Label:            setting.Label,
 			Tags:             setting.Tags,
 			ValidationStatus: setting.ValidationStatus,
-			LastValidatedAt: func() *string {
-				if setting.LastValidatedAt != nil {
-					t := setting.LastValidatedAt.Format(time.RFC3339)
-					return &t
-				}
-				return nil
-			}(),
-			CreatedAt: setting.CreatedAt.Format(time.RFC3339),
-			UpdatedAt: setting.UpdatedAt.Format(time.RFC3339),
+			LastValidatedAt:  setting.LastValidatedAt,
+			CreatedAt:        setting.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:        setting.UpdatedAt.Format(time.RFC3339),
 		}
 	}
 
@@ -95,15 +89,9 @@ func (h *NotificationHandler) GetSettings(c *gin.Context) {
 		Label:            settings.Label,
 		Tags:             settings.Tags,
 		ValidationStatus: settings.ValidationStatus,
-		LastValidatedAt: func() *string {
-			if settings.LastValidatedAt != nil {
-				t := settings.LastValidatedAt.Format(time.RFC3339)
-				return &t
-			}
-			return nil
-		}(),
-		CreatedAt: settings.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: settings.UpdatedAt.Format(time.RFC3339),
+		LastValidatedAt:  settings.LastValidatedAt,
+		CreatedAt:        settings.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:        settings.UpdatedAt.Format(time.RFC3339),
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -153,15 +141,9 @@ func (h *NotificationHandler) CreateOrUpdateSettings(c *gin.Context) {
 		Label:            settings.Label,
 		Tags:             settings.Tags,
 		ValidationStatus: settings.ValidationStatus,
-		LastValidatedAt: func() *string {
-			if settings.LastValidatedAt != nil {
-				t := settings.LastValidatedAt.Format(time.RFC3339)
-				return &t
-			}
-			return nil
-		}(),
-		CreatedAt: settings.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: settings.UpdatedAt.Format(time.RFC3339),
+		LastValidatedAt:  settings.LastValidatedAt,
+		CreatedAt:        settings.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:        settings.UpdatedAt.Format(time.RFC3339),
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -201,20 +183,6 @@ func (h *NotificationHandler) GetAllProviders(c *gin.Context) {
 	// Map to DTOs
 	responses := make([]dto.ProviderMetadataResponse, len(metadata))
 	for i, meta := range metadata {
-		parameters := make(map[string]dto.ParamDefResponse)
-		for name, param := range meta.Parameters {
-			parameters[name] = dto.ParamDefResponse{
-				Name:        param.Name,
-				DisplayName: param.DisplayName,
-				Type:        param.Type,
-				Required:    param.Required,
-				Description: param.Description,
-				Example:     param.Example,
-				Placeholder: param.Placeholder,
-				Validation:  param.Validation,
-			}
-		}
-
 		responses[i] = dto.ProviderMetadataResponse{
 			ID:          meta.ID,
 			Name:        meta.Name,
@@ -222,7 +190,7 @@ func (h *NotificationHandler) GetAllProviders(c *gin.Context) {
 			Category:    meta.Category,
 			Description: meta.Description,
 			URLFormat:   meta.URLFormat,
-			Parameters:  parameters,
+			Parameters:  meta.Parameters,
 			AuthTypes:   meta.AuthTypes,
 			Tags:        meta.Tags,
 			Examples:    meta.Examples,
