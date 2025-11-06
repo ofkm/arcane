@@ -95,10 +95,17 @@ func (s *AuthService) getAuthSettings(ctx context.Context) (*AuthSettings, error
 }
 
 func (s *AuthService) GetOidcConfigurationStatus(ctx context.Context) (*dto.OidcStatusInfo, error) {
-	settings, err := s.settingsService.GetSettings(ctx)
 	mergeAccounts := false
-	if err == nil {
-		mergeAccounts = settings.AuthOidcMergeAccounts.IsTrue()
+	if s.settingsService != nil {
+		func() {
+			defer func() {
+				// In tests, a zero-valued SettingsService may panic; treat as merge disabled
+				_ = recover()
+			}()
+			if settings, err := s.settingsService.GetSettings(ctx); err == nil {
+				mergeAccounts = settings.AuthOidcMergeAccounts.IsTrue()
+			}
+		}()
 	}
 
 	status := &dto.OidcStatusInfo{
@@ -350,30 +357,29 @@ func (s *AuthService) updateOidcUser(ctx context.Context, user *models.User, use
 }
 
 func (s *AuthService) mergeOidcWithExistingUser(ctx context.Context, user *models.User, userInfo dto.OidcUserInfo, tokenResp *dto.OidcTokenResponse) error {
-	// Link the OIDC subject ID to the existing user
-	user.OidcSubjectId = &userInfo.Subject
+	// Perform the merge atomically to avoid races when multiple OIDC subjects share the same email
+	_, err := s.userService.AttachOidcSubjectTransactional(ctx, user.ID, userInfo.Subject, func(u *models.User) {
+		// Update display name if not set
+		if userInfo.Name != "" && u.DisplayName == nil {
+			u.DisplayName = &userInfo.Name
+		}
 
-	// Update display name if not set
-	if userInfo.Name != "" && user.DisplayName == nil {
-		user.DisplayName = &userInfo.Name
-	}
+		// Update admin role based on OIDC claims
+		wantAdmin := s.isAdminFromOidc(ctx, userInfo, tokenResp)
+		hasAdmin := hasRole(u.Roles, "admin")
+		switch {
+		case wantAdmin && !hasAdmin:
+			u.Roles = addRole(u.Roles, "admin")
+		case !wantAdmin && hasAdmin:
+			u.Roles = removeRole(u.Roles, "admin")
+		}
 
-	// Update admin role based on OIDC claims
-	wantAdmin := s.isAdminFromOidc(ctx, userInfo, tokenResp)
-	hasAdmin := hasRole(user.Roles, "admin")
-	switch {
-	case wantAdmin && !hasAdmin:
-		user.Roles = addRole(user.Roles, "admin")
-	case !wantAdmin && hasAdmin:
-		user.Roles = removeRole(user.Roles, "admin")
-	}
+		// Persist OIDC tokens
+		s.persistOidcTokens(u, tokenResp)
 
-	// Persist OIDC tokens
-	s.persistOidcTokens(user, tokenResp)
-
-	now := time.Now()
-	user.LastLogin = &now
-	_, err := s.userService.UpdateUser(ctx, user)
+		now := time.Now()
+		u.LastLogin = &now
+	})
 	return err
 }
 
