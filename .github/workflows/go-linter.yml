@@ -4,11 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'backend/**'
+      - "backend/**"
   pull_request:
     branches: [main]
     paths:
-      - 'backend/**'
+      - "backend/**"
 
 permissions:
   contents: read
@@ -18,7 +18,7 @@ permissions:
 jobs:
   golangci-lint:
     name: Run Golangci-lint
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v5

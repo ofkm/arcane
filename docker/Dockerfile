@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # Tags passed to "go build"
 ARG BUILD_TAGS=""
 
@@ -18,6 +20,7 @@ FROM golang:1.25-alpine AS backend-builder
 ARG BUILD_TAGS
 WORKDIR /build
 RUN apk add --no-cache ca-certificates curl git tzdata
+
 COPY ./.version ./VERSION
 COPY ./backend/go.mod ./backend/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download

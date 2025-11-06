@@ -1,6 +1,5 @@
 > [!IMPORTANT]
-> All Arcane repos are in the process of moving to the [@getarcaneapp](https://github.com/getarcaneapp) org on GitHub. This means the images used for Arcane for all future releases (past 1.7.2) will use a new image repo and tag.
-> Currently only the templates and website repos have moved. The main repository will be moved in the coming days.
+> All Arcane repos have moved to the [@getarcaneapp](https://github.com/getarcaneapp) org on GitHub. This means the images used for Arcane for all future releases (past 1.7.2) will use a new image repo and tag.
 
 <p align="center">
   <img src=".github/assets/img/PNG-3.png" alt="Arcane Logo" width="500" />
