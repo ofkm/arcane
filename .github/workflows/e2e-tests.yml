@@ -50,6 +50,8 @@ jobs:
           file: docker/Dockerfile
           build-args: BUILD_TAGS=playwright
           save: true
+          secrets: |
+            "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
 
       - name: Export build ID for tests
         run: echo "BUILD_ID=${{ steps.build.outputs.build-id }}" >> $GITHUB_ENV

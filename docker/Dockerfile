@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # Tags passed to "go build"
 ARG BUILD_TAGS=""
 
@@ -18,14 +20,21 @@ FROM golang:1.25-alpine AS backend-builder
 ARG BUILD_TAGS
 WORKDIR /build
 RUN apk add --no-cache ca-certificates curl git tzdata
+
+# Install Depot CLI
+RUN curl -L https://depot.dev/install-cli.sh | sh
+
 COPY ./.version ./VERSION
 COPY ./backend/go.mod ./backend/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY ./backend ./
 COPY --from=frontend-builder /build/frontend/dist ./frontend/dist
-RUN --mount=type=cache,target=/root/.cache/go-build \
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    --mount=type=cache,target=/root/.cache/go-build \
     VERSION=$(cat VERSION | tr -d '[:space:]') && \
     REVISION=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") && \
+    PATH="/root/.depot/bin:$PATH" \
+    GOCACHEPROG="depot gocache" \
     CGO_ENABLED=0 GOOS=linux \
     go build \
     -tags "${BUILD_TAGS}" \

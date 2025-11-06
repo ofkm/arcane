@@ -72,6 +72,7 @@ jobs:
         id: build-push-image
         uses: depot/build-push-action@v1
         with:
+          token: ${{ secrets.DEPOT_TOKEN }}
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
@@ -133,6 +134,7 @@ jobs:
         id: build-push-image
         uses: depot/build-push-action@v1
         with:
+          token: ${{ secrets.DEPOT_TOKEN }}
           project: np622krb2x
           context: .
           file: docker/Dockerfile-agent-static

@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 # Build agent binary
 ARG VERSION="dev"
 ARG REVISION="unknown"
@@ -8,6 +10,9 @@ WORKDIR /build
 
 RUN apk add --no-cache git ca-certificates tzdata curl
 
+# Install Depot CLI
+RUN curl -L https://depot.dev/install-cli.sh | sh
+
 COPY ./.version ./VERSION
 COPY ./backend/go.mod ./backend/go.sum ./
 RUN go mod download
@@ -15,8 +20,11 @@ RUN go mod download
 COPY ./backend ./backend
 
 WORKDIR /build/backend
-RUN VERSION=$(cat ../VERSION | tr -d '[:space:]') && \
+RUN --mount=type=secret,id=DEPOT_TOKEN,env=DEPOT_TOKEN \
+    VERSION=$(cat ../VERSION | tr -d '[:space:]') && \
     REVISION=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") && \
+    PATH="/root/.depot/bin:$PATH" \
+    GOCACHEPROG="depot gocache" \
     CGO_ENABLED=0 GOOS=linux \
     go build \
     -tags "${BUILD_TAGS}" \

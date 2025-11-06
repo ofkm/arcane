@@ -91,6 +91,7 @@ jobs:
       - id: build
         uses: depot/build-push-action@v1
         with:
+          token: ${{ secrets.DEPOT_TOKEN }}
           context: .
           file: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
@@ -100,6 +101,8 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             REVISION=${{ github.sha }}
+          secrets: |
+            "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
     outputs:
       digest: ${{ steps.build.outputs.digest }}
 
@@ -132,6 +135,7 @@ jobs:
       - id: build
         uses: depot/build-push-action@v1
         with:
+          token: ${{ secrets.DEPOT_TOKEN }}
           project: np622krb2x
           context: .
           file: docker/Dockerfile-agent
@@ -142,6 +146,8 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             REVISION=${{ github.sha }}
+          secrets: |
+            "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
     outputs:
       digest: ${{ steps.build.outputs.digest }}
 
