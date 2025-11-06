@@ -40,6 +40,7 @@ jobs:
       - name: Build and export Arcane image
         uses: depot/build-push-action@v1
         with:
+          token: ${{ secrets.DEPOT_TOKEN }}
           push: false
           load: false
           tags: arcane:playwright-tests
