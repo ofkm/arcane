@@ -46,7 +46,6 @@ jobs:
           tags: arcane:playwright-tests
           file: docker/Dockerfile
           build-args: BUILD_TAGS=playwright
-          outputs: type=docker,dest=/tmp/arcane-image.tar
           save: true
 
       - name: Upload Docker image artifact
