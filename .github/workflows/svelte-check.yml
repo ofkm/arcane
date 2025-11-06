@@ -28,7 +28,7 @@ jobs:
     name: Run Svelte Check
     # Don't run on dependabot branches
     if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     permissions:
       contents: read
       checks: write

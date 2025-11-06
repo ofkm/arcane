@@ -1254,6 +1254,8 @@
 	"network_enable_ipam_label": "Enable IPAM Configuration",
 	"network_subnet_description": "Network subnet in CIDR notation",
 	"network_gateway_description": "Gateway IP address for the network",
+	"network_driver_options_placeholder": "parent=eth0\ncom.docker.network.bridge.name=docker0",
+	"network_driver_options_description": "Geben Sie Treiber-spezifische Optionen als Schlüssel=Wert-Paare ein (z.B. parent=eth0 für macvlan), eine pro Zeile",
 	"network_interface": "Network interface",
 	"_comment_form_volume": "=== FORM - ERSTELLEN VOLUME ===",
 	"create_volume_title": "Create New Volume",
