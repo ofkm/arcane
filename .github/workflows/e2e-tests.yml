@@ -29,15 +29,16 @@ jobs:
     permissions:
       contents: read
       actions: write
+      id-token: write
     runs-on: depot-ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
 
       - name: Build and export Arcane image
-        uses: docker/build-push-action@v6
+        uses: depot/build-push-action@v1
         with:
           push: false
           load: false
@@ -45,8 +46,7 @@ jobs:
           file: docker/Dockerfile
           build-args: BUILD_TAGS=playwright
           outputs: type=docker,dest=/tmp/arcane-image.tar
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          save: true
 
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v5
