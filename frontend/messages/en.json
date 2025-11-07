@@ -510,7 +510,7 @@
 	"images_subtitle": "View and Manage your Container Images",
 	"images_total": "Total Images",
 	"images_total_size": "Total Size",
-	"images_top_largest": "Top 5 Largest Images",
+	"images_top_largest": "Largest Images",
 	"images_showing_of_total": "Showing {shown} of {total} images",
 	"images_pull": "Pull",
 	"images_pull_image": "Pull Image",
