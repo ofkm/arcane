@@ -25,13 +25,13 @@
 
 	let selectedIds = $state<string[]>([]);
 	let contentHeight = $state(0);
-	
+
 	// Estimate row height: ~57px per row (including borders/padding), plus ~145px for header
 	const ROW_HEIGHT = 57;
 	const HEADER_HEIGHT = 145;
 	const MIN_ROWS = 3;
 	const MAX_ROWS = 50;
-	
+
 	const calculatedLimit = $derived.by(() => {
 		if (contentHeight <= 0) return 5;
 		const availableHeight = contentHeight - HEADER_HEIGHT;
@@ -50,7 +50,7 @@
 		if (calculatedLimit !== lastFetchedLimit && requestOptions.pagination) {
 			lastFetchedLimit = calculatedLimit;
 			requestOptions.pagination.limit = calculatedLimit;
-			containerService.getContainers(requestOptions).then(result => containers = result);
+			containerService.getContainers(requestOptions).then((result) => (containers = result));
 		}
 	});
 
@@ -127,25 +127,25 @@
 			</div>
 		</Card.Header>
 		<Card.Content class="relative flex min-h-0 flex-1 flex-col px-0">
-		<ArcaneTable
-			items={containers}
-			bind:requestOptions
-			bind:selectedIds
-			onRefresh={async (options) => (containers = await containerService.getContainers(options))}
-			withoutSearch={true}
-			withoutPagination={true}
-			selectionDisabled={true}
-			unstyled={true}
-			{columns}
-			mobileCard={DashContainerMobileCard}
-		/>
-		{#if containers.data.length >= calculatedLimit && containers.pagination.totalItems > calculatedLimit}
-			<div
-				class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 rounded-b-xl px-6 py-3 text-xs backdrop-blur-sm"
-			>
-				{m.containers_showing_of_total({ shown: calculatedLimit, total: containers.pagination.totalItems })}
-			</div>
-		{/if}
-	</Card.Content>
-</Card.Root>
+			<ArcaneTable
+				items={containers}
+				bind:requestOptions
+				bind:selectedIds
+				onRefresh={async (options) => (containers = await containerService.getContainers(options))}
+				withoutSearch={true}
+				withoutPagination={true}
+				selectionDisabled={true}
+				unstyled={true}
+				{columns}
+				mobileCard={DashContainerMobileCard}
+			/>
+			{#if containers.data.length >= calculatedLimit && containers.pagination.totalItems > calculatedLimit}
+				<div
+					class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 rounded-b-xl px-6 py-3 text-xs backdrop-blur-sm"
+				>
+					{m.containers_showing_of_total({ shown: calculatedLimit, total: containers.pagination.totalItems })}
+				</div>
+			{/if}
+		</Card.Content>
+	</Card.Root>
 </div>
