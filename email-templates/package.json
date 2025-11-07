@@ -20,7 +20,7 @@
     "@types/node": "^24.9.2",
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.1",
-    "react-email": "4.3.2",
+    "react-email": "5.0.1",
     "tsx": "^4.0.0"
   }
 }
