@@ -61,7 +61,7 @@
     "isomorphic-dompurify": "^2.30.1",
     "mode-watcher": "^1.1.0",
     "paneforge": "^1.0.2",
-    "runed": "0.34.0",
+    "runed": "0.36.0",
     "svelte": "^5.43.0",
     "svelte-check": "^4.3.3",
     "svelte-sonner": "^1.0.5",
