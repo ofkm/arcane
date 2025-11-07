@@ -37,15 +37,17 @@
 		return Math.max(MIN_ROWS, Math.min(MAX_ROWS, rows));
 	});
 
+	let selectedIds = $state<string[]>([]);
+	let lastFetchedLimit = $state(5);
+
 	let requestOptions = $state<SearchPaginationSortRequest>({
 		pagination: { page: 1, limit: 5 },
 		sort: { column: 'size', direction: 'desc' }
 	});
 
-	let selectedIds = $state<string[]>([]);
-	
 	$effect(() => {
-		if (requestOptions.pagination && calculatedLimit !== requestOptions.pagination.limit) {
+		if (calculatedLimit !== lastFetchedLimit && requestOptions.pagination) {
+			lastFetchedLimit = calculatedLimit;
 			requestOptions.pagination.limit = calculatedLimit;
 			imageService.getImages(requestOptions).then(result => images = result);
 		}
