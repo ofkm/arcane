@@ -260,6 +260,11 @@ func (s *AuthService) findOrCreateOidcUser(ctx context.Context, userInfo dto.Oid
 
 		// If merge accounts is enabled, try to find existing user by email
 		if mergeEnabled && userInfo.Email != "" {
+			// Require email verification from OIDC provider before merging
+			if !userInfo.EmailVerified {
+				return nil, false, errors.New("email not verified by OIDC provider; cannot merge accounts")
+			}
+
 			existingUser, emailErr := s.userService.GetUserByEmail(ctx, userInfo.Email)
 			if emailErr == nil && existingUser != nil {
 				// Found existing user with matching email - merge the accounts
