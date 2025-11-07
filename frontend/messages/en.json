@@ -827,7 +827,7 @@
 	"security_oidc_merge_accounts_label": "Link OIDC with Existing Accounts",
 	"security_oidc_merge_accounts_description": "Allow OIDC logins to merge with existing local accounts by matching email addresses",
 	"security_oidc_merge_accounts_alert_title": "Enable Account Linking?",
-	"security_oidc_merge_accounts_alert_description": "When enabled, users signing in with OIDC will automatically link to any existing local account with the same email address. This allows users to log in with either method. Existing accounts will gain OIDC access without creating duplicates.",
+	"security_oidc_merge_accounts_alert_description": "When enabled, users signing in with OIDC will automatically link to any existing local account with the same email address. This allows users to log in with either method. Existing accounts will gain OIDC access without creating duplicates. Warning: Admin permissions will be overwritten based on OIDC claims during login - local admins may lose privileges if OIDC doesn't grant admin, or regular users may gain admin from OIDC claims.",
 	"security_server_forces_oidc_missing_env": "Server forces OIDC, but env vars missing. Configure or fix server env.",
 	"security_oidc_configured_forced_view": "OIDC configured & forced by server. View status.",
 	"security_manage_oidc_config": "Manage OIDC configuration",
