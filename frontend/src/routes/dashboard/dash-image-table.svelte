@@ -47,6 +47,7 @@
 	$effect(() => {
 		if (requestOptions.pagination && calculatedLimit !== requestOptions.pagination.limit) {
 			requestOptions.pagination.limit = calculatedLimit;
+			imageService.getImages(requestOptions).then(result => images = result);
 		}
 	});
 
