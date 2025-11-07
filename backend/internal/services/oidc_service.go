@@ -326,6 +326,7 @@ func (s *OidcService) HandleCallback(ctx context.Context, code, state, storedSta
 		Subject:           subject,
 		Name:              utils.GetStringClaim(claims, "name"),
 		Email:             utils.GetStringClaim(claims, "email"),
+		EmailVerified:     utils.GetBoolClaim(claims, "email_verified"),
 		PreferredUsername: utils.GetStringClaim(claims, "preferred_username"),
 		GivenName:         utils.GetStringClaim(claims, "given_name"),
 		FamilyName:        utils.GetStringClaim(claims, "family_name"),

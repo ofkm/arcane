@@ -9,15 +9,19 @@
 	import { m } from '$lib/paraglide/messages';
 	import { templateService } from '$lib/services/template-service';
 	import { z } from 'zod/v4';
-	import { ResourcePageLayout, type ActionButton } from '$lib/layouts';
 	import { goto } from '$app/navigation';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import CodeIcon from '@lucide/svelte/icons/code';
 	import FileTextIcon from '@lucide/svelte/icons/file-text';
+	import SaveIcon from '@lucide/svelte/icons/save';
+	import TemplateSelectionDialog from '$lib/components/dialogs/template-selection-dialog.svelte';
+	import type { Template } from '$lib/types/template.type';
 
 	let { data } = $props();
 
 	let saving = $state(false);
+	let showTemplateDialog = $state(false);
+	let isLoadingTemplate = $state(false);
 	let originalComposeContent = $state(data.composeTemplate);
 	let originalEnvContent = $state(data.envTemplate);
 
@@ -64,81 +68,100 @@
 		toast.info(m.templates_reset_success());
 	}
 
-	const actionButtons = $derived<ActionButton[]>([
-		{
-			id: 'reset',
-			action: 'restart',
-			label: m.common_reset(),
-			onclick: handleReset,
-			disabled: !hasChanges
-		},
-		{
-			id: 'save',
-			action: 'save',
-			label: m.common_save(),
-			loadingLabel: m.common_saving(),
-			loading: saving,
-			disabled: saving || !hasChanges,
-			onclick: handleSave
+	async function handleTemplateSelect(template: Template) {
+		showTemplateDialog = false;
+		isLoadingTemplate = true;
+
+		try {
+			const templateContent = await templateService.getTemplateContent(template.id);
+			$inputs.composeContent.value = templateContent.content ?? template.content ?? '';
+			$inputs.envContent.value = templateContent.envContent ?? template.envContent ?? '';
+			toast.success(m.compose_template_loaded({ name: template.name }));
+		} catch (error) {
+			console.error('Error loading template:', error);
+			toast.error(error instanceof Error ? error.message : m.templates_download_failed());
+		} finally {
+			isLoadingTemplate = false;
 		}
-	]);
+	}
 </script>
 
-<div class="space-y-4">
-	<Button variant="ghost" onclick={() => goto('/customize/templates')} class="w-fit gap-2">
-		<ArrowLeftIcon class="size-4" />
-		<span>{m.common_back_to({ resource: m.templates_title() })}</span>
-	</Button>
+<div class="container mx-auto max-w-full space-y-6 overflow-hidden p-2 sm:p-6">
+	<div class="space-y-3 sm:space-y-4">
+		<Button variant="ghost" onclick={() => goto('/customize/templates')} class="w-fit gap-2">
+			<ArrowLeftIcon class="size-4" />
+			<span>{m.common_back_to({ resource: m.templates_title() })}</span>
+		</Button>
 
-	<ResourcePageLayout title={m.templates_defaults_title()} subtitle={m.templates_defaults_description()} {actionButtons}>
-		{#snippet mainContent()}
-			<div class="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-stretch">
-				<Card.Root class="flex min-w-0 flex-col lg:col-span-3">
-					<Card.Header icon={CodeIcon} class="shrink-0">
-						<div class="flex flex-col space-y-1.5">
-							<Card.Title>
-								<h2>{m.templates_compose_template_label()}</h2>
-							</Card.Title>
-							<Card.Description>{m.templates_service_definitions()}</Card.Description>
-						</div>
-					</Card.Header>
-					<Card.Content class="min-h-[500px] grow p-0 lg:h-full">
-						<div class="h-full rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
-							<CodeEditor bind:value={$inputs.composeContent.value} language="yaml" />
-						</div>
-					</Card.Content>
-					{#if $inputs.composeContent.error}
-						<Card.Footer class="pt-0">
-							<p class="text-destructive text-xs">
-								{$inputs.composeContent.error}
-							</p>
-						</Card.Footer>
-					{/if}
-				</Card.Root>
-
-				<Card.Root class="flex min-w-0 flex-col lg:col-span-2">
-					<Card.Header icon={FileTextIcon} class="shrink-0">
-						<div class="flex flex-col space-y-1.5">
-							<Card.Title>
-								<h2>{m.templates_env_template_label()}</h2>
-							</Card.Title>
-							<Card.Description>{m.templates_default_config_values()}</Card.Description>
-						</div>
-					</Card.Header>
-					<Card.Content class="min-h-[500px] grow p-0 lg:h-full">
-						<div class="h-full rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
-							<CodeEditor bind:value={$inputs.envContent.value} language="env" />
-						</div>
-					</Card.Content>
-					{#if $inputs.envContent.error}
-						<Card.Footer class="pt-0">
-							<p class="text-destructive text-xs">
-								{$inputs.envContent.error}
-							</p>
-						</Card.Footer>
-					{/if}
-				</Card.Root>
+		<div class="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+			<div>
+				<h1 class="text-xl font-bold wrap-break-word sm:text-2xl">{m.templates_defaults_title()}</h1>
+				<p class="text-muted-foreground mt-1.5 text-sm wrap-break-word sm:text-base">
+					{m.templates_defaults_description()}
+				</p>
 			</div>
-		{/snippet}
-	</ResourcePageLayout>
+			<div class="flex flex-col gap-2 sm:flex-row">
+				<Button variant="outline" onclick={() => (showTemplateDialog = true)} disabled={saving || isLoadingTemplate}>
+					{m.common_use_template()}
+				</Button>
+				<Button variant="outline" onclick={handleReset} disabled={!hasChanges || saving || isLoadingTemplate}>
+					{m.common_reset()}
+				</Button>
+				<Button onclick={handleSave} disabled={!hasChanges || saving || isLoadingTemplate} class="gap-2">
+					<SaveIcon class="size-4" />
+					{saving ? m.common_action_saving() : m.common_save()}
+				</Button>
+			</div>
+		</div>
+	</div>
+
+	<div class="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-stretch">
+		<Card.Root class="flex min-w-0 flex-col lg:col-span-3">
+			<Card.Header icon={CodeIcon} class="shrink-0">
+				<div class="flex flex-col space-y-1.5">
+					<Card.Title>
+						<h2>{m.templates_compose_template_label()}</h2>
+					</Card.Title>
+					<Card.Description>{m.templates_service_definitions()}</Card.Description>
+				</div>
+			</Card.Header>
+			<Card.Content class="min-h-[500px] grow p-0 lg:h-full">
+				<div class="h-full rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
+					<CodeEditor bind:value={$inputs.composeContent.value} language="yaml" readOnly={saving || isLoadingTemplate} />
+				</div>
+			</Card.Content>
+			{#if $inputs.composeContent.error}
+				<Card.Footer class="pt-0">
+					<p class="text-destructive text-xs font-medium">
+						{$inputs.composeContent.error}
+					</p>
+				</Card.Footer>
+			{/if}
+		</Card.Root>
+
+		<Card.Root class="flex min-w-0 flex-col lg:col-span-2">
+			<Card.Header icon={FileTextIcon} class="shrink-0">
+				<div class="flex flex-col space-y-1.5">
+					<Card.Title>
+						<h2>{m.templates_env_template_label()}</h2>
+					</Card.Title>
+					<Card.Description>{m.templates_default_config_values()}</Card.Description>
+				</div>
+			</Card.Header>
+			<Card.Content class="min-h-[500px] grow p-0 lg:h-full">
+				<div class="h-full rounded-b-xl [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
+					<CodeEditor bind:value={$inputs.envContent.value} language="env" readOnly={saving || isLoadingTemplate} />
+				</div>
+			</Card.Content>
+			{#if $inputs.envContent.error}
+				<Card.Footer class="pt-0">
+					<p class="text-destructive text-xs font-medium">
+						{$inputs.envContent.error}
+					</p>
+				</Card.Footer>
+			{/if}
+		</Card.Root>
+	</div>
 </div>
+
+<TemplateSelectionDialog bind:open={showTemplateDialog} templates={data.templates || []} onSelect={handleTemplateSelect} />

@@ -26,6 +26,7 @@ type UpdateSettingsDto struct {
 	AccentColor                *string `json:"accentColor,omitempty"`
 	AuthLocalEnabled           *string `json:"authLocalEnabled,omitempty"`
 	AuthOidcEnabled            *string `json:"authOidcEnabled,omitempty"`
+	AuthOidcMergeAccounts      *string `json:"authOidcMergeAccounts,omitempty"`
 	AuthSessionTimeout         *string `json:"authSessionTimeout,omitempty"`
 	AuthPasswordPolicy         *string `json:"authPasswordPolicy,omitempty"`
 	AuthOidcConfig             *string `json:"authOidcConfig,omitempty"`

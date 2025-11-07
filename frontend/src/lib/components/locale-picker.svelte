@@ -25,6 +25,7 @@
 	const locales: Record<string, string> = {
 		de: 'Deutsch',
 		en: 'English',
+		el: 'Ελληνικά',
 		eo: 'Esperanto',
 		es: 'Español',
 		fr: 'Français',

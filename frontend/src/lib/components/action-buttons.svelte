@@ -159,7 +159,7 @@
 						handleApiResultWithCallbacks({
 							result: await tryCatch(
 								type === 'container'
-									? containerService.deleteContainer(id)
+									? containerService.deleteContainer(id, { volumes: removeVolumes })
 									: projectService.destroyProject(id, removeVolumes, removeFiles)
 							),
 							message: m.common_action_failed_with_type({
