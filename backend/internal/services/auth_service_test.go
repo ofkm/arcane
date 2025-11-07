@@ -198,7 +198,7 @@ func TestGetOidcConfigurationStatus(t *testing.T) {
 	// Set a non-nil settingsService to prevent nil pointer dereference
 	// GetSettings will fail gracefully and mergeAccounts will default to false
 	s.settingsService = &SettingsService{}
-	
+
 	status, err := s.GetOidcConfigurationStatus(context.Background())
 	if err != nil {
 		t.Fatalf("GetOidcConfigurationStatus error: %v", err)
