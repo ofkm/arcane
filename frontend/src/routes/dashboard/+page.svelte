@@ -261,7 +261,7 @@
 	}
 </script>
 
-<div class="space-y-8">
+<div class="flex min-h-[calc(100vh-5rem-2.5rem)] flex-col space-y-8">
 	<div class="flex flex-col gap-4">
 		<div class="flex items-start justify-between gap-3">
 			<div class="flex-1 space-y-1">
@@ -348,9 +348,9 @@
 		</div>
 	</section>
 
-	<section>
+	<section class="flex min-h-0 flex-1 flex-col">
 		<h2 class="mb-4 text-lg font-semibold tracking-tight">Resources</h2>
-		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+		<div class="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-2">
 			<DashboardContainerTable bind:containers isLoading={isLoading.loadingContainers} />
 			<DashboardImageTable bind:images isLoading={isLoading.loadingImages} />
 		</div>
