@@ -67,6 +67,11 @@ func WriteComposeFile(projectsRoot, dirPath, content string) error {
 		return fmt.Errorf("failed to write compose file: %w", err)
 	}
 
+	// Chown the compose file to PUID/PGID if running as root
+	if err := ChownPath(composePath); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -98,6 +103,11 @@ func WriteEnvFile(projectsRoot, dirPath, content string) error {
 	envPath := filepath.Join(dirPath, ".env")
 	if err := os.WriteFile(envPath, []byte(content), FilePerm); err != nil {
 		return fmt.Errorf("failed to write env file: %w", err)
+	}
+
+	// Chown the env file to PUID/PGID if running as root
+	if err := ChownPath(envPath); err != nil {
+		return err
 	}
 
 	return nil

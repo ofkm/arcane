@@ -48,9 +48,9 @@ ENV ENVIRONMENT=production \
     PORT=3553
 
 LABEL org.opencontainers.image.authors="OFKM Technologies"
-LABEL org.opencontainers.image.url="https://github.com/ofkm/arcane"
-LABEL org.opencontainers.image.documentation="https://github.com/ofkm/arcane/blob/main/README.md"
-LABEL org.opencontainers.image.source="https://github.com/ofkm/arcane"
+LABEL org.opencontainers.image.url="https://github.com/getarcaneapp/arcane"
+LABEL org.opencontainers.image.documentation="https://github.com/getarcaneapp/arcane/blob/main/README.md"
+LABEL org.opencontainers.image.source="https://github.com/getarcaneapp/arcane"
 LABEL org.opencontainers.image.version=$VERSION
 LABEL org.opencontainers.image.revision=$REVISION
 LABEL org.opencontainers.image.licenses="BSD-3-Clause"
