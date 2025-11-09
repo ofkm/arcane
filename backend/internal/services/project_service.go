@@ -610,6 +610,12 @@ func (s *ProjectService) CreateProject(ctx context.Context, name, composeContent
 		return nil, fmt.Errorf("failed to save project files: %w", err)
 	}
 
+	// Only chown the project directory and initial files when creating a NEW project
+	// This ensures the directory is writable but doesn't interfere with Docker-created files
+	if err := fs.ChownRecursive(projectPath); err != nil {
+		slog.WarnContext(ctx, "failed to chown project directory", "error", err, "path", projectPath)
+	}
+
 	metadata := models.JSON{"action": "create", "projectID": proj.ID, "projectName": name, "path": projectPath}
 	if logErr := s.eventService.LogProjectEvent(ctx, models.EventTypeProjectCreate, proj.ID, name, user.ID, user.Username, "0", metadata); logErr != nil {
 		slog.ErrorContext(ctx, "could not log project creation", "error", logErr)
