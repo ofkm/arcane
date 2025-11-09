@@ -11,8 +11,6 @@ COPY ./backend/.bin/arcane-linux-${TARGETARCH} ./arcane
 ENV ENVIRONMENT=production
 ENV GIN_MODE=release
 ENV PORT=3552
-ENV PUID=2000
-ENV PGID=2000
 
 LABEL org.opencontainers.image.title="Arcane"
 LABEL org.opencontainers.image.description="Modern Docker Management, Made for Everyone"

@@ -45,8 +45,6 @@ RUN apk upgrade && apk --no-cache add ca-certificates curl tzdata
 ENV GIN_MODE=release
 ENV PORT=3552
 ENV ENVIRONMENT=production
-ENV PUID=2000
-ENV PGID=2000
 WORKDIR /app
 RUN mkdir -p /app/data
 COPY --from=backend-builder /build/arcane .

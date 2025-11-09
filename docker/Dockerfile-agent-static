@@ -11,9 +11,7 @@ COPY ./backend/.bin/arcane-agent-linux-${TARGETARCH} ./arcane-agent
 ENV ENVIRONMENT=production \
     AGENT_MODE=true \
     GIN_MODE=release \
-    PORT=3553 \
-    PUID=2000 \
-    PGID=2000
+    PORT=3553
 
 LABEL org.opencontainers.image.title="Arcane Agent"
 LABEL org.opencontainers.image.description="Arcane Agent"

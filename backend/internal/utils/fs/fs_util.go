@@ -10,6 +10,7 @@ import (
 
 	"github.com/ofkm/arcane-backend/internal/utils/projects"
 )
+
 func CountSubdirectories(path string) (int, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
@@ -110,11 +111,6 @@ func CreateUniqueDir(projectsRoot, basePath, name string, perm os.FileMode) (pat
 					os.Remove(candidateAbs)
 				}
 				return "", "", fmt.Errorf("created directory is outside allowed projects root")
-			}
-
-			// Chown the directory to PUID/PGID if running as root
-			if err := ChownPath(candidate); err != nil {
-				return "", "", fmt.Errorf("failed to chown directory: %w", err)
 			}
 
 			return candidate, folderName, nil

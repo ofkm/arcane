@@ -42,9 +42,7 @@ ARG REVISION="unknown"
 ENV ENVIRONMENT=production \
     AGENT_MODE=true \
     GIN_MODE=release \
-    PORT=3553 \
-    PUID=2000 \
-    PGID=2000
+    PORT=3553
 
 LABEL org.opencontainers.image.authors="OFKM Technologies"
 LABEL org.opencontainers.image.url="https://github.com/getarcaneapp/arcane"
