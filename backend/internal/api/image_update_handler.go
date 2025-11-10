@@ -21,6 +21,7 @@ func NewImageUpdateHandler(group *gin.RouterGroup, imageUpdateService *services.
 	{
 		apiGroup.GET("/check", handler.CheckImageUpdate)
 		apiGroup.GET("/check/:imageId", handler.CheckImageUpdateByID)
+		apiGroup.POST("/check/:imageId", handler.CheckImageUpdateByID)
 		apiGroup.POST("/check-batch", handler.CheckMultipleImages)
 		apiGroup.POST("/check-all", handler.CheckAllImages)
 		apiGroup.GET("/summary", handler.GetUpdateSummary)

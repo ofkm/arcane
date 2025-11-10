@@ -41,22 +41,19 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 FROM alpine:3 AS runner
 ARG VERSION="dev"
 ARG REVISION="unknown"
-RUN apk upgrade && apk --no-cache add ca-certificates curl shadow su-exec tzdata
-RUN delgroup ping && apk del iputils || true
-ENV DOCKER_GID=998 PUID=2000 PGID=2000
+RUN apk upgrade && apk --no-cache add ca-certificates curl tzdata
 ENV GIN_MODE=release
 ENV PORT=3552
 ENV ENVIRONMENT=production
 WORKDIR /app
-RUN mkdir -p /app/data && chmod 755 /app/data
+RUN mkdir -p /app/data
 COPY --from=backend-builder /build/arcane .
-COPY --chmod=755 scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 EXPOSE 3552
 VOLUME ["/app/data"]
 LABEL org.opencontainers.image.authors="OFKM Technologies" \
-org.opencontainers.image.url="https://github.com/ofkm/arcane" \
-org.opencontainers.image.documentation="https://github.com/ofkm/arcane/blob/main/README.md" \
-org.opencontainers.image.source="https://github.com/ofkm/arcane" \
+org.opencontainers.image.url="https://github.com/getarcaneapp/arcane" \
+org.opencontainers.image.documentation="https://github.com/getarcaneapp/arcane/blob/main/README.md" \
+org.opencontainers.image.source="https://github.com/getarcaneapp/arcane" \
 org.opencontainers.image.version=${VERSION} \
 org.opencontainers.image.revision=${REVISION} \
 org.opencontainers.image.licenses="BSD-3-Clause" \
@@ -65,5 +62,4 @@ org.opencontainers.image.title="Arcane" \
 org.opencontainers.image.description="Modern Docker Management, Made for Everyone" \
 com.ofkm.arcane.updater="false" \
 com.ofkm.arcane.server="true"
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["./arcane"]

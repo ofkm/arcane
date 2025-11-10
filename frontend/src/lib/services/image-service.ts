@@ -42,7 +42,7 @@ export class ImageService extends BaseAPIService {
 
 	async checkImageUpdateByID(imageId: string): Promise<ImageUpdateInfoDto> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/image-updates/check/${imageId}`));
+		return this.handleResponse(this.api.post(`/environments/${envId}/image-updates/check/${imageId}`, {}));
 	}
 
 	async checkAllImages(): Promise<Record<string, ImageUpdateInfoDto>> {

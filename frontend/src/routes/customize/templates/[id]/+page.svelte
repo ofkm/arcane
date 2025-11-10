@@ -170,7 +170,7 @@
 				<div class="min-w-0 flex-1">
 					<div class="text-muted-foreground text-xs font-semibold tracking-wide uppercase">{m.compose_services()}</div>
 					<div class="mt-1">
-						<div class="text-2xl font-bold">{services.length}</div>
+						<div class="text-2xl font-bold">{services?.length ?? 0}</div>
 					</div>
 				</div>
 			</Card.Content>
@@ -186,8 +186,8 @@
 						{m.common_environment_variables()}
 					</div>
 					<div class="mt-1 flex flex-wrap items-baseline gap-2">
-						<div class="text-2xl font-bold">{envVars.length}</div>
-						{#if envVars.length > 0}
+						<div class="text-2xl font-bold">{envVars?.length ?? 0}</div>
+						{#if envVars?.length}
 							<div class="text-muted-foreground text-sm">{m.templates_configurable_settings()}</div>
 						{/if}
 					</div>
@@ -214,7 +214,7 @@
 		</Card.Root>
 
 		<div class="flex min-w-0 flex-col gap-6 lg:col-span-1">
-			{#if services.length > 0}
+			{#if services?.length}
 				<Card.Root class="min-w-0 flex-shrink-0">
 					<Card.Header icon={BoxIcon}>
 						<div class="flex flex-col space-y-1.5">
@@ -239,7 +239,7 @@
 				</Card.Root>
 			{/if}
 
-			{#if env && envVars.length > 0}
+			{#if envVars?.length}
 				<Card.Root class="min-w-0 flex-shrink-0">
 					<Card.Header icon={FileTextIcon}>
 						<div class="flex flex-col space-y-1.5">
@@ -264,7 +264,9 @@
 						{/each}
 					</Card.Content>
 				</Card.Root>
+			{/if}
 
+			{#if env}
 				<Card.Root class="flex min-w-0 flex-grow flex-col lg:h-full">
 					<Card.Header icon={FileTextIcon} class="flex-shrink-0">
 						<div class="flex flex-col space-y-1.5">

@@ -164,10 +164,10 @@
 
 <div class="bg-background flex min-h-0 flex-col">
 	<!-- Header -->
-	<div class="bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 border-b backdrop-blur">
+	<div class="sticky top-0 z-50 border-b">
 		<div class="mx-auto flex h-16 max-w-full items-center justify-between gap-4 px-6">
 			<div class="flex items-center gap-4">
-				<Button variant="ghost" size="sm" href="/projects" class="gap-2">
+				<Button variant="ghost" size="sm" href="/projects" class="gap-2 bg-transparent">
 					<ArrowLeftIcon class="size-4" />
 					{m.common_back()}
 				</Button>

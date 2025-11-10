@@ -3,25 +3,23 @@ FROM alpine:3
 ARG TARGETARCH
 
 WORKDIR /app
-RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl su-exec \
- && (delgroup ping || true) && (apk del iputils || true)
+RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl
+RUN mkdir -p /app/data
 
 COPY ./backend/.bin/arcane-agent-linux-${TARGETARCH} ./arcane-agent
 
-COPY --chmod=755 ../scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-
-LABEL org.opencontainers.image.title="Arcane Agent"
-LABEL org.opencontainers.image.description="Arcane Agent"
-LABEL org.opencontainers.image.source="https://github.com/ofkm/arcane"
-
-LABEL com.ofkm.arcane.updater="false"
-LABEL com.ofkm.arcane.server="true"
-
-EXPOSE 3553
 ENV ENVIRONMENT=production \
     AGENT_MODE=true \
     GIN_MODE=release \
     PORT=3553
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+LABEL org.opencontainers.image.title="Arcane Agent"
+LABEL org.opencontainers.image.description="Arcane Agent"
+LABEL org.opencontainers.image.source="https://github.com/ofkm/arcane"
+LABEL com.ofkm.arcane.updater="false"
+LABEL com.ofkm.arcane.server="true"
+
+EXPOSE 3553
+VOLUME ["/app/data"]
+
 CMD ["./arcane-agent"]
