@@ -22,6 +22,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { projectService } from '$lib/services/project-service.js';
 	import { systemService } from '$lib/services/system-service.js';
+	import { templateService } from '$lib/services/template-service.js';
 	import * as ButtonGroup from '$lib/components/ui/button-group/index.js';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu/index.js';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -32,6 +33,7 @@
 
 	let saving = $state(false);
 	let converting = $state(false);
+	let creatingTemplate = $state(false);
 	let showTemplateDialog = $state(false);
 	let showConverterDialog = $state(false);
 	let isLoadingTemplateContent = $state(false);
@@ -122,6 +124,28 @@
 		dockerRunCommand = command;
 	}
 
+	async function handleCreateTemplate() {
+		const validated = form.validate();
+		if (!validated) return;
+
+		const { name, composeContent, envContent } = validated;
+
+		handleApiResultWithCallbacks({
+			result: await tryCatch(
+				templateService.createTemplate({
+					name,
+					content: composeContent,
+					envContent
+				})
+			),
+			message: m.common_create_failed({ resource: `${m.resource_template()} "${name}"` }),
+			setLoadingState: (value) => (creatingTemplate = value),
+			onSuccess: async () => {
+				toast.success(m.common_create_success({ resource: `${m.resource_template()} "${name}"` }));
+			}
+		});
+	}
+
 	const templateBtnClass = arcaneButtonVariants({
 		tone: actionConfigs.template?.tone ?? 'outline-primary',
 		size: 'default'
@@ -140,10 +164,10 @@
 
 <div class="bg-background flex min-h-0 flex-col">
 	<!-- Header -->
-	<div class="bg-background/80 supports-backdrop-filter:bg-background/60 sticky top-0 z-50 border-b backdrop-blur">
+	<div class="sticky top-0 z-50 border-b">
 		<div class="mx-auto flex h-16 max-w-full items-center justify-between gap-4 px-6">
 			<div class="flex items-center gap-4">
-				<Button variant="ghost" size="sm" href="/projects" class="gap-2">
+				<Button variant="ghost" size="sm" href="/projects" class="gap-2 bg-transparent">
 					<ArrowLeftIcon class="size-4" />
 					{m.common_back()}
 				</Button>
@@ -203,6 +227,24 @@
 								<DropdownMenu.Item class={dropdownItemClass} onclick={() => (showConverterDialog = true)}>
 									<TerminalIcon class="size-4" />
 									{m.compose_convert_from_docker_run()}
+								</DropdownMenu.Item>
+								<DropdownMenu.Separator />
+								<DropdownMenu.Item
+									class={dropdownItemClass}
+									disabled={!$inputs.name.value ||
+										!$inputs.composeContent.value ||
+										saving ||
+										converting ||
+										creatingTemplate ||
+										isLoadingTemplateContent}
+									onclick={handleCreateTemplate}
+								>
+									{#if creatingTemplate}
+										<Spinner class="size-4" />
+									{:else}
+										<WandIcon class="size-4" />
+									{/if}
+									{m.templates_create_template()}
 								</DropdownMenu.Item>
 							</DropdownMenu.Group>
 						</DropdownMenu.Content>

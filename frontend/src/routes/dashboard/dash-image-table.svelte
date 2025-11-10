@@ -22,12 +22,36 @@
 		isLoading: boolean;
 	} = $props();
 
+	let contentHeight = $state(0);
+
+	// Estimate row height: ~57px per row (including borders/padding), plus ~145px for header
+	const ROW_HEIGHT = 57;
+	const HEADER_HEIGHT = 145;
+	const MIN_ROWS = 3;
+	const MAX_ROWS = 50;
+
+	const calculatedLimit = $derived.by(() => {
+		if (contentHeight <= 0) return 5;
+		const availableHeight = contentHeight - HEADER_HEIGHT;
+		const rows = Math.floor(availableHeight / ROW_HEIGHT);
+		return Math.max(MIN_ROWS, Math.min(MAX_ROWS, rows));
+	});
+
+	let selectedIds = $state<string[]>([]);
+	let lastFetchedLimit = $state(5);
+
 	let requestOptions = $state<SearchPaginationSortRequest>({
 		pagination: { page: 1, limit: 5 },
 		sort: { column: 'size', direction: 'desc' }
 	});
 
-	let selectedIds = $state<string[]>([]);
+	$effect(() => {
+		if (calculatedLimit !== lastFetchedLimit && requestOptions.pagination) {
+			lastFetchedLimit = calculatedLimit;
+			requestOptions.pagination.limit = calculatedLimit;
+			imageService.getImages(requestOptions).then((result) => (images = result));
+		}
+	});
 
 	const columns = [
 		{ accessorKey: 'repoTags', title: m.images_repository(), cell: NameCell },
@@ -99,40 +123,42 @@
 	/>
 {/snippet}
 
-<Card.Root class="flex h-full min-h-0 flex-col">
-	<Card.Header icon={HardDriveIcon} class="shrink-0">
-		<div class="flex flex-1 items-center justify-between">
-			<div class="flex flex-col space-y-1.5">
-				<Card.Title>
-					<h2><a class="hover:underline" href="/images">{m.images_title()}</a></h2>
-				</Card.Title>
-				<Card.Description>{m.images_top_largest()}</Card.Description>
+<div class="flex h-full min-h-0 flex-col" bind:clientHeight={contentHeight}>
+	<Card.Root class="flex h-full min-h-0 flex-col">
+		<Card.Header icon={HardDriveIcon} class="shrink-0">
+			<div class="flex flex-1 items-center justify-between">
+				<div class="flex flex-col space-y-1.5">
+					<Card.Title>
+						<h2><a class="hover:underline" href="/images">{m.images_title()}</a></h2>
+					</Card.Title>
+					<Card.Description>{m.images_top_largest()}</Card.Description>
+				</div>
+				<Button variant="ghost" size="sm" href="/images" disabled={isLoading}>
+					{m.common_view_all()}
+					<ArrowRightIcon class="ml-2 size-4" />
+				</Button>
 			</div>
-			<Button variant="ghost" size="sm" href="/images" disabled={isLoading}>
-				{m.common_view_all()}
-				<ArrowRightIcon class="ml-2 size-4" />
-			</Button>
-		</div>
-	</Card.Header>
-	<Card.Content class="relative flex min-h-0 flex-1 flex-col px-0">
-		<ArcaneTable
-			items={images}
-			bind:requestOptions
-			bind:selectedIds
-			onRefresh={async (options) => (images = await imageService.getImages(options))}
-			withoutSearch={true}
-			selectionDisabled={true}
-			withoutPagination={true}
-			unstyled={true}
-			{columns}
-			mobileCard={DashImageMobileCard}
-		/>
-		{#if images.data.length > 5}
-			<div
-				class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 rounded-b-xl px-6 py-3 text-xs backdrop-blur-sm"
-			>
-				{m.images_showing_of_total({ shown: 5, total: images.pagination.totalItems })}
-			</div>
-		{/if}
-	</Card.Content>
-</Card.Root>
+		</Card.Header>
+		<Card.Content class="relative flex min-h-0 flex-1 flex-col px-0">
+			<ArcaneTable
+				items={images}
+				bind:requestOptions
+				bind:selectedIds
+				onRefresh={async (options) => (images = await imageService.getImages(options))}
+				withoutSearch={true}
+				selectionDisabled={true}
+				withoutPagination={true}
+				unstyled={true}
+				{columns}
+				mobileCard={DashImageMobileCard}
+			/>
+			{#if images.data.length >= calculatedLimit && images.pagination.totalItems > calculatedLimit}
+				<div
+					class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 rounded-b-xl px-6 py-3 text-xs backdrop-blur-sm"
+				>
+					{m.images_showing_of_total({ shown: calculatedLimit, total: images.pagination.totalItems })}
+				</div>
+			{/if}
+		</Card.Content>
+	</Card.Root>
+</div>

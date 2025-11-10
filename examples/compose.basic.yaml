@@ -1,6 +1,6 @@
 services:
   arcane:
-    image: ghcr.io/ofkm/arcane:latest
+    image: ghcr.io/getaracneapp/arcane:latest
     container_name: arcane
     ports:
       - "3552:3552"
@@ -9,8 +9,6 @@ services:
       - arcane-data:/app/data
       - /host/path/to/projects:/app/data/projects
     environment:
-      - PUID=1000
-      - PGID=1000
       - ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxx
       - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxx
     healthcheck:

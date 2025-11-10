@@ -1,9 +1,9 @@
 services:
   arcane-agent:
-    image: ghcr.io/ofkm/arcane-headless:latest
+    image: ghcr.io/getaracneapp/arcane-headless:latest
     container_name: arcane-agent
     ports:
-      - '3553:3553'
+      - "3553:3553"
     environment:
       - AGENT_MODE=true
       - AGENT_BOOTSTRAP_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxx

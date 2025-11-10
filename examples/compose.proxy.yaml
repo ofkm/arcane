@@ -38,17 +38,15 @@ services:
       - no-new-privileges:true
 
   arcane:
-    image: ghcr.io/ofkm/arcane:latest
+    image: ghcr.io/getaracneapp/arcane:latest
     container_name: arcane
     ports:
       - "3552:3552"
     volumes:
       - arcane-data:/app/data
     environment:
-      - PUID=1000
-      - PGID=1000
-      - ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxx # openssl rand -base64 32
-      - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxx # openssl rand -base64 32
+      - ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxx
+      - JWT_SECRET=xxxxxxxxxxxxxxxxxxxxxx
       - DOCKER_HOST=tcp://docker-socket-proxy:2375 # Use the proxy instead of direct socket
     networks:
       - arcane-internal

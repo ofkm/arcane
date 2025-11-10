@@ -195,12 +195,20 @@ func TestGetOidcConfigurationStatus(t *testing.T) {
 	// Disabled
 	s := newTestAuthService("")
 	s.config = &config.Config{}
+	// Set a non-nil settingsService to prevent nil pointer dereference
+	// GetSettings will fail gracefully and mergeAccounts will default to false
+	s.settingsService = &SettingsService{}
+
 	status, err := s.GetOidcConfigurationStatus(context.Background())
 	if err != nil {
 		t.Fatalf("GetOidcConfigurationStatus error: %v", err)
 	}
 	if status.EnvForced || status.EnvConfigured {
 		t.Errorf("expected disabled, got forced=%v configured=%v", status.EnvForced, status.EnvConfigured)
+	}
+	// MergeAccounts will be false since GetSettings will fail
+	if status.MergeAccounts {
+		t.Errorf("expected mergeAccounts=false, got true")
 	}
 
 	// Enabled but missing fields

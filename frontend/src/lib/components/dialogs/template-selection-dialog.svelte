@@ -65,11 +65,12 @@
 	};
 
 	function normalizeTags(tags: unknown): string[] {
-		if (!tags) return [];
+		if (!tags || tags === null || tags === undefined) return [];
 
 		let list: unknown = tags;
 		if (typeof tags === 'string') {
 			const trimmed = tags.trim();
+			if (!trimmed) return [];
 			if (trimmed.startsWith('[')) {
 				try {
 					list = JSON.parse(trimmed);
@@ -81,12 +82,15 @@
 			}
 		}
 
-		return (Array.isArray(list) ? list : [])
-			.map((t) =>
-				String(t)
+		if (!Array.isArray(list)) return [];
+
+		return list
+			.map((t) => {
+				if (t === null || t === undefined) return '';
+				return String(t)
 					.trim()
-					.replace(/^["']|["']$/g, '')
-			)
+					.replace(/^["']|["']$/g, '');
+			})
 			.filter(Boolean)
 			.map((t) => t.charAt(0).toUpperCase() + t.slice(1));
 	}

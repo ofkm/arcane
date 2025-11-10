@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/compose-spec/compose-go/v2/loader"
 	"github.com/docker/compose/v2/pkg/api"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -49,6 +50,17 @@ type ProjectServiceInfo struct {
 	ContainerName string   `json:"container_name"`
 	Ports         []string `json:"ports"`
 	Health        *string  `json:"health,omitempty"`
+}
+
+func normalizeComposeProjectName(name string) string {
+	if name == "" {
+		return ""
+	}
+	normalized := loader.NormalizeProjectName(name)
+	if normalized == "" {
+		return name
+	}
+	return normalized
 }
 
 func (s *ProjectService) GetProjectFromDatabaseByID(ctx context.Context, id string) (*models.Project, error) {
@@ -130,7 +142,7 @@ func (s *ProjectService) GetProjectServices(ctx context.Context, projectID strin
 		projectsDirectory = "data/projects"
 	}
 
-	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory)
+	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, normalizeComposeProjectName(projectFromDb.Name), projectsDirectory)
 	if loadErr != nil {
 		return []ProjectServiceInfo{}, fmt.Errorf("failed to load compose project from %s: %w", projectFromDb.Path, loadErr)
 	}
@@ -503,7 +515,7 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 		projectsDirectory = "data/projects"
 	}
 
-	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, projectFromDb.Name, projectsDirectory)
+	project, loadErr := projects.LoadComposeProject(ctx, composeFileFullPath, normalizeComposeProjectName(projectFromDb.Name), projectsDirectory)
 	if loadErr != nil {
 		return fmt.Errorf("failed to load compose project from %s: %w", projectFromDb.Path, loadErr)
 	}
@@ -551,7 +563,7 @@ func (s *ProjectService) DownProject(ctx context.Context, projectID string, user
 		projectsDirectory = "data/projects"
 	}
 
-	proj, _, lerr := projects.LoadComposeProjectFromDir(ctx, projectFromDb.Path, projectFromDb.Name, projectsDirectory)
+	proj, _, lerr := projects.LoadComposeProjectFromDir(ctx, projectFromDb.Path, normalizeComposeProjectName(projectFromDb.Name), projectsDirectory)
 	if lerr != nil {
 		_ = s.updateProjectStatusInternal(ctx, projectID, models.ProjectStatusRunning)
 		return fmt.Errorf("failed to load compose project: %w", lerr)
@@ -637,7 +649,7 @@ func (s *ProjectService) DestroyProject(ctx context.Context, projectID string, r
 			projectsDirectory = "data/projects"
 		}
 
-		if compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, proj.Name, projectsDirectory); lerr == nil {
+		if compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, normalizeComposeProjectName(proj.Name), projectsDirectory); lerr == nil {
 			if derr := projects.ComposeDown(ctx, compProj, true); derr != nil {
 				slog.WarnContext(ctx, "failed to remove volumes", "error", derr)
 			}
@@ -696,7 +708,7 @@ func (s *ProjectService) PullProjectImages(ctx context.Context, projectID string
 		projectsDirectory = "data/projects"
 	}
 
-	compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, proj.Name, projectsDirectory)
+	compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, normalizeComposeProjectName(proj.Name), projectsDirectory)
 	if lerr != nil {
 		return fmt.Errorf("failed to load compose project: %w", lerr)
 	}
@@ -736,7 +748,7 @@ func (s *ProjectService) RestartProject(ctx context.Context, projectID string, u
 		projectsDirectory = "data/projects"
 	}
 
-	compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, proj.Name, projectsDirectory)
+	compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, normalizeComposeProjectName(proj.Name), projectsDirectory)
 	if lerr != nil {
 		_ = s.updateProjectStatusInternal(ctx, projectID, models.ProjectStatusRunning)
 		return fmt.Errorf("failed to load compose project: %w", lerr)

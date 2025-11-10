@@ -1,5 +1,6 @@
 <script lang="ts">
 	import * as Card from '$lib/components/ui/card';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import { z } from 'zod/v4';
 	import { onMount } from 'svelte';
 	import { createForm } from '$lib/utils/form.utils';
@@ -27,6 +28,7 @@
 		.object({
 			authLocalEnabled: z.boolean(),
 			authOidcEnabled: z.boolean(),
+			authOidcMergeAccounts: z.boolean(),
 			authSessionTimeout: z
 				.number(m.security_session_timeout_required())
 				.int(m.security_session_timeout_integer())
@@ -47,6 +49,7 @@
 		});
 
 	let showOidcConfigDialog = $state(false);
+	let showMergeAccountsAlert = $state(false);
 
 	let oidcConfigForm = $state({
 		clientId: '',
@@ -63,6 +66,7 @@
 		hasChangesChecker: () =>
 			$formInputs.authLocalEnabled.value !== currentSettings.authLocalEnabled ||
 			$formInputs.authOidcEnabled.value !== currentSettings.authOidcEnabled ||
+			$formInputs.authOidcMergeAccounts.value !== currentSettings.authOidcMergeAccounts ||
 			$formInputs.authSessionTimeout.value !== currentSettings.authSessionTimeout ||
 			$formInputs.authPasswordPolicy.value !== currentSettings.authPasswordPolicy
 	});
@@ -95,6 +99,7 @@
 			.updateSettings({
 				authLocalEnabled: formData.authLocalEnabled,
 				authOidcEnabled: formData.authOidcEnabled,
+				authOidcMergeAccounts: formData.authOidcMergeAccounts,
 				authSessionTimeout: formData.authSessionTimeout,
 				authPasswordPolicy: formData.authPasswordPolicy,
 				...(formData.authOidcEnabled && !data.oidcStatus.envForced && { authOidcConfig })
@@ -110,6 +115,7 @@
 	function resetForm() {
 		$formInputs.authLocalEnabled.value = currentSettings.authLocalEnabled;
 		$formInputs.authOidcEnabled.value = currentSettings.authOidcEnabled;
+		$formInputs.authOidcMergeAccounts.value = currentSettings.authOidcMergeAccounts;
 		$formInputs.authSessionTimeout.value = currentSettings.authSessionTimeout;
 		$formInputs.authPasswordPolicy.value = currentSettings.authPasswordPolicy;
 	}
@@ -135,6 +141,24 @@
 			return;
 		}
 		$formInputs.authLocalEnabled.value = checked;
+	}
+
+	function handleMergeAccountsChange(checked: boolean) {
+		if (checked && !currentSettings.authOidcMergeAccounts) {
+			showMergeAccountsAlert = true;
+		} else {
+			$formInputs.authOidcMergeAccounts.value = checked;
+		}
+	}
+
+	function confirmMergeAccounts() {
+		$formInputs.authOidcMergeAccounts.value = true;
+		showMergeAccountsAlert = false;
+	}
+
+	function cancelMergeAccounts() {
+		$formInputs.authOidcMergeAccounts.value = false;
+		showMergeAccountsAlert = false;
 	}
 
 	function openOidcDialog() {
@@ -251,6 +275,18 @@
 									</div>
 								{/if}
 							</div>
+
+							{#if isOidcActive()}
+								<div class="mt-3">
+									<SwitchWithLabel
+										id="oidcMergeAccountsSwitch"
+										label={m.security_oidc_merge_accounts_label()}
+										description={m.security_oidc_merge_accounts_description()}
+										bind:checked={$formInputs.authOidcMergeAccounts.value}
+										onCheckedChange={handleMergeAccountsChange}
+									/>
+								</div>
+							{/if}
 						</div>
 					</Card.Content>
 				</Card.Root>
@@ -342,5 +378,20 @@
 			bind:oidcForm={oidcConfigForm}
 			onSave={handleSaveOidcConfig}
 		/>
+
+		<AlertDialog.Root bind:open={showMergeAccountsAlert}>
+			<AlertDialog.Content>
+				<AlertDialog.Header>
+					<AlertDialog.Title>{m.security_oidc_merge_accounts_alert_title()}</AlertDialog.Title>
+					<AlertDialog.Description>
+						{m.security_oidc_merge_accounts_alert_description()}
+					</AlertDialog.Description>
+				</AlertDialog.Header>
+				<AlertDialog.Footer>
+					<AlertDialog.Cancel onclick={cancelMergeAccounts}>{m.common_cancel()}</AlertDialog.Cancel>
+					<AlertDialog.Action onclick={confirmMergeAccounts}>{m.common_confirm()}</AlertDialog.Action>
+				</AlertDialog.Footer>
+			</AlertDialog.Content>
+		</AlertDialog.Root>
 	{/snippet}
 </SettingsPageLayout>

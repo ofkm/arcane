@@ -4,6 +4,7 @@ type OidcUserInfo struct {
 	Subject           string   `json:"sub"`
 	Name              string   `json:"name,omitempty"`
 	Email             string   `json:"email,omitempty"`
+	EmailVerified     bool     `json:"email_verified,omitempty"`
 	PreferredUsername string   `json:"preferred_username,omitempty"`
 	GivenName         string   `json:"given_name,omitempty"`
 	FamilyName        string   `json:"family_name,omitempty"`
@@ -37,6 +38,7 @@ type OidcTokenResponse struct {
 type OidcStatusInfo struct {
 	EnvForced     bool `json:"envForced"`
 	EnvConfigured bool `json:"envConfigured"`
+	MergeAccounts bool `json:"mergeAccounts"`
 }
 
 type OidcAuthUrlRequest struct {
