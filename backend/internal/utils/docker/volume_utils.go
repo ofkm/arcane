@@ -7,11 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/volume"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/api/types/volume"
+	"github.com/moby/moby/client"
 )
 
 var (
@@ -38,8 +36,8 @@ func GetVolumeUsageData(ctx context.Context, dockerClient *client.Client) ([]vol
 		slog.DebugContext(ctx, "returning cached volume usage data after lock", slog.Int("volume_count", len(volumeUsageCache)))
 		return volumeUsageCache, nil
 	}
-	diskUsage, err := dockerClient.DiskUsage(ctx, types.DiskUsageOptions{
-		Types: []types.DiskUsageObject{types.VolumeObject},
+	diskUsage, err := dockerClient.DiskUsage(ctx, client.DiskUsageOptions{
+		Volumes: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get disk usage: %w", err)
@@ -79,13 +77,13 @@ func SetVolumeUsageCacheTTL(ttl time.Duration) {
 }
 
 func GetContainersUsingVolume(ctx context.Context, dockerClient *client.Client, volumeName string) ([]string, error) {
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := dockerClient.ContainerList(ctx, client.ContainerListOptions{All: true})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
 	}
 
 	containerIDs := make([]string, 0)
-	for _, c := range containers {
+	for _, c := range containers.Items {
 		for _, m := range c.Mounts {
 			if m.Type == mount.TypeVolume && m.Name == volumeName {
 				containerIDs = append(containerIDs, c.ID)

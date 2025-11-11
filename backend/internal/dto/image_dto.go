@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/image"
+	"github.com/moby/moby/api/types/image"
 )
 
 type ImagePullDto struct {

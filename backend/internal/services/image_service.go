@@ -14,10 +14,10 @@ import (
 	"log/slog"
 
 	ref "github.com/distribution/reference"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/registry"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/api/types/registry"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -301,7 +301,7 @@ func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.P
 	}
 	defer dockerClient.Close()
 
-	filterArgs := filters.NewArgs()
+	filterArgs := make(client.Filters)
 	if dangling {
 		filterArgs.Add("dangling", "true")
 	} else {

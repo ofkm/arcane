@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	containertypes "github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
+	containertypes "github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/models"
 )
 
@@ -242,8 +242,8 @@ func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containe
 	}
 
 	// Fallback: search for containers with arcane image
-	filter := filters.NewArgs()
-	filter.Add("ancestor", "ofkm/arcane")
+	filter := make(client.Filters)
+	filter.Add("ancestor", "arcane")
 
 	containers, err := dockerClient.ContainerList(ctx, containertypes.ListOptions{
 		All:     true,

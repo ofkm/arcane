@@ -2,6 +2,8 @@ module github.com/ofkm/arcane-backend
 
 go 1.25.0
 
+replace github.com/moby/moby => github.com/moby/moby/api v1.52.0
+
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3
 	github.com/compose-spec/compose-go/v2 v2.9.1
@@ -28,6 +30,8 @@ require (
 	github.com/jinzhu/copier v0.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lmittmann/tint v1.1.2
+	github.com/moby/moby/api v1.52.0
+	github.com/moby/moby/client v0.1.0
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/samber/slog-gin v1.18.0
 	github.com/shirou/gopsutil/v4 v4.25.10
@@ -157,8 +161,6 @@ require (
 	github.com/moby/docker-image-spec v1.3.1 // indirect
 	github.com/moby/go-archive v0.1.0 // indirect
 	github.com/moby/locker v1.0.1 // indirect
-	github.com/moby/moby/api v1.52.0 // indirect
-	github.com/moby/moby/client v0.1.0 // indirect
 	github.com/moby/patternmatcher v0.6.0 // indirect
 	github.com/moby/spdystream v0.5.0 // indirect
 	github.com/moby/sys/atomicwriter v0.1.0 // indirect

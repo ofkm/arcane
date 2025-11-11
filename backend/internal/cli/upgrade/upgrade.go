@@ -9,11 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"github.com/spf13/cobra"
 )
 
@@ -60,17 +58,18 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 	defer dockerClient.Close()
 
 	// Find the container
-	var targetContainer container.InspectResponse
+	var targetContainer client.ContainerInspectResult
 	if autoDetect || containerName == "" {
 		slog.Info("Auto-detecting Arcane container...")
 		targetContainer, err = findArcaneContainer(ctx, dockerClient)
 		if err != nil {
 			return fmt.Errorf("failed to find Arcane container: %w", err)
 		}
-		containerName = strings.TrimPrefix(targetContainer.Name, "/")
-		slog.Info("Found Arcane container", "name", containerName, "id", targetContainer.ID[:12])
+		containerName = strings.TrimPrefix(targetContainer.Container.Name, "/")
+		slog.Info("Found Arcane container", "name", containerName, "id", targetContainer.Container.ID[:12])
 	} else {
-		targetContainer, err = dockerClient.ContainerInspect(ctx, containerName)
+		options := client.ContainerInspectOptions{}
+		targetContainer, err = dockerClient.ContainerInspect(ctx, containerName, options)
 		if err != nil {
 			return fmt.Errorf("failed to inspect container %s: %w", containerName, err)
 		}
@@ -99,33 +98,36 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func findArcaneContainer(ctx context.Context, dockerClient *client.Client) (container.InspectResponse, error) {
-	// Look for containers with "arcane" in the image name
-	filter := filters.NewArgs()
-	filter.Add("status", "running")
+func findArcaneContainer(ctx context.Context, dockerClient *client.Client) (client.ContainerInspectResult, error) {
+	filters := make(client.Filters)
+	filters.Add("status", "running")
 
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{Filters: filter})
+	opts := client.ContainerListOptions{
+		Filters: filters,
+	}
+
+	containers, err := dockerClient.ContainerList(ctx, opts)
 	if err != nil {
-		return container.InspectResponse{}, err
+		return client.ContainerInspectResult{}, err
 	}
 
 	selfID := getSelfContainerID()
-	slog.Info("Searching for Arcane container", "selfID", selfID, "totalContainers", len(containers))
+	slog.Info("Searching for Arcane container", "selfID", selfID, "totalContainers", len(containers.Items))
 
 	now := time.Now()
 
-	for _, c := range containers {
+	for _, c := range containers.Items {
 		if shouldSkipContainer(c, selfID, now) {
 			continue
 		}
 
 		if strings.Contains(strings.ToLower(c.Image), "arcane") {
 			slog.Info("Found matching container", "id", c.ID[:12], "image", c.Image, "names", c.Names)
-			return dockerClient.ContainerInspect(ctx, c.ID)
+			return dockerClient.ContainerInspect(ctx, c.ID, client.ContainerInspectOptions{})
 		}
 	}
 
-	return container.InspectResponse{}, fmt.Errorf("no running Arcane container found")
+	return client.ContainerInspectResult{}, fmt.Errorf("no running Arcane container found")
 }
 
 // getSelfContainerID attempts to detect the container ID if running in Docker
@@ -227,13 +229,13 @@ func shouldSkipContainer(c container.Summary, selfID string, now time.Time) bool
 	return false
 }
 
-func determineImageName(ctx context.Context, dockerClient *client.Client, cont container.InspectResponse) string {
+func determineImageName(ctx context.Context, dockerClient *client.Client, cont client.ContainerInspectResult) string {
 	imageName := extractImageNameFromConfig(cont)
 	imageName = stripDigest(imageName)
 
 	// If no explicit tag, try to infer from image RepoTags
 	if !hasExplicitTag(imageName) {
-		if inferredName := inferImageNameFromDocker(ctx, dockerClient, cont.Image); inferredName != "" {
+		if inferredName := inferImageNameFromDocker(ctx, dockerClient, cont.Container.Image); inferredName != "" {
 			imageName = inferredName
 		}
 	}
@@ -247,11 +249,11 @@ func determineImageName(ctx context.Context, dockerClient *client.Client, cont c
 }
 
 // extractImageNameFromConfig gets the image name from container config
-func extractImageNameFromConfig(cont container.InspectResponse) string {
-	if cont.Config == nil {
+func extractImageNameFromConfig(cont client.ContainerInspectResult) string {
+	if cont.Container.Config == nil {
 		return ""
 	}
-	return strings.TrimSpace(cont.Config.Image)
+	return strings.TrimSpace(cont.Container.Config.Image)
 }
 
 // stripDigest removes digest from image reference
@@ -274,7 +276,7 @@ func hasExplicitTag(ref string) bool {
 
 // inferImageNameFromDocker attempts to find the best tag from Docker image inspect
 func inferImageNameFromDocker(ctx context.Context, dockerClient *client.Client, imageID string) string {
-	ii, err := dockerClient.ImageInspect(ctx, imageID)
+	result, err := dockerClient.ImageInspect(ctx, imageID)
 	if err != nil {
 		return ""
 	}
@@ -282,7 +284,7 @@ func inferImageNameFromDocker(ctx context.Context, dockerClient *client.Client, 
 	var arcaneNonLatest string
 	var arcaneAny string
 
-	for _, t := range ii.RepoTags {
+	for _, t := range result.RepoTags {
 		if t == "" || t == "<none>:<none>" {
 			continue
 		}
@@ -306,7 +308,6 @@ func inferImageNameFromDocker(ctx context.Context, dockerClient *client.Client, 
 	return arcaneAny
 }
 
-// ensureDefaultTag adds :latest tag if no tag is present
 func ensureDefaultTag(imageName string) string {
 	if imageName == "" {
 		return "ghcr.io/ofkm/arcane:latest"
@@ -315,32 +316,32 @@ func ensureDefaultTag(imageName string) string {
 }
 
 func pullImage(ctx context.Context, dockerClient *client.Client, imageName string) error {
-	reader, err := dockerClient.ImagePull(ctx, imageName, image.PullOptions{})
+	resp, err := dockerClient.ImagePull(ctx, imageName, client.ImagePullOptions{})
 	if err != nil {
 		return err
 	}
-	defer reader.Close()
+	defer resp.Close()
 
 	// Copy output to discard but wait for completion
-	_, err = io.Copy(io.Discard, reader)
+	_, err = io.Copy(io.Discard, resp)
 	return err
 }
 
-func upgradeContainer(ctx context.Context, dockerClient *client.Client, oldContainer container.InspectResponse, newImage string) error {
-	originalName := strings.TrimPrefix(oldContainer.Name, "/")
+func upgradeContainer(ctx context.Context, dockerClient *client.Client, oldContainer client.ContainerInspectResult, newImage string) error {
+	originalName := strings.TrimPrefix(oldContainer.Container.Name, "/")
 	tempName := fmt.Sprintf("%s-upgrading", originalName)
 
 	// Create new container config
-	config := *oldContainer.Config
+	config := *oldContainer.Container.Config
 	config.Image = newImage
 
-	hostConfig := oldContainer.HostConfig
+	hostConfig := oldContainer.Container.HostConfig
 
 	// Build network config - preserve all network settings including IP addresses
 	networkConfig := &network.NetworkingConfig{
 		EndpointsConfig: make(map[string]*network.EndpointSettings),
 	}
-	for networkName, networkSettings := range oldContainer.NetworkSettings.Networks {
+	for networkName, networkSettings := range oldContainer.Container.NetworkSettings.Networks {
 		networkConfig.EndpointsConfig[networkName] = &network.EndpointSettings{
 			IPAMConfig:          networkSettings.IPAMConfig,
 			Links:               networkSettings.Links,
@@ -361,42 +362,53 @@ func upgradeContainer(ctx context.Context, dockerClient *client.Client, oldConta
 	fmt.Println("PROGRESS:70:Stopping old container")
 	slog.Info("Stopping old container", "name", originalName)
 	timeout := 10
-	if err := dockerClient.ContainerStop(ctx, oldContainer.ID, container.StopOptions{Timeout: &timeout}); err != nil {
+	if _, err := dockerClient.ContainerStop(ctx, oldContainer.Container.ID, client.ContainerStopOptions{Timeout: &timeout}); err != nil {
 		return fmt.Errorf("stop old container: %w", err)
 	}
 
 	fmt.Println("PROGRESS:75:Creating new container")
 	slog.Info("Creating new container", "tempName", tempName)
-	resp, err := dockerClient.ContainerCreate(ctx, &config, hostConfig, networkConfig, nil, tempName)
+
+	createOptions := client.ContainerCreateOptions{
+		Config:           &config,
+		HostConfig:       hostConfig,
+		NetworkingConfig: networkConfig,
+		Name:             tempName,
+	}
+
+	resp, err := dockerClient.ContainerCreate(ctx, createOptions)
 	if err != nil {
 		// Try to restart old container on failure
-		_ = dockerClient.ContainerStart(ctx, oldContainer.ID, container.StartOptions{})
+		_, _ = dockerClient.ContainerStart(ctx, oldContainer.Container.ID, client.ContainerStartOptions{})
 		return fmt.Errorf("create new container: %w", err)
 	}
 
 	fmt.Println("PROGRESS:80:Starting new container")
 	slog.Info("Starting new container", "id", resp.ID[:12])
-	if err := dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if _, err := dockerClient.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{}); err != nil {
 		// Cleanup new container and restart old one
-		_ = dockerClient.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
-		_ = dockerClient.ContainerStart(ctx, oldContainer.ID, container.StartOptions{})
+		_, _ = dockerClient.ContainerRemove(ctx, resp.ID, client.ContainerRemoveOptions{Force: true})
+		_, _ = dockerClient.ContainerStart(ctx, oldContainer.Container.ID, client.ContainerStartOptions{})
 		return fmt.Errorf("start new container: %w", err)
 	}
 
-	// Wait a moment for the new container to initialize
 	// Wait a moment for the new container to initialize
 	fmt.Println("PROGRESS:85:Waiting for container to start")
 	time.Sleep(2 * time.Second)
 
 	fmt.Println("PROGRESS:90:Removing old container")
-	slog.Info("Removing old container", "id", oldContainer.ID[:12])
-	if err := dockerClient.ContainerRemove(ctx, oldContainer.ID, container.RemoveOptions{}); err != nil {
+	slog.Info("Removing old container", "id", oldContainer.Container.ID[:12])
+	if _, err := dockerClient.ContainerRemove(ctx, oldContainer.Container.ID, client.ContainerRemoveOptions{}); err != nil {
 		slog.Warn("Failed to remove old container", "error", err)
 	}
 
 	fmt.Println("PROGRESS:95:Renaming new container")
 	slog.Info("Renaming new container", "from", tempName, "to", originalName)
-	if err := dockerClient.ContainerRename(ctx, resp.ID, originalName); err != nil {
+
+	renameOptions := client.ContainerRenameOptions{
+		NewName: originalName,
+	}
+	if _, err := dockerClient.ContainerRename(ctx, resp.ID, renameOptions); err != nil {
 		slog.Warn("Failed to rename container", "error", err)
 	}
 

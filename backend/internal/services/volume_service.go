@@ -6,11 +6,10 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/volume"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/api/types/volume"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -153,7 +152,7 @@ func (s *VolumeService) PruneVolumesWithOptions(ctx context.Context, all bool) (
 	// - Without 'all' flag: Only removes anonymous (unnamed) volumes that are not in use
 	// - With 'all=true' flag: Removes ALL unused volumes (both named and anonymous)
 	// Note: Volumes are considered "in use" if referenced by any container (running or stopped)
-	filterArgs := filters.NewArgs()
+	filterArgs := make(client.Filters)
 	if all {
 		// The 'all' filter was added in Docker API v1.42
 		// This tells Docker to prune ALL unused volumes, not just anonymous ones

@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/volume"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/api/types/volume"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/utils/docker"
@@ -105,12 +105,12 @@ func (s *DockerClientService) GetAllNetworks(ctx context.Context) ([]network.Sum
 	var inuse, unused, total int
 	for _, n := range networks {
 		total++
+		// TODO: network.Summary in v29 doesn't include container count anymore
+		// Need to reimplement by either:
+		// 1. Calling NetworkInspect on each network individually, or
+		// 2. Maintaining usage state at a higher level
 		if !docker.IsDefaultNetwork(n.Name) {
-			if len(n.Containers) > 0 {
-				inuse++
-			} else {
-				unused++
-			}
+			unused++
 		}
 	}
 

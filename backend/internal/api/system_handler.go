@@ -10,10 +10,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/image"
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"

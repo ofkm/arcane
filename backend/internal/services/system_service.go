@@ -7,9 +7,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/docker/docker/api/types/build"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/goccy/go-yaml"
+	"github.com/moby/moby/api/types/build"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -223,7 +223,7 @@ func (s *SystemService) pruneContainers(ctx context.Context, result *dto.PruneAl
 	}
 	defer dockerClient.Close()
 
-	filterArgs := filters.NewArgs()
+	filterArgs := make(client.Filters)
 
 	report, err := dockerClient.ContainersPrune(ctx, filterArgs)
 	if err != nil {
@@ -244,14 +244,14 @@ func (s *SystemService) pruneImages(ctx context.Context, danglingOnly bool, resu
 	}
 	defer dockerClient.Close()
 
-	var filterArgs filters.Args
+	filterArgs := make(client.Filters)
 
 	if danglingOnly {
 		slog.DebugContext(ctx, "Configured to prune only dangling images")
-		filterArgs = filters.NewArgs(filters.Arg("dangling", "true"))
+		filterArgs.Add("dangling", "true")
 	} else {
 		slog.DebugContext(ctx, "Configured to prune all unused images (including non-dangling)")
-		filterArgs = filters.NewArgs(filters.Arg("dangling", "false"))
+		filterArgs.Add("dangling", "false")
 	}
 
 	report, err := dockerClient.ImagesPrune(ctx, filterArgs)

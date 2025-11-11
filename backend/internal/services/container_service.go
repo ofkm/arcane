@@ -9,10 +9,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -74,7 +75,7 @@ func (s *ContainerService) StopContainer(ctx context.Context, containerID string
 	}
 
 	timeout := 30
-	err = dockerClient.ContainerStop(ctx, containerID, container.StopOptions{Timeout: &timeout})
+	_, err = dockerClient.ContainerStop(ctx, containerID, client.ContainerStopOptions{Timeout: &timeout})
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeContainerError, "container", containerID, "", user.ID, user.Username, "0", err, models.JSON{"action": "stop"})
 	}
@@ -99,7 +100,9 @@ func (s *ContainerService) RestartContainer(ctx context.Context, containerID str
 		return fmt.Errorf("failed to log action: %w", err)
 	}
 
-	err = dockerClient.ContainerRestart(ctx, containerID, container.StopOptions{})
+	defer dockerClient.Close()
+
+	_, err = dockerClient.ContainerRestart(ctx, containerID, client.ContainerRestartOptions{})
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeContainerError, "container", containerID, "", user.ID, user.Username, "0", err, models.JSON{"action": "restart"})
 	}
@@ -143,10 +146,11 @@ func (s *ContainerService) DeleteContainer(ctx context.Context, containerID stri
 		}
 	}
 
-	err = dockerClient.ContainerRemove(ctx, containerID, container.RemoveOptions{
-		Force:         force,
-		RemoveVolumes: removeVolumes,
-		RemoveLinks:   false,
+	defer dockerClient.Close()
+
+	_, err = dockerClient.ContainerRemove(ctx, containerID, client.ContainerRemoveOptions{
+		RemoveVolumes: options.RemoveVolumes,
+		Force:         options.Force,
 	})
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeContainerError, "container", containerID, "", user.ID, user.Username, "0", err, models.JSON{"action": "delete", "force": force, "removeVolumes": removeVolumes})
@@ -215,8 +219,8 @@ func (s *ContainerService) CreateContainer(ctx context.Context, config *containe
 		fmt.Printf("Could not log container stop action: %s\n", logErr)
 	}
 
-	if err := dockerClient.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
-		_ = dockerClient.ContainerRemove(ctx, resp.ID, container.RemoveOptions{Force: true})
+	if _, err := dockerClient.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{}); err != nil {
+		_, _ = dockerClient.ContainerRemove(ctx, resp.ID, client.ContainerRemoveOptions{Force: true})
 		s.eventService.LogErrorEvent(ctx, models.EventTypeContainerError, "container", resp.ID, containerName, user.ID, user.Username, "0", err, models.JSON{"action": "create", "image": config.Image, "step": "start"})
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}

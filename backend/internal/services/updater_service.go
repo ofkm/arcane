@@ -8,11 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/models"
 
 	"github.com/ofkm/arcane-backend/internal/database"
@@ -772,7 +771,7 @@ func (s *UpdaterService) getProjectContainers(ctx context.Context, dcli *client.
 	byID := map[string]container.Summary{}
 
 	// Compose label
-	f1 := filters.NewArgs()
+	f1 := make(client.Filters)
 	f1.Add("label", "com.docker.compose.project="+projectName)
 	cs1, err := dcli.ContainerList(ctx, container.ListOptions{All: true, Filters: f1})
 	if err == nil {

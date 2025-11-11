@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/network"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -108,7 +108,7 @@ func (s *NetworkService) PruneNetworks(ctx context.Context) (*network.PruneRepor
 	}
 	defer dockerClient.Close()
 
-	filterArgs := filters.NewArgs()
+	filterArgs := make(client.Filters)
 
 	report, err := dockerClient.NetworksPrune(ctx, filterArgs)
 	if err != nil {

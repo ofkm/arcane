@@ -1,11 +1,12 @@
 package dto
 
 import (
+	"net/netip"
 	"strconv"
 	"strings"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/network"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 )
 
 type CreateContainerDto struct {
@@ -41,10 +42,10 @@ type ContainerActionResult struct {
 }
 
 type PortDto struct {
-	IP          string `json:"ip,omitempty"`
-	PrivatePort int    `json:"privatePort"`
-	PublicPort  int    `json:"publicPort,omitempty"`
-	Type        string `json:"type"`
+	IP          netip.Addr `json:"ip,omitempty"`
+	PrivatePort int        `json:"privatePort"`
+	PublicPort  int        `json:"publicPort,omitempty"`
+	Type        string     `json:"type"`
 }
 
 type MountDto struct {
@@ -59,21 +60,21 @@ type MountDto struct {
 }
 
 type NetworkDto struct {
-	IPAMConfig          any               `json:"ipamConfig"`
-	Links               []string          `json:"links"`
-	Aliases             []string          `json:"aliases"`
-	MacAddress          string            `json:"macAddress"`
-	DriverOpts          map[string]string `json:"driverOpts"`
-	GwPriority          int               `json:"gwPriority"`
-	NetworkID           string            `json:"networkId"`
-	EndpointID          string            `json:"endpointId"`
-	Gateway             string            `json:"gateway"`
-	IPAddress           string            `json:"ipAddress"`
-	IPPrefixLen         int               `json:"ipPrefixLen"`
-	IPv6Gateway         string            `json:"ipv6Gateway"`
-	GlobalIPv6Address   string            `json:"globalIPv6Address"`
-	GlobalIPv6PrefixLen int               `json:"globalIPv6PrefixLen"`
-	DNSNames            []string          `json:"dnsNames"`
+	IPAMConfig          any                  `json:"ipamConfig"`
+	Links               []string             `json:"links"`
+	Aliases             []string             `json:"aliases"`
+	MacAddress          network.HardwareAddr `json:"macAddress"`
+	DriverOpts          map[string]string    `json:"driverOpts"`
+	GwPriority          int                  `json:"gwPriority"`
+	NetworkID           string               `json:"networkId"`
+	EndpointID          string               `json:"endpointId"`
+	Gateway             netip.Addr           `json:"gateway"`
+	IPAddress           netip.Addr           `json:"ipAddress"`
+	IPPrefixLen         int                  `json:"ipPrefixLen"`
+	IPv6Gateway         netip.Addr           `json:"ipv6Gateway"`
+	GlobalIPv6Address   netip.Addr           `json:"globalIPv6Address"`
+	GlobalIPv6PrefixLen int                  `json:"globalIPv6PrefixLen"`
+	DNSNames            []string             `json:"dnsNames"`
 }
 
 type HostConfigDto struct {
@@ -85,19 +86,19 @@ type NetworkSettingsDto struct {
 }
 
 type ContainerSummaryDto struct {
-	ID              string             `json:"id"`
-	Names           []string           `json:"names"`
-	Image           string             `json:"image"`
-	ImageID         string             `json:"imageId"`
-	Command         string             `json:"command"`
-	Created         int64              `json:"created"`
-	Ports           []PortDto          `json:"ports"`
-	Labels          map[string]string  `json:"labels"`
-	State           string             `json:"state"`
-	Status          string             `json:"status"`
-	HostConfig      HostConfigDto      `json:"hostConfig"`
-	NetworkSettings NetworkSettingsDto `json:"networkSettings"`
-	Mounts          []MountDto         `json:"mounts"`
+	ID              string                   `json:"id"`
+	Names           []string                 `json:"names"`
+	Image           string                   `json:"image"`
+	ImageID         string                   `json:"imageId"`
+	Command         string                   `json:"command"`
+	Created         int64                    `json:"created"`
+	Ports           []PortDto                `json:"ports"`
+	Labels          map[string]string        `json:"labels"`
+	State           container.ContainerState `json:"state"`
+	Status          string                   `json:"status"`
+	HostConfig      HostConfigDto            `json:"hostConfig"`
+	NetworkSettings NetworkSettingsDto       `json:"networkSettings"`
+	Mounts          []MountDto               `json:"mounts"`
 }
 
 func NewContainerSummaryDto(c container.Summary) ContainerSummaryDto {
@@ -183,11 +184,11 @@ func mapEndpointSettings(n *network.EndpointSettings) NetworkDto {
 }
 
 type ContainerStateDto struct {
-	Status     string `json:"status"`
-	Running    bool   `json:"running"`
-	ExitCode   int    `json:"exitCode,omitempty"`
-	StartedAt  string `json:"startedAt,omitempty"`
-	FinishedAt string `json:"finishedAt,omitempty"`
+	Status     container.ContainerState `json:"status"`
+	Running    bool                     `json:"running"`
+	ExitCode   int                      `json:"exitCode,omitempty"`
+	StartedAt  string                   `json:"startedAt,omitempty"`
+	FinishedAt string                   `json:"finishedAt,omitempty"`
 }
 
 type ContainerConfigDetailsDto struct {
@@ -233,7 +234,7 @@ func NewContainerDetailsDto(c *container.InspectResponse) ContainerDetailsDto {
 	ports := make([]PortDto, 0)
 	if c.NetworkSettings != nil && c.NetworkSettings.Ports != nil {
 		for p, bindings := range c.NetworkSettings.Ports {
-			privatePort, _ := strconv.Atoi(p.Port())
+			privatePort := int(p.Num())
 			typ := string(p.Proto())
 
 			// When no host bindings exist, still include the private port
@@ -339,7 +340,7 @@ func mapMountPoint(m container.MountPoint) MountDto {
 	}
 }
 
-func safeStateStatus(c *container.InspectResponse) string {
+func safeStateStatus(c *container.InspectResponse) container.ContainerState {
 	if c.State == nil {
 		return ""
 	}
