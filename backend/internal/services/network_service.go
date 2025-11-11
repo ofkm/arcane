@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/database"
@@ -35,15 +34,15 @@ func (s *NetworkService) GetNetworkByID(ctx context.Context, id string) (*networ
 	}
 	defer dockerClient.Close()
 
-	networkInspect, err := dockerClient.NetworkInspect(ctx, id, network.InspectOptions{})
+	networkInspect, err := dockerClient.NetworkInspect(ctx, id, client.NetworkInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("network not found: %w", err)
 	}
 
-	return &networkInspect, nil
+	return &networkInspect.Network, nil
 }
 
-func (s *NetworkService) CreateNetwork(ctx context.Context, name string, options network.CreateOptions, user models.User) (*network.CreateResponse, error) {
+func (s *NetworkService) CreateNetwork(ctx context.Context, name string, options client.NetworkCreateOptions, user models.User) (*network.CreateResponse, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeNetworkError, "network", "", name, user.ID, user.Username, "0", err, models.JSON{"action": "create", "driver": options.Driver})
@@ -77,10 +76,10 @@ func (s *NetworkService) RemoveNetwork(ctx context.Context, id string, user mode
 	}
 	defer dockerClient.Close()
 
-	networkInfo, err := dockerClient.NetworkInspect(ctx, id, network.InspectOptions{})
+	networkInfo, err := dockerClient.NetworkInspect(ctx, id, client.NetworkInspectOptions{})
 	var networkName string
 	if err == nil {
-		networkName = networkInfo.Name
+		networkName = networkInfo.Network.Name
 	} else {
 		networkName = id
 	}
@@ -133,14 +132,14 @@ func (s *NetworkService) ListNetworksPaginated(ctx context.Context, params pagin
 	}
 	defer dockerClient.Close()
 
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := dockerClient.ContainerList(ctx, client.ContainerListOptions{All: true})
 	if err != nil {
 		return nil, pagination.Response{}, fmt.Errorf("failed to list containers: %w", err)
 	}
 
 	inUseByID := make(map[string]bool)
 	inUseByName := make(map[string]bool)
-	for _, c := range containers {
+	for _, c := range containers.Items {
 		if c.NetworkSettings == nil || c.NetworkSettings.Networks == nil {
 			continue
 		}
@@ -152,13 +151,13 @@ func (s *NetworkService) ListNetworksPaginated(ctx context.Context, params pagin
 		}
 	}
 
-	rawNets, err := dockerClient.NetworkList(ctx, network.ListOptions{})
+	rawNets, err := dockerClient.NetworkList(ctx, client.NetworkListOptions{})
 	if err != nil {
 		return nil, pagination.Response{}, fmt.Errorf("failed to list Docker networks: %w", err)
 	}
 
-	items := make([]dto.NetworkSummaryDto, 0, len(rawNets))
-	for _, n := range rawNets {
+	items := make([]dto.NetworkSummaryDto, 0, len(rawNets.Items))
+	for _, n := range rawNets.Items {
 		netDto := dto.NewNetworkSummaryDto(n)
 		netDto.InUse = inUseByID[netDto.ID] || inUseByName[netDto.Name]
 		items = append(items, netDto)
