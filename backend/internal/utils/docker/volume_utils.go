@@ -43,17 +43,15 @@ func GetVolumeUsageData(ctx context.Context, dockerClient *client.Client) ([]vol
 		return nil, fmt.Errorf("failed to get disk usage: %w", err)
 	}
 
-	slog.DebugContext(ctx, "disk usage returned volumes", slog.Int("volume_count", len(diskUsage.Volumes)))
+	slog.DebugContext(ctx, "disk usage returned volumes", slog.Int("volume_count", len(diskUsage.Volumes.Items)))
 
-	if diskUsage.Volumes == nil {
+	if diskUsage.Volumes.Items == nil {
 		return []volume.Volume{}, nil
 	}
 
-	volumes := make([]volume.Volume, 0, len(diskUsage.Volumes))
-	for _, v := range diskUsage.Volumes {
-		if v != nil {
-			volumes = append(volumes, *v)
-		}
+	volumes := make([]volume.Volume, 0, len(diskUsage.Volumes.Items))
+	for _, v := range diskUsage.Volumes.Items {
+		volumes = append(volumes, v)
 	}
 
 	volumeUsageCache = volumes

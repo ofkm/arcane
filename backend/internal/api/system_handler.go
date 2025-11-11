@@ -12,8 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
@@ -94,8 +93,11 @@ func (h *SystemHandler) Health(c *gin.Context) {
 	}
 	defer dockerClient.Close()
 
-	// Try to ping Docker to ensure it's responsive
-	_, err = dockerClient.Ping(ctx)
+	pingOptions := client.PingOptions{
+		NegotiateAPIVersion: true,
+	}
+
+	_, err = dockerClient.Ping(ctx, pingOptions)
 	if err != nil {
 		c.Status(http.StatusServiceUnavailable)
 		return
@@ -117,7 +119,8 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	}
 	defer dockerClient.Close()
 
-	version, err := dockerClient.ServerVersion(ctx)
+	options := client.ServerVersionOptions{}
+	version, err := dockerClient.ServerVersion(ctx, options)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -126,7 +129,8 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		return
 	}
 
-	info, err := dockerClient.Info(ctx)
+	infoOptions := client.InfoOptions{}
+	info, err := dockerClient.Info(ctx, infoOptions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -135,7 +139,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		return
 	}
 
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := dockerClient.ContainerList(ctx, client.ContainerListOptions{All: true})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -144,7 +148,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		return
 	}
 
-	images, err := dockerClient.ImageList(ctx, image.ListOptions{})
+	images, err := dockerClient.ImageList(ctx, client.ImageListOptions{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

@@ -12,7 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/moby/moby/api/types/container"
@@ -473,15 +472,16 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 		WorkingDir:   req.WorkingDir,
 		User:         req.User,
 		Env:          req.Environment,
-		ExposedPorts: make(nat.PortSet),
+		ExposedPorts: make(network.PortSet),
 		Labels: map[string]string{
 			"com.arcane.created": "true",
 		},
 	}
 
-	portBindings := make(nat.PortMap)
+	portBindings := make(network.PortMap)
 	for containerPort, hostPort := range req.Ports {
-		port, err := nat.NewPort("tcp", containerPort)
+		// Parse as network.Port for the new API
+		port, err := network.ParsePort(containerPort + "/tcp")
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
@@ -490,7 +490,7 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 			return
 		}
 		config.ExposedPorts[port] = struct{}{}
-		portBindings[port] = []nat.PortBinding{
+		portBindings[port] = []network.PortBinding{
 			{
 				HostPort: hostPort,
 			},
@@ -548,7 +548,7 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 		ID:      containerJSON.ID,
 		Name:    containerJSON.Name,
 		Image:   containerJSON.Config.Image,
-		Status:  containerJSON.State.Status,
+		Status:  string(containerJSON.State.Status),
 		Created: containerJSON.Created,
 	}
 

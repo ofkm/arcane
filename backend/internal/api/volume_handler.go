@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/moby/moby/api/types/volume"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
@@ -90,7 +90,7 @@ func (h *VolumeHandler) Create(c *gin.Context) {
 		return
 	}
 
-	options := volume.CreateOptions{
+	options := client.VolumeCreateOptions{
 		Name:       req.Name,
 		Driver:     req.Driver,
 		Labels:     req.Labels,
