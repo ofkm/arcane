@@ -11,6 +11,7 @@ import (
 
 	ref "github.com/distribution/reference"
 	"github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -370,13 +371,13 @@ func (s *ImageUpdateService) getAllImageRefs(ctx context.Context, limit int) ([]
 	}
 	defer dockerClient.Close()
 
-	images, err := dockerClient.ImageList(ctx, image.ListOptions{})
+	images, err := dockerClient.ImageList(ctx, client.ImageListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list Docker images: %w", err)
 	}
 
 	var imageRefs []string
-	for _, img := range images {
+	for _, img := range images.Items {
 		for _, tag := range img.RepoTags {
 			if tag != "<none>:<none>" {
 				imageRefs = append(imageRefs, tag)
@@ -614,7 +615,7 @@ func (s *ImageUpdateService) saveUpdateResultByID(ctx context.Context, imageID s
 		return fmt.Errorf("failed to inspect image: %w", err)
 	}
 
-	repo, tag := extractRepoAndTagFromImage(dockerImage)
+	repo, tag := extractRepoAndTagFromImage(dockerImage.InspectResponse)
 	updateRecord := buildImageUpdateRecord(imageID, repo, tag, result)
 
 	return s.db.WithContext(ctx).Save(updateRecord).Error
@@ -998,13 +999,13 @@ func (s *ImageUpdateService) CleanupOrphanedRecords(ctx context.Context) error {
 	defer dockerClient.Close()
 
 	// Get all image IDs from Docker
-	dockerImages, err := dockerClient.ImageList(ctx, image.ListOptions{})
+	dockerImages, err := dockerClient.ImageList(ctx, client.ImageListOptions{})
 	if err != nil {
 		return fmt.Errorf("failed to list Docker images: %w", err)
 	}
 
 	dockerImageIDs := make(map[string]bool)
-	for _, img := range dockerImages {
+	for _, img := range dockerImages.Items {
 		dockerImageIDs[img.ID] = true
 	}
 
