@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
-	"github.com/moby/moby/api/types/build"
 	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -223,12 +222,15 @@ func (s *SystemService) pruneContainers(ctx context.Context, result *dto.PruneAl
 	}
 	defer dockerClient.Close()
 
-	filterArgs := make(client.Filters)
+	containerPruneOptions := client.ContainerPruneOptions{
+		Filters: make(client.Filters),
+	}
 
-	report, err := dockerClient.ContainersPrune(ctx, filterArgs)
+	pruneResult, err := dockerClient.ContainerPrune(ctx, containerPruneOptions)
 	if err != nil {
 		return fmt.Errorf("failed to prune containers: %w", err)
 	}
+	report := pruneResult.Report
 
 	result.ContainersPruned = report.ContainersDeleted
 	result.SpaceReclaimed += report.SpaceReclaimed
@@ -254,10 +256,15 @@ func (s *SystemService) pruneImages(ctx context.Context, danglingOnly bool, resu
 		filterArgs.Add("dangling", "false")
 	}
 
-	report, err := dockerClient.ImagesPrune(ctx, filterArgs)
+	imagePruneOptions := client.ImagePruneOptions{
+		Filters: filterArgs,
+	}
+
+	pruneResult, err := dockerClient.ImagePrune(ctx, imagePruneOptions)
 	if err != nil {
 		return fmt.Errorf("failed to prune images: %w", err)
 	}
+	report := pruneResult.Report
 
 	slog.InfoContext(ctx, "Image pruning completed",
 		slog.Int("images_deleted", len(report.ImagesDeleted)),
@@ -303,12 +310,19 @@ func (s *SystemService) pruneBuildCache(ctx context.Context, result *dto.PruneAl
 	}
 	defer dockerClient.Close()
 
-	options := build.CachePruneOptions{
+	options := client.BuildCachePruneOptions{
 		All: pruneAllCache,
 	}
 
 	slog.DebugContext(ctx, "starting build cache pruning", slog.Bool("prune_all", pruneAllCache))
-	report, err := dockerClient.BuildCachePrune(ctx, options)
+	pruneResult, err := dockerClient.BuildCachePrune(ctx, options)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Errorf("build cache pruning failed: %w", err).Error())
+		slog.ErrorContext(ctx, "Error pruning build cache", slog.String("error", err.Error()))
+		return fmt.Errorf("failed to prune build cache: %w", err)
+	}
+	report := pruneResult.Report
+
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Errorf("build cache pruning failed: %w", err).Error())
 		slog.ErrorContext(ctx, "Error pruning build cache", slog.String("error", err.Error()))

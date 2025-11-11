@@ -83,7 +83,7 @@ func (s *SystemUpgradeService) TriggerUpgradeViaCLI(ctx context.Context, user mo
 		return fmt.Errorf("inspect container: %w", err)
 	}
 
-	containerName := strings.TrimPrefix(currentContainer.Name, "/")
+	containerName := strings.TrimPrefix(currentContainer.Container.Name, "/")
 
 	// Log upgrade event
 	metadata := models.JSON{
@@ -128,14 +128,20 @@ func (s *SystemUpgradeService) TriggerUpgradeViaCLI(ctx context.Context, user mo
 
 	containerName = fmt.Sprintf("%s-upgrader-%d", containerName, time.Now().Unix())
 
-	resp, err := dockerClient.ContainerCreate(ctx, config, hostConfig, nil, nil, containerName)
+	createOptions := client.ContainerCreateOptions{
+		Config:     config,
+		HostConfig: hostConfig,
+		Name:       containerName,
+	}
+
+	resp, err := dockerClient.ContainerCreate(ctx, createOptions)
 	if err != nil {
 		return fmt.Errorf("create upgrader container: %w", err)
 	}
 
 	// Start the upgrader container - it will run the upgrade and auto-remove
-	if err := dockerClient.ContainerStart(ctx, resp.ID, containertypes.StartOptions{}); err != nil {
-		_ = dockerClient.ContainerRemove(ctx, resp.ID, containertypes.RemoveOptions{Force: true})
+	if _, err := dockerClient.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{}); err != nil {
+		_, err = dockerClient.ContainerRemove(ctx, resp.ID, client.ContainerRemoveOptions{Force: true})
 		return fmt.Errorf("start upgrader container: %w", err)
 	}
 
@@ -228,15 +234,16 @@ func (s *SystemUpgradeService) getContainerIDFromHostname() (string, error) {
 }
 
 // findArcaneContainer finds the container using the ID
-func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containerId string) (containertypes.InspectResponse, error) {
+func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containerId string) (client.ContainerInspectResult, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
-		return containertypes.InspectResponse{}, err
+		return client.ContainerInspectResult{}, err
 	}
 	defer dockerClient.Close()
 
-	// Try to inspect the container directly
-	container, err := dockerClient.ContainerInspect(ctx, containerId)
+	inspectOptions := client.ContainerInspectOptions{}
+
+	container, err := dockerClient.ContainerInspect(ctx, containerId, inspectOptions)
 	if err == nil {
 		return container, nil
 	}
@@ -245,31 +252,31 @@ func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containe
 	filter := make(client.Filters)
 	filter.Add("ancestor", "arcane")
 
-	containers, err := dockerClient.ContainerList(ctx, containertypes.ListOptions{
+	containers, err := dockerClient.ContainerList(ctx, client.ContainerListOptions{
 		All:     true,
 		Filters: filter,
 	})
 	if err != nil {
-		return containertypes.InspectResponse{}, err
+		return client.ContainerInspectResult{}, err
 	}
 
-	for _, c := range containers {
+	for _, c := range containers.Items {
 		if strings.HasPrefix(c.ID, containerId) {
-			return dockerClient.ContainerInspect(ctx, c.ID)
+			return dockerClient.ContainerInspect(ctx, c.ID, inspectOptions)
 		}
 	}
 
 	// Try without filter - search all containers
-	allContainers, err := dockerClient.ContainerList(ctx, containertypes.ListOptions{All: true})
+	allContainers, err := dockerClient.ContainerList(ctx, client.ContainerListOptions{All: true})
 	if err != nil {
-		return containertypes.InspectResponse{}, err
+		return client.ContainerInspectResult{}, err
 	}
 
-	for _, c := range allContainers {
+	for _, c := range allContainers.Items {
 		if strings.HasPrefix(c.ID, containerId) || c.ID == containerId {
-			return dockerClient.ContainerInspect(ctx, c.ID)
+			return dockerClient.ContainerInspect(ctx, c.ID, inspectOptions)
 		}
 	}
 
-	return containertypes.InspectResponse{}, ErrContainerNotFound
+	return client.ContainerInspectResult{}, ErrContainerNotFound
 }

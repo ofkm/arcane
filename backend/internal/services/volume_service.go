@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/api/types/mount"
 	"github.com/moby/moby/api/types/volume"
 	"github.com/moby/moby/client"
@@ -38,10 +37,11 @@ func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*dto.
 	}
 	defer dockerClient.Close()
 
-	vol, err := dockerClient.VolumeInspect(ctx, name)
+	volResult, err := dockerClient.VolumeInspect(ctx, name, client.VolumeInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("volume not found: %w", err)
 	}
+	vol := volResult.Volume
 
 	if usageVolumes, duErr := docker.GetVolumeUsageData(ctx, dockerClient); duErr == nil {
 		for _, uv := range usageVolumes {
@@ -74,7 +74,7 @@ func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*dto.
 	return &v, nil
 }
 
-func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateOptions, user models.User) (*dto.VolumeDto, error) {
+func (s *VolumeService) CreateVolume(ctx context.Context, options client.VolumeCreateOptions, user models.User) (*dto.VolumeDto, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeVolumeError, "volume", "", options.Name, user.ID, user.Username, "0", err, models.JSON{"action": "create", "driver": options.Driver})
@@ -82,32 +82,33 @@ func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateO
 	}
 	defer dockerClient.Close()
 
-	created, err := dockerClient.VolumeCreate(ctx, options)
+	createVolumeRequest, err := dockerClient.VolumeCreate(ctx, options)
+	createdVolume := createVolumeRequest.Volume
+
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeVolumeError, "volume", "", options.Name, user.ID, user.Username, "0", err, models.JSON{"action": "create", "driver": options.Driver})
 		return nil, fmt.Errorf("failed to create volume: %w", err)
 	}
 
-	vol, err := dockerClient.VolumeInspect(ctx, created.Name)
+	volumeInspectResult, err := dockerClient.VolumeInspect(ctx, createdVolume.Name, client.VolumeInspectOptions{})
 	if err != nil {
-		s.eventService.LogErrorEvent(ctx, models.EventTypeVolumeError, "volume", created.Name, created.Name, user.ID, user.Username, "0", err, models.JSON{"action": "create", "driver": options.Driver, "step": "inspect"})
+		s.eventService.LogErrorEvent(ctx, models.EventTypeVolumeError, "volume", createdVolume.Name, createdVolume.Name, user.ID, user.Username, "0", err, models.JSON{"action": "create", "driver": options.Driver, "step": "inspect"})
 		return nil, fmt.Errorf("failed to inspect created volume: %w", err)
 	}
+	volumeInspect := volumeInspectResult.Volume
 
 	metadata := models.JSON{
 		"action": "create",
-		"driver": vol.Driver,
-		"name":   vol.Name,
+		"driver": volumeInspect.Driver,
+		"name":   volumeInspect.Name,
 	}
-	if logErr := s.eventService.LogVolumeEvent(ctx, models.EventTypeVolumeCreate, vol.Name, vol.Name, user.ID, user.Username, "0", metadata); logErr != nil {
-		slog.WarnContext(ctx, "could not log volume creation action",
-			slog.String("volume", vol.Name),
-			slog.String("error", logErr.Error()))
+	if logErr := s.eventService.LogVolumeEvent(ctx, models.EventTypeVolumeCreate, volumeInspect.Name, volumeInspect.Name, user.ID, user.Username, "0", metadata); logErr != nil {
+		slog.WarnContext(ctx, "could not log volume creation action", slog.String("volume", volumeInspect.Name), slog.String("error", logErr.Error()))
 	}
 
 	docker.InvalidateVolumeUsageCache()
 
-	dtoVol := dto.NewVolumeDto(vol)
+	dtoVol := dto.NewVolumeDto(volumeInspect)
 	return &dtoVol, nil
 }
 
@@ -119,7 +120,10 @@ func (s *VolumeService) DeleteVolume(ctx context.Context, name string, force boo
 	}
 	defer dockerClient.Close()
 
-	if err := dockerClient.VolumeRemove(ctx, name, force); err != nil {
+	volumeRemoveOptions := client.VolumeRemoveOptions{
+		Force: force,
+	}
+	if _, err := dockerClient.VolumeRemove(ctx, name, volumeRemoveOptions); err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeVolumeError, "volume", name, name, user.ID, user.Username, "0", err, models.JSON{"action": "delete", "force": force})
 		return fmt.Errorf("failed to remove volume: %w", err)
 	}
@@ -154,15 +158,17 @@ func (s *VolumeService) PruneVolumesWithOptions(ctx context.Context, all bool) (
 	// Note: Volumes are considered "in use" if referenced by any container (running or stopped)
 	filterArgs := make(client.Filters)
 	if all {
-		// The 'all' filter was added in Docker API v1.42
-		// This tells Docker to prune ALL unused volumes, not just anonymous ones
 		filterArgs.Add("all", "true")
 	}
-	// Other valid filters for volume prune:
-	// - label=<key> or label=<key>=<value>
-	// - label!=<key> or label!=<key>=<value>
 
-	report, err := dockerClient.VolumesPrune(ctx, filterArgs)
+	volumePruneOptions := client.VolumePruneOptions{
+		All:     all,
+		Filters: filterArgs,
+	}
+
+	volumePruneRequest, err := dockerClient.VolumePrune(ctx, volumePruneOptions)
+	report := volumePruneRequest.Report
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to prune volumes: %w", err)
 	}
@@ -193,12 +199,13 @@ func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, 
 	}
 	defer dockerClient.Close()
 
-	vol, err := dockerClient.VolumeInspect(ctx, name)
+	volumeResult, err := dockerClient.VolumeInspect(ctx, name, client.VolumeInspectOptions{})
 	if err != nil {
 		return false, nil, fmt.Errorf("volume not found: %w", err)
 	}
+	volumeInspect := volumeResult.Volume
 
-	containerIDs, err := docker.GetContainersUsingVolume(ctx, dockerClient, vol.Name)
+	containerIDs, err := docker.GetContainersUsingVolume(ctx, dockerClient, volumeInspect.Name)
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to get containers using volume: %w", err)
 	}
@@ -207,31 +214,28 @@ func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, 
 	return inUse, containerIDs, nil
 }
 
-func (s *VolumeService) enrichVolumesWithUsageData(volumes []*volume.Volume, usageVolumes []volume.Volume) []volume.Volume {
+func (s *VolumeService) enrichVolumesWithUsageData(volumes []volume.Volume, usageVolumes []volume.Volume) []volume.Volume {
 	result := make([]volume.Volume, 0, len(volumes))
 	for _, v := range volumes {
-		if v != nil {
-			for _, uv := range usageVolumes {
-				if uv.Name == v.Name && uv.UsageData != nil {
-					v.UsageData = uv.UsageData
-					break
-				}
+		for _, uv := range usageVolumes {
+			if uv.Name == v.Name && uv.UsageData != nil {
+				v.UsageData = uv.UsageData
+				break
 			}
-
-			result = append(result, *v)
 		}
+		result = append(result, v)
 	}
 	return result
 }
 
 func (s *VolumeService) buildVolumeContainerMap(ctx context.Context, dockerClient *client.Client) (map[string][]string, error) {
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := dockerClient.ContainerList(ctx, client.ContainerListOptions{All: true})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list containers: %w", err)
 	}
 
 	volumeContainerMap := make(map[string][]string)
-	for _, c := range containers {
+	for _, c := range containers.Items {
 		for _, m := range c.Mounts {
 			if m.Type == mount.TypeVolume && m.Name != "" {
 				volumeContainerMap[m.Name] = append(volumeContainerMap[m.Name], c.ID)
@@ -372,7 +376,7 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, params paginat
 	}
 	defer dockerClient.Close()
 
-	volListBody, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
+	volListResult, err := dockerClient.VolumeList(ctx, client.VolumeListOptions{})
 	if err != nil {
 		return nil, pagination.Response{}, dto.VolumeUsageCounts{}, fmt.Errorf("failed to list Docker volumes: %w", err)
 	}
@@ -384,7 +388,7 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, params paginat
 		usageVolumes = nil
 	}
 
-	volumes := s.enrichVolumesWithUsageData(volListBody.Volumes, usageVolumes)
+	volumes := s.enrichVolumesWithUsageData(volListResult.Items, usageVolumes)
 
 	volumeContainerMap, err := s.buildVolumeContainerMap(ctx, dockerClient)
 	if err != nil {
