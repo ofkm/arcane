@@ -3,6 +3,7 @@
 	import * as Alert from '$lib/components/ui/alert';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import * as Dialog from '$lib/components/ui/dialog';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import { toast } from 'svelte-sonner';
@@ -47,24 +48,33 @@
 	let hasChanges = $state(false);
 	let isLoading = $state(false);
 	let isTesting = $state(false);
+	let showUnsavedDialog = $state(false);
+	let pendingTestAction: (() => Promise<void>) | null = $state(null);
 	const isReadOnly = $derived.by(() => $settingsStore.uiConfigDisabled);
 	const formState = getContext('settingsFormState') as any;
 
-	let appriseSettings = $state<AppriseSettings>({
+	let appriseSettings: AppriseSettings = $state({
 		apiUrl: '',
 		enabled: false,
 		imageUpdateTag: '',
 		containerUpdateTag: ''
 	});
 
-	let savedAppriseSettings = $state<AppriseSettings>({
+	let savedAppriseSettings: AppriseSettings = $state({
 		apiUrl: '',
 		enabled: false,
 		imageUpdateTag: '',
 		containerUpdateTag: ''
 	});
 
-	let currentSettings = $state<FormNotificationSettings>({
+	const hasUnsavedChanges = $derived.by(() => {
+		const formData = form.validate();
+		if (!formData) return false;
+
+		const formChanged = JSON.stringify(formData) !== JSON.stringify(currentSettings);
+		const appriseChanged = JSON.stringify(appriseSettings) !== JSON.stringify(savedAppriseSettings);
+		return formChanged || appriseChanged;
+	});	let currentSettings = $state<FormNotificationSettings>({
 		discordEnabled: false,
 		discordWebhookUrl: '',
 		discordUsername: 'Arcane',
@@ -330,8 +340,8 @@
 			try {
 				await notificationService.updateAppriseSettings(appriseSettings);
 			} catch (error: any) {
-				const errorMsg = error?.response?.data?.error || error.message || 'Unknown error';
-				errors.push(`Failed to save Apprise settings: ${errorMsg}`);
+				const errorMsg = error?.response?.data?.error || error.message || m.common_unknown();
+				errors.push(m.notifications_saved_failed({ provider: 'Apprise', error: errorMsg }));
 			}
 
 			if (errors.length === 0) {
@@ -369,12 +379,40 @@
 		appriseSettings = { ...savedAppriseSettings };
 	}
 
-	async function testNotification(provider: string, type: string = 'simple') {
+	async function testNotification(provider: 'discord' | 'email', testType: string = 'simple') {
+		if (hasUnsavedChanges) {
+			pendingTestAction = () => executeTest(provider, testType);
+			showUnsavedDialog = true;
+			return;
+		}
+		await executeTest(provider, testType);
+	}
+
+	async function executeTest(provider: 'discord' | 'email', testType: string = 'simple') {
 		isTesting = true;
 		try {
-			await notificationService.testNotification(provider, type);
-			const typeLabel = type === 'image-update' ? 'Image Update' : 'Simple Test';
-			toast.success(`${typeLabel} notification sent successfully to ${provider}`);
+			await notificationService.testNotification(provider, testType);
+			toast.success(m.notifications_test_success({ provider: provider.charAt(0).toUpperCase() + provider.slice(1) }));
+		} catch (error: any) {
+			const errorMsg = error?.response?.data?.error || error.message || m.common_unknown();
+			toast.error(m.notifications_test_failed({ error: errorMsg }));
+		} finally {
+			isTesting = false;
+		}
+	}	async function testAppriseNotification() {
+		if (hasUnsavedChanges) {
+			pendingTestAction = executeAppriseTest;
+			showUnsavedDialog = true;
+			return;
+		}
+		await executeAppriseTest();
+	}
+
+	async function executeAppriseTest() {
+		isTesting = true;
+		try {
+			await notificationService.testAppriseNotification();
+			toast.success(m.notifications_test_success({ provider: 'Apprise' }));
 		} catch (error: any) {
 			const errorMsg = error?.response?.data?.error || error.message || m.common_unknown();
 			toast.error(m.notifications_test_failed({ error: errorMsg }));
@@ -383,16 +421,12 @@
 		}
 	}
 
-	async function testAppriseNotification() {
-		isTesting = true;
-		try {
-			await notificationService.testAppriseNotification();
-			toast.success('Test notification sent successfully via Apprise');
-		} catch (error: any) {
-			const errorMsg = error?.response?.data?.error || error.message || m.common_unknown();
-			toast.error(`Apprise test failed: ${errorMsg}`);
-		} finally {
-			isTesting = false;
+	async function handleSaveAndTest() {
+		showUnsavedDialog = false;
+		await onSubmit();
+		if (pendingTestAction) {
+			await pendingTestAction();
+			pendingTestAction = null;
 		}
 	}
 </script>
@@ -737,3 +771,22 @@
 		</fieldset>
 	{/snippet}
 </SettingsPageLayout>
+
+<Dialog.Root bind:open={showUnsavedDialog}>
+	<Dialog.Content>
+		<Dialog.Header>
+			<Dialog.Title>{m.notifications_unsaved_changes_title()}</Dialog.Title>
+			<Dialog.Description>
+				{m.notifications_unsaved_changes_description()}
+			</Dialog.Description>
+		</Dialog.Header>
+		<Dialog.Footer>
+			<Button variant="outline" onclick={() => (showUnsavedDialog = false)}>
+				{m.common_cancel()}
+			</Button>
+			<Button onclick={handleSaveAndTest}>
+				{m.notifications_unsaved_changes_save_and_test()}
+			</Button>
+		</Dialog.Footer>
+	</Dialog.Content>
+</Dialog.Root>
