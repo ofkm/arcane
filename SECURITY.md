@@ -6,7 +6,7 @@ Thank you for helping us keep this project secure!
 
 If you discover a security vulnerability (such as a CVE), **please do not file an issue on GitHub**. Publicly disclosing vulnerabilities in GitHub issues can put users at risk before the problem is addressed.
 
-Instead, please report vulnerabilities directly to our security team by emailing **[ksm@ofkm.us](mailto:ksm@ofkm.us)**.
+Instead, please report vulnerabilities directly to our security team by emailing **[info@getarcane.app](mailto:info@getarcane.app)**.
 
 We will review your report promptly and work to resolve the issue as quickly as possible. When submitting a report, please include as much detail as possible, such as:
 

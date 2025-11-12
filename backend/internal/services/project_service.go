@@ -524,8 +524,8 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 		return fmt.Errorf("failed to update project status to deploying: %w", err)
 	}
 
-	if perr := s.PullProjectImages(ctx, projectID, io.Discard); perr != nil {
-		slog.Warn("pre-pull images failed (continuing to compose up)", "projectID", projectID, "error", perr)
+	if perr := s.EnsureProjectImagesPresent(ctx, projectID, io.Discard); perr != nil {
+		slog.Warn("ensure images present failed (continuing to compose up)", "projectID", projectID, "error", perr)
 	}
 
 	if err := projects.ComposeUp(ctx, project, project.Services.GetProfiles()); err != nil {
@@ -725,6 +725,53 @@ func (s *ProjectService) PullProjectImages(ctx context.Context, projectID string
 	for img := range images {
 		if err := s.imageService.PullImage(ctx, img, progressWriter, systemUser, nil); err != nil {
 			return fmt.Errorf("failed to pull image %s: %w", img, err)
+		}
+	}
+	return nil
+}
+
+// EnsureProjectImagesPresent checks all compose service images for the project and
+// only pulls images that are not already available locally.
+func (s *ProjectService) EnsureProjectImagesPresent(ctx context.Context, projectID string, progressWriter io.Writer) error {
+	proj, err := s.GetProjectFromDatabaseByID(ctx, projectID)
+	if err != nil {
+		return err
+	}
+
+	// Get configured projects directory from settings
+	projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
+	projectsDirectory, pdErr := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
+	if pdErr != nil {
+		slog.WarnContext(ctx, "unable to determine projects directory; using default", "error", pdErr)
+		projectsDirectory = "data/projects"
+	}
+
+	compProj, _, lerr := projects.LoadComposeProjectFromDir(ctx, proj.Path, normalizeComposeProjectName(proj.Name), projectsDirectory)
+	if lerr != nil {
+		return fmt.Errorf("failed to load compose project: %w", lerr)
+	}
+
+	images := map[string]struct{}{}
+	for _, svc := range compProj.Services {
+		img := strings.TrimSpace(svc.Image)
+		if img == "" {
+			continue
+		}
+		images[img] = struct{}{}
+	}
+
+	for img := range images {
+		exists, ierr := s.imageService.ImageExistsLocally(ctx, img)
+		if ierr != nil {
+			slog.WarnContext(ctx, "failed to check local image existence", "image", img, "error", ierr)
+			// Non-fatal: attempt to pull to be safe
+		}
+		if exists {
+			slog.DebugContext(ctx, "image already present locally; skipping pull", "image", img)
+			continue
+		}
+		if err := s.imageService.PullImage(ctx, img, progressWriter, systemUser, nil); err != nil {
+			return fmt.Errorf("failed to pull missing image %s: %w", img, err)
 		}
 	}
 	return nil
