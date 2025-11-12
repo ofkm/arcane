@@ -1,0 +1,207 @@
+name: Build and Test with Bake
+
+on:
+    push:
+        branches: [main, develop]
+    pull_request:
+        branches: [main]
+
+env:
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+    validate:
+        name: Validation
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Run linting
+              uses: docker/bake-action@v5
+              with:
+                  targets: lint-backend
+                  set: |
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
+
+            - name: Run backend tests
+              uses: docker/bake-action@v5
+              with:
+                  targets: test-backend
+                  set: |
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
+
+            - name: Upload coverage
+              uses: actions/upload-artifact@v4
+              if: always()
+              with:
+                  name: coverage
+                  path: backend/.coverage/
+
+    build:
+        name: Build Images
+        runs-on: ubuntu-latest
+        needs: validate
+        permissions:
+            contents: read
+            packages: write
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Extract version
+              id: version
+              run: |
+                  echo "VERSION=$(cat .version)" >> $GITHUB_OUTPUT
+                  echo "REVISION=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+            - name: Docker meta
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                  images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                  tags: |
+                      type=ref,event=branch
+                      type=ref,event=pr
+                      type=semver,pattern={{version}}
+                      type=semver,pattern={{major}}.{{minor}}
+                      type=sha
+
+            - name: Login to GitHub Container Registry
+              if: github.event_name != 'pull_request'
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Build and push
+              uses: docker/bake-action@v5
+              env:
+                  VERSION: ${{ steps.version.outputs.VERSION }}
+                  REVISION: ${{ steps.version.outputs.REVISION }}
+              with:
+                  targets: image-multi
+                  push: ${{ github.event_name != 'pull_request' }}
+                  set: |
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
+
+    build-binaries:
+        name: Build Binaries
+        runs-on: ubuntu-latest
+        needs: validate
+        permissions:
+            contents: read
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Extract version
+              id: version
+              run: |
+                  echo "VERSION=$(cat .version)" >> $GITHUB_OUTPUT
+                  echo "REVISION=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+            - name: Build binaries
+              uses: docker/bake-action@v5
+              env:
+                  VERSION: ${{ steps.version.outputs.VERSION }}
+                  REVISION: ${{ steps.version.outputs.REVISION }}
+              with:
+                  targets: binary-cross
+                  set: |
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
+
+            - name: Upload binaries
+              uses: actions/upload-artifact@v4
+              with:
+                  name: binaries
+                  path: backend/.bin/
+
+    release:
+        name: Release
+        runs-on: ubuntu-latest
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        needs: [validate, build]
+        permissions:
+            contents: write
+            packages: write
+            attestations: write
+            id-token: write
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Extract version
+              id: version
+              run: |
+                  echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+                  echo "REVISION=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+            - name: Login to GitHub Container Registry
+              uses: docker/login-action@v3
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Build and push all variants
+              uses: docker/bake-action@v5
+              env:
+                  VERSION: ${{ steps.version.outputs.VERSION }}
+                  REVISION: ${{ steps.version.outputs.REVISION }}
+              with:
+                  targets: release-all
+                  push: true
+                  set: |
+                      *.cache-from=type=gha
+                      *.cache-to=type=gha,mode=max
+                      *.attest=type=provenance,mode=max
+                      *.attest=type=sbom
+
+            - name: Build release binaries
+              uses: docker/bake-action@v5
+              env:
+                  VERSION: ${{ steps.version.outputs.VERSION }}
+                  REVISION: ${{ steps.version.outputs.REVISION }}
+              with:
+                  targets: binary-cross,binary-agent-cross
+                  set: |
+                      *.cache-from=type=gha
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: backend/.bin/*
+                  generate_release_notes: true

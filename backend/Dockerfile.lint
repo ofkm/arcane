@@ -1,0 +1,12 @@
+# syntax=docker/dockerfile:1
+
+FROM golangci/golangci-lint:latest-alpine AS lint
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN golangci-lint run --timeout=5m

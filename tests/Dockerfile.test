@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1
+
+FROM node:24-bookworm-slim AS base
+
+# Install Docker CLI
+RUN apt update && apt install wget -y && wget -O docker.sh https://get.docker.com && bash docker.sh
+
+WORKDIR /tests
+
+FROM base AS deps
+
+COPY package.json ./
+RUN corepack enable && \
+    pnpm install && \
+    pnpm exec playwright install --with-deps chromium
+
+FROM deps AS test
+
+COPY --exclude=node_modules . .
+
+ENV CI=true
+ENV DOCKER_HOST=unix:///var/run/docker.sock
+
+RUN --mount=type=bind,from=host,source=/var/run/docker.sock,target=/var/run/docker.sock \
+    pnpm test
