@@ -29,15 +29,12 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     ./cmd/main.go
 
 FROM alpine:3 AS agent
-RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl su-exec
+RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl
 
 WORKDIR /app
-RUN mkdir -p /app/data && chmod 755 /app/data
+RUN mkdir -p /app/data
 
 COPY --from=agent-builder /out/arcane-agent /usr/local/bin/arcane-agent
-
-COPY --chmod=755 ../scripts/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 ARG VERSION="dev"
 ARG REVISION="unknown"
@@ -48,9 +45,9 @@ ENV ENVIRONMENT=production \
     PORT=3553
 
 LABEL org.opencontainers.image.authors="OFKM Technologies"
-LABEL org.opencontainers.image.url="https://github.com/ofkm/arcane"
-LABEL org.opencontainers.image.documentation="https://github.com/ofkm/arcane/blob/main/README.md"
-LABEL org.opencontainers.image.source="https://github.com/ofkm/arcane"
+LABEL org.opencontainers.image.url="https://github.com/getarcaneapp/arcane"
+LABEL org.opencontainers.image.documentation="https://github.com/getarcaneapp/arcane/blob/main/README.md"
+LABEL org.opencontainers.image.source="https://github.com/getarcaneapp/arcane"
 LABEL org.opencontainers.image.version=$VERSION
 LABEL org.opencontainers.image.revision=$REVISION
 LABEL org.opencontainers.image.licenses="BSD-3-Clause"

@@ -118,7 +118,7 @@
 	const formSchema = z
 		.object({
 			discordEnabled: z.boolean(),
-			discordWebhookUrl: z.string(),
+			discordWebhookUrl: z.url().or(z.literal('')),
 			discordUsername: z.string(),
 			discordAvatarUrl: z.string(),
 			discordEventImageUpdate: z.boolean(),
@@ -128,16 +128,77 @@
 			emailSmtpPort: z.number().int().min(1).max(65535),
 			emailSmtpUsername: z.string(),
 			emailSmtpPassword: z.string(),
-			emailFromAddress: z.string().email(),
+			emailFromAddress: z.email().or(z.literal('')),
 			emailToAddresses: z.string(),
 			emailTlsMode: z.enum(['none', 'starttls', 'ssl']),
 			emailEventImageUpdate: z.boolean(),
 			emailEventContainerUpdate: z.boolean()
 		})
-		.refine((formData: any) => {
-			// Enhanced validation for Discord and Email
-			if (formData.discordEnabled && !formData.discordWebhookUrl?.trim()) {
-				return false;
+		.superRefine((data, ctx) => {
+			// Validate Discord fields when Discord is enabled
+			if (data.discordEnabled && !data.discordWebhookUrl.trim()) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Webhook URL is required when Discord is enabled',
+					path: ['discordWebhookUrl']
+				});
+			} // Validate Email fields when Email is enabled
+			if (data.emailEnabled) {
+				if (!data.emailSmtpHost.trim()) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: 'SMTP host is required when email is enabled',
+						path: ['emailSmtpHost']
+					});
+				}
+
+				if (!data.emailFromAddress.trim()) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: 'From address is required when email is enabled',
+						path: ['emailFromAddress']
+					});
+				} else {
+					// Validate email format using Zod's built-in email validator
+					const emailValidation = z.string().email().safeParse(data.emailFromAddress.trim());
+					if (!emailValidation.success) {
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							message: 'Invalid email address format',
+							path: ['emailFromAddress']
+						});
+					}
+				}
+
+				if (!data.emailToAddresses.trim()) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: 'At least one recipient address is required when email is enabled',
+						path: ['emailToAddresses']
+					});
+				} else {
+					// Validate each email in the comma-separated list
+					const addresses = data.emailToAddresses
+						.split(',')
+						.map((addr) => addr.trim())
+						.filter((addr) => addr.length > 0);
+					const invalidAddresses: string[] = [];
+
+					addresses.forEach((addr) => {
+						const emailValidation = z.string().email().safeParse(addr);
+						if (!emailValidation.success) {
+							invalidAddresses.push(addr);
+						}
+					});
+
+					if (invalidAddresses.length > 0) {
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							message: `Invalid email addresses: ${invalidAddresses.join(', ')}`,
+							path: ['emailToAddresses']
+						});
+					}
+				}
 			}
 			return true;
 		}, {

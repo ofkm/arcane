@@ -54,6 +54,11 @@ func (s *NotificationService) GetSettingsByProvider(ctx context.Context, provide
 func (s *NotificationService) CreateOrUpdateSettings(ctx context.Context, provider models.NotificationProvider, enabled bool, config models.JSON) (*models.NotificationSettings, error) {
 	var setting models.NotificationSettings
 
+	// Clear config if provider is disabled
+	if !enabled {
+		config = models.JSON{}
+	}
+
 	err := s.db.WithContext(ctx).Where("provider = ?", provider).First(&setting).Error
 	if err != nil {
 		setting = models.NotificationSettings{
@@ -651,7 +656,7 @@ func (s *NotificationService) sendEmailContainerUpdateNotification(ctx context.C
 
 func (s *NotificationService) renderContainerUpdateEmailTemplate(containerName, imageRef, oldDigest, newDigest string) (string, string, error) {
 	data := map[string]interface{}{
-		"LogoURL":       "https://raw.githubusercontent.com/ofkm/arcane/main/backend/resources/images/logo-full.svg",
+		"LogoURL":       "https://raw.githubusercontent.com/getarcaneapp/arcane/main/backend/resources/images/logo-full.svg",
 		"AppURL":        s.config.AppUrl,
 		"ContainerName": containerName,
 		"ImageRef":      imageRef,
@@ -696,7 +701,7 @@ func (s *NotificationService) renderContainerUpdateEmailTemplate(containerName, 
 func (s *NotificationService) TestNotification(ctx context.Context, provider models.NotificationProvider, testType string) error {
 	setting, err := s.GetSettingsByProvider(ctx, provider)
 	if err != nil {
-		return fmt.Errorf("failed to get settings for provider %s: %w", provider, err)
+		return fmt.Errorf("please save your %s settings before testing", provider)
 	}
 
 	testUpdate := &dto.ImageUpdateResponse{
@@ -776,7 +781,7 @@ func (s *NotificationService) sendTestEmail(ctx context.Context, config models.J
 
 func (s *NotificationService) renderTestEmailTemplate() (string, string, error) {
 	data := map[string]interface{}{
-		"LogoURL": "https://raw.githubusercontent.com/ofkm/arcane/main/backend/resources/images/logo-full.svg",
+		"LogoURL": "https://raw.githubusercontent.com/getarcaneapp/arcane/main/backend/resources/images/logo-full.svg",
 		"AppURL":  s.config.AppUrl,
 	}
 

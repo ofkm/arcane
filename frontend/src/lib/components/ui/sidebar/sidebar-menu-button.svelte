@@ -94,7 +94,8 @@
 
 {#if !tooltipContent}
 	{@render Button({})}
-{:else if sidebar.state === 'collapsed'}
+{:else if sidebar.state === 'collapsed' && !(sidebar.hoverExpansionEnabled && sidebar.isHovered)}
+	<!-- Render tooltip only when collapsed and not in hover expansion mode -->
 	<Tooltip.Root>
 		<Tooltip.Trigger>
 			{#snippet child({ props })}
@@ -102,15 +103,14 @@
 			{/snippet}
 		</Tooltip.Trigger>
 		<Tooltip.Content side="right" align="center" class="z-50" {...tooltipContentProps}>
-			{#if !(sidebar.hoverExpansionEnabled && sidebar.isHovered)}
-				{#if typeof tooltipContent === 'string'}
-					{tooltipContent}
-				{:else if tooltipContent}
-					{@render tooltipContent()}
-				{/if}
+			{#if typeof tooltipContent === 'string'}
+				{tooltipContent}
+			{:else if tooltipContent}
+				{@render tooltipContent()}
 			{/if}
 		</Tooltip.Content>
 	</Tooltip.Root>
 {:else}
+	<!-- Either expanded (hover expansion active) or not collapsed: no tooltip to avoid empty popover -->
 	{@render Button({})}
 {/if}

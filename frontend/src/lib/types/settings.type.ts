@@ -24,6 +24,7 @@ export type Settings = {
 
 	authLocalEnabled: boolean;
 	authOidcEnabled: boolean;
+	authOidcMergeAccounts: boolean;
 	authSessionTimeout: number;
 	authPasswordPolicy: 'basic' | 'standard' | 'strong';
 	authOidcConfig: string;
@@ -66,4 +67,5 @@ export interface OidcConfig {
 export interface OidcStatusInfo {
 	envForced: boolean;
 	envConfigured: boolean;
+	mergeAccounts: boolean;
 }

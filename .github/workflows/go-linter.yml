@@ -31,7 +31,7 @@ jobs:
             backend/go.sum
 
       - name: Run Golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.4.0
           args: --build-tags=exclude_frontend

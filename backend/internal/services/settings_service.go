@@ -89,6 +89,7 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		DockerHost:                 models.SettingVariable{Value: "unix:///var/run/docker.sock"},
 		AuthLocalEnabled:           models.SettingVariable{Value: "true"},
 		AuthOidcEnabled:            models.SettingVariable{Value: "false"},
+		AuthOidcMergeAccounts:      models.SettingVariable{Value: "false"},
 		AuthSessionTimeout:         models.SettingVariable{Value: "1440"},
 		AuthPasswordPolicy:         models.SettingVariable{Value: "strong"},
 		AuthOidcConfig:             models.SettingVariable{Value: "{}"},
