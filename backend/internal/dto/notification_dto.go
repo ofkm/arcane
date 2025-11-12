@@ -29,4 +29,3 @@ type AppriseSettingsResponse struct {
 	ImageUpdateTag     string `json:"imageUpdateTag"`
 	ContainerUpdateTag string `json:"containerUpdateTag"`
 }
-
