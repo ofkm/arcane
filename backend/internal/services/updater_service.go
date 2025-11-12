@@ -8,11 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/models"
 
 	"github.com/ofkm/arcane-backend/internal/database"
@@ -320,7 +318,7 @@ func (s *UpdaterService) pruneImageIDs(ctx context.Context, ids []string) error 
 			continue
 		}
 
-		if _, err := dcli.ImageRemove(ctx, id, image.RemoveOptions{PruneChildren: true}); err != nil {
+		if _, err := dcli.ImageRemove(ctx, id, client.ImageRemoveOptions{PruneChildren: true}); err != nil {
 			slog.Warn("image remove failed", "imageId", id, "err", err)
 			continue
 		}
@@ -379,14 +377,14 @@ func (s *UpdaterService) updateContainer(ctx context.Context, cnt container.Summ
 	slog.DebugContext(ctx, "updateContainer: starting update", "containerId", cnt.ID, "containerName", name, "newRef", newRef)
 
 	// stop
-	if err := dcli.ContainerStop(ctx, cnt.ID, container.StopOptions{}); err != nil {
+	if _, err := dcli.ContainerStop(ctx, cnt.ID, client.ContainerStopOptions{}); err != nil {
 		slog.DebugContext(ctx, "updateContainer: stop failed", "containerId", cnt.ID, "err", err)
 		return fmt.Errorf("stop: %w", err)
 	}
 	_ = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerStop, cnt.ID, name, systemUser.ID, systemUser.Username, "0", models.JSON{"action": "updater_stop"})
 
 	// remove
-	if err := dcli.ContainerRemove(ctx, cnt.ID, container.RemoveOptions{}); err != nil {
+	if _, err := dcli.ContainerRemove(ctx, cnt.ID, client.ContainerRemoveOptions{}); err != nil {
 		slog.DebugContext(ctx, "updateContainer: remove failed", "containerId", cnt.ID, "err", err)
 		return fmt.Errorf("remove: %w", err)
 	}
@@ -395,14 +393,19 @@ func (s *UpdaterService) updateContainer(ctx context.Context, cnt container.Summ
 	// recreate with new image ref
 	cfg := inspect.Config
 	cfg.Image = newRef
-	resp, err := dcli.ContainerCreate(ctx, cfg, inspect.HostConfig, &network.NetworkingConfig{EndpointsConfig: inspect.NetworkSettings.Networks}, nil, inspect.Name)
+	resp, err := dcli.ContainerCreate(ctx, client.ContainerCreateOptions{
+		Config:           cfg,
+		HostConfig:       inspect.HostConfig,
+		NetworkingConfig: &network.NetworkingConfig{EndpointsConfig: inspect.NetworkSettings.Networks},
+		Name:             inspect.Name,
+	})
 	if err != nil {
 		slog.DebugContext(ctx, "updateContainer: create failed", "containerName", inspect.Name, "err", err)
 		return fmt.Errorf("create: %w", err)
 	}
 	_ = s.eventService.LogContainerEvent(ctx, models.EventTypeContainerCreate, resp.ID, name, systemUser.ID, systemUser.Username, "0", models.JSON{"action": "updater_create", "newImageId": resp.ID})
 
-	if err := dcli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+	if _, err := dcli.ContainerStart(ctx, resp.ID, client.ContainerStartOptions{}); err != nil {
 		slog.DebugContext(ctx, "updateContainer: start failed", "newContainerId", resp.ID, "err", err)
 		return fmt.Errorf("start: %w", err)
 	}
@@ -481,26 +484,26 @@ func (s *UpdaterService) collectUsedImagesFromContainers(ctx context.Context, dc
 	if dcli == nil {
 		return nil
 	}
-	list, err := dcli.ContainerList(ctx, container.ListOptions{All: false})
+	list, err := dcli.ContainerList(ctx, client.ContainerListOptions{All: false})
 	if err != nil {
 		return err
 	}
-	slog.DebugContext(ctx, "collectUsedImagesFromContainers: container list fetched", "count", len(list))
-	for _, c := range list {
+	slog.DebugContext(ctx, "collectUsedImagesFromContainers: container list fetched", "count", len(list.Items))
+	for _, c := range list.Items {
 		if s.isUpdateDisabled(c.Labels) {
 			slog.DebugContext(ctx, "collectUsedImagesFromContainers: container opted out by labels", "containerId", c.ID)
 			continue
 		}
-		inspect, err := dcli.ContainerInspect(ctx, c.ID)
+		inspect, err := dcli.ContainerInspect(ctx, c.ID, client.ContainerInspectOptions{})
 		if err != nil {
 			slog.DebugContext(ctx, "collectUsedImagesFromContainers: container inspect failed", "containerId", c.ID, "err", err)
 			continue
 		}
-		if inspect.Config != nil && s.isUpdateDisabled(inspect.Config.Labels) {
+		if inspect.Container.Config != nil && s.isUpdateDisabled(inspect.Container.Config.Labels) {
 			slog.DebugContext(ctx, "collectUsedImagesFromContainers: container inspect labels opted out", "containerId", c.ID)
 			continue
 		}
-		for _, t := range s.getNormalizedTagsForContainer(ctx, dcli, inspect) {
+		for _, t := range s.getNormalizedTagsForContainer(ctx, dcli, inspect.Container) {
 			out[t] = struct{}{}
 		}
 	}
@@ -680,25 +683,25 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 	}
 	defer dcli.Close()
 
-	list, err := dcli.ContainerList(ctx, container.ListOptions{All: false})
+	list, err := dcli.ContainerList(ctx, client.ContainerListOptions{All: false})
 	if err != nil {
 		return nil, fmt.Errorf("list containers: %w", err)
 	}
-	slog.DebugContext(ctx, "restartContainersUsingOldIDs: scanning containers for matching images", "containers", len(list), "oldIDMatches", len(oldIDToNewRef), "oldRefMatches", len(oldRefToNewRef))
+	slog.DebugContext(ctx, "restartContainersUsingOldIDs: scanning containers for matching images", "containers", len(list.Items), "oldIDMatches", len(oldIDToNewRef), "oldRefMatches", len(oldRefToNewRef))
 
 	var results []dto.AutoUpdateResourceResult
-	for _, c := range list {
+	for _, c := range list.Items {
 		// Skip containers with opt-out label
 		if s.isUpdateDisabled(c.Labels) {
 			continue
 		}
 
-		inspect, err := dcli.ContainerInspect(ctx, c.ID)
+		inspect, err := dcli.ContainerInspect(ctx, c.ID, client.ContainerInspectOptions{})
 		if err != nil {
 			continue
 		}
 		// Also honor labels from full inspect
-		if inspect.Config != nil && s.isUpdateDisabled(inspect.Config.Labels) {
+		if inspect.Container.Config != nil && s.isUpdateDisabled(inspect.Container.Config.Labels) {
 			continue
 		}
 
@@ -708,16 +711,16 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 		)
 
 		// Primary: match by digest (image ID)
-		if nr, ok := oldIDToNewRef[inspect.Image]; ok {
+		if nr, ok := oldIDToNewRef[inspect.Container.Image]; ok {
 			newRef = nr
-			match = inspect.Image
+			match = inspect.Container.Image
 		} else {
 			// Fallback: resolve tags and match by tag
 			updatedNorm := map[string]string{}
 			for oldRef, nr := range oldRefToNewRef {
 				updatedNorm[s.normalizeRef(oldRef)] = nr
 			}
-			for _, t := range s.getNormalizedTagsForContainer(ctx, dcli, inspect) {
+			for _, t := range s.getNormalizedTagsForContainer(ctx, dcli, inspect.Container) {
 				if nr, ok := updatedNorm[t]; ok {
 					newRef = nr
 					match = t
@@ -741,7 +744,7 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 			NewImages:    map[string]string{"main": s.normalizeRef(newRef)},
 		}
 
-		if err := s.updateContainer(ctx, c, inspect, newRef); err != nil {
+		if err := s.updateContainer(ctx, c, inspect.Container, newRef); err != nil {
 			res.Status = "failed"
 			res.Error = err.Error()
 			slog.DebugContext(ctx, "restartContainersUsingOldIDs: update failed", "containerId", c.ID, "err", err)
@@ -772,11 +775,11 @@ func (s *UpdaterService) getProjectContainers(ctx context.Context, dcli *client.
 	byID := map[string]container.Summary{}
 
 	// Compose label
-	f1 := filters.NewArgs()
+	f1 := make(client.Filters)
 	f1.Add("label", "com.docker.compose.project="+projectName)
-	cs1, err := dcli.ContainerList(ctx, container.ListOptions{All: true, Filters: f1})
+	cs1, err := dcli.ContainerList(ctx, client.ContainerListOptions{All: true, Filters: f1})
 	if err == nil {
-		for _, c := range cs1 {
+		for _, c := range cs1.Items {
 			byID[c.ID] = c
 		}
 	}
@@ -885,17 +888,17 @@ func (s *UpdaterService) anyImageIDsStillInUse(ctx context.Context, ids []string
 	}
 	defer dcli.Close()
 
-	list, err := dcli.ContainerList(ctx, container.ListOptions{All: false})
+	list, err := dcli.ContainerList(ctx, client.ContainerListOptions{All: false})
 	if err != nil {
 		return false, fmt.Errorf("list containers: %w", err)
 	}
-	for _, c := range list {
-		inspect, ierr := dcli.ContainerInspect(ctx, c.ID)
+	for _, c := range list.Items {
+		inspect, ierr := dcli.ContainerInspect(ctx, c.ID, client.ContainerInspectOptions{})
 		if ierr != nil {
 			continue
 		}
-		if _, ok := set[inspect.Image]; ok {
-			slog.DebugContext(ctx, "anyImageIDsStillInUse: image still used by container", "imageId", inspect.Image, "containerId", c.ID)
+		if _, ok := set[inspect.Container.Image]; ok {
+			slog.DebugContext(ctx, "anyImageIDsStillInUse: image still used by container", "imageId", inspect.Container.Image, "containerId", c.ID)
 			return true, nil
 		}
 	}

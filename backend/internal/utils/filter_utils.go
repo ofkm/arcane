@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/docker/docker/api/types/filters"
+	"github.com/moby/moby/client"
 )
 
 // NormalizeQueryToFilters converts raw URL query into a flat filters map.
@@ -85,17 +85,20 @@ func ParseBoolAny(v interface{}) (bool, bool) {
 	return false, false
 }
 
-// BuildDockerFiltersFromMap builds Docker filters.Args from a flat filters map and a search string.
+// BuildDockerFiltersFromMap builds Docker client.Filters from a flat filters map and a search string.
 // Only allowedKeys are forwarded to the daemon. Search is mapped to name filter when provided.
-func BuildDockerFiltersFromMap(filtersMap map[string]interface{}, search string, allowedKeys []string) filters.Args {
-	f := filters.NewArgs()
+func BuildDockerFiltersFromMap(filtersMap map[string]interface{}, search string, allowedKeys []string) client.Filters {
+	f := make(client.Filters)
+	
 	if strings.TrimSpace(search) != "" {
 		f.Add("name", search)
 	}
+	
 	allowed := map[string]bool{}
 	for _, k := range allowedKeys {
 		allowed[k] = true
 	}
+	
 	for k, v := range filtersMap {
 		if !allowed[k] {
 			continue
@@ -104,9 +107,7 @@ func BuildDockerFiltersFromMap(filtersMap map[string]interface{}, search string,
 		case string:
 			f.Add(k, t)
 		case []string:
-			for _, s := range t {
-				f.Add(k, s)
-			}
+			f.Add(k, t...)
 		case []interface{}:
 			for _, it := range t {
 				f.Add(k, fmt.Sprintf("%v", it))
@@ -115,6 +116,7 @@ func BuildDockerFiltersFromMap(filtersMap map[string]interface{}, search string,
 			f.Add(k, fmt.Sprintf("%v", t))
 		}
 	}
+	
 	return f
 }
 

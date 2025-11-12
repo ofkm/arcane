@@ -2,7 +2,9 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"runtime"
@@ -10,10 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
@@ -94,8 +95,11 @@ func (h *SystemHandler) Health(c *gin.Context) {
 	}
 	defer dockerClient.Close()
 
-	// Try to ping Docker to ensure it's responsive
-	_, err = dockerClient.Ping(ctx)
+	pingOptions := client.PingOptions{
+		NegotiateAPIVersion: true,
+	}
+
+	_, err = dockerClient.Ping(ctx, pingOptions)
 	if err != nil {
 		c.Status(http.StatusServiceUnavailable)
 		return
@@ -117,7 +121,38 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	}
 	defer dockerClient.Close()
 
-	version, err := dockerClient.ServerVersion(ctx)
+	// Make raw HTTP request to /version endpoint to get full VersionResponse
+	// including GitCommit, GoVersion, and BuildTime
+	type VersionResponse struct {
+		Version       string `json:"Version"`
+		APIVersion    string `json:"ApiVersion"`
+		GitCommit     string `json:"GitCommit,omitempty"`
+		GoVersion     string `json:"GoVersion,omitempty"`
+		Os            string `json:"Os"`
+		Arch          string `json:"Arch"`
+		KernelVersion string `json:"KernelVersion,omitempty"`
+		BuildTime     string `json:"BuildTime,omitempty"`
+	}
+
+	var versionDetails VersionResponse
+	baseURL := dockerClient.DaemonHost()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", baseURL+"/version", nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to create version request: " + err.Error(),
+		})
+		return
+	}
+
+	// The client already has the proper transport configured for Docker socket/TCP
+	// We can use the standard http client since DaemonHost() returns the full URL
+	httpClient := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -125,8 +160,27 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		})
 		return
 	}
+	defer resp.Body.Close()
 
-	info, err := dockerClient.Info(ctx)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to read version response: " + err.Error(),
+		})
+		return
+	}
+
+	if err := json.Unmarshal(body, &versionDetails); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to decode version response: " + err.Error(),
+		})
+		return
+	}
+
+	infoOptions := client.InfoOptions{}
+	infoResult, err := dockerClient.Info(ctx, infoOptions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -134,8 +188,9 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		})
 		return
 	}
+	info := infoResult.Info
 
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := dockerClient.ContainerList(ctx, client.ContainerListOptions{All: true})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -144,7 +199,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		return
 	}
 
-	images, err := dockerClient.ImageList(ctx, image.ListOptions{})
+	images, err := dockerClient.ImageList(ctx, client.ImageListOptions{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -155,18 +210,18 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 
 	dockerInfo := dto.DockerInfoDto{
 		Success:           true,
-		Version:           version.Version,
-		APIVersion:        version.APIVersion,
-		GitCommit:         version.GitCommit,
-		GoVersion:         version.GoVersion,
-		OS:                version.Os,
-		Arch:              version.Arch,
-		BuildTime:         version.BuildTime,
-		Containers:        len(containers),
+		Version:           versionDetails.Version,
+		APIVersion:        versionDetails.APIVersion,
+		GitCommit:         versionDetails.GitCommit,
+		GoVersion:         versionDetails.GoVersion,
+		OS:                versionDetails.Os,
+		Arch:              versionDetails.Arch,
+		BuildTime:         versionDetails.BuildTime,
+		Containers:        len(containers.Items),
 		ContainersRunning: info.ContainersRunning,
 		ContainersPaused:  info.ContainersPaused,
 		ContainersStopped: info.ContainersStopped,
-		Images:            len(images),
+		Images:            len(images.Items),
 		StorageDriver:     info.Driver,
 		LoggingDriver:     info.LoggingDriver,
 		CgroupDriver:      info.CgroupDriver,

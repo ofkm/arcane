@@ -3,8 +3,9 @@ package api
 import (
 	"net/http"
 
-	"github.com/docker/docker/api/types/network"
 	"github.com/gin-gonic/gin"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
@@ -86,8 +87,8 @@ func (h *NetworkHandler) GetByID(c *gin.Context) {
 
 func (h *NetworkHandler) Create(c *gin.Context) {
 	var req struct {
-		Name    string                `json:"name" binding:"required"`
-		Options network.CreateOptions `json:"options"`
+		Name    string                      `json:"name" binding:"required"`
+		Options client.NetworkCreateOptions `json:"options"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -112,7 +113,7 @@ func (h *NetworkHandler) Create(c *gin.Context) {
 		return
 	}
 
-	out, mapErr := dto.MapOne[network.CreateResponse, dto.NetworkCreateResponseDto](*response)
+	out, mapErr := dto.MapOne[client.NetworkCreateResult, dto.NetworkCreateResponseDto](*response)
 	if mapErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": dto.MessageDto{Message: mapErr.Error()}})
 		return
@@ -178,7 +179,7 @@ func (h *NetworkHandler) Prune(c *gin.Context) {
 		return
 	}
 
-	out, mapErr := dto.MapOne[network.PruneReport, dto.NetworkPruneReportDto](*report)
+	out, mapErr := dto.MapOne[client.NetworkPruneResult, dto.NetworkPruneReportDto](*report)
 	if mapErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": dto.MessageDto{Message: mapErr.Error()}})
 		return

@@ -3,7 +3,7 @@ package dto
 import (
 	"time"
 
-	"github.com/docker/docker/api/types/network"
+	"github.com/moby/moby/api/types/network"
 )
 
 type NetworkSummaryDto struct {
@@ -49,8 +49,8 @@ type NetworkPruneReportDto struct {
 }
 
 func NewNetworkSummaryDto(s network.Summary) NetworkSummaryDto {
-	iu := len(s.Containers) > 0
-
+	// TODO: network.Summary in v29 doesn't include container information
+	// Need to pass InUse as a parameter or inspect the network separately
 	return NetworkSummaryDto{
 		ID:      s.ID,
 		Name:    s.Name,
@@ -59,6 +59,6 @@ func NewNetworkSummaryDto(s network.Summary) NetworkSummaryDto {
 		Created: s.Created,
 		Options: s.Options,
 		Labels:  s.Labels,
-		InUse:   iu,
+		InUse:   false, // TODO: Cannot determine from Summary alone in v29
 	}
 }

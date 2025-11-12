@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/api/types/volume"
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/api/types/network"
+	"github.com/moby/moby/api/types/volume"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/utils/docker"
@@ -28,7 +28,7 @@ func NewDockerClientService(db *database.DB, cfg *config.Config) *DockerClientSe
 }
 
 func (s *DockerClientService) CreateConnection(ctx context.Context) (*client.Client, error) {
-	cli, err := client.NewClientWithOpts(
+	cli, err := client.New(
 		client.WithHost(s.config.DockerHost),
 		client.WithAPIVersionNegotiation(),
 	)
@@ -47,13 +47,13 @@ func (s *DockerClientService) GetAllContainers(ctx context.Context) ([]container
 	}
 	defer dockerClient.Close()
 
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := dockerClient.ContainerList(ctx, client.ContainerListOptions{All: true})
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to list Docker containers: %w", err)
 	}
 
 	var running, stopped, total int
-	for _, c := range containers {
+	for _, c := range containers.Items {
 		total++
 		if c.State == "running" {
 			running++
@@ -62,7 +62,7 @@ func (s *DockerClientService) GetAllContainers(ctx context.Context) ([]container
 		}
 	}
 
-	return containers, running, stopped, total, nil
+	return containers.Items, running, stopped, total, nil
 }
 
 func (s *DockerClientService) GetAllImages(ctx context.Context) ([]image.Summary, int, int, int, error) {
@@ -72,13 +72,13 @@ func (s *DockerClientService) GetAllImages(ctx context.Context) ([]image.Summary
 	}
 	defer dockerClient.Close()
 
-	images, err := dockerClient.ImageList(ctx, image.ListOptions{All: true})
+	images, err := dockerClient.ImageList(ctx, client.ImageListOptions{All: true})
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to list Docker containers: %w", err)
 	}
 
 	var inuse, unused, total int
-	for _, i := range images {
+	for _, i := range images.Items {
 		total++
 		if i.Containers >= 1 {
 			inuse++
@@ -87,7 +87,7 @@ func (s *DockerClientService) GetAllImages(ctx context.Context) ([]image.Summary
 		}
 	}
 
-	return images, inuse, unused, total, nil
+	return images.Items, inuse, unused, total, nil
 }
 
 func (s *DockerClientService) GetAllNetworks(ctx context.Context) ([]network.Summary, int, int, int, error) {
@@ -97,39 +97,39 @@ func (s *DockerClientService) GetAllNetworks(ctx context.Context) ([]network.Sum
 	}
 	defer dockerClient.Close()
 
-	networks, err := dockerClient.NetworkList(ctx, network.ListOptions{})
+	networks, err := dockerClient.NetworkList(ctx, client.NetworkListOptions{})
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to list Docker networks: %w", err)
 	}
 
 	var inuse, unused, total int
-	for _, n := range networks {
+	for _, n := range networks.Items {
 		total++
+		// TODO: network.Summary in v29 doesn't include container count anymore
+		// Need to reimplement by either:
+		// 1. Calling NetworkInspect on each network individually, or
+		// 2. Maintaining usage state at a higher level
 		if !docker.IsDefaultNetwork(n.Name) {
-			if len(n.Containers) > 0 {
-				inuse++
-			} else {
-				unused++
-			}
+			unused++
 		}
 	}
 
-	return networks, inuse, unused, total, nil
+	return networks.Items, inuse, unused, total, nil
 }
 
-func (s *DockerClientService) GetAllVolumes(ctx context.Context) ([]*volume.Volume, int, int, int, error) {
+func (s *DockerClientService) GetAllVolumes(ctx context.Context) ([]volume.Volume, int, int, int, error) {
 	dockerClient, err := s.CreateConnection(ctx)
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := dockerClient.ContainerList(ctx, client.ContainerListOptions{All: true})
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to list Docker containers: %w", err)
 	}
-	ref := make(map[string]int64, len(containers))
-	for _, c := range containers {
+	ref := make(map[string]int64, len(containers.Items))
+	for _, c := range containers.Items {
 		for _, m := range c.Mounts {
 			if m.Type == mount.TypeVolume && m.Name != "" {
 				ref[m.Name]++
@@ -137,11 +137,11 @@ func (s *DockerClientService) GetAllVolumes(ctx context.Context) ([]*volume.Volu
 		}
 	}
 
-	volResp, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
+	volResp, err := dockerClient.VolumeList(ctx, client.VolumeListOptions{})
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to list Docker volumes: %w", err)
 	}
-	volumes := volResp.Volumes
+	volumes := volResp.Items
 
 	var inuse, unused, total int
 	for _, v := range volumes {

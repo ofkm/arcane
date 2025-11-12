@@ -1,6 +1,6 @@
 package dto
 
-import "github.com/docker/docker/api/types/volume"
+import "github.com/moby/moby/api/types/volume"
 
 type VolumeUsageData struct {
 	Size     int64 `json:"size"`

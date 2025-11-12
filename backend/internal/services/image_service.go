@@ -14,10 +14,10 @@ import (
 	"log/slog"
 
 	ref "github.com/distribution/reference"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/image"
-	"github.com/docker/docker/api/types/registry"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/image"
+	"github.com/moby/moby/api/types/registry"
+	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -54,7 +54,7 @@ func (s *ImageService) GetImageByID(ctx context.Context, id string) (*image.Insp
 		return nil, fmt.Errorf("inspect not found: %w", err)
 	}
 
-	return &inspect, nil
+	return &inspect.InspectResponse, nil
 }
 
 func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, user models.User) error {
@@ -73,7 +73,7 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, u
 		imageName = id
 	}
 
-	options := image.RemoveOptions{
+	options := client.ImageRemoveOptions{
 		Force:         force,
 		PruneChildren: true,
 	}
@@ -117,7 +117,7 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 		slog.WarnContext(ctx, "Failed to get registry authentication for image; proceeding without auth",
 			slog.String("image", imageName),
 			slog.String("error", err.Error()))
-		pullOptions = image.PullOptions{}
+		pullOptions = client.ImagePullOptions{}
 	}
 
 	reader, err := dockerClient.ImagePull(ctx, imageName, pullOptions)
@@ -172,8 +172,8 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	return nil
 }
 
-func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef string, externalCreds []dto.ContainerRegistryCredential) (image.PullOptions, error) {
-	pullOptions := image.PullOptions{}
+func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef string, externalCreds []dto.ContainerRegistryCredential) (client.ImagePullOptions, error) {
+	pullOptions := client.ImagePullOptions{}
 
 	registryHost := s.extractRegistryHost(imageRef)
 
@@ -301,17 +301,22 @@ func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.P
 	}
 	defer dockerClient.Close()
 
-	filterArgs := filters.NewArgs()
+	filterArgs := make(client.Filters)
 	if dangling {
 		filterArgs.Add("dangling", "true")
 	} else {
 		filterArgs.Add("dangling", "false")
 	}
 
-	report, err := dockerClient.ImagesPrune(ctx, filterArgs)
+	imagePruneOptions := client.ImagePruneOptions{
+		Filters: filterArgs,
+	}
+
+	pruneResult, err := dockerClient.ImagePrune(ctx, imagePruneOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to prune images: %w", err)
 	}
+	report := pruneResult.Report
 
 	metadata := models.JSON{
 		"action":         "prune",
@@ -333,17 +338,17 @@ func (s *ImageService) ListImagesPaginated(ctx context.Context, params paginatio
 	}
 	defer dockerClient.Close()
 
-	dockerImages, err := dockerClient.ImageList(ctx, image.ListOptions{})
+	dockerImages, err := dockerClient.ImageList(ctx, client.ImageListOptions{})
 	if err != nil {
 		return nil, pagination.Response{}, fmt.Errorf("failed to list Docker images: %w", err)
 	}
 
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	containers, err := dockerClient.ContainerList(ctx, client.ContainerListOptions{All: true})
 	if err != nil {
 		return nil, pagination.Response{}, fmt.Errorf("failed to list containers: %w", err)
 	}
 
-	inUseMap := buildInUseMap(containers)
+	inUseMap := buildInUseMap(containers.Items)
 
 	var updateRecords []models.ImageUpdateRecord
 	if s.db != nil {
@@ -351,7 +356,7 @@ func (s *ImageService) ListImagesPaginated(ctx context.Context, params paginatio
 	}
 	updateMap := buildUpdateMap(updateRecords)
 
-	items := mapDockerImagesToDTOs(dockerImages, inUseMap, updateMap)
+	items := mapDockerImagesToDTOs(dockerImages.Items, inUseMap, updateMap)
 
 	config := pagination.Config[dto.ImageSummaryDto]{
 		SearchAccessors: []pagination.SearchAccessor[dto.ImageSummaryDto]{
@@ -485,13 +490,13 @@ func (s *ImageService) GetTotalImageSize(ctx context.Context) (int64, error) {
 	}
 	defer dockerClient.Close()
 
-	images, err := dockerClient.ImageList(ctx, image.ListOptions{})
+	images, err := dockerClient.ImageList(ctx, client.ImageListOptions{})
 	if err != nil {
 		return 0, fmt.Errorf("failed to list images: %w", err)
 	}
 
 	var total int64
-	for _, img := range images {
+	for _, img := range images.Items {
 		total += img.Size
 	}
 
