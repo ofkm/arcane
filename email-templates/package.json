@@ -20,9 +20,9 @@
   },
   "devDependencies": {
     "@react-email/preview-server": "5.0.1",
-    "@types/node": "^24.9.2",
-    "@types/react": "^19.0.1",
-    "@types/react-dom": "^19.0.1",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.3",
+    "@types/react-dom": "^19.2.3",
     "react-email": "5.0.1",
     "tsx": "^4.0.0"
   }
