@@ -42,7 +42,7 @@ func (s *NetworkService) GetNetworkByID(ctx context.Context, id string) (*networ
 	return &networkInspect.Network, nil
 }
 
-func (s *NetworkService) CreateNetwork(ctx context.Context, name string, options client.NetworkCreateOptions, user models.User) (*network.CreateResponse, error) {
+func (s *NetworkService) CreateNetwork(ctx context.Context, name string, options client.NetworkCreateOptions, user models.User) (*client.NetworkCreateResult, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeNetworkError, "network", "", name, user.ID, user.Username, "0", err, models.JSON{"action": "create", "driver": options.Driver})
@@ -84,7 +84,7 @@ func (s *NetworkService) RemoveNetwork(ctx context.Context, id string, user mode
 		networkName = id
 	}
 
-	if err := dockerClient.NetworkRemove(ctx, id); err != nil {
+	if _, err := dockerClient.NetworkRemove(ctx, id, client.NetworkRemoveOptions{}); err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeNetworkError, "network", id, networkName, user.ID, user.Username, "0", err, models.JSON{"action": "delete"})
 		return fmt.Errorf("failed to remove network: %w", err)
 	}
@@ -100,23 +100,21 @@ func (s *NetworkService) RemoveNetwork(ctx context.Context, id string, user mode
 	return nil
 }
 
-func (s *NetworkService) PruneNetworks(ctx context.Context) (*network.PruneReport, error) {
+func (s *NetworkService) PruneNetworks(ctx context.Context) (*client.NetworkPruneResult, error) {
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
 
-	filterArgs := make(client.Filters)
-
-	report, err := dockerClient.NetworksPrune(ctx, filterArgs)
+	report, err := dockerClient.NetworkPrune(ctx, client.NetworkPruneOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to prune networks: %w", err)
 	}
 
 	metadata := models.JSON{
 		"action":          "prune",
-		"networksDeleted": len(report.NetworksDeleted),
+		"networksDeleted": len(report.Report.NetworksDeleted),
 	}
 	if logErr := s.eventService.LogNetworkEvent(ctx, models.EventTypeNetworkDelete, "", "bulk_prune", systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
 		fmt.Printf("Could not log network prune action: %s\n", logErr)

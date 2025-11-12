@@ -113,7 +113,7 @@ func (h *NetworkHandler) Create(c *gin.Context) {
 		return
 	}
 
-	out, mapErr := dto.MapOne[network.CreateResponse, dto.NetworkCreateResponseDto](*response)
+	out, mapErr := dto.MapOne[client.NetworkCreateResult, dto.NetworkCreateResponseDto](*response)
 	if mapErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": dto.MessageDto{Message: mapErr.Error()}})
 		return
@@ -179,7 +179,7 @@ func (h *NetworkHandler) Prune(c *gin.Context) {
 		return
 	}
 
-	out, mapErr := dto.MapOne[network.PruneReport, dto.NetworkPruneReportDto](*report)
+	out, mapErr := dto.MapOne[client.NetworkPruneResult, dto.NetworkPruneReportDto](*report)
 	if mapErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": dto.MessageDto{Message: mapErr.Error()}})
 		return

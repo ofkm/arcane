@@ -11,7 +11,6 @@ import (
 
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
-	"github.com/moby/moby/api/types/image"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/ofkm/arcane-backend/internal/database"
@@ -49,7 +48,7 @@ func (s *ContainerService) StartContainer(ctx context.Context, containerID strin
 		fmt.Printf("Could not log container start action: %s\n", err)
 	}
 
-	err = dockerClient.ContainerStart(ctx, containerID, container.StartOptions{})
+	_, err = dockerClient.ContainerStart(ctx, containerID, client.ContainerStartOptions{})
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeContainerError, "container", containerID, "", user.ID, user.Username, "0", err, models.JSON{"action": "start"})
 	}
@@ -116,12 +115,12 @@ func (s *ContainerService) GetContainerByID(ctx context.Context, id string) (*co
 	}
 	defer dockerClient.Close()
 
-	container, err := dockerClient.ContainerInspect(ctx, id)
+	container, err := dockerClient.ContainerInspect(ctx, id, client.ContainerInspectOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("container not found: %w", err)
 	}
 
-	return &container, nil
+	return &container.Container, nil
 }
 
 func (s *ContainerService) DeleteContainer(ctx context.Context, containerID string, force bool, removeVolumes bool, user models.User) error {
@@ -135,9 +134,9 @@ func (s *ContainerService) DeleteContainer(ctx context.Context, containerID stri
 	// Get container mounts before deletion if we need to remove volumes
 	var volumesToRemove []string
 	if removeVolumes {
-		containerJSON, inspectErr := dockerClient.ContainerInspect(ctx, containerID)
+		containerJSON, inspectErr := dockerClient.ContainerInspect(ctx, containerID, client.ContainerInspectOptions{})
 		if inspectErr == nil {
-			for _, mount := range containerJSON.Mounts {
+			for _, mount := range containerJSON.Container.Mounts {
 				// Only collect named volumes (not bind mounts or tmpfs)
 				if mount.Type == "volume" && mount.Name != "" {
 					volumesToRemove = append(volumesToRemove, mount.Name)
@@ -149,18 +148,17 @@ func (s *ContainerService) DeleteContainer(ctx context.Context, containerID stri
 	defer dockerClient.Close()
 
 	_, err = dockerClient.ContainerRemove(ctx, containerID, client.ContainerRemoveOptions{
-		RemoveVolumes: options.RemoveVolumes,
-		Force:         options.Force,
+		RemoveVolumes: removeVolumes,
+		Force:         force,
 	})
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeContainerError, "container", containerID, "", user.ID, user.Username, "0", err, models.JSON{"action": "delete", "force": force, "removeVolumes": removeVolumes})
 		return fmt.Errorf("failed to delete container: %w", err)
 	}
 
-	// Remove named volumes if requested
 	if removeVolumes && len(volumesToRemove) > 0 {
 		for _, volumeName := range volumesToRemove {
-			if removeErr := dockerClient.VolumeRemove(ctx, volumeName, false); removeErr != nil {
+			if _, removeErr := dockerClient.VolumeRemove(ctx, volumeName, client.VolumeRemoveOptions{Force: false}); removeErr != nil {
 				// Log but don't fail if volume removal fails (might be in use by another container)
 				s.eventService.LogErrorEvent(ctx, models.EventTypeVolumeError, "volume", volumeName, "", user.ID, user.Username, "0", removeErr, models.JSON{"action": "delete", "container": containerID})
 			}
@@ -190,7 +188,7 @@ func (s *ContainerService) CreateContainer(ctx context.Context, config *containe
 
 	_, err = dockerClient.ImageInspect(ctx, config.Image)
 	if err != nil {
-		reader, pullErr := dockerClient.ImagePull(ctx, config.Image, image.PullOptions{})
+		reader, pullErr := dockerClient.ImagePull(ctx, config.Image, client.ImagePullOptions{})
 		if pullErr != nil {
 			s.eventService.LogErrorEvent(ctx, models.EventTypeContainerError, "container", "", containerName, user.ID, user.Username, "0", pullErr, models.JSON{"action": "create", "image": config.Image, "step": "pull_image"})
 			return nil, fmt.Errorf("failed to pull image %s: %w", config.Image, pullErr)
@@ -204,7 +202,14 @@ func (s *ContainerService) CreateContainer(ctx context.Context, config *containe
 		}
 	}
 
-	resp, err := dockerClient.ContainerCreate(ctx, config, hostConfig, networkingConfig, nil, containerName)
+	createOptions := client.ContainerCreateOptions{
+		Config:           config,
+		HostConfig:       hostConfig,
+		NetworkingConfig: networkingConfig,
+		Name:             containerName,
+	}
+
+	resp, err := dockerClient.ContainerCreate(ctx, createOptions)
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeContainerError, "container", "", containerName, user.ID, user.Username, "0", err, models.JSON{"action": "create", "image": config.Image, "step": "create"})
 		return nil, fmt.Errorf("failed to create container: %w", err)
@@ -225,13 +230,13 @@ func (s *ContainerService) CreateContainer(ctx context.Context, config *containe
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
 
-	containerJSON, err := dockerClient.ContainerInspect(ctx, resp.ID)
+	containerJSON, err := dockerClient.ContainerInspect(ctx, resp.ID, client.ContainerInspectOptions{})
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeContainerError, "container", resp.ID, containerName, user.ID, user.Username, "0", err, models.JSON{"action": "create", "image": config.Image, "step": "inspect"})
 		return nil, fmt.Errorf("failed to inspect created container: %w", err)
 	}
 
-	return &containerJSON, nil
+	return &containerJSON.Container, nil
 }
 
 func (s *ContainerService) StreamStats(ctx context.Context, containerID string, statsChan chan<- interface{}) error {
@@ -241,7 +246,7 @@ func (s *ContainerService) StreamStats(ctx context.Context, containerID string, 
 	}
 	defer dockerClient.Close()
 
-	stats, err := dockerClient.ContainerStats(ctx, containerID, true)
+	stats, err := dockerClient.ContainerStats(ctx, containerID, client.ContainerStatsOptions{Stream: true})
 	if err != nil {
 		return fmt.Errorf("failed to start stats stream: %w", err)
 	}
@@ -278,7 +283,7 @@ func (s *ContainerService) StreamLogs(ctx context.Context, containerID string, l
 	}
 	defer dockerClient.Close()
 
-	options := container.LogsOptions{
+	options := client.ContainerLogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Follow:     follow,
@@ -414,13 +419,13 @@ func (s *ContainerService) ListContainersPaginated(ctx context.Context, params p
 	}
 	defer dockerClient.Close()
 
-	dockerContainers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: includeAll})
+	dockerContainers, err := dockerClient.ContainerList(ctx, client.ContainerListOptions{All: includeAll})
 	if err != nil {
 		return nil, pagination.Response{}, fmt.Errorf("failed to list Docker containers: %w", err)
 	}
 
-	items := make([]dto.ContainerSummaryDto, 0, len(dockerContainers))
-	for _, dc := range dockerContainers {
+	items := make([]dto.ContainerSummaryDto, 0, len(dockerContainers.Items))
+	for _, dc := range dockerContainers.Items {
 		items = append(items, dto.NewContainerSummaryDto(dc))
 	}
 
@@ -433,7 +438,7 @@ func (s *ContainerService) ListContainersPaginated(ctx context.Context, params p
 				return "", nil
 			},
 			func(c dto.ContainerSummaryDto) (string, error) { return c.Image, nil },
-			func(c dto.ContainerSummaryDto) (string, error) { return c.State, nil },
+			func(c dto.ContainerSummaryDto) (string, error) { return string(c.State), nil },
 			func(c dto.ContainerSummaryDto) (string, error) { return c.Status, nil },
 		},
 		SortBindings: []pagination.SortBinding[dto.ContainerSummaryDto]{
@@ -460,7 +465,7 @@ func (s *ContainerService) ListContainersPaginated(ctx context.Context, params p
 			{
 				Key: "state",
 				Fn: func(a, b dto.ContainerSummaryDto) int {
-					return strings.Compare(a.State, b.State)
+					return strings.Compare(string(a.State), string(b.State))
 				},
 			},
 			{
@@ -515,15 +520,15 @@ func (s *ContainerService) CreateExec(ctx context.Context, containerID string, c
 	}
 	defer dockerClient.Close()
 
-	execConfig := container.ExecOptions{
+	execConfig := client.ExecCreateOptions{
 		AttachStdin:  true,
 		AttachStdout: true,
 		AttachStderr: true,
-		Tty:          true,
+		TTY:          true,
 		Cmd:          cmd,
 	}
 
-	execResp, err := dockerClient.ContainerExecCreate(ctx, containerID, execConfig)
+	execResp, err := dockerClient.ExecCreate(ctx, containerID, execConfig)
 	if err != nil {
 		return "", fmt.Errorf("failed to create exec: %w", err)
 	}
@@ -539,8 +544,8 @@ func (s *ContainerService) AttachExec(ctx context.Context, execID string) (io.Wr
 	}
 	defer dockerClient.Close()
 
-	execAttach, err := dockerClient.ContainerExecAttach(ctx, execID, container.ExecAttachOptions{
-		Tty: true,
+	execAttach, err := dockerClient.ExecAttach(ctx, execID, client.ExecAttachOptions{
+		TTY: true,
 	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to attach to exec: %w", err)

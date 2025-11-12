@@ -366,9 +366,9 @@ func (s *SystemService) pruneNetworks(ctx context.Context, result *dto.PruneAllR
 	}
 
 	slog.InfoContext(ctx, "Network prune completed",
-		slog.Int("networks_deleted", len(report.NetworksDeleted)))
+		slog.Int("networks_deleted", len(report.Report.NetworksDeleted)))
 
-	result.NetworksDeleted = report.NetworksDeleted
+	result.NetworksDeleted = report.Report.NetworksDeleted
 	return nil
 }
 
