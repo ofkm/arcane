@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   build-manager:
-    runs-on: depot-ubuntu-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -35,9 +35,6 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: "backend/go.mod"
-
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
 
       - name: Set DOCKER_IMAGE_NAME
         run: |
@@ -70,9 +67,8 @@ jobs:
 
       - name: Build and push container image
         id: build-push-image
-        uses: depot/build-push-action@v1
+        uses: docker/build-push-action@v6
         with:
-          token: ${{ secrets.DEPOT_TOKEN }}
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
@@ -87,7 +83,7 @@ jobs:
           push-to-registry: true
 
   build-agent:
-    runs-on: depot-ubuntu-latest
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -103,9 +99,6 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: "backend/go.mod"
-
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
 
       - name: Set DOCKER_IMAGE_NAME
         run: |
@@ -132,10 +125,8 @@ jobs:
 
       - name: Build and push agent image
         id: build-push-image
-        uses: depot/build-push-action@v1
+        uses: docker/build-push-action@v6
         with:
-          token: ${{ secrets.DEPOT_TOKEN }}
-          project: np622krb2x
           context: .
           file: docker/Dockerfile-agent-static
           platforms: linux/amd64,linux/arm64
