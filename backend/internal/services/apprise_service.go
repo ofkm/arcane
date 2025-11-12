@@ -8,14 +8,12 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"text/template"
 	"time"
 
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
-	"github.com/ofkm/arcane-backend/resources"
 )
 
 type AppriseService struct {
@@ -151,47 +149,27 @@ func (s *AppriseService) SendNotification(ctx context.Context, title, body, form
 }
 
 func (s *AppriseService) SendImageUpdateNotification(ctx context.Context, imageRef string, updateInfo *dto.ImageUpdateResponse) error {
-	// Render HTML template
-	htmlBody, err := s.renderImageUpdateEmailTemplate(imageRef, updateInfo)
-	if err != nil {
-		slog.WarnContext(ctx, "Failed to render HTML template, falling back to plain text",
-			slog.String("error", err.Error()))
-		// Fallback to plain text
-		title := fmt.Sprintf("Container Image Update Available: %s", imageRef)
-		body := fmt.Sprintf(
-			"Image: %s\nUpdate Type: %s\nCurrent Digest: %s\nLatest Digest: %s",
-			imageRef,
-			updateInfo.UpdateType,
-			truncateDigest(updateInfo.CurrentDigest),
-			truncateDigest(updateInfo.LatestDigest),
-		)
-		return s.SendNotification(ctx, title, body, "text", models.NotificationEventImageUpdate)
-	}
-
 	title := fmt.Sprintf("Container Image Update Available: %s", imageRef)
-	return s.SendNotification(ctx, title, htmlBody, "html", models.NotificationEventImageUpdate)
+	body := fmt.Sprintf(
+		"Image: %s\nUpdate Type: %s\nCurrent Digest: %s\nLatest Digest: %s",
+		imageRef,
+		updateInfo.UpdateType,
+		truncateDigest(updateInfo.CurrentDigest),
+		truncateDigest(updateInfo.LatestDigest),
+	)
+	return s.SendNotification(ctx, title, body, "text", models.NotificationEventImageUpdate)
 }
 
 func (s *AppriseService) SendContainerUpdateNotification(ctx context.Context, containerName, imageRef, oldDigest, newDigest string) error {
-	// Render HTML template
-	htmlBody, err := s.renderContainerUpdateEmailTemplate(containerName, imageRef, oldDigest, newDigest)
-	if err != nil {
-		slog.WarnContext(ctx, "Failed to render HTML template, falling back to plain text",
-			slog.String("error", err.Error()))
-		// Fallback to plain text
-		title := fmt.Sprintf("Container Updated: %s", containerName)
-		body := fmt.Sprintf(
-			"Container: %s\nImage: %s\nPrevious Version: %s\nCurrent Version: %s\nStatus: Updated Successfully",
-			containerName,
-			imageRef,
-			truncateDigest(oldDigest),
-			truncateDigest(newDigest),
-		)
-		return s.SendNotification(ctx, title, body, "text", models.NotificationEventContainerUpdate)
-	}
-
 	title := fmt.Sprintf("Container Updated: %s", containerName)
-	return s.SendNotification(ctx, title, htmlBody, "html", models.NotificationEventContainerUpdate)
+	body := fmt.Sprintf(
+		"Container: %s\nImage: %s\nPrevious Version: %s\nCurrent Version: %s\nStatus: Updated Successfully",
+		containerName,
+		imageRef,
+		truncateDigest(oldDigest),
+		truncateDigest(newDigest),
+	)
+	return s.SendNotification(ctx, title, body, "text", models.NotificationEventContainerUpdate)
 }
 
 func (s *AppriseService) SendBatchImageUpdateNotification(ctx context.Context, updates map[string]*dto.ImageUpdateResponse) error {
@@ -228,65 +206,5 @@ func (s *AppriseService) SendBatchImageUpdateNotification(ctx context.Context, u
 func (s *AppriseService) TestNotification(ctx context.Context) error {
 	title := "Test Notification from Arcane"
 	body := "If you're reading this, your Apprise integration is working correctly!"
-
 	return s.SendNotification(ctx, title, body, "text", models.NotificationEventImageUpdate)
-}
-
-func (s *AppriseService) renderImageUpdateEmailTemplate(imageRef string, updateInfo *dto.ImageUpdateResponse) (string, error) {
-	data := map[string]interface{}{
-		"LogoURL":       "https://raw.githubusercontent.com/ofkm/arcane/main/backend/resources/images/logo-full.svg",
-		"AppURL":        s.config.AppUrl,
-		"ImageRef":      imageRef,
-		"HasUpdate":     updateInfo.HasUpdate,
-		"UpdateType":    updateInfo.UpdateType,
-		"CurrentDigest": truncateDigest(updateInfo.CurrentDigest),
-		"LatestDigest":  truncateDigest(updateInfo.LatestDigest),
-		"CheckTime":     updateInfo.CheckTime.Format(time.RFC1123),
-	}
-
-	htmlContent, err := resources.FS.ReadFile("email-templates/image-update_html.tmpl")
-	if err != nil {
-		return "", fmt.Errorf("failed to read HTML template: %w", err)
-	}
-
-	htmlTmpl, err := template.New("html").Parse(string(htmlContent))
-	if err != nil {
-		return "", fmt.Errorf("failed to parse HTML template: %w", err)
-	}
-
-	var htmlBuf bytes.Buffer
-	if err := htmlTmpl.ExecuteTemplate(&htmlBuf, "root", data); err != nil {
-		return "", fmt.Errorf("failed to execute HTML template: %w", err)
-	}
-
-	return htmlBuf.String(), nil
-}
-
-func (s *AppriseService) renderContainerUpdateEmailTemplate(containerName, imageRef, oldDigest, newDigest string) (string, error) {
-	data := map[string]interface{}{
-		"LogoURL":       "https://raw.githubusercontent.com/getarcaneapp/arcane/main/backend/resources/images/logo-full.svg",
-		"AppURL":        s.config.AppUrl,
-		"ContainerName": containerName,
-		"ImageRef":      imageRef,
-		"OldDigest":     truncateDigest(oldDigest),
-		"NewDigest":     truncateDigest(newDigest),
-		"UpdateTime":    time.Now().Format(time.RFC1123),
-	}
-
-	htmlContent, err := resources.FS.ReadFile("email-templates/container-update_html.tmpl")
-	if err != nil {
-		return "", fmt.Errorf("failed to read HTML template: %w", err)
-	}
-
-	htmlTmpl, err := template.New("html").Parse(string(htmlContent))
-	if err != nil {
-		return "", fmt.Errorf("failed to parse HTML template: %w", err)
-	}
-
-	var htmlBuf bytes.Buffer
-	if err := htmlTmpl.ExecuteTemplate(&htmlBuf, "root", data); err != nil {
-		return "", fmt.Errorf("failed to execute HTML template: %w", err)
-	}
-
-	return htmlBuf.String(), nil
 }
