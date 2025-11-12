@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   binaries:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
 
     env:
       DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/arcane
@@ -63,12 +63,15 @@ jobs:
         run: gh release upload ${{ github.ref_name }} backend/.bin/*
 
   manager-image:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     env:
       DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/arcane
     steps:
       - uses: actions/checkout@v5
         with: { fetch-depth: 1 }
+
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
 
       - name: Lowercase image name
         run: echo "DOCKER_IMAGE_NAME=${DOCKER_IMAGE_NAME,,}" >> "$GITHUB_ENV"
@@ -86,8 +89,9 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},prefix=v
             type=semver,pattern={{major}},prefix=v
       - id: build
-        uses: docker/build-push-action@v6
+        uses: depot/build-push-action@v1
         with:
+          token: ${{ secrets.DEPOT_TOKEN }}
           context: .
           file: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
@@ -97,16 +101,21 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             REVISION=${{ github.sha }}
+          secrets: |
+            "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
     outputs:
       digest: ${{ steps.build.outputs.digest }}
 
   agent-image:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     env:
       AGENT_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/arcane-headless
     steps:
       - uses: actions/checkout@v5
         with: { fetch-depth: 1 }
+
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
 
       - name: Lowercase image name
         run: echo "AGENT_IMAGE_NAME=${AGENT_IMAGE_NAME,,}" >> "$GITHUB_ENV"
@@ -124,8 +133,9 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},prefix=v
             type=semver,pattern={{major}},prefix=v
       - id: build
-        uses: docker/build-push-action@v6
+        uses: depot/build-push-action@v1
         with:
+          token: ${{ secrets.DEPOT_TOKEN }}
           context: .
           file: docker/Dockerfile-agent
           platforms: linux/amd64,linux/arm64
@@ -135,11 +145,13 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             REVISION=${{ github.sha }}
+          secrets: |
+            "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
     outputs:
       digest: ${{ steps.build.outputs.digest }}
 
   publish-release:
-    runs-on: ubuntu-latest
+    runs-on: depot-ubuntu-latest
     needs: [binaries, manager-image, agent-image]
     permissions:
       contents: write
