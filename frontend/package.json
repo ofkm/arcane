@@ -35,7 +35,7 @@
 		"axios": "^1.13.1",
 		"codemirror": "^6.0.2",
 		"date-fns": "^4.1.0",
-		"js-yaml": "^4.1.0",
+		"js-yaml": "^4.1.1",
 		"prettier": "^3.6.2",
 		"prettier-plugin-svelte": "^3.4.0",
 		"prettier-plugin-tailwindcss": "^0.7.1",
