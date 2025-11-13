@@ -4,6 +4,7 @@
 	import { displaySize } from '.';
 	import { useId } from 'bits-ui';
 	import type { FileDropZoneProps, FileRejectedReason } from './types';
+	import { m } from '$lib/paraglide/messages';
 
 	let {
 		id = useId(),
@@ -57,9 +58,9 @@
 	};
 
 	const shouldAcceptFile = (file: File, fileNumber: number): FileRejectedReason | undefined => {
-		if (maxFileSize !== undefined && file.size > maxFileSize) return 'Maximum file size exceeded';
+		if (maxFileSize !== undefined && file.size > maxFileSize) return m.file_drop_zone_file_too_large();
 
-		if (maxFiles !== undefined && fileNumber > maxFiles) return 'Maximum files uploaded';
+		if (maxFiles !== undefined && fileNumber > maxFiles) return m.file_drop_zone_too_many_files();
 
 		if (!accept) return undefined;
 
@@ -83,7 +84,7 @@
 			return fileType === pattern;
 		});
 
-		if (!isAcceptable) return 'File type not allowed';
+		if (!isAcceptable) return m.file_drop_zone_invalid_type();
 
 		return undefined;
 	};
@@ -136,17 +137,17 @@
 				<UploadIcon class="size-7" />
 			</div>
 			<div class="flex flex-col gap-0.5 text-center">
-				<span class="text-muted-foreground font-medium"> Drag 'n' drop files here, or click to select files </span>
+				<span class="text-muted-foreground font-medium">{m.file_drop_zone_drag_drop()}</span>
 				{#if maxFiles || maxFileSize}
 					<span class="text-muted-foreground/75 text-sm">
 						{#if maxFiles}
-							<span>You can upload {maxFiles} files</span>
+							<span>{m.file_drop_zone_max_files({ maxFiles: maxFiles.toString() })}</span>
 						{/if}
 						{#if maxFiles && maxFileSize}
-							<span>(up to {displaySize(maxFileSize)} each)</span>
+							<span> {m.file_drop_zone_up_to_each({ maxSize: displaySize(maxFileSize) })}</span>
 						{/if}
 						{#if maxFileSize && !maxFiles}
-							<span>Maximum size {displaySize(maxFileSize)}</span>
+							<span>{m.file_drop_zone_max_size({ maxSize: displaySize(maxFileSize) })}</span>
 						{/if}
 					</span>
 				{/if}
