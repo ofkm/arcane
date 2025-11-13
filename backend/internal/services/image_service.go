@@ -175,7 +175,7 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 func (s *ImageService) LoadImageFromReader(ctx context.Context, reader io.Reader, fileName string, user models.User, maxSizeBytes int64) (*dto.ImageLoadResultDto, error) {
 	// Wrap reader with size limit enforcement
 	limitedReader := io.LimitReader(reader, maxSizeBytes+1)
-	
+
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", "", fileName, user.ID, user.Username, "0", err, models.JSON{"action": "load"})
