@@ -90,12 +90,30 @@ func (s *DockerClientService) GetAllImages(ctx context.Context) ([]image.Summary
 	return images, inuse, unused, total, nil
 }
 
-func (s *DockerClientService) GetAllNetworks(ctx context.Context) ([]network.Summary, int, int, int, error) {
+func (s *DockerClientService) GetAllNetworks(ctx context.Context) (_ []network.Summary, totalNetworks int, inuseNetworks int, unusedNetworks int, error error) {
 	dockerClient, err := s.CreateConnection(ctx)
 	if err != nil {
 		return nil, 0, 0, 0, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
 	defer dockerClient.Close()
+
+	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+	if err != nil {
+		return nil, 0, 0, 0, fmt.Errorf("failed to list Docker containers: %w", err)
+	}
+	inUseByID := make(map[string]bool)
+	inUseByName := make(map[string]bool)
+	for _, c := range containers {
+		if c.NetworkSettings == nil || c.NetworkSettings.Networks == nil {
+			continue
+		}
+		for netName, es := range c.NetworkSettings.Networks {
+			if es.NetworkID != "" {
+				inUseByID[es.NetworkID] = true
+			}
+			inUseByName[netName] = true
+		}
+	}
 
 	networks, err := dockerClient.NetworkList(ctx, network.ListOptions{})
 	if err != nil {
@@ -104,9 +122,12 @@ func (s *DockerClientService) GetAllNetworks(ctx context.Context) ([]network.Sum
 
 	var inuse, unused, total int
 	for _, n := range networks {
-		total++
+		total++ // total includes all networks (including defaults)
+
+		// Only count non-default networks towards in-use/unused breakdown
 		if !docker.IsDefaultNetwork(n.Name) {
-			if len(n.Containers) > 0 {
+			used := inUseByID[n.ID] || inUseByName[n.Name]
+			if used {
 				inuse++
 			} else {
 				unused++
@@ -114,6 +135,7 @@ func (s *DockerClientService) GetAllNetworks(ctx context.Context) ([]network.Sum
 		}
 	}
 
+	// Return order: inuse, unused, total (matches handler expectations)
 	return networks, inuse, unused, total, nil
 }
 

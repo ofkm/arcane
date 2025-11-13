@@ -147,18 +147,18 @@ func (h *NetworkHandler) Remove(c *gin.Context) {
 }
 
 func (h *NetworkHandler) GetNetworkUsageCounts(c *gin.Context) {
-	_, running, stopped, total, err := h.dockerService.GetAllNetworks(c.Request.Context())
+	_, inuse, unused, total, err := h.dockerService.GetAllNetworks(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Failed to get container counts: " + err.Error()},
+			"data":    gin.H{"error": "Failed to get network counts: " + err.Error()},
 		})
 		return
 	}
 
 	out := dto.NetworkUsageCounts{
-		Inuse:  running,
-		Unused: stopped,
+		Inuse:  inuse,
+		Unused: unused,
 		Total:  total,
 	}
 

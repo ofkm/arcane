@@ -164,7 +164,7 @@ test.describe('New Compose Project Page', () => {
           const parsed = JSON.parse(responseBody);
           createdProjectId = parsed.id;
         } catch {
-          createdProjectId = createdProjectId;
+          // Keep existing createdProjectId value if parsing fails
         }
 
         await route.fulfill({

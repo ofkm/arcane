@@ -23,6 +23,7 @@
 	import CloudIcon from '@lucide/svelte/icons/cloud';
 	import environmentUpgradeService from '$lib/services/api/environment-upgrade-service';
 	import UpgradeConfirmationDialog from '$lib/components/dialogs/upgrade-confirmation-dialog.svelte';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 
 	let {
 		environments = $bindable(),
@@ -72,6 +73,7 @@
 						const msg = m.common_bulk_remove_success({ count: successCount, resource: m.environments_title() });
 						toast.success(msg);
 						environments = await environmentManagementService.getEnvironments(requestOptions);
+						await environmentStore.initialize(environments.data, true);
 					}
 					if (failureCount > 0) {
 						const msg = m.common_bulk_remove_failed({ count: failureCount, resource: m.environments_title() });
@@ -101,6 +103,7 @@
 						onSuccess: async () => {
 							toast.success(m.common_delete_success({ resource: `${m.resource_environment()} "${hostname}"` }));
 							environments = await environmentManagementService.getEnvironments(requestOptions);
+							await environmentStore.initialize(environments.data, true);
 						}
 					});
 					isLoading.removing = false;

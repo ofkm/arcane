@@ -24,14 +24,16 @@ import (
 )
 
 type NotificationService struct {
-	db     *database.DB
-	config *config.Config
+	db             *database.DB
+	config         *config.Config
+	appriseService *AppriseService
 }
 
 func NewNotificationService(db *database.DB, cfg *config.Config) *NotificationService {
 	return &NotificationService{
-		db:     db,
-		config: cfg,
+		db:             db,
+		config:         cfg,
+		appriseService: NewAppriseService(db, cfg),
 	}
 }
 
@@ -88,6 +90,11 @@ func (s *NotificationService) DeleteSettings(ctx context.Context, provider model
 }
 
 func (s *NotificationService) SendImageUpdateNotification(ctx context.Context, imageRef string, updateInfo *dto.ImageUpdateResponse, eventType models.NotificationEventType) error {
+	// Send to Apprise if enabled (don't block on error)
+	if appriseErr := s.appriseService.SendImageUpdateNotification(ctx, imageRef, updateInfo); appriseErr != nil {
+		slog.WarnContext(ctx, "Failed to send Apprise notification", "error", appriseErr)
+	}
+
 	settings, err := s.GetAllSettings(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get notification settings: %w", err)
@@ -166,6 +173,11 @@ func (s *NotificationService) isEventEnabled(config models.JSON, eventType model
 }
 
 func (s *NotificationService) SendContainerUpdateNotification(ctx context.Context, containerName, imageRef, oldDigest, newDigest string) error {
+	// Send to Apprise if enabled (don't block on error)
+	if appriseErr := s.appriseService.SendContainerUpdateNotification(ctx, containerName, imageRef, oldDigest, newDigest); appriseErr != nil {
+		slog.WarnContext(ctx, "Failed to send Apprise notification", "error", appriseErr)
+	}
+
 	settings, err := s.GetAllSettings(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get notification settings: %w", err)
@@ -777,6 +789,11 @@ func (s *NotificationService) SendBatchImageUpdateNotification(ctx context.Conte
 
 	if len(updatesWithChanges) == 0 {
 		return nil
+	}
+
+	// Send to Apprise if enabled
+	if appriseErr := s.appriseService.SendBatchImageUpdateNotification(ctx, updatesWithChanges); appriseErr != nil {
+		slog.WarnContext(ctx, "Failed to send Apprise notification", "error", appriseErr)
 	}
 
 	settings, err := s.GetAllSettings(ctx)

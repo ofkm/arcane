@@ -9,6 +9,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { environmentManagementService } from '$lib/services/env-mgmt-service';
 	import { ResourcePageLayout, type ActionButton, type StatCardConfig } from '$lib/layouts/index.js';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 
 	let { data } = $props();
 
@@ -68,6 +69,7 @@
 						const msg = m.common_bulk_remove_success({ count: successCount, resource: m.environments_title() });
 						toast.success(msg);
 						await refresh();
+						await environmentStore.initialize(environments.data, true);
 					}
 					if (failureCount > 0) {
 						const msg = m.common_bulk_remove_failed({ count: failureCount, resource: m.environments_title() });
@@ -83,6 +85,7 @@
 	async function onEnvironmentCreated() {
 		showEnvironmentSheet = false;
 		environments = await environmentManagementService.getEnvironments(requestOptions);
+		await environmentStore.initialize(environments.data, true);
 		toast.success(m.common_create_success({ resource: m.resource_environment() }));
 		refresh();
 	}
