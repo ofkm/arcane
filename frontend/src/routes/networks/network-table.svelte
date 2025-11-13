@@ -66,7 +66,7 @@
 
 	async function handleDeleteSelectedNetworks(ids: string[]) {
 		const selectedNetworkList = networks.data.filter((n) => ids.includes(n.id));
-		const defaultNetworks = selectedNetworkList.filter((n) => DEFAULT_NETWORK_NAMES.has(n.name));
+		const defaultNetworks = selectedNetworkList.filter((n) => n.isDefault);
 
 		if (defaultNetworks.length > 0) {
 			const names = defaultNetworks.map((n) => n.name ?? m.common_unknown()).join(', ');
@@ -199,7 +199,9 @@
 {/snippet}
 
 {#snippet StatusCell({ item }: { item: NetworkSummaryDto })}
-	{#if item.inUse}
+	{#if item.isDefault}
+		<StatusBadge text={m.networks_predefined()} variant="sky" />
+	{:else if item.inUse}
 		<StatusBadge text={m.common_in_use()} variant="green" />
 	{:else}
 		<StatusBadge text={m.common_unused()} variant="amber" />
@@ -226,9 +228,11 @@
 		badges={[
 			(item: NetworkSummaryDto) =>
 				(mobileFieldVisibility.status ?? true)
-					? item.inUse
-						? { variant: 'green', text: m.common_in_use() }
-						: { variant: 'amber', text: m.common_unused() }
+					? (item.isDefault ?? false) || DEFAULT_NETWORK_NAMES.has(item.name)
+						? { variant: 'gray', text: m.networks_predefined() }
+						: item.inUse
+							? { variant: 'green', text: m.common_in_use() }
+							: { variant: 'amber', text: m.common_unused() }
 					: null
 		]}
 		fields={[
@@ -276,7 +280,7 @@
 				<DropdownMenu.Item
 					variant="destructive"
 					onclick={() => handleDeleteNetwork(item.id, item.name)}
-					disabled={isAnyLoading || DEFAULT_NETWORK_NAMES.has(item.name)}
+					disabled={isAnyLoading || item.isDefault || DEFAULT_NETWORK_NAMES.has(item.name)}
 				>
 					<Trash2Icon class="size-4" />
 					{m.common_delete()}

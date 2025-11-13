@@ -18,7 +18,7 @@ permissions:
 jobs:
   golangci-lint:
     name: Run Golangci-lint
-    runs-on: depot-ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -33,7 +33,7 @@ jobs:
       - name: Run Golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.4.0
+          version: v2.6.1
           args: --build-tags=exclude_frontend
           working-directory: backend
           only-new-issues: ${{ github.event_name == 'pull_request' }}

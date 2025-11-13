@@ -11,6 +11,7 @@ import (
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
+	dockerutil "github.com/ofkm/arcane-backend/internal/utils/docker"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
 )
 
@@ -161,6 +162,7 @@ func (s *NetworkService) ListNetworksPaginated(ctx context.Context, params pagin
 	for _, n := range rawNets {
 		netDto := dto.NewNetworkSummaryDto(n)
 		netDto.InUse = inUseByID[netDto.ID] || inUseByName[netDto.Name]
+		netDto.IsDefault = dockerutil.IsDefaultNetwork(netDto.Name)
 		items = append(items, netDto)
 	}
 

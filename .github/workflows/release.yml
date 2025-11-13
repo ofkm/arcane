@@ -136,7 +136,6 @@ jobs:
         uses: depot/build-push-action@v1
         with:
           token: ${{ secrets.DEPOT_TOKEN }}
-          project: np622krb2x
           context: .
           file: docker/Dockerfile-agent
           platforms: linux/amd64,linux/arm64
