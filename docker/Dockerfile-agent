@@ -29,7 +29,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     ./cmd/main.go
 
 FROM alpine:3 AS agent
-RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl
+RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl gcompat
 
 WORKDIR /app
 RUN mkdir -p /app/data
@@ -38,6 +38,11 @@ COPY --from=agent-builder /out/arcane-agent /usr/local/bin/arcane-agent
 
 ARG VERSION="dev"
 ARG REVISION="unknown"
+
+# Multi-distro, multi-arch library path for GPU support
+# Includes paths for: NVIDIA runtime mounts, Debian/Ubuntu (AMD64/ARM64), RHEL/CentOS/Fedora, Arch, and standard fallbacks
+# Covers: NVIDIA GPUs (all distros/architectures), future AMD ROCm support, and Intel GPU support
+ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib:/usr/local/nvidia/lib64:/opt/rocm/lib:/usr/lib/x86_64-linux-gnu:/usr/lib/aarch64-linux-gnu:/usr/lib64:/usr/lib:/lib64:/lib
 
 ENV ENVIRONMENT=production \
     AGENT_MODE=true \

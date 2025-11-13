@@ -343,6 +343,10 @@
 	"dashboard_meter_disk_free": "Free",
 	"dashboard_meter_disk_monitoring": "Monitoring: {path}",
 	"dashboard_meter_disk_total": "Total",
+	"dashboard_meter_gpu": "GPU Usage",
+	"dashboard_meter_gpu_desc": "GPU memory utilization",
+	"dashboard_meter_gpu_device": "device",
+	"dashboard_meter_gpu_devices": "devices",
 
 	"_comment_containers": "=== CONTAINERS ===",
 	"containers_title": "Containers",
