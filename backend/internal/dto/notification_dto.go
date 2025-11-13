@@ -14,3 +14,18 @@ type NotificationSettingsResponse struct {
 	Enabled  bool                        `json:"enabled"`
 	Config   models.JSON                 `json:"config"`
 }
+
+type AppriseSettingsRequest struct {
+	APIURL             string `json:"apiUrl" binding:"required"`
+	Enabled            bool   `json:"enabled"`
+	ImageUpdateTag     string `json:"imageUpdateTag"`
+	ContainerUpdateTag string `json:"containerUpdateTag"`
+}
+
+type AppriseSettingsResponse struct {
+	ID                 uint   `json:"id"`
+	APIURL             string `json:"apiUrl"`
+	Enabled            bool   `json:"enabled"`
+	ImageUpdateTag     string `json:"imageUpdateTag"`
+	ContainerUpdateTag string `json:"containerUpdateTag"`
+}

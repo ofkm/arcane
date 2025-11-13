@@ -12,7 +12,7 @@ on:
 jobs:
   label:
     name: Labeling
-    runs-on: depot-ubuntu-latest
+    runs-on: ubuntu-slim
     if: ${{ github.repository == 'getarcaneapp/arcane' }}
     permissions:
       contents: read

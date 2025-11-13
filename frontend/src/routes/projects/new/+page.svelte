@@ -3,6 +3,7 @@
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import TerminalIcon from '@lucide/svelte/icons/terminal';
 	import CopyIcon from '@lucide/svelte/icons/copy';
+	import InfoIcon from '@lucide/svelte/icons/info';
 	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import LayoutTemplateIcon from '@lucide/svelte/icons/layout-template';
 	import WandIcon from '@lucide/svelte/icons/wand';
@@ -14,6 +15,7 @@
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { Textarea } from '$lib/components/ui/textarea/index.js';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import TemplateSelectionDialog from '$lib/components/dialogs/template-selection-dialog.svelte';
 	import type { Template } from '$lib/types/template.type';
 	import { z } from 'zod/v4';
@@ -163,8 +165,7 @@
 </script>
 
 <div class="bg-background flex min-h-0 flex-col">
-	<!-- Header -->
-	<div class="sticky top-0 z-50 border-b">
+	<div class="sticky top-0 border-b">
 		<div class="mx-auto flex h-16 max-w-full items-center justify-between gap-4 px-6">
 			<div class="flex items-center gap-4">
 				<Button variant="ghost" size="sm" href="/projects" class="gap-2 bg-transparent">
@@ -188,19 +189,44 @@
 
 			<div class="flex items-center gap-2">
 				<ButtonGroup.Root>
-					<Button
-						disabled={!$inputs.name.value || !$inputs.composeContent.value || saving || converting || isLoadingTemplateContent}
-						onclick={() => handleSubmit()}
-						class={`${templateBtnClass} gap-2 rounded-r-none hover:translate-y-0 focus:translate-y-0 active:translate-y-0`}
-					>
-						{#if saving}
-							<Spinner class="size-4" />
-							{m.common_action_creating()}
-						{:else}
-							<PlusCircleIcon class="size-4" />
-							{m.compose_create_project()}
-						{/if}
-					</Button>
+					<Tooltip.Provider>
+						<Tooltip.Root open={!$inputs.name.value && !saving && !converting && !isLoadingTemplateContent ? undefined : false}>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<span {...props}>
+										<Button
+											disabled={!$inputs.name.value ||
+												!$inputs.composeContent.value ||
+												saving ||
+												converting ||
+												isLoadingTemplateContent}
+											onclick={() => handleSubmit()}
+											class={`${templateBtnClass} gap-2 rounded-r-none hover:translate-y-0 focus:translate-y-0 active:translate-y-0`}
+										>
+											{#if saving}
+												<Spinner class="size-4" />
+												{m.common_action_creating()}
+											{:else}
+												<PlusCircleIcon class="size-4" />
+												{m.compose_create_project()}
+											{/if}
+										</Button>
+									</span>
+								{/snippet}
+							</Tooltip.Trigger>
+							{#if $inputs.name.value === ''}
+								<Tooltip.Content class="arcane-tooltip-content max-w-[280px]">
+									<p class="mb-1 text-sm font-medium">{m.compose_project_name_tooltip_title()}</p>
+									<p class="text-muted-foreground text-xs">
+										{m.compose_project_name_tooltip_description()}
+									</p>
+									<p class="bg-muted mt-1.5 inline-block rounded px-1.5 py-0.5 font-mono text-xs">
+										{m.compose_project_name_tooltip_example()}
+									</p>
+								</Tooltip.Content>
+							{/if}
+						</Tooltip.Root>
+					</Tooltip.Provider>
 
 					<DropdownMenu.Root>
 						<DropdownMenu.Trigger>
@@ -254,11 +280,9 @@
 		</div>
 	</div>
 
-	<!-- Main Content -->
 	<div class="flex-1 overflow-hidden">
 		<div class="mx-auto h-full max-w-full">
 			<div class="flex h-full flex-col gap-4 p-6">
-				<!-- Name field for mobile -->
 				<div class="block sm:hidden">
 					<EditableName
 						bind:value={$inputs.name.value}
@@ -271,7 +295,6 @@
 					/>
 				</div>
 
-				<!-- Code Panels -->
 				<form
 					class="grid h-full grid-cols-1 gap-4 lg:grid-cols-5 lg:items-stretch"
 					style="grid-template-rows: 1fr;"
@@ -304,7 +327,6 @@
 	</div>
 </div>
 
-<!-- Converter Dialog -->
 <Dialog.Root bind:open={showConverterDialog}>
 	<Dialog.Content class="max-h-[80vh] sm:max-w-[800px]">
 		<Dialog.Header>
@@ -358,7 +380,6 @@
 	</Dialog.Content>
 </Dialog.Root>
 
-<!-- Template Selection Dialog -->
 <TemplateSelectionDialog
 	bind:open={showTemplateDialog}
 	templates={data.composeTemplates || []}

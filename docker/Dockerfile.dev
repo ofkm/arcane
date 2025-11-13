@@ -1,6 +1,5 @@
 # Development Dockerfile with hot reload support
 ARG NODE_VERSION="24"
-ARG GO_VERSION="1.25"
 
 # Stage 1: Frontend Development
 FROM node:${NODE_VERSION}-alpine AS frontend-dev
@@ -23,7 +22,7 @@ EXPOSE 3000
 CMD ["pnpm", "-C", "frontend", "dev", "--host", "0.0.0.0"]
 
 # Stage 2: Backend Development
-FROM golang:${GO_VERSION}-alpine AS backend-dev
+FROM golang:1.25-alpine AS backend-dev
 
 # Install development tools and dependencies
 RUN apk add --no-cache \

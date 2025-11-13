@@ -172,6 +172,27 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	return nil
 }
 
+// ImageExistsLocally checks if an image reference exists in the local Docker daemon.
+// Returns (true, nil) if found, (false, nil) if not found, or (false, err) for unexpected errors.
+func (s *ImageService) ImageExistsLocally(ctx context.Context, imageName string) (bool, error) {
+	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	_, err = dockerClient.ImageInspect(ctx, imageName)
+	if err == nil {
+		return true, nil
+	}
+
+	errLower := strings.ToLower(err.Error())
+	if strings.Contains(errLower, "no such image") || strings.Contains(errLower, "not found") {
+		return false, nil
+	}
+	return false, fmt.Errorf("failed to inspect image %s: %w", imageName, err)
+}
+
 func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef string, externalCreds []dto.ContainerRegistryCredential) (image.PullOptions, error) {
 	pullOptions := image.PullOptions{}
 

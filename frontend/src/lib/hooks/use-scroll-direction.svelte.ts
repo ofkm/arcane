@@ -6,7 +6,7 @@ export class ScrollDirectionDetector {
 	private _lastScrollY = $state(0);
 	private _scrollDirection = $state<ScrollDirection>('idle');
 	private _isScrolling = $state(false);
-	private scrollThreshold = 10;
+	private scrollThreshold: number;
 	private scrollTimeout: ReturnType<typeof setTimeout> | null = null;
 	private cleanupFn: (() => void) | null = null;
 	private initialized = false;

@@ -1,13 +1,16 @@
 {
   "type": "module",
   "name": "arcane-tests",
-  "packageManager": "pnpm@10.20.0",
+  "packageManager": "pnpm@10.21.0",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "test": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
-    "@types/node": "^24.9.2"
+    "@types/node": "^24.10.1"
   }
 }

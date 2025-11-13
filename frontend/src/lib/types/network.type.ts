@@ -120,6 +120,7 @@ export interface NetworkSummaryDto {
 	options?: Record<string, string> | null;
 	labels?: Record<string, string> | null;
 	inUse: boolean;
+	isDefault?: boolean;
 }
 
 export interface NetworkInspectDto {

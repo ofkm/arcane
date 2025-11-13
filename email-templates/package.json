@@ -1,7 +1,10 @@
 {
   "name": "arcane-email-templates",
   "version": "1.0.0",
-  "packageManager": "pnpm@10.20.0",
+  "packageManager": "pnpm@10.21.0",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "build": "tsx build.ts",
@@ -17,9 +20,9 @@
   },
   "devDependencies": {
     "@react-email/preview-server": "5.0.1",
-    "@types/node": "^24.9.2",
-    "@types/react": "^19.0.1",
-    "@types/react-dom": "^19.0.1",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.3",
+    "@types/react-dom": "^19.2.3",
     "react-email": "5.0.1",
     "tsx": "^4.0.0"
   }
