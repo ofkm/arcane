@@ -74,7 +74,8 @@
 		const formChanged = JSON.stringify(formData) !== JSON.stringify(currentSettings);
 		const appriseChanged = JSON.stringify(appriseSettings) !== JSON.stringify(savedAppriseSettings);
 		return formChanged || appriseChanged;
-	});	let currentSettings = $state<FormNotificationSettings>({
+	});
+	let currentSettings = $state<FormNotificationSettings>({
 		discordEnabled: false,
 		discordWebhookUrl: '',
 		discordUsername: 'Arcane',
@@ -399,7 +400,8 @@
 		} finally {
 			isTesting = false;
 		}
-	}	async function testAppriseNotification() {
+	}
+	async function testAppriseNotification() {
 		if (hasUnsavedChanges) {
 			pendingTestAction = executeAppriseTest;
 			showUnsavedDialog = true;
