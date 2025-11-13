@@ -15,6 +15,7 @@ export type Settings = {
 	pollingEnabled: boolean;
 	pollingInterval: number;
 	dockerPruneMode: 'all' | 'dangling';
+	maxImageUploadSize: number;
 	baseServerUrl: string;
 	enableGravatar: boolean;
 	uiConfigDisabled: boolean;
