@@ -58,13 +58,7 @@
 	};
 
 	const onFileRejected: FileDropZoneProps['onFileRejected'] = async ({ reason, file }) => {
-		// Translate the rejection reason for display
-		const translatedReason = 
-			reason === 'Maximum file size exceeded' ? m.file_drop_zone_file_too_large() :
-			reason === 'Maximum files uploaded' ? m.file_drop_zone_too_many_files() :
-			reason === 'File type not allowed' ? m.file_drop_zone_invalid_type() :
-			reason;
-		toast.error(`${file.name} failed to upload!`, { description: translatedReason });
+		toast.error(`${file.name} failed to upload!`, { description: reason });
 	};
 
 	const removeFile = (index: number) => {
