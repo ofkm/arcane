@@ -172,7 +172,10 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	return nil
 }
 
-func (s *ImageService) LoadImageFromReader(ctx context.Context, reader io.Reader, fileName string, user models.User) (*dto.ImageLoadResultDto, error) {
+func (s *ImageService) LoadImageFromReader(ctx context.Context, reader io.Reader, fileName string, user models.User, maxSizeBytes int64) (*dto.ImageLoadResultDto, error) {
+	// Wrap reader with size limit enforcement
+	limitedReader := io.LimitReader(reader, maxSizeBytes+1)
+	
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", "", fileName, user.ID, user.Username, "0", err, models.JSON{"action": "load"})
@@ -181,8 +184,12 @@ func (s *ImageService) LoadImageFromReader(ctx context.Context, reader io.Reader
 	defer dockerClient.Close()
 
 	// ImageLoad accepts a tar archive reader and optional load options
-	loadResp, err := dockerClient.ImageLoad(ctx, reader)
+	loadResp, err := dockerClient.ImageLoad(ctx, limitedReader)
 	if err != nil {
+		// Check if error is due to size limit being exceeded
+		if err.Error() == "unexpected EOF" || strings.Contains(err.Error(), "unexpected EOF") {
+			return nil, fmt.Errorf("file size exceeds maximum allowed size of %d MB", maxSizeBytes/(1024*1024))
+		}
 		s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", "", fileName, user.ID, user.Username, "0", err, models.JSON{"action": "load", "file": fileName})
 		return nil, fmt.Errorf("failed to load image from tar: %w", err)
 	}

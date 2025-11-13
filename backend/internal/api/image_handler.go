@@ -21,10 +21,11 @@ type ImageHandler struct {
 	imageService       *services.ImageService
 	imageUpdateService *services.ImageUpdateService
 	dockerService      *services.DockerClientService
+	settingsService    *services.SettingsService
 }
 
-func NewImageHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, imageService *services.ImageService, imageUpdateService *services.ImageUpdateService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &ImageHandler{dockerService: dockerService, imageService: imageService, imageUpdateService: imageUpdateService}
+func NewImageHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, imageService *services.ImageService, imageUpdateService *services.ImageUpdateService, settingsService *services.SettingsService, authMiddleware *middleware.AuthMiddleware) {
+	handler := &ImageHandler{dockerService: dockerService, imageService: imageService, imageUpdateService: imageUpdateService, settingsService: settingsService}
 
 	apiGroup := group.Group("/environments/:id/images")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -270,6 +271,9 @@ func (h *ImageHandler) Upload(c *gin.Context) {
 	}
 	defer part.Close()
 
+	maxSizeMB := h.settingsService.GetIntSetting(ctx, "maxImageUploadSize", 500)
+	maxSizeBytes := int64(maxSizeMB) * 1024 * 1024
+
 	// Validate that the file is a Docker image tar archive
 	// We allow .tar, .tar.gz, .tgz, .tar.xz
 	lowerName := strings.ToLower(fileName)
@@ -278,9 +282,13 @@ func (h *ImageHandler) Upload(c *gin.Context) {
 		return
 	}
 
-	// Delegate to service which streams directly to Docker daemon and parses response
-	result, err := h.imageService.LoadImageFromReader(ctx, part, fileName, *currentUser)
+	result, err := h.imageService.LoadImageFromReader(ctx, part, fileName, *currentUser, maxSizeBytes)
 	if err != nil {
+		// Check if it's a size limit error
+		if strings.Contains(err.Error(), "exceeds maximum allowed size") {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"success": false, "data": dto.MessageDto{Message: err.Error()}})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": dto.MessageDto{Message: "Failed to load image: " + err.Error()}})
 		return
 	}
