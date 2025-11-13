@@ -58,9 +58,9 @@
 	};
 
 	const shouldAcceptFile = (file: File, fileNumber: number): FileRejectedReason | undefined => {
-		if (maxFileSize !== undefined && file.size > maxFileSize) return m.file_drop_zone_file_too_large();
+		if (maxFileSize !== undefined && file.size > maxFileSize) return 'Maximum file size exceeded';
 
-		if (maxFiles !== undefined && fileNumber > maxFiles) return m.file_drop_zone_too_many_files();
+		if (maxFiles !== undefined && fileNumber > maxFiles) return 'Maximum files uploaded';
 
 		if (!accept) return undefined;
 
@@ -84,7 +84,7 @@
 			return fileType === pattern;
 		});
 
-		if (!isAcceptable) return m.file_drop_zone_invalid_type();
+		if (!isAcceptable) return 'File type not allowed';
 
 		return undefined;
 	};
