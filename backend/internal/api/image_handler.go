@@ -270,12 +270,12 @@ func (h *ImageHandler) Upload(c *gin.Context) {
 	}
 	defer part.Close()
 
-	// Optional: basic validation for expected archive extensions
+	// Validate that the file is a Docker image tar archive
 	// We allow .tar, .tar.gz, .tgz, .tar.xz
 	lowerName := strings.ToLower(fileName)
-	if !(strings.HasSuffix(lowerName, ".tar") || strings.HasSuffix(lowerName, ".tar.gz") || strings.HasSuffix(lowerName, ".tgz") || strings.HasSuffix(lowerName, ".tar.xz")) {
-		// Not fatal, but warn users of possibly unsupported format
-		slog.WarnContext(ctx, "Uploading file that does not look like a tar archive", slog.String("file", fileName))
+	if !strings.HasSuffix(lowerName, ".tar") && !strings.HasSuffix(lowerName, ".tar.gz") && !strings.HasSuffix(lowerName, ".tgz") && !strings.HasSuffix(lowerName, ".tar.xz") {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": dto.MessageDto{Message: "Invalid file format. Only Docker image tar archives are allowed (.tar, .tar.gz, .tgz, .tar.xz)"}})
+		return
 	}
 
 	// Delegate to service which streams directly to Docker daemon and parses response
