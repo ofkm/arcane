@@ -3,7 +3,7 @@ FROM alpine:3
 ARG TARGETARCH
 
 WORKDIR /app
-RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl
+RUN apk upgrade && apk --no-cache add ca-certificates tzdata curl gcompat
 RUN mkdir -p /app/data
 
 COPY ./backend/.bin/arcane-linux-${TARGETARCH} ./arcane
