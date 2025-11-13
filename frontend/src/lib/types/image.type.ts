@@ -81,3 +81,7 @@ export interface ImageVersions {
 	versions: string[];
 	latest?: string;
 }
+
+export interface ImageLoadResult {
+	stream?: string;
+}

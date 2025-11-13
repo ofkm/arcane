@@ -54,6 +54,19 @@ export class ImageService extends BaseAPIService {
 		const envId = await environmentStore.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.post(`/environments/${envId}/updater/run`, options));
 	}
+
+	async uploadImage(file: File): Promise<any> {
+		const envId = await environmentStore.getCurrentEnvironmentId();
+		const formData = new FormData();
+		formData.append('file', file);
+		return this.handleResponse(
+			this.api.post(`/environments/${envId}/images/upload`, formData, {
+				headers: {
+					'Content-Type': 'multipart/form-data'
+				}
+			})
+		);
+	}
 }
 
 export const imageService = new ImageService();

@@ -1,10 +1,14 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -31,6 +35,7 @@ func NewImageHandler(group *gin.RouterGroup, dockerService *services.DockerClien
 		apiGroup.DELETE("/:imageId", handler.Remove)
 		apiGroup.POST("/pull", handler.Pull)
 		apiGroup.POST("/prune", handler.Prune)
+		apiGroup.POST("/upload", handler.Upload)
 	}
 }
 
@@ -212,5 +217,76 @@ func (h *ImageHandler) GetImageUsageCounts(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    out,
+	})
+}
+
+func (h *ImageHandler) Upload(c *gin.Context) {
+	ctx := context.Background()
+
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
+		return
+	}
+
+	// Stream the uploaded file directly to the Docker daemon to avoid buffering large files in memory
+	mr, err := c.Request.MultipartReader()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    dto.MessageDto{Message: "Invalid multipart form: " + err.Error()},
+		})
+		return
+	}
+
+	var (
+		part     *multipart.Part
+		fileName string
+		found    bool
+	)
+
+	for {
+		p, err := mr.NextPart()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": dto.MessageDto{Message: "Failed to read upload: " + err.Error()}})
+			return
+		}
+		// Only consider file parts (have a filename)
+		if p.FileName() != "" {
+			part = p
+			fileName = p.FileName()
+			found = true
+			break
+		}
+		// Discard and continue non-file parts
+		_ = p.Close()
+	}
+
+	if !found || part == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": dto.MessageDto{Message: "No file uploaded"}})
+		return
+	}
+	defer part.Close()
+
+	// Optional: basic validation for expected archive extensions
+	// We allow .tar, .tar.gz, .tgz, .tar.xz
+	lowerName := strings.ToLower(fileName)
+	if !(strings.HasSuffix(lowerName, ".tar") || strings.HasSuffix(lowerName, ".tar.gz") || strings.HasSuffix(lowerName, ".tgz") || strings.HasSuffix(lowerName, ".tar.xz")) {
+		// Not fatal, but warn users of possibly unsupported format
+		slog.WarnContext(ctx, "Uploading file that does not look like a tar archive", slog.String("file", fileName))
+	}
+
+	// Delegate to service which streams directly to Docker daemon and parses response
+	result, err := h.imageService.LoadImageFromReader(ctx, part, fileName, *currentUser)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": dto.MessageDto{Message: "Failed to load image: " + err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
 	})
 }

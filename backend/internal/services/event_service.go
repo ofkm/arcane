@@ -407,6 +407,8 @@ func (s *EventService) generateEventTitle(eventType models.EventType, resourceNa
 		return fmt.Sprintf("Container error: %s", resourceName)
 	case models.EventTypeImagePull:
 		return fmt.Sprintf("Image pulled: %s", resourceName)
+	case models.EventTypeImageLoad:
+		return fmt.Sprintf("Image loaded: %s", resourceName)
 	case models.EventTypeImageDelete:
 		return fmt.Sprintf("Image deleted: %s", resourceName)
 	case models.EventTypeImageScan:
@@ -474,6 +476,8 @@ func (s *EventService) generateEventDescription(eventType models.EventType, reso
 		return fmt.Sprintf("An error occurred with container '%s'", resourceName)
 	case models.EventTypeImagePull:
 		return fmt.Sprintf("Image '%s' has been pulled", resourceName)
+	case models.EventTypeImageLoad:
+		return fmt.Sprintf("Image '%s' has been loaded from archive", resourceName)
 	case models.EventTypeImageDelete:
 		return fmt.Sprintf("Image '%s' has been deleted", resourceName)
 	case models.EventTypeImageError:
@@ -523,7 +527,7 @@ func (s *EventService) getEventSeverity(eventType models.EventType) models.Event
 	switch eventType {
 	case models.EventTypeContainerDelete, models.EventTypeImageDelete, models.EventTypeProjectDelete, models.EventTypeVolumeDelete, models.EventTypeNetworkDelete:
 		return models.EventSeverityWarning
-	case models.EventTypeContainerStart, models.EventTypeContainerCreate, models.EventTypeImagePull, models.EventTypeProjectDeploy, models.EventTypeProjectStart, models.EventTypeProjectCreate, models.EventTypeVolumeCreate, models.EventTypeNetworkCreate:
+	case models.EventTypeContainerStart, models.EventTypeContainerCreate, models.EventTypeImagePull, models.EventTypeImageLoad, models.EventTypeProjectDeploy, models.EventTypeProjectStart, models.EventTypeProjectCreate, models.EventTypeVolumeCreate, models.EventTypeNetworkCreate:
 		return models.EventSeveritySuccess
 	case models.EventTypeContainerStop, models.EventTypeContainerRestart, models.EventTypeContainerScan, models.EventTypeContainerUpdate, models.EventTypeImageScan, models.EventTypeProjectStop, models.EventTypeProjectUpdate, models.EventTypeSystemPrune, models.EventTypeSystemAutoUpdate, models.EventTypeSystemUpgrade, models.EventTypeUserLogin, models.EventTypeUserLogout:
 		return models.EventSeverityInfo
