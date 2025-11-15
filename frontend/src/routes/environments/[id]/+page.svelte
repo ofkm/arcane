@@ -130,7 +130,7 @@
 							pagination: { page: 1, limit: 1000 }
 						})
 					).data,
-					false
+					true
 				);
 			}
 		} catch (error) {
