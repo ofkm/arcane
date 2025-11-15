@@ -19,18 +19,18 @@ type ContainerRegistryHandler struct {
 	registryService *services.ContainerRegistryService
 }
 
-func NewContainerRegistryHandler(group *gin.RouterGroup, registryService *services.ContainerRegistryService, authMiddleware *middleware.AuthMiddleware, envMiddleware gin.HandlerFunc) {
+func NewContainerRegistryHandler(group *gin.RouterGroup, registryService *services.ContainerRegistryService, authMiddleware *middleware.AuthMiddleware) {
 	handler := &ContainerRegistryHandler{registryService: registryService}
 
-	envApiGroup := group.Group("/environments/:id/container-registries")
-	envApiGroup.Use(authMiddleware.WithAdminNotRequired().Add(), envMiddleware)
+	apiGroup := group.Group("/environments/:id/container-registries")
+	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
 	{
-		envApiGroup.GET("", handler.GetRegistries)
-		envApiGroup.POST("", handler.CreateRegistry)
-		envApiGroup.GET("/:registryId", handler.GetRegistry)
-		envApiGroup.PUT("/:registryId", handler.UpdateRegistry)
-		envApiGroup.DELETE("/:registryId", handler.DeleteRegistry)
-		envApiGroup.POST("/:registryId/test", handler.TestRegistry)
+		apiGroup.GET("", handler.GetRegistries)
+		apiGroup.POST("", handler.CreateRegistry)
+		apiGroup.GET("/:registryId", handler.GetRegistry)
+		apiGroup.PUT("/:registryId", handler.UpdateRegistry)
+		apiGroup.DELETE("/:registryId", handler.DeleteRegistry)
+		apiGroup.POST("/:registryId/test", handler.TestRegistry)
 	}
 }
 
