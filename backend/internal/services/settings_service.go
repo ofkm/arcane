@@ -100,6 +100,7 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		SidebarHoverExpansion:      models.SettingVariable{Value: "true"},
 		GlassEffectEnabled:         models.SettingVariable{Value: "false"},
 		AccentColor:                models.SettingVariable{Value: "oklch(0.606 0.25 292.717)"},
+		MaxImageUploadSize:         models.SettingVariable{Value: "500"},
 
 		InstanceID: models.SettingVariable{Value: ""},
 	}
@@ -489,6 +490,27 @@ func (s *SettingsService) PersistEnvSettingsIfMissing(ctx context.Context) error
 
 func (s *SettingsService) ListSettings(all bool) []models.SettingVariable {
 	return s.GetSettingsConfig().ToSettingVariableSlice(all, true)
+}
+
+// GetSettingType returns the type from the setting metadata
+func (s *SettingsService) GetSettingType(key string) string {
+	rt := reflect.TypeOf(models.Settings{})
+	for i := 0; i < rt.NumField(); i++ {
+		field := rt.Field(i)
+		keyTag := field.Tag.Get("key")
+		fieldKey, _, _ := strings.Cut(keyTag, ",")
+		if fieldKey == key {
+			metaTag := field.Tag.Get("meta")
+			parts := strings.Split(metaTag, ";")
+			for _, part := range parts {
+				if strings.HasPrefix(part, "type=") {
+					return strings.TrimPrefix(part, "type=")
+				}
+			}
+			return "text" // default type
+		}
+	}
+	return "text" // default if not found
 }
 
 func (s *SettingsService) setupInstanceID(ctx context.Context) error {

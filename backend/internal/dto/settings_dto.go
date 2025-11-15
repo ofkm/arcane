@@ -19,6 +19,7 @@ type UpdateSettingsDto struct {
 	PollingEnabled             *string `json:"pollingEnabled,omitempty"`
 	PollingInterval            *string `json:"pollingInterval,omitempty"`
 	PruneMode                  *string `json:"dockerPruneMode,omitempty" binding:"omitempty,oneof=all dangling"`
+	MaxImageUploadSize         *string `json:"maxImageUploadSize,omitempty"`
 	BaseServerURL              *string `json:"baseServerUrl,omitempty"`
 	EnableGravatar             *string `json:"enableGravatar,omitempty"`
 	DefaultShell               *string `json:"defaultShell,omitempty"`
