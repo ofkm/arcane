@@ -281,6 +281,7 @@
 			}
 		]}
 		rowActions={RowActions}
+		onclick={(item: Environment) => goto(`/environments/${item.id}`)}
 	/>
 {/snippet}
 
