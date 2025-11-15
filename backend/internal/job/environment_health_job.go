@@ -29,13 +29,11 @@ func (j *EnvironmentHealthJob) Register(ctx context.Context) error {
 
 	// Ensure minimum interval of 1 minute
 	if interval < 1*time.Minute {
-		slog.WarnContext(ctx, "environment health check interval too low; using minimum",
-			slog.Int("requested_minutes", healthCheckInterval),
-			slog.String("effective_interval", "1m"))
+		slog.WarnContext(ctx, "environment health check interval too low; using minimum", "requested_minutes", healthCheckInterval, "effective_interval", "1m")
 		interval = 1 * time.Minute
 	}
 
-	slog.InfoContext(ctx, "registering environment health check job", slog.String("interval", interval.String()))
+	slog.InfoContext(ctx, "registering environment health check job", "interval", interval.String())
 
 	j.scheduler.RemoveJobByName("environment-health")
 
@@ -57,7 +55,7 @@ func (j *EnvironmentHealthJob) Reschedule(ctx context.Context) error {
 		interval = 1 * time.Minute
 	}
 
-	slog.InfoContext(ctx, "environment health check settings changed; rescheduling", slog.String("interval", interval.String()))
+	slog.InfoContext(ctx, "environment health check settings changed; rescheduling", "interval", interval.String())
 
 	return j.scheduler.RescheduleDurationJobByName(ctx, "environment-health", interval, j.Execute, false)
 }
@@ -82,7 +80,7 @@ func (j *EnvironmentHealthJob) Execute(ctx context.Context) error {
 		Table("environments").
 		Where("enabled = ?", true).
 		Find(&environments).Error; err != nil {
-		slog.ErrorContext(ctx, "failed to list environments for health check", slog.Any("error", err))
+		slog.ErrorContext(ctx, "failed to list environments for health check", "error", err)
 		return err
 	}
 
@@ -95,24 +93,18 @@ func (j *EnvironmentHealthJob) Execute(ctx context.Context) error {
 
 		// Test connection without custom URL (will update DB status)
 		status, err := j.environmentService.TestConnection(ctx, env.ID, nil)
-		if err != nil {
-			slog.WarnContext(ctx, "environment health check failed",
-				slog.String("environment_id", env.ID),
-				slog.String("environment_name", env.Name),
-				slog.String("status", status),
-				slog.Any("error", err))
+		switch {
+		case err != nil:
+			slog.WarnContext(ctx, "environment health check failed", "environment_id", env.ID, "environment_name", env.Name, "status", status, "error", err)
 			offlineCount++
-		} else if status == "online" {
+		case status == "online":
 			onlineCount++
-		} else {
+		default:
 			offlineCount++
 		}
 	}
 
-	slog.InfoContext(ctx, "environment health check completed",
-		slog.Int("checked", checkedCount),
-		slog.Int("online", onlineCount),
-		slog.Int("offline", offlineCount))
+	slog.InfoContext(ctx, "environment health check completed", "checked", checkedCount, "online", onlineCount, "offline", offlineCount)
 
 	return nil
 }
