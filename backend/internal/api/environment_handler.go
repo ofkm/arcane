@@ -252,7 +252,13 @@ func (h *EnvironmentHandler) DeleteEnvironment(c *gin.Context) {
 func (h *EnvironmentHandler) TestConnection(c *gin.Context) {
 	environmentID := c.Param("id")
 
-	status, err := h.environmentService.TestConnection(c.Request.Context(), environmentID)
+	// Allow optional apiUrl in request body to test without saving
+	var req struct {
+		ApiUrl *string `json:"apiUrl"`
+	}
+	_ = c.ShouldBindJSON(&req)
+
+	status, err := h.environmentService.TestConnection(c.Request.Context(), environmentID, req.ApiUrl)
 	resp := dto.TestConnectionDto{Status: status}
 	if err != nil {
 		msg := err.Error()

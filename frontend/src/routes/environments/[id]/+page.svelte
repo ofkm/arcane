@@ -73,13 +73,12 @@
 		if (isTestingConnection) return;
 		try {
 			isTestingConnection = true;
-			const result = await environmentManagementService.testConnection(environment.id);
+			const result = await environmentManagementService.testConnection(environment.id, formApiUrl);
 			if (result.status === 'online') {
 				toast.success(m.environments_test_connection_success());
 			} else {
 				toast.error(m.environments_test_connection_error());
 			}
-			await refreshEnvironment();
 		} catch (error) {
 			toast.error(m.environments_test_connection_failed());
 			console.error(error);

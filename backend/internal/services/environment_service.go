@@ -114,33 +114,46 @@ func (s *EnvironmentService) DeleteEnvironment(ctx context.Context, id string) e
 	return nil
 }
 
-func (s *EnvironmentService) TestConnection(ctx context.Context, id string) (string, error) {
+func (s *EnvironmentService) TestConnection(ctx context.Context, id string, customApiUrl *string) (string, error) {
 	environment, err := s.GetEnvironmentByID(ctx, id)
 	if err != nil {
 		return "error", err
 	}
 
+	apiUrl := environment.ApiUrl
+	if customApiUrl != nil && *customApiUrl != "" {
+		apiUrl = *customApiUrl
+	}
+
 	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	url := strings.TrimRight(environment.ApiUrl, "/") + "/api/health"
+	url := strings.TrimRight(apiUrl, "/") + "/api/health"
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
 	if err != nil {
-		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
+		if customApiUrl == nil {
+			_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
+		}
 		return "offline", fmt.Errorf("failed to create request: %w", err)
 	}
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
+		if customApiUrl == nil {
+			_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
+		}
 		return "offline", fmt.Errorf("connection failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOnline))
+		if customApiUrl == nil {
+			_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOnline))
+		}
 		return "online", nil
 	}
 
-	_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusError))
+	if customApiUrl == nil {
+		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusError))
+	}
 	return "error", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 }
 

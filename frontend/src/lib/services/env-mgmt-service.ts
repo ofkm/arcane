@@ -30,8 +30,8 @@ export default class EnvironmentManagementService extends BaseAPIService {
 		await this.api.delete(`/environments/${environmentId}`);
 	}
 
-	async testConnection(environmentId: string): Promise<{ status: 'online' | 'offline'; message?: string }> {
-		const res = await this.api.post(`/environments/${environmentId}/test`);
+	async testConnection(environmentId: string, apiUrl?: string): Promise<{ status: 'online' | 'offline'; message?: string }> {
+		const res = await this.api.post(`/environments/${environmentId}/test`, apiUrl ? { apiUrl } : undefined);
 		return res.data.data as { status: 'online' | 'offline'; message?: string };
 	}
 }
