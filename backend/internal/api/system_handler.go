@@ -688,7 +688,6 @@ func (h *SystemHandler) detectGPUs(ctx context.Context) error {
 	}
 
 	h.detectionDone = true
-	slog.DebugContext(ctx, "No GPU detected on this system")
 	return fmt.Errorf("no supported GPU found")
 }
 
