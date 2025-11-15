@@ -441,13 +441,6 @@
 		</Card.Root>
 	</div>
 
-	{#if isRefreshing}
-		<div class="fixed right-4 bottom-4 flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-white shadow-lg">
-			<RefreshCwIcon class="size-4 animate-spin" />
-			<span class="text-sm">{m.environments_refreshing()}</span>
-		</div>
-	{/if}
-
 	<AlertDialog.Root bind:open={showSwitchDialog}>
 		<AlertDialog.Content>
 			<AlertDialog.Header>
