@@ -79,7 +79,6 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	api.NewEventHandler(apiGroup, appServices.Event, authMiddleware)
 	api.NewOidcHandler(apiGroup, appServices.Auth, appServices.Oidc, cfg)
 	api.NewEnvironmentHandler(apiGroup, appServices.Environment, appServices.Settings, authMiddleware, cfg)
-	api.NewContainerRegistryHandler(apiGroup, appServices.ContainerRegistry, authMiddleware)
 	api.NewTemplateHandler(apiGroup, appServices.Template, authMiddleware)
 
 	envMiddleware := middleware.NewEnvProxyMiddlewareWithParam(
@@ -97,6 +96,7 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 	apiGroup.Use(envMiddleware)
 
 	api.NewHealthHandler(apiGroup)
+	api.NewContainerRegistryHandler(apiGroup, appServices.ContainerRegistry, authMiddleware)
 	api.NewContainerHandler(apiGroup, appServices.Docker, appServices.Container, appServices.Image, authMiddleware, cfg)
 	api.NewImageHandler(apiGroup, appServices.Docker, appServices.Image, appServices.ImageUpdate, appServices.Settings, authMiddleware)
 	api.NewImageUpdateHandler(apiGroup, appServices.ImageUpdate, authMiddleware)
