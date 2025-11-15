@@ -120,10 +120,12 @@
 			result,
 			message: m.environments_test_connection_failed(),
 			setLoadingState: () => {},
-			onSuccess: (resp) => {
+			onSuccess: async (resp) => {
 				const status = (resp as { status: string; message?: string }).status;
 				if (status === 'online') toast.success(m.environments_test_connection_success());
 				else toast.error(m.environments_test_connection_error());
+				// Refresh to get updated status from backend
+				environments = await environmentManagementService.getEnvironments(requestOptions);
 			}
 		});
 		isLoading.testing = false;

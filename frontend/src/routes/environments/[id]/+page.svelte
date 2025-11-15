@@ -40,11 +40,15 @@
 	let formEnabled = $state(false);
 	let formApiUrl = $state('');
 
-	// Initialize form values
+	// Track current status separately from environment data
+	let currentStatus = $state<'online' | 'offline' | 'error'>('offline');
+
+	// Initialize form values and status
 	$effect(() => {
 		formName = environment.name;
 		formEnabled = environment.enabled;
 		formApiUrl = environment.apiUrl;
+		currentStatus = environment.status;
 	});
 
 	// Track changes
@@ -61,6 +65,7 @@
 			formName = environment.name;
 			formEnabled = environment.enabled;
 			formApiUrl = environment.apiUrl;
+			currentStatus = environment.status;
 		} catch (err) {
 			console.error('Failed to refresh environment:', err);
 			toast.error(m.common_refresh_failed({ resource: m.resource_environment() }));
@@ -75,20 +80,29 @@
 			isTestingConnection = true;
 			const customUrl = formApiUrl !== environment.apiUrl ? formApiUrl : undefined;
 			const result = await environmentManagementService.testConnection(environment.id, customUrl);
+			
+			// Update current status based on test result
+			currentStatus = result.status;
+			
 			if (result.status === 'online') {
 				toast.success(m.environments_test_connection_success());
 			} else {
 				toast.error(m.environments_test_connection_error());
 			}
+
+			// If testing with saved URL (not custom), refresh to get backend's updated status
+			if (!customUrl) {
+				await invalidateAll();
+			}
 		} catch (error) {
+			// Update status to offline on error
+			currentStatus = 'offline';
 			toast.error(m.environments_test_connection_failed());
 			console.error(error);
 		} finally {
 			isTestingConnection = false;
 		}
-	}
-
-	async function pairOrRotate() {
+	}	async function pairOrRotate() {
 		if (!bootstrapToken) {
 			toast.error(m.environments_bootstrap_required());
 			return;
@@ -222,8 +236,8 @@
 
 		<div class="flex flex-wrap items-center gap-2">
 			<Badge variant="outline" class="gap-1">
-				<div class="size-2 rounded-full {environment.status === 'online' ? 'bg-green-500' : 'bg-red-500'}"></div>
-				{environment.status === 'online' ? m.common_online() : m.common_offline()}
+				<div class="size-2 rounded-full {currentStatus === 'online' ? 'bg-green-500' : 'bg-red-500'}"></div>
+				{currentStatus === 'online' ? m.common_online() : m.common_offline()}
 			</Badge>
 			<Badge variant="outline" class="gap-1">
 				{environment.enabled ? m.common_enabled() : m.common_disabled()}
@@ -233,7 +247,7 @@
 			{/if}
 		</div>
 
-		{#if !environment.enabled || environment.status === 'offline' || !settings}
+		{#if !environment.enabled || currentStatus === 'offline' || !settings}
 			<div
 				class="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-900 dark:text-amber-200"
 			>
@@ -242,7 +256,7 @@
 					<p class="text-sm font-medium">
 						{#if !environment.enabled}
 							{m.environments_warning_disabled()}
-						{:else if environment.status === 'offline'}
+						{:else if currentStatus === 'offline'}
 							{m.environments_warning_offline()}
 						{:else if !settings}
 							{m.environments_warning_no_settings()}
@@ -298,8 +312,8 @@
 						<Label class="text-muted-foreground text-xs font-medium">Status</Label>
 						<div class="mt-1">
 							<StatusBadge
-								text={environment.status === 'online' ? m.common_online() : m.common_offline()}
-								variant={environment.status === 'online' ? 'green' : 'red'}
+								text={currentStatus === 'online' ? m.common_online() : m.common_offline()}
+								variant={currentStatus === 'online' ? 'green' : 'red'}
 							/>
 						</div>
 					</div>

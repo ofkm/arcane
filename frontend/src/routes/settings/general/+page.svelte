@@ -28,6 +28,7 @@
 		projectsDirectory: z.string().min(1, m.general_projects_directory_required()),
 		baseServerUrl: z.string().min(1, m.general_base_url_required()),
 		enableGravatar: z.boolean(),
+		environmentHealthInterval: z.number().int().min(1).max(60),
 		accentColor: z.string(),
 		glassEffectEnabled: z.boolean()
 	});
@@ -39,6 +40,7 @@
 			$formInputs.projectsDirectory.value !== currentSettings.projectsDirectory ||
 			$formInputs.baseServerUrl.value !== currentSettings.baseServerUrl ||
 			$formInputs.enableGravatar.value !== currentSettings.enableGravatar ||
+			$formInputs.environmentHealthInterval.value !== currentSettings.environmentHealthInterval ||
 			$formInputs.accentColor.value !== currentSettings.accentColor ||
 			$formInputs.glassEffectEnabled.value !== currentSettings.glassEffectEnabled
 	});
@@ -65,6 +67,7 @@
 		$formInputs.projectsDirectory.value = currentSettings.projectsDirectory;
 		$formInputs.baseServerUrl.value = currentSettings.baseServerUrl;
 		$formInputs.enableGravatar.value = currentSettings.enableGravatar;
+		$formInputs.environmentHealthInterval.value = currentSettings.environmentHealthInterval;
 		$formInputs.accentColor.value = currentSettings.accentColor;
 		$formInputs.glassEffectEnabled.value = currentSettings.glassEffectEnabled;
 		applyAccentColor(currentSettings.accentColor);
@@ -129,6 +132,25 @@
 							description={m.general_enable_gravatar_description()}
 							error={$formInputs.enableGravatar.error}
 							bind:checked={$formInputs.enableGravatar.value}
+						/>
+					</Card.Content>
+				</Card.Root>
+
+				<Card.Root>
+					<Card.Header icon={SettingsIcon}>
+						<div class="flex flex-col space-y-1.5">
+							<Card.Title>{m.environments_health_check_title()}</Card.Title>
+							<Card.Description>{m.environments_health_check_description()}</Card.Description>
+						</div>
+					</Card.Header>
+					<Card.Content class="px-3 py-4 sm:px-6">
+						<TextInputWithLabel
+							bind:value={$formInputs.environmentHealthInterval.value}
+							error={$formInputs.environmentHealthInterval.error}
+							label={m.environments_health_check_interval_label()}
+							placeholder="2"
+							helpText={m.environments_health_check_interval_description()}
+							type="number"
 						/>
 					</Card.Content>
 				</Card.Root>

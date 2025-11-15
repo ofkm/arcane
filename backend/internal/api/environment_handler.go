@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"time"
@@ -221,6 +222,20 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to update environment"}})
 		return
+	}
+
+	// Trigger health check after update to verify new configuration
+	// This runs in background and doesn't block the response
+	if updated.Enabled {
+		go func() {
+			ctx := context.Background()
+			status, err := h.environmentService.TestConnection(ctx, environmentID, nil)
+			if err != nil {
+				slog.WarnContext(ctx, "Failed to test connection after environment update", "environment_id", environmentID, "environment_name", updated.Name, "status", status, "error", err)
+			} else {
+				slog.InfoContext(ctx, "Environment health check completed after update", "environment_id", environmentID, "environment_name", updated.Name, "status", status)
+			}
+		}()
 	}
 
 	out, mapErr := dto.MapOne[*models.Environment, dto.EnvironmentDto](updated)

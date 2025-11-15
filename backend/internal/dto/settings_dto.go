@@ -18,6 +18,7 @@ type UpdateSettingsDto struct {
 	AutoUpdateInterval         *string `json:"autoUpdateInterval,omitempty"`
 	PollingEnabled             *string `json:"pollingEnabled,omitempty"`
 	PollingInterval            *string `json:"pollingInterval,omitempty"`
+	EnvironmentHealthInterval  *string `json:"environmentHealthInterval,omitempty"`
 	PruneMode                  *string `json:"dockerPruneMode,omitempty" binding:"omitempty,oneof=all dangling"`
 	MaxImageUploadSize         *string `json:"maxImageUploadSize,omitempty"`
 	BaseServerURL              *string `json:"baseServerUrl,omitempty"`
