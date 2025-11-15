@@ -19,19 +19,18 @@ type ContainerRegistryHandler struct {
 	registryService *services.ContainerRegistryService
 }
 
-func NewContainerRegistryHandler(group *gin.RouterGroup, registryService *services.ContainerRegistryService, authMiddleware *middleware.AuthMiddleware) {
+func NewContainerRegistryHandler(group *gin.RouterGroup, registryService *services.ContainerRegistryService, authMiddleware *middleware.AuthMiddleware, envMiddleware gin.HandlerFunc) {
 	handler := &ContainerRegistryHandler{registryService: registryService}
 
-	apiGroup := group.Group("/container-registries")
-
-	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
+	envApiGroup := group.Group("/environments/:id/container-registries")
+	envApiGroup.Use(authMiddleware.WithAdminNotRequired().Add(), envMiddleware)
 	{
-		apiGroup.GET("", handler.GetRegistries)
-		apiGroup.POST("", handler.CreateRegistry)
-		apiGroup.GET("/:id", handler.GetRegistry)
-		apiGroup.PUT("/:id", handler.UpdateRegistry)
-		apiGroup.DELETE("/:id", handler.DeleteRegistry)
-		apiGroup.POST("/:id/test", handler.TestRegistry)
+		envApiGroup.GET("", handler.GetRegistries)
+		envApiGroup.POST("", handler.CreateRegistry)
+		envApiGroup.GET("/:registryId", handler.GetRegistry)
+		envApiGroup.PUT("/:registryId", handler.UpdateRegistry)
+		envApiGroup.DELETE("/:registryId", handler.DeleteRegistry)
+		envApiGroup.POST("/:registryId/test", handler.TestRegistry)
 	}
 }
 
@@ -55,9 +54,9 @@ func (h *ContainerRegistryHandler) GetRegistries(c *gin.Context) {
 }
 
 func (h *ContainerRegistryHandler) GetRegistry(c *gin.Context) {
-	id := c.Param("id")
+	registryID := c.Param("registryId")
 
-	registry, err := h.registryService.GetRegistryByID(c.Request.Context(), id)
+	registry, err := h.registryService.GetRegistryByID(c.Request.Context(), registryID)
 	if err != nil {
 		apiErr := models.ToAPIError(err)
 		c.JSON(apiErr.HTTPStatus(), gin.H{
@@ -119,7 +118,7 @@ func (h *ContainerRegistryHandler) CreateRegistry(c *gin.Context) {
 }
 
 func (h *ContainerRegistryHandler) UpdateRegistry(c *gin.Context) {
-	id := c.Param("id")
+	registryID := c.Param("registryId")
 
 	var req models.UpdateContainerRegistryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -131,7 +130,7 @@ func (h *ContainerRegistryHandler) UpdateRegistry(c *gin.Context) {
 		return
 	}
 
-	registry, err := h.registryService.UpdateRegistry(c.Request.Context(), id, req)
+	registry, err := h.registryService.UpdateRegistry(c.Request.Context(), registryID, req)
 	if err != nil {
 		apiErr := models.ToAPIError(err)
 		c.JSON(apiErr.HTTPStatus(), gin.H{
@@ -157,9 +156,9 @@ func (h *ContainerRegistryHandler) UpdateRegistry(c *gin.Context) {
 }
 
 func (h *ContainerRegistryHandler) DeleteRegistry(c *gin.Context) {
-	id := c.Param("id")
+	registryID := c.Param("registryId")
 
-	if err := h.registryService.DeleteRegistry(c.Request.Context(), id); err != nil {
+	if err := h.registryService.DeleteRegistry(c.Request.Context(), registryID); err != nil {
 		apiErr := models.ToAPIError(err)
 		c.JSON(apiErr.HTTPStatus(), gin.H{
 			"success": false,
@@ -175,9 +174,9 @@ func (h *ContainerRegistryHandler) DeleteRegistry(c *gin.Context) {
 }
 
 func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
-	id := c.Param("id")
+	registryID := c.Param("registryId")
 
-	registry, err := h.registryService.GetRegistryByID(c.Request.Context(), id)
+	registry, err := h.registryService.GetRegistryByID(c.Request.Context(), registryID)
 	if err != nil {
 		apiErr := models.ToAPIError(err)
 		c.JSON(apiErr.HTTPStatus(), gin.H{

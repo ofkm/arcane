@@ -10,7 +10,8 @@
 	import { tryCatch } from '$lib/utils/try-catch';
 	import { m } from '$lib/paraglide/messages';
 	import { containerRegistryService } from '$lib/services/container-registry-service';
-	import { ResourcePageLayout, type ActionButton, type StatCardConfig } from '$lib/layouts/index.js';
+	import { ResourcePageLayout, type ActionButton } from '$lib/layouts/index.js';
+	import { environmentStore } from '$lib/stores/environment.store.svelte';
 
 	let { data } = $props();
 
@@ -38,6 +39,20 @@
 			}
 		});
 	}
+
+	let lastEnvId: string | null = null;
+	$effect(() => {
+		const env = environmentStore.selected;
+		if (!env) return;
+		if (lastEnvId === null) {
+			lastEnvId = env.id;
+			return;
+		}
+		if (env.id !== lastEnvId) {
+			lastEnvId = env.id;
+			refreshRegistries();
+		}
+	});
 
 	function openCreateRegistryDialog() {
 		registryToEdit = null;
