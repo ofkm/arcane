@@ -97,7 +97,7 @@
 			await environmentManagementService.update(environment.id, { bootstrapToken });
 			toast.success(m.environments_agent_paired_success());
 			bootstrapToken = '';
-			await refreshEnvironment();
+			await invalidateAll();
 		} catch (e) {
 			console.error(e);
 			toast.error(m.environments_agent_pair_failed());
