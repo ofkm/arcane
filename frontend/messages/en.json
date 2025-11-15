@@ -763,6 +763,9 @@
 	"environments_agent_paired_success": "Agent paired successfully",
 	"environments_agent_pair_failed": "Failed to pair/rotate agent token",
 	"environments_changes_reset": "Changes reset",
+	"environments_warning_disabled": "This environment is disabled. You can edit its configuration, but you won't be able to access its resources until it's re-enabled.",
+	"environments_warning_offline": "This environment is offline or unreachable. You can still edit its configuration and test the connection to diagnose the issue.",
+	"environments_warning_no_settings": "Unable to load settings for this environment. It may be offline, disabled, or have an invalid URL. You can still edit basic environment details.",
 
 	"_comment_users": "=== USERS ===",
 	"users_title": "Users",

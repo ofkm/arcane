@@ -10,6 +10,7 @@
 	import GlobeIcon from '@lucide/svelte/icons/globe';
 	import SaveIcon from '@lucide/svelte/icons/save';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
+	import AlertTriangleIcon from '@lucide/svelte/icons/alert-triangle';
 	import { goto, invalidateAll } from '$app/navigation';
 	import StatusBadge from '$lib/components/badges/status-badge.svelte';
 	import { toast } from 'svelte-sonner';
@@ -231,6 +232,25 @@
 				<Badge variant="outline">{m.environments_local_badge()}</Badge>
 			{/if}
 		</div>
+
+		{#if !environment.enabled || environment.status === 'offline' || !settings}
+			<div
+				class="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-amber-900 dark:text-amber-200"
+			>
+				<AlertTriangleIcon class="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+				<div class="flex-1 space-y-1">
+					<p class="text-sm font-medium">
+						{#if !environment.enabled}
+							{m.environments_warning_disabled()}
+						{:else if environment.status === 'offline'}
+							{m.environments_warning_offline()}
+						{:else if !settings}
+							{m.environments_warning_no_settings()}
+						{/if}
+					</p>
+				</div>
+			</div>
+		{/if}
 	</div>
 
 	<div class="grid gap-6 gap-x-6 gap-y-6 lg:grid-cols-2">
