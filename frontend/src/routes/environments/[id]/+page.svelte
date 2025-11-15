@@ -73,7 +73,8 @@
 		if (isTestingConnection) return;
 		try {
 			isTestingConnection = true;
-			const result = await environmentManagementService.testConnection(environment.id, formApiUrl);
+			const customUrl = formApiUrl !== environment.apiUrl ? formApiUrl : undefined;
+			const result = await environmentManagementService.testConnection(environment.id, customUrl);
 			if (result.status === 'online') {
 				toast.success(m.environments_test_connection_success());
 			} else {
