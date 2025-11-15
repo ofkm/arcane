@@ -1,14 +1,9 @@
 package remenv
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
-	"io"
-	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -92,106 +87,29 @@ func CopyResponseHeaders(from http.Header, to http.Header, hop map[string]struct
 
 func NeedsCredentialInjection(target string) bool {
 	return strings.Contains(target, "/image-updates/check") ||
-		strings.Contains(target, "/images/pull")
+		strings.Contains(target, "/images/pull") ||
+		strings.Contains(target, "/projects/") && strings.Contains(target, "/pull") ||
+		strings.Contains(target, "/containers") && !strings.Contains(target, "/containers/")
 }
 
-func InjectRegistryCredentials(ctx context.Context, req *http.Request, injector CredentialInjector) error {
-	if injector == nil || req.Method != http.MethodPost {
-		return nil
-	}
-
-	bodyBytes, err := io.ReadAll(req.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read request body: %w", err)
-	}
-	req.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-
-	var pullReq dto.ImagePullDto
-	if err := json.Unmarshal(bodyBytes, &pullReq); err != nil {
-		return injectBatchUpdateCredentials(ctx, bodyBytes, req, injector)
-	}
-
-	return injectImagePullCredentials(ctx, pullReq, req, injector)
-}
-
-func injectBatchUpdateCredentials(ctx context.Context, bodyBytes []byte, req *http.Request, injector CredentialInjector) error {
-	var batchReq dto.BatchImageUpdateRequest
-
-	if err := json.Unmarshal(bodyBytes, &batchReq); err != nil {
-		return nil //nolint:nilerr
-	}
-
-	slog.DebugContext(ctx, "Batch update credential injection check",
-		slog.Int("existingCredentials", len(batchReq.Credentials)),
-		slog.Any("imageRefs", batchReq.ImageRefs))
-
-	if len(batchReq.Credentials) > 0 {
-		slog.DebugContext(ctx, "Credentials already present in request, skipping injection")
+// InjectCredentialsHeader adds registry credentials as a header to the request
+func InjectCredentialsHeader(ctx context.Context, req *http.Request, injector CredentialInjector) error {
+	if injector == nil {
 		return nil
 	}
 
 	creds, err := injector.GetEnabledRegistryCredentials(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to load registry credentials: %w", err)
-	}
-
-	if len(creds) == 0 {
-		slog.DebugContext(ctx, "No enabled registry credentials found to inject")
+	if err != nil || len(creds) == 0 {
 		return nil
 	}
 
-	batchReq.Credentials = creds
-	modifiedBody, err := json.Marshal(batchReq)
-	if err != nil {
-		return fmt.Errorf("failed to marshal modified request: %w", err)
-	}
-
-	updateRequestBody(req, modifiedBody)
-	slog.InfoContext(ctx, "Injected registry credentials into batch update request",
-		slog.Int("credentialCount", len(creds)),
-		slog.Any("credentialURLs", func() []string {
-			urls := make([]string, len(creds))
-			for i, c := range creds {
-				urls[i] = c.URL
-			}
-			return urls
-		}()))
-
-	return nil
-}
-
-func injectImagePullCredentials(ctx context.Context, pullReq dto.ImagePullDto, req *http.Request, injector CredentialInjector) error {
-	if len(pullReq.Credentials) > 0 {
-		return nil
-	}
-
-	creds, err := injector.GetEnabledRegistryCredentials(ctx)
+	credsJSON, err := json.Marshal(creds)
 	if err != nil {
 		return err
 	}
 
-	if len(creds) == 0 {
-		return nil
-	}
-
-	pullReq.Credentials = creds
-	modifiedBody, err := json.Marshal(pullReq)
-	if err != nil {
-		return fmt.Errorf("failed to marshal modified request: %w", err)
-	}
-
-	updateRequestBody(req, modifiedBody)
-	slog.DebugContext(ctx, "Injected registry credentials into image pull request",
-		slog.Int("credentialCount", len(creds)),
-		slog.String("imageName", pullReq.ImageName))
-
+	req.Header.Set("X-Arcane-Registry-Credentials", string(credsJSON))
 	return nil
-}
-
-func updateRequestBody(req *http.Request, body []byte) {
-	req.Body = io.NopCloser(bytes.NewBuffer(body))
-	req.ContentLength = int64(len(body))
-	req.Header.Set("Content-Length", strconv.Itoa(len(body)))
 }
 
 func GetSkipHeaders() map[string]struct{} {
