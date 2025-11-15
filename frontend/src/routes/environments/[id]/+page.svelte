@@ -384,10 +384,11 @@
 					<Label for="api-url" class="text-sm font-medium">{m.environments_api_url()}</Label>
 					<Input
 						id="api-url"
-						type="text"
+						type="url"
 						bind:value={formApiUrl}
 						class="mt-1.5 font-mono"
 						placeholder={m.environments_api_url_placeholder()}
+						required
 					/>
 					<p class="text-muted-foreground mt-1.5 text-xs">{m.environments_api_url_help()}</p>
 				</div>
