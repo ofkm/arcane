@@ -35,8 +35,7 @@
 
 	async function handleEnvSelect(envId: string) {
 		const env = environmentStore.available.find((e) => e.id === envId);
-		if (!env) return;
-
+		if (!env || !env.enabled) return;
 		try {
 			await environmentStore.setEnvironment(env);
 		} catch (error) {
@@ -135,7 +134,7 @@
 								</Select.Trigger>
 								<Select.Content class="max-w-[280px] min-w-[160px]">
 									{#each environmentStore.available as env (env.id)}
-										<Select.Item value={env.id} class="text-sm">
+										<Select.Item value={env.id} disabled={!env.enabled} class="text-sm">
 											{getEnvLabel(env)}
 										</Select.Item>
 									{/each}

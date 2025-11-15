@@ -32,6 +32,7 @@
 	});
 
 	async function handleSelect(env: Environment) {
+		if (!env || !env.enabled) return;
 		try {
 			await environmentStore.setEnvironment(env);
 		} catch (error) {
@@ -127,11 +128,14 @@
 					{:else}
 						{#each environmentStore.available as env (env.id)}
 							{@const isActive = environmentStore.selected?.id === env.id}
+							{@const isDisabled = !env.enabled}
 							<DropdownMenu.Item
-								onSelect={() => !isActive && handleSelect(env)}
+								onSelect={() => !isActive && !isDisabled && handleSelect(env)}
+								disabled={isDisabled}
 								class={cn(
 									'gap-2 p-2',
-									isActive && 'bg-sidebar-accent text-sidebar-accent-foreground pointer-events-none font-medium'
+									isActive && 'bg-sidebar-accent text-sidebar-accent-foreground pointer-events-none font-medium',
+									isDisabled && 'opacity-50 cursor-not-allowed'
 								)}
 							>
 								<div

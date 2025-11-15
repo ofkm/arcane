@@ -45,20 +45,22 @@ function createEnvironmentManagementStore() {
 
 		if (savedId) {
 			const found = available.find((env) => env.id === savedId);
-			if (found) {
+			if (found && found.enabled) {
 				_selectedEnvironment = found;
 				return found;
 			}
 		}
 
-		if (available.some((env) => env.id === localDockerEnvironment.id)) {
-			_selectedEnvironment = localDockerEnvironment;
-			return localDockerEnvironment;
+		const localEnv = available.find((env) => env.id === localDockerEnvironment.id);
+		if (localEnv && localEnv.enabled) {
+			_selectedEnvironment = localEnv;
+			return localEnv;
 		}
 
-		if (available.length > 0) {
-			_selectedEnvironment = available[0];
-			return available[0];
+		const firstEnabled = available.find((env) => env.enabled);
+		if (firstEnabled) {
+			_selectedEnvironment = firstEnabled;
+			return firstEnabled;
 		}
 
 		_selectedEnvironment = null;
@@ -87,14 +89,26 @@ function createEnvironmentManagementStore() {
 				_selectInitialEnvironment(available);
 				_initializedWithData = true;
 			} else {
-				if (_selectedEnvironment && !available.find((env) => env.id === _selectedEnvironment!.id)) {
-					_selectInitialEnvironment(available);
-				} else if (!_selectedEnvironment && available.length > 0) {
+				// Update the selected environment's data if it exists
+				if (_selectedEnvironment) {
+					const updated = available.find((env) => env.id === _selectedEnvironment!.id);
+					if (updated) {
+						_selectedEnvironment = updated;
+						// If the current environment was disabled, switch to an enabled one
+						if (!updated.enabled) {
+							_selectInitialEnvironment(available);
+						}
+					} else {
+						// Environment no longer exists, select a new one
+						_selectInitialEnvironment(available);
+					}
+				} else if (available.length > 0) {
 					_selectInitialEnvironment(available);
 				}
 			}
 		},
 		setEnvironment: async (environment: Environment) => {
+			if (!environment.enabled) return;
 			if (_selectedEnvironment?.id !== environment.id) {
 				_selectedEnvironment = environment;
 				selectedEnvironmentId.current = environment.id;
