@@ -195,13 +195,13 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 		if req.ApiUrl != nil {
 			updates["api_url"] = *req.ApiUrl
 		}
+		if req.Enabled != nil {
+			updates["enabled"] = *req.Enabled
+		}
 	}
 
 	if req.Name != nil {
 		updates["name"] = *req.Name
-	}
-	if req.Enabled != nil {
-		updates["enabled"] = *req.Enabled
 	}
 
 	// Local environment cannot be paired or have access token updated
