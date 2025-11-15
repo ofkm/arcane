@@ -180,6 +180,7 @@ func (h *EnvironmentHandler) GetEnvironment(c *gin.Context) {
 // Update
 func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	environmentID := c.Param("id")
+	isLocalEnv := environmentID == LOCAL_DOCKER_ENVIRONMENT_ID
 
 	var req dto.UpdateEnvironmentDto
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -188,9 +189,14 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	}
 
 	updates := map[string]interface{}{}
-	if req.ApiUrl != nil {
-		updates["api_url"] = *req.ApiUrl
+
+	// For local environment, only allow name and enabled changes
+	if !isLocalEnv {
+		if req.ApiUrl != nil {
+			updates["api_url"] = *req.ApiUrl
+		}
 	}
+
 	if req.Name != nil {
 		updates["name"] = *req.Name
 	}
@@ -198,24 +204,27 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 		updates["enabled"] = *req.Enabled
 	}
 
-	// If caller asked to pair (bootstrapToken present) and no accessToken provided in the request,
-	// resolve apiUrl (current or updated) and let the service pair and persist the token.
-	if (req.AccessToken == nil) && req.BootstrapToken != nil && *req.BootstrapToken != "" {
-		current, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), environmentID)
-		if err != nil || current == nil {
-			c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found"}})
-			return
+	// Local environment cannot be paired or have access token updated
+	if !isLocalEnv {
+		// If caller asked to pair (bootstrapToken present) and no accessToken provided in the request,
+		// resolve apiUrl (current or updated) and let the service pair and persist the token.
+		if (req.AccessToken == nil) && req.BootstrapToken != nil && *req.BootstrapToken != "" {
+			current, err := h.environmentService.GetEnvironmentByID(c.Request.Context(), environmentID)
+			if err != nil || current == nil {
+				c.JSON(http.StatusNotFound, gin.H{"success": false, "data": gin.H{"error": "Environment not found"}})
+				return
+			}
+			apiUrl := current.ApiUrl
+			if req.ApiUrl != nil && *req.ApiUrl != "" {
+				apiUrl = *req.ApiUrl
+			}
+			if _, err := h.environmentService.PairAndPersistAgentToken(c.Request.Context(), environmentID, apiUrl, *req.BootstrapToken); err != nil {
+				c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": "Agent pairing failed: " + err.Error()}})
+				return
+			}
+		} else if req.AccessToken != nil {
+			updates["access_token"] = *req.AccessToken
 		}
-		apiUrl := current.ApiUrl
-		if req.ApiUrl != nil && *req.ApiUrl != "" {
-			apiUrl = *req.ApiUrl
-		}
-		if _, err := h.environmentService.PairAndPersistAgentToken(c.Request.Context(), environmentID, apiUrl, *req.BootstrapToken); err != nil {
-			c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": "Agent pairing failed: " + err.Error()}})
-			return
-		}
-	} else if req.AccessToken != nil {
-		updates["access_token"] = *req.AccessToken
 	}
 
 	updated, err := h.environmentService.UpdateEnvironment(c.Request.Context(), environmentID, updates)
@@ -250,6 +259,12 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 // Delete
 func (h *EnvironmentHandler) DeleteEnvironment(c *gin.Context) {
 	environmentID := c.Param("id")
+
+	// Prevent deletion of local environment
+	if environmentID == LOCAL_DOCKER_ENVIRONMENT_ID {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": gin.H{"error": "Cannot delete local environment"}})
+		return
+	}
 
 	err := h.environmentService.DeleteEnvironment(c.Request.Context(), environmentID)
 	if err != nil {

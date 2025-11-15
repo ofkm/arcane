@@ -2,6 +2,7 @@
 	import * as Card from '$lib/components/ui/card/index.js';
 	import { Button } from '$lib/components/ui/button/index.js';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
+	import * as Tooltip from '$lib/components/ui/tooltip/index.js';
 	import ArrowLeftIcon from '@lucide/svelte/icons/arrow-left';
 	import RefreshCwIcon from '@lucide/svelte/icons/refresh-cw';
 	import MonitorIcon from '@lucide/svelte/icons/monitor';
@@ -53,7 +54,9 @@
 
 	// Track changes
 	let hasChanges = $derived(
-		formName !== environment.name || formEnabled !== environment.enabled || formApiUrl !== environment.apiUrl
+		formName !== environment.name ||
+			formEnabled !== environment.enabled ||
+			(environment.id !== '0' && formApiUrl !== environment.apiUrl)
 	);
 
 	async function refreshEnvironment() {
@@ -80,10 +83,10 @@
 			isTestingConnection = true;
 			const customUrl = formApiUrl !== environment.apiUrl ? formApiUrl : undefined;
 			const result = await environmentManagementService.testConnection(environment.id, customUrl);
-			
+
 			// Update current status based on test result
 			currentStatus = result.status;
-			
+
 			if (result.status === 'online') {
 				toast.success(m.environments_test_connection_success());
 			} else {
@@ -102,7 +105,8 @@
 		} finally {
 			isTestingConnection = false;
 		}
-	}	async function pairOrRotate() {
+	}
+	async function pairOrRotate() {
 		if (!bootstrapToken) {
 			toast.error(m.environments_bootstrap_required());
 			return;
@@ -143,8 +147,7 @@
 						await environmentManagementService.getEnvironments({
 							pagination: { page: 1, limit: 1000 }
 						})
-					).data,
-					true
+					).data
 				);
 			}
 		} catch (error) {
@@ -242,7 +245,7 @@
 			<Badge variant="outline" class="gap-1">
 				{environment.enabled ? m.common_enabled() : m.common_disabled()}
 			</Badge>
-			{#if environment.isLocal}
+			{#if environment.id === '0'}
 				<Badge variant="outline">{m.environments_local_badge()}</Badge>
 			{/if}
 		</div>
@@ -288,25 +291,24 @@
 						<Label for="env-enabled" class="text-sm font-medium">{m.common_enabled()}</Label>
 						<div class="text-muted-foreground text-xs">{m.environments_enable_disable_description()}</div>
 					</div>
-					<Switch id="env-enabled" bind:checked={formEnabled} />
+					{#if environment.id === '0'}
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								<Switch id="env-enabled" disabled={true} bind:checked={formEnabled} />
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>{m.environments_local_setting_disabled()}</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
+					{:else}
+						<Switch id="env-enabled" bind:checked={formEnabled} />
+					{/if}
 				</div>
 
 				<div class="grid grid-cols-2 gap-4 rounded-lg border p-4">
 					<div>
 						<Label class="text-muted-foreground text-xs font-medium">{m.environments_environment_id_label()}</Label>
 						<div class="mt-1 font-mono text-sm">{environment.id}</div>
-					</div>
-					<div>
-						<Label class="text-muted-foreground text-xs font-medium">{m.common_created()}</Label>
-						<div class="mt-1 text-sm">
-							{new Date(environment.createdAt).toLocaleDateString()}
-						</div>
-					</div>
-					<div>
-						<Label class="text-muted-foreground text-xs font-medium">{m.environments_last_seen_label()}</Label>
-						<div class="mt-1 text-sm">
-							{environment.lastSeen ? new Date(environment.lastSeen).toLocaleString() : m.common_unknown()}
-						</div>
 					</div>
 					<div>
 						<Label class="text-muted-foreground text-xs font-medium">Status</Label>
@@ -325,17 +327,9 @@
 			<Card.Root class="flex flex-col">
 				<Card.Header icon={SettingsIcon}>
 					<div class="flex flex-col space-y-1.5">
-						<div class="flex items-center justify-between">
-							<Card.Title>
-								<h2>{environment.id === '0' ? m.sidebar_settings() : m.environments_docker_settings_title()}</h2>
-							</Card.Title>
-							{#if environment.id === '0'}
-								<Button variant="outline" size="sm" onclick={handleEditSettings}>
-									<SettingsIcon class="mr-2 size-4" />
-									{m.common_edit()}
-								</Button>
-							{/if}
-						</div>
+						<Card.Title>
+							<h2>{m.environments_docker_settings_title()}</h2>
+						</Card.Title>
 						<Card.Description>{m.environments_config_description()}</Card.Description>
 					</div>
 				</Card.Header>
@@ -384,76 +378,78 @@
 			</Card.Root>
 		{/if}
 
-		<Card.Root class="flex flex-col">
-			<Card.Header icon={GlobeIcon}>
-				<div class="flex flex-col space-y-1.5">
-					<Card.Title>
-						<h2>{m.environments_connection_title()}</h2>
-					</Card.Title>
-					<Card.Description>{m.environments_connection_description()}</Card.Description>
-				</div>
-			</Card.Header>
-			<Card.Content class="space-y-4 p-4">
-				<div>
-					<Label for="api-url" class="text-sm font-medium">{m.environments_api_url()}</Label>
-					<Input
-						id="api-url"
-						type="url"
-						bind:value={formApiUrl}
-						class="mt-1.5 font-mono"
-						placeholder={m.environments_api_url_placeholder()}
-						required
-					/>
-					<p class="text-muted-foreground mt-1.5 text-xs">{m.environments_api_url_help()}</p>
-				</div>
+		{#if environment.id !== '0'}
+			<Card.Root class="flex flex-col">
+				<Card.Header icon={GlobeIcon}>
+					<div class="flex flex-col space-y-1.5">
+						<Card.Title>
+							<h2>{m.environments_connection_title()}</h2>
+						</Card.Title>
+						<Card.Description>{m.environments_connection_description()}</Card.Description>
+					</div>
+				</Card.Header>
+				<Card.Content class="space-y-4 p-4">
+					<div>
+						<Label for="api-url" class="text-sm font-medium">{m.environments_api_url()}</Label>
+						<Input
+							id="api-url"
+							type="url"
+							bind:value={formApiUrl}
+							class="mt-1.5 font-mono"
+							placeholder={m.environments_api_url_placeholder()}
+							required
+						/>
+						<p class="text-muted-foreground mt-1.5 text-xs">{m.environments_api_url_help()}</p>
+					</div>
 
-				<Button onclick={testConnection} disabled={isTestingConnection} class="w-full">
-					{#if isTestingConnection}
-						<RefreshCwIcon class="mr-2 size-4 animate-spin" />
-						{m.environments_testing_connection()}
-					{:else}
-						<TerminalIcon class="mr-2 size-4" />
-						{m.environments_test_connection()}
-					{/if}
-				</Button>
-			</Card.Content>
-		</Card.Root>
-
-		<Card.Root class="flex flex-col">
-			<Card.Header icon={SettingsIcon}>
-				<div class="flex flex-col space-y-1.5">
-					<Card.Title>
-						<h2>{m.environments_pair_rotate_title()}</h2>
-					</Card.Title>
-					<Card.Description>{m.environments_pair_rotate_description()}</Card.Description>
-				</div>
-			</Card.Header>
-			<Card.Content class="space-y-4 p-4">
-				<div>
-					<Label for="bootstrap-token" class="text-sm font-medium">{m.environments_bootstrap_label()}</Label>
-					<Input
-						id="bootstrap-token"
-						type="password"
-						placeholder={m.environments_bootstrap_placeholder()}
-						bind:value={bootstrapToken}
-						class="mt-1.5"
-					/>
-				</div>
-				<div class="flex gap-2">
-					<Button onclick={pairOrRotate} disabled={isPairing || !bootstrapToken} class="flex-1">
-						{#if isPairing}
+					<Button onclick={testConnection} disabled={isTestingConnection} class="w-full">
+						{#if isTestingConnection}
 							<RefreshCwIcon class="mr-2 size-4 animate-spin" />
+							{m.environments_testing_connection()}
 						{:else}
-							<SettingsIcon class="mr-2 size-4" />
+							<TerminalIcon class="mr-2 size-4" />
+							{m.environments_test_connection()}
 						{/if}
-						{m.environments_pair_rotate_action()}
 					</Button>
-					<Button variant="outline" onclick={() => (bootstrapToken = '')} disabled={isPairing}>
-						{m.common_clear()}
-					</Button>
-				</div>
-			</Card.Content>
-		</Card.Root>
+				</Card.Content>
+			</Card.Root>
+
+			<Card.Root class="flex flex-col">
+				<Card.Header icon={SettingsIcon}>
+					<div class="flex flex-col space-y-1.5">
+						<Card.Title>
+							<h2>{m.environments_pair_rotate_title()}</h2>
+						</Card.Title>
+						<Card.Description>{m.environments_pair_rotate_description()}</Card.Description>
+					</div>
+				</Card.Header>
+				<Card.Content class="space-y-4 p-4">
+					<div>
+						<Label for="bootstrap-token" class="text-sm font-medium">{m.environments_bootstrap_label()}</Label>
+						<Input
+							id="bootstrap-token"
+							type="password"
+							placeholder={m.environments_bootstrap_placeholder()}
+							bind:value={bootstrapToken}
+							class="mt-1.5"
+						/>
+					</div>
+					<div class="flex gap-2">
+						<Button onclick={pairOrRotate} disabled={isPairing || !bootstrapToken} class="flex-1">
+							{#if isPairing}
+								<RefreshCwIcon class="mr-2 size-4 animate-spin" />
+							{:else}
+								<SettingsIcon class="mr-2 size-4" />
+							{/if}
+							{m.environments_pair_rotate_action()}
+						</Button>
+						<Button variant="outline" onclick={() => (bootstrapToken = '')} disabled={isPairing}>
+							{m.common_clear()}
+						</Button>
+					</div>
+				</Card.Content>
+			</Card.Root>
+		{/if}
 	</div>
 
 	<AlertDialog.Root bind:open={showSwitchDialog}>

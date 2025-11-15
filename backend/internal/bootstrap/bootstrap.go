@@ -54,6 +54,10 @@ func Bootstrap(ctx context.Context) error {
 	utils.InitEncryption(cfg)
 	utils.InitializeDefaultSettings(appCtx, cfg, appServices.Settings)
 
+	if err := appServices.Environment.EnsureLocalEnvironment(appCtx, cfg.AppUrl); err != nil {
+		slog.WarnContext(appCtx, "Failed to ensure local environment", "error", err)
+	}
+
 	utils.TestDockerConnection(appCtx, func(ctx context.Context) error {
 		dockerClient, err := dockerClientService.CreateConnection(ctx)
 		if err != nil {

@@ -4,17 +4,6 @@ import type { Environment } from '$lib/types/environment.type';
 
 export const LOCAL_DOCKER_ENVIRONMENT_ID = '0';
 
-export const localDockerEnvironment: Environment = {
-	id: LOCAL_DOCKER_ENVIRONMENT_ID,
-	name: 'Local Docker',
-	apiUrl: 'http://localhost',
-	status: 'online',
-	enabled: true,
-	lastSeen: new Date().toISOString(),
-	createdAt: new Date().toISOString(),
-	isLocal: true
-};
-
 function createEnvironmentManagementStore() {
 	const selectedEnvironmentId = new PersistedState<string | null>('selectedEnvironmentId', null);
 
@@ -28,16 +17,9 @@ function createEnvironmentManagementStore() {
 		_resolveReadyPromiseFunction = resolve;
 	});
 
-	function _updateAvailable(environments: Environment[], hasLocalDocker: boolean): Environment[] {
-		const newAvailable: Environment[] = [];
-
-		if (hasLocalDocker) {
-			newAvailable.push(localDockerEnvironment);
-		}
-
-		newAvailable.push(...environments.map((env) => ({ ...env, isLocal: false })));
-		_availableEnvironments = newAvailable;
-		return newAvailable;
+	function _updateAvailable(environments: Environment[]): Environment[] {
+		_availableEnvironments = environments;
+		return environments;
 	}
 
 	function _selectInitialEnvironment(available: Environment[]): Environment | null {
@@ -51,7 +33,7 @@ function createEnvironmentManagementStore() {
 			}
 		}
 
-		const localEnv = available.find((env) => env.id === localDockerEnvironment.id);
+		const localEnv = available.find((env) => env.id === LOCAL_DOCKER_ENVIRONMENT_ID);
 		if (localEnv && localEnv.enabled) {
 			_selectedEnvironment = localEnv;
 			return localEnv;
@@ -74,8 +56,8 @@ function createEnvironmentManagementStore() {
 		get available(): Environment[] {
 			return _availableEnvironments;
 		},
-		initialize: async (environmentsData: Environment[], hasLocalDocker: boolean) => {
-			const available = _updateAvailable(environmentsData, hasLocalDocker);
+		initialize: async (environmentsData: Environment[]) => {
+			const available = _updateAvailable(environmentsData);
 			const hasRealEnvironments = environmentsData.length > 0;
 
 			if (!_initialized) {
@@ -116,7 +98,7 @@ function createEnvironmentManagementStore() {
 			}
 		},
 		isInitialized: () => _initialized,
-		getLocalEnvironment: () => localDockerEnvironment,
+		getLocalEnvironment: () => _availableEnvironments.find((env) => env.id === LOCAL_DOCKER_ENVIRONMENT_ID) || null,
 		ready: _readyPromise,
 		getCurrentEnvironmentId: async (): Promise<string> => {
 			await _readyPromise;

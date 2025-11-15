@@ -25,6 +25,7 @@
 	import environmentUpgradeService from '$lib/services/api/environment-upgrade-service';
 	import UpgradeConfirmationDialog from '$lib/components/dialogs/upgrade-confirmation-dialog.svelte';
 	import { environmentStore } from '$lib/stores/environment.store.svelte';
+	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 
 	let {
 		environments = $bindable(),
@@ -74,7 +75,7 @@
 						const msg = m.common_bulk_remove_success({ count: successCount, resource: m.environments_title() });
 						toast.success(msg);
 						environments = await environmentManagementService.getEnvironments(requestOptions);
-						await environmentStore.initialize(environments.data, true);
+						await environmentStore.initialize(environments.data);
 					}
 					if (failureCount > 0) {
 						const msg = m.common_bulk_remove_failed({ count: failureCount, resource: m.environments_title() });
@@ -104,7 +105,7 @@
 						onSuccess: async () => {
 							toast.success(m.common_delete_success({ resource: `${m.resource_environment()} "${hostname}"` }));
 							environments = await environmentManagementService.getEnvironments(requestOptions);
-							await environmentStore.initialize(environments.data, true);
+							await environmentStore.initialize(environments.data);
 						}
 					});
 					isLoading.removing = false;
@@ -182,7 +183,7 @@
 					})
 				);
 				environments = await environmentManagementService.getEnvironments(requestOptions);
-				await environmentStore.initialize(environments.data, true);
+				await environmentStore.initialize(environments.data);
 			}
 		});
 
@@ -237,25 +238,28 @@
 					: 'bg-red-500'}"
 			></div>
 		</div>
-		<div>
-			<button class="cursor-pointer text-left font-medium hover:underline" onclick={() => goto(`/environments/${item.id}`)}>
+		<div class="flex flex-col gap-0.5 leading-tight">
+			<button
+				class="text-foreground-primary h-auto min-h-0 cursor-pointer p-0 text-left text-sm leading-tight font-medium hover:underline"
+				onclick={() => goto(`/environments/${item.id}`)}
+			>
 				{item.name}
 			</button>
-			<div class="text-muted-foreground font-mono text-xs">{item.id}</div>
+			<div class="text-muted-foreground font-mono text-xs leading-tight">{item.apiUrl}</div>
 		</div>
 	</div>
 {/snippet}
 
 {#snippet StatusCell({ value }: { value: unknown })}
-	<StatusBadge text={String(value ?? m.common_offline())} variant={String(value) === 'online' ? 'green' : 'red'} />
+	<StatusBadge text={capitalizeFirstLetter(String(value)) || m.common_unknown()} variant={value === 'online' ? 'green' : 'red'} />
 {/snippet}
 
 {#snippet ApiCell({ value }: { value: unknown })}
-	<span class="text-muted-foreground font-mono text-sm">{String(value ?? '')}</span>
+	<span class="text-muted-foreground font-mono text-sm">{String(value)}</span>
 {/snippet}
 
 {#snippet EnabledCell({ value }: { value: unknown })}
-	<StatusBadge text={Boolean(value) ? 'Enabled' : 'Disabled'} variant={Boolean(value) ? 'green' : 'gray'} />
+	<StatusBadge text={value ? m.common_enabled() : m.common_disabled()} variant={value ? 'green' : 'red'} />
 {/snippet}
 
 {#snippet EnvironmentMobileCardSnippet({
@@ -299,37 +303,39 @@
 		</DropdownMenu.Trigger>
 		<DropdownMenu.Content align="end">
 			<DropdownMenu.Group>
-				<DropdownMenu.Item onclick={() => handleToggleEnabled(item)} disabled={isLoading.toggling}>
-					<PowerIcon class="size-4" />
-					{item.enabled ? m.common_disable() : m.common_enable()}
+				<DropdownMenu.Item onclick={() => goto(`/environments/${item.id}`)}>
+					<EyeIcon class="size-4" />
+					{m.common_view_details()}
 				</DropdownMenu.Item>
 				<DropdownMenu.Item onclick={() => handleTest(item.id)} disabled={isLoading.testing}>
 					<TerminalIcon class="size-4" />
 					{m.environments_test_connection()}
 				</DropdownMenu.Item>
-				<DropdownMenu.Item onclick={() => goto(`/environments/${item.id}`)}>
-					<EyeIcon class="size-4" />
-					{m.common_view_details()}
-				</DropdownMenu.Item>
-				{#if item.status === 'online'}
+				{#if item.id !== '0'}
+					{#if item.status === 'online'}
+						<DropdownMenu.Separator />
+						<DropdownMenu.Item
+							onclick={() => handleUpgradeClick(item)}
+							disabled={isLoading.upgrading || upgradingEnvironmentId === item.id}
+						>
+							<DownloadIcon class="size-4" />
+							{upgradingEnvironmentId === item.id ? m.upgrade_in_progress() : m.upgrade_to_version({ version: 'Latest' })}
+						</DropdownMenu.Item>
+					{/if}
+					<DropdownMenu.Item onclick={() => handleToggleEnabled(item)} disabled={isLoading.toggling}>
+						<PowerIcon class="size-4" />
+						{item.enabled ? m.common_disable() : m.common_enable()}
+					</DropdownMenu.Item>
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item
-						onclick={() => handleUpgradeClick(item)}
-						disabled={isLoading.upgrading || upgradingEnvironmentId === item.id}
+						variant="destructive"
+						onclick={() => handleDeleteOne(item.id, item.name)}
+						disabled={isLoading.removing}
 					>
-						<DownloadIcon class="size-4" />
-						{upgradingEnvironmentId === item.id ? m.upgrade_in_progress() : m.upgrade_to_version({ version: 'Latest' })}
+						<Trash2Icon class="size-4" />
+						{m.common_delete()}
 					</DropdownMenu.Item>
 				{/if}
-				<DropdownMenu.Separator />
-				<DropdownMenu.Item
-					variant="destructive"
-					onclick={() => handleDeleteOne(item.id, item.name)}
-					disabled={isLoading.removing}
-				>
-					<Trash2Icon class="size-4" />
-					{m.common_delete()}
-				</DropdownMenu.Item>
 			</DropdownMenu.Group>
 		</DropdownMenu.Content>
 	</DropdownMenu.Root>
