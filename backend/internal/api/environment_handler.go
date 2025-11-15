@@ -190,7 +190,7 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 
 	updates := map[string]interface{}{}
 
-	// For local environment, only allow name and enabled changes
+	// For local environment, only allow name
 	if !isLocalEnv {
 		if req.ApiUrl != nil {
 			updates["api_url"] = *req.ApiUrl
