@@ -211,7 +211,9 @@
 			></div>
 		</div>
 		<div>
-			<div class="font-medium">{item.name}</div>
+			<button class="cursor-pointer text-left font-medium hover:underline" onclick={() => goto(`/environments/${item.id}`)}>
+				{item.name}
+			</button>
 			<div class="text-muted-foreground font-mono text-xs">{item.id}</div>
 		</div>
 	</div>
