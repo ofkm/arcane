@@ -92,8 +92,8 @@ func NeedsCredentialInjection(target string) bool {
 		strings.Contains(target, "/containers") && !strings.Contains(target, "/containers/")
 }
 
-// InjectCredentialsHeader adds registry credentials as a header to the request
-func InjectCredentialsHeader(ctx context.Context, req *http.Request, injector CredentialInjector) error {
+// InjectRegistryCredentials adds registry credentials as a header to the request
+func InjectRegistryCredentials(ctx context.Context, req *http.Request, injector CredentialInjector) error {
 	if injector == nil {
 		return nil
 	}

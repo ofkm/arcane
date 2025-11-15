@@ -187,7 +187,7 @@ func (m *EnvironmentMiddleware) createProxyRequest(c *gin.Context, target string
 	remenv.SetForwardedHeaders(req, c.ClientIP(), c.Request.Host)
 
 	if remenv.NeedsCredentialInjection(target) {
-		if err := remenv.InjectCredentialsHeader(c.Request.Context(), req, m.envService); err != nil {
+		if err := remenv.InjectRegistryCredentials(c.Request.Context(), req, m.envService); err != nil {
 			slog.WarnContext(c.Request.Context(), "Failed to inject registry credentials header",
 				slog.String("error", err.Error()),
 				slog.String("target", target))
