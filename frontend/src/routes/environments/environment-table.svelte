@@ -21,6 +21,7 @@
 	import { m } from '$lib/paraglide/messages';
 	import { environmentManagementService } from '$lib/services/env-mgmt-service';
 	import CloudIcon from '@lucide/svelte/icons/cloud';
+	import PowerIcon from '@lucide/svelte/icons/power';
 	import environmentUpgradeService from '$lib/services/api/environment-upgrade-service';
 	import UpgradeConfirmationDialog from '$lib/components/dialogs/upgrade-confirmation-dialog.svelte';
 	import { environmentStore } from '$lib/stores/environment.store.svelte';
@@ -35,7 +36,7 @@
 		requestOptions: SearchPaginationSortRequest;
 	} = $props();
 
-	let isLoading = $state({ removing: false, testing: false, upgrading: false });
+	let isLoading = $state({ removing: false, testing: false, upgrading: false, toggling: false });
 	let upgradingEnvironmentId = $state<string | null>(null);
 	let showUpgradeDialog = $state(false);
 	let selectedEnvironmentForUpgrade = $state<Environment | null>(null);
@@ -162,6 +163,30 @@
 		}
 	}
 
+	async function handleToggleEnabled(environment: Environment) {
+		const newEnabled = !environment.enabled;
+		isLoading.toggling = true;
+
+		const result = await tryCatch(environmentManagementService.update(environment.id, { enabled: newEnabled }));
+
+		handleApiResultWithCallbacks({
+			result,
+			message: m.common_update_failed({ resource: m.resource_environment() }),
+			setLoadingState: () => {},
+			onSuccess: async () => {
+				toast.success(
+					m.common_update_success({
+						resource: `${m.resource_environment()} "${environment.name}"`
+					})
+				);
+				environments = await environmentManagementService.getEnvironments(requestOptions);
+				await environmentStore.initialize(environments.data, true);
+			}
+		});
+
+		isLoading.toggling = false;
+	}
+
 	const columns = [
 		{ accessorKey: 'id', title: m.common_id(), hidden: true },
 		{
@@ -271,6 +296,10 @@
 		</DropdownMenu.Trigger>
 		<DropdownMenu.Content align="end">
 			<DropdownMenu.Group>
+				<DropdownMenu.Item onclick={() => handleToggleEnabled(item)} disabled={isLoading.toggling}>
+					<PowerIcon class="size-4" />
+					{item.enabled ? m.common_disable() : m.common_enable()}
+				</DropdownMenu.Item>
 				<DropdownMenu.Item onclick={() => handleTest(item.id)} disabled={isLoading.testing}>
 					<TerminalIcon class="size-4" />
 					{m.environments_test_connection()}

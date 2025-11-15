@@ -112,6 +112,8 @@
 	"common_loading": "Loading…",
 	"common_enabled": "Enabled",
 	"common_disabled": "Disabled",
+	"common_enable": "Enable",
+	"common_disable": "Disable",
 	"common_online": "Online",
 	"common_offline": "Offline",
 	"common_copy": "Copy",
