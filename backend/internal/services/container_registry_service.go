@@ -175,3 +175,121 @@ func (s *ContainerRegistryService) GetEnabledRegistries(ctx context.Context) ([]
 	}
 	return registries, nil
 }
+
+// SyncRegistries syncs registries from a manager to this agent instance
+// It creates, updates, or deletes registries to match the provided list
+func (s *ContainerRegistryService) SyncRegistries(ctx context.Context, syncItems []models.SyncRegistryItem) (map[string]interface{}, error) {
+	stats := map[string]int{
+		"created": 0,
+		"updated": 0,
+		"deleted": 0,
+		"skipped": 0,
+	}
+
+	// Get all existing registries
+	var existingRegistries []models.ContainerRegistry
+	if err := s.db.WithContext(ctx).Find(&existingRegistries).Error; err != nil {
+		return nil, fmt.Errorf("failed to get existing registries: %w", err)
+	}
+
+	// Create a map of existing registries by ID
+	existingMap := make(map[string]*models.ContainerRegistry)
+	for i := range existingRegistries {
+		existingMap[existingRegistries[i].ID] = &existingRegistries[i]
+	}
+
+	// Create a map of synced IDs
+	syncedIDs := make(map[string]bool)
+
+	// Process each sync item
+	for _, item := range syncItems {
+		syncedIDs[item.ID] = true
+
+		existing, exists := existingMap[item.ID]
+		if exists {
+			// Update existing registry
+			needsUpdate := false
+			if existing.URL != item.URL {
+				existing.URL = item.URL
+				needsUpdate = true
+			}
+			if existing.Username != item.Username {
+				existing.Username = item.Username
+				needsUpdate = true
+			}
+			// Always update token as it comes decrypted from manager
+			encryptedToken, err := utils.Encrypt(item.Token)
+			if err != nil {
+				return nil, fmt.Errorf("failed to encrypt token for registry %s: %w", item.ID, err)
+			}
+			if existing.Token != encryptedToken {
+				existing.Token = encryptedToken
+				needsUpdate = true
+			}
+			if (item.Description == nil && existing.Description != nil) ||
+				(item.Description != nil && existing.Description == nil) ||
+				(item.Description != nil && existing.Description != nil && *item.Description != *existing.Description) {
+				existing.Description = item.Description
+				needsUpdate = true
+			}
+			if existing.Insecure != item.Insecure {
+				existing.Insecure = item.Insecure
+				needsUpdate = true
+			}
+			if existing.Enabled != item.Enabled {
+				existing.Enabled = item.Enabled
+				needsUpdate = true
+			}
+
+			if needsUpdate {
+				existing.UpdatedAt = time.Now()
+				if err := s.db.WithContext(ctx).Save(existing).Error; err != nil {
+					return nil, fmt.Errorf("failed to update registry %s: %w", item.ID, err)
+				}
+				stats["updated"]++
+			} else {
+				stats["skipped"]++
+			}
+		} else {
+			// Create new registry
+			encryptedToken, err := utils.Encrypt(item.Token)
+			if err != nil {
+				return nil, fmt.Errorf("failed to encrypt token for new registry %s: %w", item.ID, err)
+			}
+
+			newRegistry := &models.ContainerRegistry{
+				BaseModel: models.BaseModel{
+					ID: item.ID,
+				},
+				URL:         item.URL,
+				Username:    item.Username,
+				Token:       encryptedToken,
+				Description: item.Description,
+				Insecure:    item.Insecure,
+				Enabled:     item.Enabled,
+				CreatedAt:   time.Now(),
+				UpdatedAt:   time.Now(),
+			}
+
+			if err := s.db.WithContext(ctx).Create(newRegistry).Error; err != nil {
+				return nil, fmt.Errorf("failed to create registry %s: %w", item.ID, err)
+			}
+			stats["created"]++
+		}
+	}
+
+	// Delete registries that are not in the sync list
+	for id := range existingMap {
+		if !syncedIDs[id] {
+			if err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&models.ContainerRegistry{}).Error; err != nil {
+				return nil, fmt.Errorf("failed to delete registry %s: %w", id, err)
+			}
+			stats["deleted"]++
+		}
+	}
+
+	return map[string]interface{}{
+		"message": "Registries synced successfully",
+		"stats":   stats,
+	}, nil
+}

@@ -437,3 +437,102 @@ func (s *EnvironmentService) GetEnabledRegistryCredentials(ctx context.Context) 
 
 	return creds, nil
 }
+
+// SyncRegistriesToEnvironment syncs all registries from this manager to a remote environment
+func (s *EnvironmentService) SyncRegistriesToEnvironment(ctx context.Context, environmentID string) error {
+	// Get the environment
+	environment, err := s.GetEnvironmentByID(ctx, environmentID)
+	if err != nil {
+		return fmt.Errorf("failed to get environment: %w", err)
+	}
+
+	// Don't sync to local environment (ID "0")
+	if environmentID == "0" {
+		return fmt.Errorf("cannot sync registries to local environment")
+	}
+
+	// Get all registries from this manager
+	var registries []models.ContainerRegistry
+	if err := s.db.WithContext(ctx).Find(&registries).Error; err != nil {
+		return fmt.Errorf("failed to get registries: %w", err)
+	}
+
+	// Prepare sync items with decrypted tokens
+	syncItems := make([]models.SyncRegistryItem, 0, len(registries))
+	for _, reg := range registries {
+		decryptedToken, err := utils.Decrypt(reg.Token)
+		if err != nil {
+			slog.WarnContext(ctx, "Failed to decrypt registry token for sync",
+				slog.String("registryID", reg.ID),
+				slog.String("registryURL", reg.URL),
+				slog.String("error", err.Error()))
+			continue
+		}
+
+		syncItems = append(syncItems, models.SyncRegistryItem{
+			ID:          reg.ID,
+			URL:         reg.URL,
+			Username:    reg.Username,
+			Token:       decryptedToken,
+			Description: reg.Description,
+			Insecure:    reg.Insecure,
+			Enabled:     reg.Enabled,
+		})
+	}
+
+	// Prepare the sync request
+	syncReq := models.SyncRegistriesRequest{
+		Registries: syncItems,
+	}
+
+	// Marshal the request
+	reqBody, err := json.Marshal(syncReq)
+	if err != nil {
+		return fmt.Errorf("failed to marshal sync request: %w", err)
+	}
+
+	// Send the sync request to the remote environment
+	reqCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	targetURL := strings.TrimRight(environment.ApiUrl, "/") + "/api/container-registries/sync"
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, targetURL, strings.NewReader(string(reqBody)))
+	if err != nil {
+		return fmt.Errorf("failed to create sync request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	if environment.AccessToken != nil && *environment.AccessToken != "" {
+		req.Header.Set("X-Arcane-Agent-Token", *environment.AccessToken)
+	}
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send sync request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("sync request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Success bool                   `json:"success"`
+		Data    map[string]interface{} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Errorf("failed to decode sync response: %w", err)
+	}
+
+	if !result.Success {
+		return fmt.Errorf("sync failed: %v", result.Data)
+	}
+
+	slog.InfoContext(ctx, "Successfully synced registries to environment",
+		slog.String("environmentID", environmentID),
+		slog.String("environmentName", environment.Name),
+		slog.Any("stats", result.Data["stats"]))
+
+	return nil
+}

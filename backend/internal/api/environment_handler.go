@@ -52,6 +52,7 @@ func NewEnvironmentHandler(
 		apiGroup.POST("/:id/test", h.TestConnection)
 		apiGroup.POST("/:id/heartbeat", h.UpdateHeartbeat)
 		apiGroup.POST("/:id/agent/pair", h.PairAgent)
+		apiGroup.POST("/:id/sync-registries", h.SyncRegistries)
 	}
 }
 
@@ -130,6 +131,23 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 		return
 	}
 
+	// Sync registries to the new environment in the background
+	if created.AccessToken != nil && *created.AccessToken != "" {
+		go func() {
+			ctx := context.Background()
+			if err := h.environmentService.SyncRegistriesToEnvironment(ctx, created.ID); err != nil {
+				slog.WarnContext(ctx, "Failed to sync registries to new environment",
+					slog.String("environmentID", created.ID),
+					slog.String("environmentName", created.Name),
+					slog.String("error", err.Error()))
+			} else {
+				slog.InfoContext(ctx, "Successfully synced registries to new environment",
+					slog.String("environmentID", created.ID),
+					slog.String("environmentName", created.Name))
+			}
+		}()
+	}
+
 	out, mapErr := dto.MapOne[*models.Environment, dto.EnvironmentDto](created)
 	if mapErr != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": gin.H{"error": "Failed to map environment"}})
@@ -205,6 +223,7 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	}
 
 	// Local environment cannot be paired or have access token updated
+	pairingSucceeded := false
 	if !isLocalEnv {
 		// If caller asked to pair (bootstrapToken present) and no accessToken provided in the request,
 		// resolve apiUrl (current or updated) and let the service pair and persist the token.
@@ -222,6 +241,7 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 				c.JSON(http.StatusBadGateway, gin.H{"success": false, "data": gin.H{"error": "Agent pairing failed: " + err.Error()}})
 				return
 			}
+			pairingSucceeded = true
 		} else if req.AccessToken != nil {
 			updates["access_token"] = *req.AccessToken
 		}
@@ -243,6 +263,23 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 				slog.WarnContext(ctx, "Failed to test connection after environment update", "environment_id", environmentID, "environment_name", updated.Name, "status", status, "error", err)
 			} else {
 				slog.InfoContext(ctx, "Environment health check completed after update", "environment_id", environmentID, "environment_name", updated.Name, "status", status)
+			}
+		}()
+	}
+
+	// Sync registries if pairing succeeded or if access token was updated
+	if pairingSucceeded || (req.AccessToken != nil && *req.AccessToken != "") {
+		go func() {
+			ctx := context.Background()
+			if err := h.environmentService.SyncRegistriesToEnvironment(ctx, environmentID); err != nil {
+				slog.WarnContext(ctx, "Failed to sync registries after environment update",
+					slog.String("environmentID", environmentID),
+					slog.String("environmentName", updated.Name),
+					slog.String("error", err.Error()))
+			} else {
+				slog.InfoContext(ctx, "Successfully synced registries after environment update",
+					slog.String("environmentID", environmentID),
+					slog.String("environmentName", updated.Name))
 			}
 		}()
 	}
@@ -321,5 +358,23 @@ func (h *EnvironmentHandler) UpdateHeartbeat(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Heartbeat updated successfully",
+	})
+}
+
+func (h *EnvironmentHandler) SyncRegistries(c *gin.Context) {
+	environmentID := c.Param("id")
+
+	err := h.environmentService.SyncRegistriesToEnvironment(c.Request.Context(), environmentID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"data":    gin.H{"error": "Failed to sync registries: " + err.Error()},
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    gin.H{"message": "Registries synced successfully"},
 	})
 }
