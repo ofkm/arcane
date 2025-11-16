@@ -118,7 +118,7 @@
 							<span>{m.sidebar_no_environments()}</span>
 						</DropdownMenu.Item>
 					{:else}
-						{#each environmentStore.available as env (env.id)}
+						{#each environmentStore.available.slice(0, 5) as env (env.id)}
 							{@const isActive = environmentStore.selected?.id === env.id}
 							{@const isDisabled = !env.enabled}
 							<DropdownMenu.Item
@@ -150,6 +150,15 @@
 								</div>
 							</DropdownMenu.Item>
 						{/each}
+						{#if environmentStore.available.length > 5}
+							<DropdownMenu.Separator />
+							<DropdownMenu.Item class="gap-2 p-2 text-muted-foreground" onSelect={() => goto('/environments')}>
+								<div class="flex size-6 items-center justify-center rounded-md border bg-transparent">
+									<PlusIcon class="size-4" />
+								</div>
+								<div class="font-medium">View all {environmentStore.available.length} environments</div>
+							</DropdownMenu.Item>
+						{/if}
 					{/if}
 					{#if isAdmin}
 						<DropdownMenu.Separator />

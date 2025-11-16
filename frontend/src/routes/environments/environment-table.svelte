@@ -303,6 +303,25 @@
 		</DropdownMenu.Trigger>
 		<DropdownMenu.Content align="end">
 			<DropdownMenu.Group>
+				<DropdownMenu.Item
+					onclick={async () => {
+						if (!item.enabled) {
+							toast.error(m.environments_cannot_switch_disabled());
+							return;
+						}
+						try {
+							await environmentStore.setEnvironment(item);
+							toast.success(m.environments_switched_to({ name: item.name }));
+						} catch (error) {
+							console.error('Failed to set environment:', error);
+						}
+					}}
+					disabled={!item.enabled || environmentStore.selected?.id === item.id}
+				>
+					<MonitorIcon class="size-4" />
+					{environmentStore.selected?.id === item.id ? m.environments_current_environment() : m.environments_use_environment()}
+				</DropdownMenu.Item>
+				<DropdownMenu.Separator />
 				<DropdownMenu.Item onclick={() => goto(`/environments/${item.id}`)}>
 					<EyeIcon class="size-4" />
 					{m.common_view_details()}

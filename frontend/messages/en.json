@@ -773,6 +773,10 @@
 	"environments_health_check_description": "Automatic monitoring of environment connectivity and status",
 	"environments_health_check_interval_label": "Health Check Interval",
 	"environments_health_check_interval_description": "How often to check environment connectivity (in minutes). Default: 2 minutes.",
+	"environments_use_environment": "Use Environment",
+	"environments_current_environment": "Current Environment",
+	"environments_switched_to": "Switched to {name}",
+	"environments_cannot_switch_disabled": "Cannot switch to a disabled environment",
 
 	"_comment_users": "=== USERS ===",
 	"users_title": "Users",
