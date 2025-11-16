@@ -22,27 +22,27 @@ const (
 )
 
 type VersionService struct {
-	httpClient      *http.Client
-	cache           *cache.Cache[string]
-	disabled        bool
-	version         string
-	revision        string
-	registryService *RegistryService
-	dockerService   *DockerClientService
+	httpClient               *http.Client
+	cache                    *cache.Cache[string]
+	disabled                 bool
+	version                  string
+	revision                 string
+	containerRegistryService *ContainerRegistryService
+	dockerService            *DockerClientService
 }
 
-func NewVersionService(httpClient *http.Client, disabled bool, version string, revision string, registryService *RegistryService, dockerService *DockerClientService) *VersionService {
+func NewVersionService(httpClient *http.Client, disabled bool, version string, revision string, containerRegistryService *ContainerRegistryService, dockerService *DockerClientService) *VersionService {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 	return &VersionService{
-		httpClient:      httpClient,
-		cache:           cache.New[string](versionTTL),
-		disabled:        disabled,
-		version:         version,
-		revision:        revision,
-		registryService: registryService,
-		dockerService:   dockerService,
+		httpClient:               httpClient,
+		cache:                    cache.New[string](versionTTL),
+		disabled:                 disabled,
+		version:                  version,
+		revision:                 revision,
+		containerRegistryService: containerRegistryService,
+		dockerService:            dockerService,
 	}
 }
 
@@ -241,7 +241,7 @@ func (s *VersionService) GetAppVersionInfo(ctx context.Context) *dto.VersionInfo
 	}
 
 	// For non-semver versions (like "next"), check digest-based updates
-	if currentTag != "" && s.registryService != nil {
+	if currentTag != "" && s.containerRegistryService != nil {
 		updateAvailable, latestDigest := s.checkDigestBasedUpdate(ctx, currentTag, currentDigest)
 		return &dto.VersionInfoDto{
 			CurrentVersion:  version,
@@ -366,7 +366,7 @@ func (s *VersionService) checkDigestBasedUpdate(ctx context.Context, currentTag,
 	imageRef := fmt.Sprintf("ghcr.io/getarcaneapp/arcane:%s", currentTag)
 
 	// Fetch latest digest from registry
-	digestInfo, err := s.registryService.GetImageDigest(ctx, imageRef)
+	latestDigest, err := s.containerRegistryService.GetImageDigest(ctx, imageRef)
 	if err != nil {
 		slog.WarnContext(ctx, "Failed to fetch latest digest for tag",
 			"tag", currentTag,
@@ -374,8 +374,6 @@ func (s *VersionService) checkDigestBasedUpdate(ctx context.Context, currentTag,
 		)
 		return false, ""
 	}
-
-	latestDigest = digestInfo.Digest
 
 	// Compare digests - if they differ, an update is available
 	updateAvailable = currentDigest != latestDigest && latestDigest != ""
