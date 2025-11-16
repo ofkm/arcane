@@ -44,14 +44,6 @@
 		}
 	}
 
-	function getEnvLabel(env: Environment): string {
-		if (env.id === '0') {
-			return 'Local Docker';
-		} else {
-			return env.name;
-		}
-	}
-
 	function getConnectionString(env: Environment): string {
 		if (env.id === '0') {
 			return $settingsStore.dockerHost || 'unix:///var/run/docker.sock';
@@ -118,7 +110,7 @@
 									{m.sidebar_environment_label()}
 								</div>
 								<div class="text-foreground text-sm font-medium">
-									{environmentStore.selected ? getEnvLabel(environmentStore.selected) : m.sidebar_no_environment()}
+									{environmentStore.selected ? environmentStore.selected.name : m.sidebar_no_environment()}
 								</div>
 								{#if environmentStore.selected}
 									<div class="text-muted-foreground/60 text-xs">
@@ -135,7 +127,7 @@
 								<Select.Content class="max-w-[280px] min-w-[160px]">
 									{#each environmentStore.available as env (env.id)}
 										<Select.Item value={env.id} disabled={!env.enabled} class="text-sm">
-											{getEnvLabel(env)}
+											{environmentStore.selected?.name}
 										</Select.Item>
 									{/each}
 								</Select.Content>
