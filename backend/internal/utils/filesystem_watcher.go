@@ -182,7 +182,7 @@ func (fw *FilesystemWatcher) addExistingDirectories(root string) error {
 		if info.IsDir() && path != root {
 			depth := fw.dirDepth(path)
 			if depth < 0 {
-				return nil
+				return filepath.SkipDir
 			}
 			if fw.maxDepth > 0 && depth > fw.maxDepth {
 				return filepath.SkipDir
