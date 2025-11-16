@@ -1,18 +1,11 @@
 package remenv
 
 import (
-	"context"
-	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ofkm/arcane-backend/internal/dto"
 )
-
-type CredentialInjector interface {
-	GetEnabledRegistryCredentials(ctx context.Context) ([]dto.ContainerRegistryCredential, error)
-}
 
 func CopyRequestHeaders(from http.Header, to http.Header, skip map[string]struct{}) {
 	for k, vs := range from {
@@ -83,33 +76,6 @@ func CopyResponseHeaders(from http.Header, to http.Header, hop map[string]struct
 			to.Add(k, v)
 		}
 	}
-}
-
-func NeedsCredentialInjection(target string) bool {
-	return strings.Contains(target, "/image-updates/check") ||
-		strings.Contains(target, "/images/pull") ||
-		strings.Contains(target, "/projects/") && strings.Contains(target, "/pull") ||
-		strings.Contains(target, "/containers") && !strings.Contains(target, "/containers/")
-}
-
-// InjectRegistryCredentials adds registry credentials as a header to the request
-func InjectRegistryCredentials(ctx context.Context, req *http.Request, injector CredentialInjector) error {
-	if injector == nil {
-		return nil
-	}
-
-	creds, err := injector.GetEnabledRegistryCredentials(ctx)
-	if err != nil || len(creds) == 0 {
-		return nil
-	}
-
-	credsJSON, err := json.Marshal(creds)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("X-Arcane-Registry-Credentials", string(credsJSON))
-	return nil
 }
 
 func GetSkipHeaders() map[string]struct{} {

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -97,14 +96,7 @@ func (h *ImageUpdateHandler) CheckMultipleImages(c *gin.Context) {
 		return
 	}
 
-	credentials := req.Credentials
-	if len(credentials) == 0 {
-		if headerCreds := c.GetHeader("X-Arcane-Registry-Credentials"); headerCreds != "" {
-			_ = json.Unmarshal([]byte(headerCreds), &credentials)
-		}
-	}
-
-	results, err := h.imageUpdateService.CheckMultipleImages(c.Request.Context(), req.ImageRefs, credentials)
+	results, err := h.imageUpdateService.CheckMultipleImages(c.Request.Context(), req.ImageRefs, req.Credentials)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -125,14 +117,7 @@ func (h *ImageUpdateHandler) CheckAllImages(c *gin.Context) {
 	var req dto.BatchImageUpdateRequest
 	_ = c.ShouldBindJSON(&req)
 
-	credentials := req.Credentials
-	if len(credentials) == 0 {
-		if headerCreds := c.GetHeader("X-Arcane-Registry-Credentials"); headerCreds != "" {
-			_ = json.Unmarshal([]byte(headerCreds), &credentials)
-		}
-	}
-
-	results, err := h.imageUpdateService.CheckAllImages(c.Request.Context(), 0, credentials)
+	results, err := h.imageUpdateService.CheckAllImages(c.Request.Context(), 0, req.Credentials)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

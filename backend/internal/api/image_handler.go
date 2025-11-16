@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -121,13 +120,6 @@ func (h *ImageHandler) Pull(c *gin.Context) {
 		return
 	}
 
-	credentials := req.Credentials
-	if len(credentials) == 0 {
-		if headerCreds := c.GetHeader("X-Arcane-Registry-Credentials"); headerCreds != "" {
-			_ = json.Unmarshal([]byte(headerCreds), &credentials)
-		}
-	}
-
 	c.Writer.Header().Set("Content-Type", "application/x-json-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
@@ -138,7 +130,7 @@ func (h *ImageHandler) Pull(c *gin.Context) {
 		return
 	}
 
-	if err := h.imageService.PullImage(ctx, req.ImageName, c.Writer, *currentUser, credentials); err != nil {
+	if err := h.imageService.PullImage(ctx, req.ImageName, c.Writer, *currentUser, req.Credentials); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"data":    dto.MessageDto{Message: fmt.Sprintf("Failed to pull image '%s': %s", req.ImageName, err.Error())},

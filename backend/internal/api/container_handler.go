@@ -467,11 +467,6 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 	}
 
 	credentials := req.Credentials
-	if len(credentials) == 0 {
-		if headerCreds := c.GetHeader("X-Arcane-Registry-Credentials"); headerCreds != "" {
-			_ = json.Unmarshal([]byte(headerCreds), &credentials)
-		}
-	}
 
 	config := &container.Config{
 		Image:        req.Image,
