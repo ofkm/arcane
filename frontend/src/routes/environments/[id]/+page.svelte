@@ -165,18 +165,6 @@
 		toast.info(m.environments_changes_reset());
 	}
 
-	const needsEnvironmentSwitch = $derived(() => {
-		return currentEnvironment?.id !== environment?.id;
-	});
-
-	async function handleEditSettings() {
-		if (needsEnvironmentSwitch()) {
-			showSwitchDialog = true;
-		} else {
-			goto('/settings');
-		}
-	}
-
 	async function confirmSwitchAndEdit() {
 		try {
 			await environmentStore.setEnvironment(environment);
@@ -189,7 +177,7 @@
 	}
 </script>
 
-<div class="container mx-auto max-w-full space-y-6 overflow-hidden p-2 pb-16 sm:p-6">
+<div class="container mx-auto max-w-full space-y-6 overflow-hidden p-2 sm:p-6">
 	<div class="space-y-3 sm:space-y-4">
 		<Button variant="ghost" onclick={() => goto('/environments')} class="w-fit gap-2">
 			<ArrowLeftIcon class="size-4" />
@@ -292,14 +280,16 @@
 						<div class="text-muted-foreground text-xs">{m.environments_enable_disable_description()}</div>
 					</div>
 					{#if environment.id === '0'}
-						<Tooltip.Root>
-							<Tooltip.Trigger>
-								<Switch id="env-enabled" disabled={true} bind:checked={formEnabled} />
-							</Tooltip.Trigger>
-							<Tooltip.Content>
-								<p>{m.environments_local_setting_disabled()}</p>
-							</Tooltip.Content>
-						</Tooltip.Root>
+						<Tooltip.Provider>
+							<Tooltip.Root>
+								<Tooltip.Trigger>
+									<Switch id="env-enabled" disabled={true} bind:checked={formEnabled} />
+								</Tooltip.Trigger>
+								<Tooltip.Content>
+									<p>{m.environments_local_setting_disabled()}</p>
+								</Tooltip.Content>
+							</Tooltip.Root>
+						</Tooltip.Provider>
 					{:else}
 						<Switch id="env-enabled" bind:checked={formEnabled} />
 					{/if}
@@ -391,22 +381,24 @@
 				<div>
 					<Label for="api-url" class="text-sm font-medium">{m.environments_api_url()}</Label>
 					{#if environment.id === '0'}
-						<Tooltip.Root>
-							<Tooltip.Trigger class="w-full">
-								<Input
-									id="api-url"
-									type="url"
-									bind:value={formApiUrl}
-									class="mt-1.5 font-mono"
-									placeholder={m.environments_api_url_placeholder()}
-									disabled={true}
-									required
-								/>
-							</Tooltip.Trigger>
-							<Tooltip.Content>
-								<p>{m.environments_local_setting_disabled()}</p>
-							</Tooltip.Content>
-						</Tooltip.Root>
+						<Tooltip.Provider>
+							<Tooltip.Root>
+								<Tooltip.Trigger class="w-full">
+									<Input
+										id="api-url"
+										type="url"
+										bind:value={formApiUrl}
+										class="mt-1.5 font-mono"
+										placeholder={m.environments_api_url_placeholder()}
+										disabled={true}
+										required
+									/>
+								</Tooltip.Trigger>
+								<Tooltip.Content>
+									<p>{m.environments_local_setting_disabled()}</p>
+								</Tooltip.Content>
+							</Tooltip.Root>
+						</Tooltip.Provider>
 					{:else}
 						<Input
 							id="api-url"
