@@ -12,11 +12,6 @@ import { environmentManagementService } from '$lib/services/env-mgmt-service';
 export const ssr = false;
 
 export const load = async () => {
-	if (!environmentStore.isInitialized()) {
-		await environmentStore.initialize([]);
-	}
-
-	const userPromise = userService.getCurrentUser().catch(() => null);
 	const settingsPromise = settingsService.getSettings().catch((e) => {
 		console.error('Error fetching settings:', e);
 		return settingsService.getPublicSettings().catch(() => null);
@@ -29,15 +24,18 @@ export const load = async () => {
 		}
 	};
 
-	const environmentsPromise = userPromise.then(async (user) => {
-		if (user) {
-			const environments = await tryCatch(environmentManagementService.getEnvironments(environmentRequestOptions));
-			if (!environments.error) {
-				await environmentStore.initialize(environments.data.data);
-			}
+	const user = await userService.getCurrentUser().catch(() => null);
+	
+	if (user) {
+		const environments = await tryCatch(environmentManagementService.getEnvironments(environmentRequestOptions));
+		if (!environments.error) {
+			await environmentStore.initialize(environments.data.data);
+		} else {
+			await environmentStore.initialize([]);
 		}
-		return null;
-	});
+	} else {
+		await environmentStore.initialize([]);
+	}
 
 	let versionInformation: AppVersionInformation = {
 		currentVersion: versionService.getCurrentVersion(),
@@ -59,7 +57,7 @@ export const load = async () => {
 		};
 	} catch {}
 
-	const [user, settings] = await Promise.all([userPromise, settingsPromise, environmentsPromise]);
+	const settings = await settingsPromise;
 
 	if (user) {
 		await userStore.setUser(user);
