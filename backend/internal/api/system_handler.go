@@ -684,8 +684,6 @@ func (h *SystemHandler) detectGPUs(ctx context.Context) error {
 	h.detectionMutex.Lock()
 	defer h.detectionMutex.Unlock()
 
-	slog.DebugContext(ctx, "Starting GPU detection")
-
 	// Check for NVIDIA
 	if path, err := exec.LookPath("nvidia-smi"); err == nil {
 		h.gpuDetectionCache.Lock()

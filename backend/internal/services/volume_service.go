@@ -70,6 +70,9 @@ func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*dto.
 			slog.String("error", err.Error()))
 	} else {
 		v.Containers = containerIDs
+		if len(containerIDs) > 0 {
+			v.InUse = true
+		}
 	}
 
 	return &v, nil
@@ -399,6 +402,9 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, params paginat
 		volDto := dto.NewVolumeDto(v)
 		if containerIDs, ok := volumeContainerMap[v.Name]; ok {
 			volDto.Containers = containerIDs
+			if len(containerIDs) > 0 {
+				volDto.InUse = true
+			}
 		}
 		items = append(items, volDto)
 	}
