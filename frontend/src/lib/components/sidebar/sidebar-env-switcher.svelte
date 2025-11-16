@@ -42,7 +42,7 @@
 	}
 
 	function getEnvLabel(env: Environment): string {
-		if (env.isLocal) {
+		if (env.id === '0') {
 			return 'Local Docker';
 		} else {
 			return env.name;
@@ -50,7 +50,7 @@
 	}
 
 	function getConnectionString(env: Environment): string {
-		if (env.isLocal) {
+		if (env.id === '0') {
 			return $settingsStore.dockerHost || 'unix:///var/run/docker.sock';
 		} else {
 			return env.apiUrl;
@@ -71,7 +71,7 @@
 					>
 						{#if environmentStore.selected}
 							<div class="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-								{#if environmentStore.selected.isLocal}
+								{#if environmentStore.selected.id === '0'}
 									<ServerIcon class="size-4" />
 								{:else}
 									<RouterIcon class="size-4" />
@@ -135,7 +135,7 @@
 								class={cn(
 									'gap-2 p-2',
 									isActive && 'bg-sidebar-accent text-sidebar-accent-foreground pointer-events-none font-medium',
-									isDisabled && 'opacity-50 cursor-not-allowed'
+									isDisabled && 'cursor-not-allowed opacity-50'
 								)}
 							>
 								<div
@@ -144,7 +144,7 @@
 										isActive ? 'bg-primary border-primary' : 'border-border'
 									)}
 								>
-									{#if env.isLocal}
+									{#if env.id === '0'}
 										<ServerIcon class={cn('size-3.5 shrink-0', isActive && 'text-primary-foreground')} />
 									{:else}
 										<RouterIcon class={cn('size-3.5 shrink-0', isActive && 'text-primary-foreground')} />
