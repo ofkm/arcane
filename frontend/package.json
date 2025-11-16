@@ -52,7 +52,7 @@
 		"@sveltejs/vite-plugin-svelte": "^6.2.1",
 		"@tailwindcss/vite": "^4.1.16",
 		"@types/bytes": "^3.1.5",
-		"@types/dockerode": "^3.3.45",
+		"@types/dockerode": "^3.3.46",
 		"@types/js-yaml": "^4.0.9",
 		"bits-ui": "^2.14.3",
 		"bytes": "^3.1.2",
