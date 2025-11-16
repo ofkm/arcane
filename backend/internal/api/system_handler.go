@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"os/exec"
 	"runtime"
@@ -230,7 +231,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		ServerVersion:     info.ServerVersion,
 		Architecture:      info.Architecture,
 		CPUs:              cpuCount,
-		MemTotal:          int64(memTotal),
+		MemTotal:          safeUint64ToInt64(memTotal),
 	}
 
 	c.JSON(http.StatusOK, dockerInfo)
@@ -286,6 +287,13 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 		"message": "Pruning completed",
 		"data":    result,
 	})
+}
+
+func safeUint64ToInt64(value uint64) int64 {
+	if value > uint64(math.MaxInt64) {
+		return math.MaxInt64
+	}
+	return int64(value)
 }
 
 func (h *SystemHandler) StartAllContainers(c *gin.Context) {
