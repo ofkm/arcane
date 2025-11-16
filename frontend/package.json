@@ -43,7 +43,7 @@
 		"thememirror": "^2.0.1"
 	},
 	"devDependencies": {
-		"@eslint/compat": "^1.4.0",
+		"@eslint/compat": "^2.0.0",
 		"@eslint/js": "^9.38.0",
 		"@inlang/paraglide-js": "2.5.0",
 		"@internationalized/date": "^3.10.0",
