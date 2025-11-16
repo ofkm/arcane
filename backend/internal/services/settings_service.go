@@ -101,6 +101,7 @@ func (s *SettingsService) getDefaultSettings() *models.Settings {
 		GlassEffectEnabled:         models.SettingVariable{Value: "false"},
 		AccentColor:                models.SettingVariable{Value: "oklch(0.606 0.25 292.717)"},
 		MaxImageUploadSize:         models.SettingVariable{Value: "500"},
+		EnvironmentHealthInterval:  models.SettingVariable{Value: "2"},
 
 		InstanceID: models.SettingVariable{Value: ""},
 	}
