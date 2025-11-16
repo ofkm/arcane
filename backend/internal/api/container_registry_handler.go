@@ -224,8 +224,7 @@ func (h *ContainerRegistryHandler) SyncRegistries(c *gin.Context) {
 		return
 	}
 
-	result, err := h.registryService.SyncRegistries(c.Request.Context(), req.Registries)
-	if err != nil {
+	if err := h.registryService.SyncRegistries(c.Request.Context(), req.Registries); err != nil {
 		apiErr := models.ToAPIError(err)
 		c.JSON(apiErr.HTTPStatus(), gin.H{
 			"success": false,
@@ -236,7 +235,7 @@ func (h *ContainerRegistryHandler) SyncRegistries(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    result,
+		"data":    gin.H{"message": "Registries synced successfully"},
 	})
 }
 
