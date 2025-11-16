@@ -394,7 +394,7 @@ func (s *NotificationService) sendEmailNotification(ctx context.Context, imageRe
 
 func (s *NotificationService) renderEmailTemplate(imageRef string, updateInfo *dto.ImageUpdateResponse) (string, string, error) {
 	data := map[string]interface{}{
-		"LogoURL":       "https://raw.githubusercontent.com/ofkm/arcane/main/backend/resources/images/logo-full.svg",
+		"LogoURL":       "https://raw.githubusercontent.com/getarcaneapp/arcane/main/backend/resources/images/logo-full.svg",
 		"AppURL":        s.config.AppUrl,
 		"ImageRef":      imageRef,
 		"HasUpdate":     updateInfo.HasUpdate,
@@ -990,7 +990,7 @@ func (s *NotificationService) sendBatchEmailNotification(ctx context.Context, up
 
 func (s *NotificationService) renderBatchEmailTemplate(updates map[string]*dto.ImageUpdateResponse) (string, string, error) {
 	data := map[string]interface{}{
-		"LogoURL":     "https://raw.githubusercontent.com/ofkm/arcane/main/backend/resources/images/logo-full.svg",
+		"LogoURL":     "https://raw.githubusercontent.com/getarcaneapp/arcane/main/backend/resources/images/logo-full.svg",
 		"AppURL":      s.config.AppUrl,
 		"UpdateCount": len(updates),
 		"CheckTime":   time.Now().Format(time.RFC1123),

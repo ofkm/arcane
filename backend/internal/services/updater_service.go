@@ -466,7 +466,7 @@ func (s *UpdaterService) stripDigest(ref string) string {
 	return ref
 }
 
-const arcaneUpdaterLabel = "com.ofkm.arcane.updater"
+const arcaneUpdaterLabel = "com.getarcaneapp.arcane.updater"
 
 // isUpdateDisabled returns true if the special label is present and evaluates to false.
 // Accepts false/0/no/off (case-insensitive) as "disabled". Default is enabled.

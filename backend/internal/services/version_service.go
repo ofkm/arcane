@@ -17,7 +17,7 @@ import (
 
 const (
 	versionTTL            = 3 * time.Hour
-	versionCheckURL       = "https://api.github.com/repos/ofkm/arcane/releases/latest"
+	versionCheckURL       = "https://api.github.com/repos/getarcaneapp/arcane/releases/latest"
 	defaultRequestTimeout = 5 * time.Second
 )
 
@@ -104,9 +104,9 @@ func (s *VersionService) IsNewer(latest, current string) bool {
 
 func (s *VersionService) ReleaseURL(version string) string {
 	if strings.TrimSpace(version) == "" {
-		return "https://github.com/ofkm/arcane/releases/latest"
+		return "https://github.com/getarcaneapp/arcane/releases/latest"
 	}
-	return "https://github.com/ofkm/arcane/releases/tag/v" + version
+	return "https://github.com/getarcaneapp/arcane/releases/tag/v" + version
 }
 
 type VersionInformation struct {
@@ -194,8 +194,8 @@ func (s *VersionService) GetAppVersionInfo(ctx context.Context) *dto.VersionInfo
 	displayVersion := s.getDisplayVersion()
 	isSemver := s.isSemverVersion()
 
-	// Detect current container image tag and digest
-	currentTag, currentDigest := s.detectCurrentImageInfo(ctx)
+	// Detect current container image tag, digest, and registry
+	currentTag, currentDigest, currentImageRef := s.detectCurrentImageInfo(ctx)
 
 	if s.disabled {
 		return &dto.VersionInfoDto{
@@ -242,7 +242,7 @@ func (s *VersionService) GetAppVersionInfo(ctx context.Context) *dto.VersionInfo
 
 	// For non-semver versions (like "next"), check digest-based updates
 	if currentTag != "" && s.containerRegistryService != nil {
-		updateAvailable, latestDigest := s.checkDigestBasedUpdate(ctx, currentTag, currentDigest)
+		updateAvailable, latestDigest := s.checkDigestBasedUpdate(ctx, currentTag, currentDigest, currentImageRef)
 		return &dto.VersionInfoDto{
 			CurrentVersion:  version,
 			CurrentTag:      currentTag,
@@ -267,31 +267,31 @@ func (s *VersionService) GetAppVersionInfo(ctx context.Context) *dto.VersionInfo
 }
 
 // detectCurrentImageInfo attempts to detect the current container's image tag and digest
-func (s *VersionService) detectCurrentImageInfo(ctx context.Context) (tag string, digest string) {
+func (s *VersionService) detectCurrentImageInfo(ctx context.Context) (tag string, digest string, imageRef string) {
 	if s.dockerService == nil {
-		return "", ""
+		return "", "", ""
 	}
 
 	// Try to get current container ID
 	containerId, err := s.getCurrentContainerID()
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 
 	// Connect to Docker and inspect the container
 	dockerClient, err := s.dockerService.CreateConnection(ctx)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 	defer dockerClient.Close()
 
 	container, err := dockerClient.ContainerInspect(ctx, containerId)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 
 	// Extract image reference from container config
-	imageRef := container.Config.Image
+	imageRef = container.Config.Image
 
 	// Parse tag from image reference
 	tag = s.extractTagFromImageRef(imageRef)
@@ -311,7 +311,7 @@ func (s *VersionService) detectCurrentImageInfo(ctx context.Context) (tag string
 		}
 	}
 
-	return tag, digest
+	return tag, digest, imageRef
 }
 
 // getCurrentContainerID detects if we're running in Docker and returns container ID
@@ -357,13 +357,16 @@ func (s *VersionService) extractTagFromImageRef(imageRef string) string {
 }
 
 // checkDigestBasedUpdate checks if there's a newer digest for the current tag
-func (s *VersionService) checkDigestBasedUpdate(ctx context.Context, currentTag, currentDigest string) (updateAvailable bool, latestDigest string) {
+func (s *VersionService) checkDigestBasedUpdate(ctx context.Context, currentTag, currentDigest, currentImageRef string) (updateAvailable bool, latestDigest string) {
 	if currentTag == "" || currentDigest == "" {
 		return false, ""
 	}
 
-	// Build full image reference
-	imageRef := fmt.Sprintf("ghcr.io/getarcaneapp/arcane:%s", currentTag)
+	// Build full image reference from current image or fallback to default
+	imageRef := currentImageRef
+	if imageRef == "" {
+		imageRef = fmt.Sprintf("ghcr.io/getarcaneapp/arcane:%s", currentTag)
+	}
 
 	// Fetch latest digest from registry
 	latestDigest, err := s.containerRegistryService.GetImageDigest(ctx, imageRef)

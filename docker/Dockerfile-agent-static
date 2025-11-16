@@ -15,9 +15,9 @@ ENV ENVIRONMENT=production \
 
 LABEL org.opencontainers.image.title="Arcane Agent"
 LABEL org.opencontainers.image.description="Arcane Agent"
-LABEL org.opencontainers.image.source="https://github.com/ofkm/arcane"
-LABEL com.ofkm.arcane.updater="false"
-LABEL com.ofkm.arcane.server="true"
+LABEL org.opencontainers.image.source="https://github.com/getarcaneapp/arcane"
+LABEL com.getarcaneapp.arcane.updater="false"
+LABEL com.getarcaneapp.arcane.server="true"
 
 EXPOSE 3553
 VOLUME ["/app/data"]

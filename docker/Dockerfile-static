@@ -14,9 +14,9 @@ ENV PORT=3552
 
 LABEL org.opencontainers.image.title="Arcane"
 LABEL org.opencontainers.image.description="Modern Docker Management, Made for Everyone"
-LABEL org.opencontainers.image.source="https://github.com/ofkm/arcane"
-LABEL com.ofkm.arcane.updater="false"
-LABEL com.ofkm.arcane.server="true"
+LABEL org.opencontainers.image.source="https://github.com/getarcaneapp/arcane"
+LABEL com.getarcaneapp.arcane.updater="false"
+LABEL com.getarcaneapp.arcane.server="true"
 
 EXPOSE 3552
 VOLUME ["/app/data"]

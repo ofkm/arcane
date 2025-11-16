@@ -53,7 +53,8 @@
 		}
 		if (updateType === 'digest' && versionInformation.newestDigest) {
 			// Show shortened digest for non-semver tags
-			return versionInformation.newestDigest.substring(0, 12);
+			const digest = versionInformation.newestDigest;
+			return digest.length > 12 ? digest.substring(0, 12) : digest;
 		}
 		return '';
 	});
