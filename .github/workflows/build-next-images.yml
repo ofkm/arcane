@@ -13,7 +13,7 @@ concurrency:
 jobs:
   build-images:
     name: Build Next Image (${{ matrix.display }})
-    runs-on: depot-ubuntu-latest
+    runs-on: depot-ubuntu-24.04-16
     timeout-minutes: 45
     permissions:
       contents: read
