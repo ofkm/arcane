@@ -224,8 +224,15 @@ func (h *ContainerRegistryHandler) SyncRegistries(c *gin.Context) {
 		return
 	}
 
+	fmt.Printf("[SYNC] Received sync request with %d registries\n", len(req.Registries))
+	for i, reg := range req.Registries {
+		fmt.Printf("[SYNC] Registry %d: ID=%s, URL=%s, Username=%s, Enabled=%v\n",
+			i+1, reg.ID, reg.URL, reg.Username, reg.Enabled)
+	}
+
 	result, err := h.registryService.SyncRegistries(c.Request.Context(), req.Registries)
 	if err != nil {
+		fmt.Printf("[SYNC] Sync failed: %v\n", err)
 		apiErr := models.ToAPIError(err)
 		c.JSON(apiErr.HTTPStatus(), gin.H{
 			"success": false,
@@ -234,6 +241,7 @@ func (h *ContainerRegistryHandler) SyncRegistries(c *gin.Context) {
 		return
 	}
 
+	fmt.Printf("[SYNC] Sync completed successfully: %+v\n", result)
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    result,

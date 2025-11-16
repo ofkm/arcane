@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -14,11 +15,44 @@ import (
 )
 
 type ContainerRegistryService struct {
-	db *database.DB
+	db         *database.DB
+	envService *EnvironmentService
 }
 
 func NewContainerRegistryService(db *database.DB) *ContainerRegistryService {
 	return &ContainerRegistryService{db: db}
+}
+
+// SetEnvironmentService sets the environment service for triggering syncs
+func (s *ContainerRegistryService) SetEnvironmentService(envService *EnvironmentService) {
+	s.envService = envService
+}
+
+// syncToAllEnvironments triggers a sync to all remote environments
+func (s *ContainerRegistryService) syncToAllEnvironments(ctx context.Context) {
+	if s.envService == nil {
+		return
+	}
+
+	// Get all environments
+	var environments []models.Environment
+	if err := s.db.WithContext(ctx).Where("id != ?", "0").Where("enabled = ?", true).Find(&environments).Error; err != nil {
+		slog.WarnContext(ctx, "Failed to get environments for registry sync", slog.String("error", err.Error()))
+		return
+	}
+
+	// Sync to each environment in background
+	for _, env := range environments {
+		envID := env.ID
+		go func() {
+			bgCtx := context.Background()
+			if err := s.envService.SyncRegistriesToEnvironment(bgCtx, envID); err != nil {
+				slog.WarnContext(bgCtx, "Failed to sync registries after registry change",
+					slog.String("environmentID", envID),
+					slog.String("error", err.Error()))
+			}
+		}()
+	}
 }
 
 func (s *ContainerRegistryService) GetAllRegistries(ctx context.Context) ([]models.ContainerRegistry, error) {
@@ -102,6 +136,8 @@ func (s *ContainerRegistryService) CreateRegistry(ctx context.Context, req model
 		return nil, fmt.Errorf("failed to create registry: %w", err)
 	}
 
+	s.syncToAllEnvironments(ctx)
+
 	return registry, nil
 }
 
@@ -142,6 +178,8 @@ func (s *ContainerRegistryService) UpdateRegistry(ctx context.Context, id string
 		return nil, fmt.Errorf("failed to update registry: %w", err)
 	}
 
+	s.syncToAllEnvironments(ctx)
+
 	return registry, nil
 }
 
@@ -149,6 +187,9 @@ func (s *ContainerRegistryService) DeleteRegistry(ctx context.Context, id string
 	if err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&models.ContainerRegistry{}).Error; err != nil {
 		return fmt.Errorf("failed to delete container registry: %w", err)
 	}
+
+	s.syncToAllEnvironments(ctx)
+
 	return nil
 }
 

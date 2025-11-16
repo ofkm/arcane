@@ -451,11 +451,19 @@ func (s *EnvironmentService) SyncRegistriesToEnvironment(ctx context.Context, en
 		return fmt.Errorf("cannot sync registries to local environment")
 	}
 
+	slog.InfoContext(ctx, "Starting registry sync to environment",
+		slog.String("environmentID", environmentID),
+		slog.String("environmentName", environment.Name),
+		slog.String("apiUrl", environment.ApiUrl))
+
 	// Get all registries from this manager
 	var registries []models.ContainerRegistry
 	if err := s.db.WithContext(ctx).Find(&registries).Error; err != nil {
 		return fmt.Errorf("failed to get registries: %w", err)
 	}
+
+	slog.InfoContext(ctx, "Found registries to sync",
+		slog.Int("count", len(registries)))
 
 	// Prepare sync items with decrypted tokens
 	syncItems := make([]models.SyncRegistryItem, 0, len(registries))
@@ -504,7 +512,15 @@ func (s *EnvironmentService) SyncRegistriesToEnvironment(ctx context.Context, en
 	req.Header.Set("Content-Type", "application/json")
 	if environment.AccessToken != nil && *environment.AccessToken != "" {
 		req.Header.Set("X-Arcane-Agent-Token", *environment.AccessToken)
+		slog.DebugContext(ctx, "Set agent token header for sync request")
+	} else {
+		slog.WarnContext(ctx, "No access token available for environment sync",
+			slog.String("environmentID", environmentID))
 	}
+
+	slog.InfoContext(ctx, "Sending sync request to agent",
+		slog.String("url", targetURL),
+		slog.Int("registryCount", len(syncItems)))
 
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -514,6 +530,9 @@ func (s *EnvironmentService) SyncRegistriesToEnvironment(ctx context.Context, en
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
+		slog.ErrorContext(ctx, "Sync request failed",
+			slog.Int("statusCode", resp.StatusCode),
+			slog.String("response", string(body)))
 		return fmt.Errorf("sync request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
