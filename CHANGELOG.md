@@ -1,3 +1,47 @@
+## v1.9.0
+
+### New features
+
+* apprise notifications support ([#899](https://github.com/getarcaneapp/arcane/pull/899) by @kmendell)
+* add gpu monitoring ([#799](https://github.com/getarcaneapp/arcane/pull/799) by @mrtimothyduong)
+* support uploading local docker images ([#902](https://github.com/getarcaneapp/arcane/pull/902) by @kmendell)
+* edit environments and show/edit local environment ([#915](https://github.com/getarcaneapp/arcane/pull/915) by @cabaucom376)
+* add refresh button to project action buttons([4e5dcf4](https://github.com/getarcaneapp/arcane/commit/4e5dcf43f2b8cdbb3cdb7197d45b3d654730a441) by @kmendell)
+
+### Bug fixes
+
+* check for image locally before pulling when deploying project([7269ece](https://github.com/getarcaneapp/arcane/commit/7269ece30728cacf4fa61d29461121ab687de62a) by @kmendell)
+* show popover when project name is missing for better user UX([f77044e](https://github.com/getarcaneapp/arcane/commit/f77044e60a71655f28330667150e7fcf8695ebab) by @kmendell)
+* seperate prefefined networks from the rest in usage count([313bbbd](https://github.com/getarcaneapp/arcane/commit/313bbbd46a1d7501246769da921e6693ad8bfc8a) by @kmendell)
+* environment switcher not showing added or removed items without refresh([34c1ddc](https://github.com/getarcaneapp/arcane/commit/34c1ddc87dc3af693b54804e9f7c2b997add5710) by @kmendell)
+* environment data initialization on refreshes ([#925](https://github.com/getarcaneapp/arcane/pull/925) by @cabaucom376)
+* missing tooltip provider ([#927](https://github.com/getarcaneapp/arcane/pull/927) by @cabaucom376)
+* show correct stats based on cgroup restrictions ([#923](https://github.com/getarcaneapp/arcane/pull/923) by @kmendell)
+* properly assign inUse status to volume return data([71623e3](https://github.com/getarcaneapp/arcane/commit/71623e33eadf0111beadb241a2cac8f36ab28739) by @kmendell)
+* max depth control for project watcher ([#928](https://github.com/getarcaneapp/arcane/pull/928) by @kmendell)
+
+### Dependencies
+
+* bump the backend-dependencies group in /backend with 2 updates ([#882](https://github.com/getarcaneapp/arcane/pull/882) by @dependabot[bot])
+* bump the prod-dependencies group with 3 updates ([#881](https://github.com/getarcaneapp/arcane/pull/881) by @dependabot[bot])
+* bump pnpm to 10.21.0([fb63171](https://github.com/getarcaneapp/arcane/commit/fb6317125b687f3f368e3201052ac1206394a9dc) by @kmendell)
+* bump cookie to 0.7.0([4a90b2b](https://github.com/getarcaneapp/arcane/commit/4a90b2b57e4d70101ce82f3c10324cde00aef2fe) by @kmendell)
+* bump the prod-dependencies group with 4 updates ([#900](https://github.com/getarcaneapp/arcane/pull/900) by @dependabot[bot])
+* bump the prod-dependencies group with 2 updates ([#920](https://github.com/getarcaneapp/arcane/pull/920) by @dependabot[bot])
+* bump actions/download-artifact from 5 to 6 ([#929](https://github.com/getarcaneapp/arcane/pull/929) by @dependabot[bot])
+
+### Other
+
+* refactor next image workflow([f5c3fca](https://github.com/getarcaneapp/arcane/commit/f5c3fcaf2116d51f62349f28f72f68429a63ded0) by @kmendell)
+* use upload-artifact v5([ef12e17](https://github.com/getarcaneapp/arcane/commit/ef12e17ff13fdd9b2d92a471cec1ac44667105e7) by @kmendell)
+* use go cache path([48e4cc6](https://github.com/getarcaneapp/arcane/commit/48e4cc630149dfce5908db598051302e11b521fb) by @kmendell)
+* workflow refactors and tweaks([d8f8d53](https://github.com/getarcaneapp/arcane/commit/d8f8d53816d5c83c2572da40fb01555debf927ae) by @kmendell)
+* use github oidc for depot in release workflow([c2764db](https://github.com/getarcaneapp/arcane/commit/c2764db7564a40fc32fb6712bc138f1d14966b12) by @kmendell)
+
+
+
+**Full Changelog**: https://github.com/getarcaneapp/arcane/compare/v1.8.1...v1.9.0
+
 ## v1.8.1
 
 ### Bug fixes
