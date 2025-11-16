@@ -537,21 +537,27 @@ func (s *EnvironmentService) SyncRegistriesToEnvironment(ctx context.Context, en
 	}
 
 	var result struct {
-		Success bool                   `json:"success"`
-		Data    map[string]interface{} `json:"data"`
+		Success bool `json:"success"`
+		Data    struct {
+			Message string         `json:"message"`
+			Stats   map[string]int `json:"stats"`
+		} `json:"data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return fmt.Errorf("failed to decode sync response: %w", err)
 	}
 
 	if !result.Success {
-		return fmt.Errorf("sync failed: %v", result.Data)
+		return fmt.Errorf("sync failed: %s", result.Data.Message)
 	}
 
 	slog.InfoContext(ctx, "Successfully synced registries to environment",
 		slog.String("environmentID", environmentID),
 		slog.String("environmentName", environment.Name),
-		slog.Any("stats", result.Data["stats"]))
+		slog.Int("created", result.Data.Stats["created"]),
+		slog.Int("updated", result.Data.Stats["updated"]),
+		slog.Int("deleted", result.Data.Stats["deleted"]),
+		slog.Int("skipped", result.Data.Stats["skipped"]))
 
 	return nil
 }
