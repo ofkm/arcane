@@ -98,7 +98,7 @@ func (s *SystemUpgradeService) TriggerUpgradeViaCLI(ctx context.Context, user mo
 
 	// Use the official Arcane image for the upgrader container
 	// This ensures we always use the packaged CLI from the official image
-	upgraderImage := "ghcr.io/ofkm/arcane:latest"
+	upgraderImage := "ghcr.io/getarcaneapp/arcane:latest"
 
 	slog.Info("Spawning upgrade CLI command",
 		"containerName", containerName,
@@ -243,7 +243,7 @@ func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containe
 
 	// Fallback: search for containers with arcane image
 	filter := filters.NewArgs()
-	filter.Add("ancestor", "ofkm/arcane")
+	filter.Add("ancestor", "ghcr.io/getarcaneapp/arcane")
 
 	containers, err := dockerClient.ContainerList(ctx, containertypes.ListOptions{
 		All:     true,
