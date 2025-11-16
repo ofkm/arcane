@@ -6,7 +6,10 @@ export const load: PageLoad = async ({ params }) => {
 	try {
 		const environment = await environmentManagementService.get(params.id);
 
-		const settings = await settingsService.getSettingsForEnvironment(params.id);
+		let settings = null;
+		try {
+			settings = await settingsService.getSettingsForEnvironment(params.id);
+		} catch {}
 
 		return {
 			environment,

@@ -193,11 +193,17 @@
 		statsWSClient.connect();
 	}
 
+	let lastEnvId: string | null = null;
 	$effect(() => {
 		const env = environmentStore.selected;
 		if (!env) return;
-		if (statsWSClient) {
-			statsWSClient.close();
+		if (lastEnvId === null) {
+			lastEnvId = env.id;
+			return;
+		}
+		if (env.id !== lastEnvId) {
+			lastEnvId = env.id;
+			statsWSClient?.close();
 			statsWSClient = null;
 			resetStats();
 			setupStatsWS();
