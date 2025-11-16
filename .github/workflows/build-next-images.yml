@@ -106,7 +106,7 @@ jobs:
           sbom-dir: sbom-output/${{ matrix.target }}
 
       - name: Upload SBOM artifact (${{ matrix.display }})
-        uses: actions/upload-artifact@v3.1.0
+        uses: actions/upload-artifact@v5
         with:
           path: sbom-output/${{ matrix.target }}
           name: SBOM-${{ matrix.target }}
