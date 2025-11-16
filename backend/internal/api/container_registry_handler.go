@@ -201,14 +201,14 @@ func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 	testResult, err := h.performRegistryTest(c.Request.Context(), registry, decryptedToken)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
-			"success": true,
+			"success": false,
 			"data":    gin.H{"message": err.Error()},
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"success": false,
+		"success": true,
 		"data":    testResult,
 	})
 }
