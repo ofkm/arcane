@@ -261,7 +261,7 @@ func (s *ContainerRegistryService) fetchDigestFromRegistry(ctx context.Context, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized {
-		return s.fetchWithTokenAuth(ctx, repository, tag, resp.Header.Get("Www-Authenticate"), creds)
+		return s.fetchWithTokenAuth(ctx, repository, tag, resp.Header.Get("WWW-Authenticate"), creds)
 	}
 
 	if resp.StatusCode != http.StatusOK {
