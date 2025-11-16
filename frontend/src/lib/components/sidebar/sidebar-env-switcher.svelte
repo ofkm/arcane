@@ -41,14 +41,6 @@
 		}
 	}
 
-	function getEnvLabel(env: Environment): string {
-		if (env.id === '0') {
-			return 'Local Docker';
-		} else {
-			return env.name;
-		}
-	}
-
 	function getConnectionString(env: Environment): string {
 		if (env.id === '0') {
 			return $settingsStore.dockerHost || 'unix:///var/run/docker.sock';
@@ -66,7 +58,7 @@
 					<Sidebar.MenuButton
 						{...childProps}
 						size="lg"
-						tooltipContent={environmentStore.selected ? getEnvLabel(environmentStore.selected) : m.sidebar_no_environment()}
+						tooltipContent={environmentStore.selected ? environmentStore.selected.name : m.sidebar_no_environment()}
 						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 					>
 						{#if environmentStore.selected}
@@ -79,7 +71,7 @@
 							</div>
 							<div class="grid flex-1 text-left text-sm leading-tight">
 								<span class="truncate font-medium">
-									{getEnvLabel(environmentStore.selected)}
+									{environmentStore.selected.name}
 								</span>
 								<span class="truncate text-xs">
 									{getConnectionString(environmentStore.selected)}
@@ -151,7 +143,7 @@
 									{/if}
 								</div>
 								<div class="flex flex-col">
-									<span>{getEnvLabel(env)}</span>
+									<span>{environmentStore.selected}</span>
 									<span class={cn('text-xs', isActive ? 'text-sidebar-accent-foreground/70' : 'text-muted-foreground')}>
 										{getConnectionString(env)}
 									</span>
