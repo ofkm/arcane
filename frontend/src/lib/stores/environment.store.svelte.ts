@@ -18,8 +18,13 @@ function createEnvironmentManagementStore() {
 	});
 
 	function _updateAvailable(environments: Environment[]): Environment[] {
-		_availableEnvironments = environments;
-		return environments;
+		const sorted = [...environments].sort((a, b) => {
+			if (a.id === LOCAL_DOCKER_ENVIRONMENT_ID) return -1;
+			if (b.id === LOCAL_DOCKER_ENVIRONMENT_ID) return 1;
+			return 0;
+		});
+		_availableEnvironments = sorted;
+		return sorted;
 	}
 
 	function _selectInitialEnvironment(available: Environment[]): Environment | null {
