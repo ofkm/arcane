@@ -152,7 +152,7 @@
 						{/each}
 						{#if environmentStore.available.length > 5}
 							<DropdownMenu.Separator />
-							<DropdownMenu.Item class="gap-2 p-2 text-muted-foreground" onSelect={() => goto('/environments')}>
+							<DropdownMenu.Item class="text-muted-foreground gap-2 p-2" onSelect={() => goto('/environments')}>
 								<div class="flex size-6 items-center justify-center rounded-md border bg-transparent">
 									<PlusIcon class="size-4" />
 								</div>

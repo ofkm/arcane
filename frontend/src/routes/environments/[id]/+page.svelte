@@ -378,19 +378,36 @@
 			</Card.Root>
 		{/if}
 
-		{#if environment.id !== '0'}
-			<Card.Root class="flex flex-col">
-				<Card.Header icon={GlobeIcon}>
-					<div class="flex flex-col space-y-1.5">
-						<Card.Title>
-							<h2>{m.environments_connection_title()}</h2>
-						</Card.Title>
-						<Card.Description>{m.environments_connection_description()}</Card.Description>
-					</div>
-				</Card.Header>
-				<Card.Content class="space-y-4 p-4">
-					<div>
-						<Label for="api-url" class="text-sm font-medium">{m.environments_api_url()}</Label>
+		<Card.Root class="flex flex-col">
+			<Card.Header icon={GlobeIcon}>
+				<div class="flex flex-col space-y-1.5">
+					<Card.Title>
+						<h2>{m.environments_connection_title()}</h2>
+					</Card.Title>
+					<Card.Description>{m.environments_connection_description()}</Card.Description>
+				</div>
+			</Card.Header>
+			<Card.Content class="space-y-4 p-4">
+				<div>
+					<Label for="api-url" class="text-sm font-medium">{m.environments_api_url()}</Label>
+					{#if environment.id === '0'}
+						<Tooltip.Root>
+							<Tooltip.Trigger class="w-full">
+								<Input
+									id="api-url"
+									type="url"
+									bind:value={formApiUrl}
+									class="mt-1.5 font-mono"
+									placeholder={m.environments_api_url_placeholder()}
+									disabled={true}
+									required
+								/>
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								<p>{m.environments_local_setting_disabled()}</p>
+							</Tooltip.Content>
+						</Tooltip.Root>
+					{:else}
 						<Input
 							id="api-url"
 							type="url"
@@ -399,21 +416,23 @@
 							placeholder={m.environments_api_url_placeholder()}
 							required
 						/>
-						<p class="text-muted-foreground mt-1.5 text-xs">{m.environments_api_url_help()}</p>
-					</div>
+					{/if}
+					<p class="text-muted-foreground mt-1.5 text-xs">{m.environments_api_url_help()}</p>
+				</div>
 
-					<Button onclick={testConnection} disabled={isTestingConnection} class="w-full">
-						{#if isTestingConnection}
-							<RefreshCwIcon class="mr-2 size-4 animate-spin" />
-							{m.environments_testing_connection()}
-						{:else}
-							<TerminalIcon class="mr-2 size-4" />
-							{m.environments_test_connection()}
-						{/if}
-					</Button>
-				</Card.Content>
-			</Card.Root>
+				<Button onclick={testConnection} disabled={isTestingConnection} class="w-full">
+					{#if isTestingConnection}
+						<RefreshCwIcon class="mr-2 size-4 animate-spin" />
+						{m.environments_testing_connection()}
+					{:else}
+						<TerminalIcon class="mr-2 size-4" />
+						{m.environments_test_connection()}
+					{/if}
+				</Button>
+			</Card.Content>
+		</Card.Root>
 
+		{#if environment.id !== '0'}
 			<Card.Root class="flex flex-col">
 				<Card.Header icon={SettingsIcon}>
 					<div class="flex flex-col space-y-1.5">
