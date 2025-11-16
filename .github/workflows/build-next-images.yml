@@ -62,6 +62,7 @@ jobs:
         with:
           go-version-file: "backend/go.mod"
           cache: true
+          cache-dependency-path: backend/go.sum
 
       - name: Set up Depot CLI
         uses: depot/setup-action@v1
