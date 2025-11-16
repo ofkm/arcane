@@ -185,13 +185,19 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	}
 
 	cpuCount := info.NCPU
-	memTotal := info.MemTotal
+	var memTotal uint64
+	if info.MemTotal > 0 {
+		memTotal = uint64(info.MemTotal)
+	}
 
 	// Check for cgroup limits (LXC, Docker, etc.)
 	if cgroupLimits, err := utils.DetectCgroupLimits(); err == nil {
 		// Use cgroup memory limit if available and smaller than host value
-		if cgroupLimits.MemoryLimit > 0 && (memTotal == 0 || cgroupLimits.MemoryLimit < memTotal) {
-			memTotal = cgroupLimits.MemoryLimit
+		if limit := cgroupLimits.MemoryLimit; limit > 0 {
+			limitUint := uint64(limit)
+			if memTotal == 0 || limitUint < memTotal {
+				memTotal = limitUint
+			}
 		}
 
 		// Use cgroup CPU count if available
@@ -224,7 +230,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		ServerVersion:     info.ServerVersion,
 		Architecture:      info.Architecture,
 		CPUs:              cpuCount,
-		MemTotal:          memTotal,
+		MemTotal:          int64(memTotal),
 	}
 
 	c.JSON(http.StatusOK, dockerInfo)
