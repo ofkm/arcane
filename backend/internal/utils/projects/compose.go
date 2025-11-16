@@ -26,7 +26,9 @@ func NewClient(ctx context.Context) (*Client, error) {
 		return nil, err
 	}
 
-	svc, err := composev2.NewComposeService(cli)
+	svc, err := composev2.NewComposeService(cli,
+		composev2.WithPrompt(composev2.AlwaysOkPrompt()),
+	)
 	if err != nil {
 		return nil, err
 	}
