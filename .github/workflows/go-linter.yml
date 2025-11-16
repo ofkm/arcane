@@ -27,8 +27,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
-          cache-dependency-path: |
-            backend/go.sum
+          cache-dependency-path: backend/go.sum
 
       - name: Run Golangci-lint
         uses: golangci/golangci-lint-action@v9

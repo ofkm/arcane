@@ -105,6 +105,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           sbom: true
           sbom-dir: sbom-output/${{ matrix.target }}
+          provenance: true
 
       - name: Upload SBOM artifact (${{ matrix.display }})
         uses: actions/upload-artifact@v5
