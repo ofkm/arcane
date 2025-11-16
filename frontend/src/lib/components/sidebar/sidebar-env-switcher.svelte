@@ -32,6 +32,7 @@
 	});
 
 	async function handleSelect(env: Environment) {
+		if (!env || !env.enabled) return;
 		try {
 			await environmentStore.setEnvironment(env);
 		} catch (error) {
@@ -40,16 +41,8 @@
 		}
 	}
 
-	function getEnvLabel(env: Environment): string {
-		if (env.isLocal) {
-			return 'Local Docker';
-		} else {
-			return env.name;
-		}
-	}
-
 	function getConnectionString(env: Environment): string {
-		if (env.isLocal) {
+		if (env.id === '0') {
 			return $settingsStore.dockerHost || 'unix:///var/run/docker.sock';
 		} else {
 			return env.apiUrl;
@@ -65,12 +58,12 @@
 					<Sidebar.MenuButton
 						{...childProps}
 						size="lg"
-						tooltipContent={environmentStore.selected ? getEnvLabel(environmentStore.selected) : m.sidebar_no_environment()}
+						tooltipContent={environmentStore.selected ? environmentStore.selected.name : m.sidebar_no_environment()}
 						class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 					>
 						{#if environmentStore.selected}
 							<div class="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-								{#if environmentStore.selected.isLocal}
+								{#if environmentStore.selected.id === '0'}
 									<ServerIcon class="size-4" />
 								{:else}
 									<RouterIcon class="size-4" />
@@ -78,7 +71,7 @@
 							</div>
 							<div class="grid flex-1 text-left text-sm leading-tight">
 								<span class="truncate font-medium">
-									{getEnvLabel(environmentStore.selected)}
+									{environmentStore.selected.name}
 								</span>
 								<span class="truncate text-xs">
 									{getConnectionString(environmentStore.selected)}
@@ -125,13 +118,16 @@
 							<span>{m.sidebar_no_environments()}</span>
 						</DropdownMenu.Item>
 					{:else}
-						{#each environmentStore.available as env (env.id)}
+						{#each environmentStore.available.slice(0, 5) as env (env.id)}
 							{@const isActive = environmentStore.selected?.id === env.id}
+							{@const isDisabled = !env.enabled}
 							<DropdownMenu.Item
-								onSelect={() => !isActive && handleSelect(env)}
+								onSelect={() => !isActive && !isDisabled && handleSelect(env)}
+								disabled={isDisabled}
 								class={cn(
 									'gap-2 p-2',
-									isActive && 'bg-sidebar-accent text-sidebar-accent-foreground pointer-events-none font-medium'
+									isActive && 'bg-sidebar-accent text-sidebar-accent-foreground pointer-events-none font-medium',
+									isDisabled && 'cursor-not-allowed opacity-50'
 								)}
 							>
 								<div
@@ -140,20 +136,29 @@
 										isActive ? 'bg-primary border-primary' : 'border-border'
 									)}
 								>
-									{#if env.isLocal}
+									{#if env.id === '0'}
 										<ServerIcon class={cn('size-3.5 shrink-0', isActive && 'text-primary-foreground')} />
 									{:else}
 										<RouterIcon class={cn('size-3.5 shrink-0', isActive && 'text-primary-foreground')} />
 									{/if}
 								</div>
 								<div class="flex flex-col">
-									<span>{getEnvLabel(env)}</span>
+									<span>{env.name}</span>
 									<span class={cn('text-xs', isActive ? 'text-sidebar-accent-foreground/70' : 'text-muted-foreground')}>
 										{getConnectionString(env)}
 									</span>
 								</div>
 							</DropdownMenu.Item>
 						{/each}
+						{#if environmentStore.available.length > 5}
+							<DropdownMenu.Separator />
+							<DropdownMenu.Item class="text-muted-foreground gap-2 p-2" onSelect={() => goto('/environments')}>
+								<div class="flex size-6 items-center justify-center rounded-md border bg-transparent">
+									<PlusIcon class="size-4" />
+								</div>
+								<div class="font-medium">View all {environmentStore.available.length} environments</div>
+							</DropdownMenu.Item>
+						{/if}
 					{/if}
 					{#if isAdmin}
 						<DropdownMenu.Separator />

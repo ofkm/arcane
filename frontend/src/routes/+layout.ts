@@ -13,7 +13,7 @@ export const ssr = false;
 
 export const load = async () => {
 	if (!environmentStore.isInitialized()) {
-		await environmentStore.initialize([], true);
+		await environmentStore.initialize([]);
 	}
 
 	const userPromise = userService.getCurrentUser().catch(() => null);
@@ -33,7 +33,7 @@ export const load = async () => {
 		if (user) {
 			const environments = await tryCatch(environmentManagementService.getEnvironments(environmentRequestOptions));
 			if (!environments.error) {
-				await environmentStore.initialize(environments.data.data, true);
+				await environmentStore.initialize(environments.data.data);
 			}
 		}
 		return null;
