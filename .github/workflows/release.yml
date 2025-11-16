@@ -154,12 +154,12 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Download manager SBOM and digest
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: SBOM-manager
           path: sbom-artifacts/manager
       - name: Download agent SBOM and digest
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: SBOM-agent
           path: sbom-artifacts/agent
