@@ -70,12 +70,11 @@ function createEnvironmentManagementStore() {
 				_initialized = true;
 				if (hasRealEnvironments) {
 					_initializedWithData = true;
-					_resolveReadyPromiseFunction();
 				}
+				_resolveReadyPromiseFunction();
 			} else if (hasRealEnvironments && !_initializedWithData) {
 				_selectInitialEnvironment(available);
 				_initializedWithData = true;
-				_resolveReadyPromiseFunction();
 			} else {
 				// Update the selected environment's data if it exists
 				if (_selectedEnvironment) {
