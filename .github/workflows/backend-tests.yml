@@ -10,9 +10,13 @@ on:
     paths:
       - "backend/**"
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: depot-ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: backend
@@ -21,11 +25,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
+
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
           cache: true
+          cache-dependency-path: backend/go.sum
 
       - name: Install GCC
         run: |
