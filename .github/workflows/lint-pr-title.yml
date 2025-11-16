@@ -12,7 +12,7 @@ permissions:
 jobs:
   main:
     name: Validate PR title
-    runs-on: ubuntu-slim
+    runs-on: depot-ubuntu-latest
     permissions:
       pull-requests: read
     steps:
