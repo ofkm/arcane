@@ -85,29 +85,23 @@ func (s *SystemUpgradeService) TriggerUpgradeViaCLI(ctx context.Context, user mo
 
 	containerName := strings.TrimPrefix(currentContainer.Name, "/")
 
-	// Detect the current image tag to preserve it during upgrade
-	currentImageTag := s.detectCurrentImageTag(ctx, currentContainer)
-
 	// Log upgrade event
 	metadata := models.JSON{
 		"action":        "system_upgrade_cli",
 		"containerId":   containerId,
 		"containerName": containerName,
-		"currentTag":    currentImageTag,
 		"method":        "cli",
 	}
 	if err := s.eventService.LogUserEvent(ctx, models.EventTypeSystemUpgrade, user.ID, user.Username, metadata); err != nil {
 		slog.Warn("Failed to log upgrade event", "error", err)
 	}
 
-	// Use the same tag as currently running for the upgrader container
-	// This ensures users on different tracks (latest, next, etc.) stay on their track
-	upgraderImage := currentImageTag
+	// Use latest tag for the upgrader CLI container
+	upgraderImage := "ghcr.io/getarcaneapp/arcane:latest"
 
 	slog.Info("Spawning upgrade CLI command",
 		"containerName", containerName,
 		"upgraderImage", upgraderImage,
-		"detectedTag", currentImageTag,
 	)
 
 	// Spawn the upgrade command in a detached container
