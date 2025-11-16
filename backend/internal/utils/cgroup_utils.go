@@ -79,10 +79,8 @@ func hasExplicitCgroupLimit() bool {
 		return true
 	}
 
-	quotaPath := filepath.Join("/sys/fs/cgroup/cpu,cpuacct", cgroupPath, "cpu.cfs_quota_us")
-	periodPath := filepath.Join("/sys/fs/cgroup/cpu,cpuacct", cgroupPath, "cpu.cfs_period_us")
-	if quota, err := readCgroupV1Int64(quotaPath); err == nil && quota > 0 {
-		if period, err := readCgroupV1Int64(periodPath); err == nil && period > 0 {
+	if quota, err := readCgroupV1CPUControllerInt64(cgroupPath, "cpu.cfs_quota_us"); err == nil && quota > 0 {
+		if period, err := readCgroupV1CPUControllerInt64(cgroupPath, "cpu.cfs_period_us"); err == nil && period > 0 {
 			return true
 		}
 	}
@@ -143,13 +141,11 @@ func detectCgroupV1Limits(limits *CgroupLimits) (*CgroupLimits, error) {
 		limits.MemoryUsage = memUsage
 	}
 
-	cpuQuotaPath := filepath.Join("/sys/fs/cgroup/cpu,cpuacct", cgroupPath, "cpu.cfs_quota_us")
-	if cpuQuota, err := readCgroupV1Int64(cpuQuotaPath); err == nil {
+	if cpuQuota, err := readCgroupV1CPUControllerInt64(cgroupPath, "cpu.cfs_quota_us"); err == nil {
 		limits.CPUQuota = cpuQuota
 	}
 
-	cpuPeriodPath := filepath.Join("/sys/fs/cgroup/cpu,cpuacct", cgroupPath, "cpu.cfs_period_us")
-	if cpuPeriod, err := readCgroupV1Int64(cpuPeriodPath); err == nil {
+	if cpuPeriod, err := readCgroupV1CPUControllerInt64(cgroupPath, "cpu.cfs_period_us"); err == nil {
 		limits.CPUPeriod = cpuPeriod
 	}
 
@@ -179,6 +175,10 @@ func getCgroupV1Path() (string, error) {
 				return strings.TrimPrefix(parts[2], "/"), nil
 			}
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("error scanning cgroup file: %w", err)
 	}
 
 	return "", fmt.Errorf("cgroup path not found")
@@ -245,4 +245,23 @@ func readCgroupV2CPU() (int64, int64) {
 
 func isFiniteLimit(value int64) bool {
 	return value > 0 && value < unrestricted
+}
+
+func readCgroupV1CPUControllerInt64(cgroupPath, filename string) (int64, error) {
+	controllerBases := []string{
+		"/sys/fs/cgroup/cpu,cpuacct",
+		"/sys/fs/cgroup/cpu",
+		"/sys/fs/cgroup/cpuacct",
+	}
+
+	var lastErr error
+	for _, base := range controllerBases {
+		value, err := readCgroupV1Int64(filepath.Join(base, cgroupPath, filename))
+		if err == nil {
+			return value, nil
+		}
+		lastErr = err
+	}
+
+	return 0, lastErr
 }
