@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -13,6 +14,7 @@ import (
 type FilesystemWatcher struct {
 	watcher     *fsnotify.Watcher
 	watchedPath string
+	maxDepth    int
 	onChange    func(ctx context.Context)
 	debounce    time.Duration
 	stopCh      chan struct{}
@@ -22,6 +24,7 @@ type FilesystemWatcher struct {
 type WatcherOptions struct {
 	Debounce time.Duration
 	OnChange func(ctx context.Context)
+	MaxDepth int
 }
 
 func NewFilesystemWatcher(watchPath string, opts WatcherOptions) (*FilesystemWatcher, error) {
@@ -34,9 +37,14 @@ func NewFilesystemWatcher(watchPath string, opts WatcherOptions) (*FilesystemWat
 		opts.Debounce = 2 * time.Second
 	}
 
+	if opts.MaxDepth < 0 {
+		opts.MaxDepth = 0
+	}
+
 	return &FilesystemWatcher{
 		watcher:     watcher,
-		watchedPath: watchPath,
+		watchedPath: filepath.Clean(watchPath),
+		maxDepth:    opts.MaxDepth,
 		onChange:    opts.OnChange,
 		debounce:    opts.Debounce,
 		stopCh:      make(chan struct{}),
@@ -100,10 +108,12 @@ func (fw *FilesystemWatcher) watchLoop(ctx context.Context) {
 func (fw *FilesystemWatcher) handleEvent(ctx context.Context, event fsnotify.Event, debounceTimer *time.Timer) {
 	if event.Has(fsnotify.Create) {
 		if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
-			if err := fw.watcher.Add(event.Name); err != nil {
-				slog.WarnContext(ctx, "Failed to add new directory to watcher",
-					"path", event.Name,
-					"error", err)
+			if fw.shouldWatchDir(event.Name) {
+				if err := fw.watcher.Add(event.Name); err != nil {
+					slog.WarnContext(ctx, "Failed to add new directory to watcher",
+						"path", event.Name,
+						"error", err)
+				}
 			}
 		}
 	}
@@ -170,11 +180,22 @@ func (fw *FilesystemWatcher) addExistingDirectories(root string) error {
 		}
 
 		if info.IsDir() && path != root {
-			// Only add directories that contain compose files or might contain them
+			depth := fw.dirDepth(path)
+			if depth < 0 {
+				return filepath.SkipDir
+			}
+			if fw.maxDepth > 0 && depth > fw.maxDepth {
+				return filepath.SkipDir
+			}
+
 			if err := fw.watcher.Add(path); err != nil {
 				slog.Warn("Failed to add directory to watcher",
 					"path", path,
 					"error", err)
+			}
+
+			if fw.maxDepth > 0 && depth == fw.maxDepth {
+				return filepath.SkipDir
 			}
 		}
 		return nil
@@ -196,4 +217,31 @@ func isProjectFile(filename string) bool {
 		}
 	}
 	return false
+}
+
+func (fw *FilesystemWatcher) dirDepth(path string) int {
+	cleanRoot := fw.watchedPath
+	cleanPath := filepath.Clean(path)
+	if cleanPath == cleanRoot {
+		return 0
+	}
+
+	rel, err := filepath.Rel(cleanRoot, cleanPath)
+	if err != nil {
+		return -1
+	}
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return -1
+	}
+
+	rel = filepath.ToSlash(rel)
+	return strings.Count(rel, "/") + 1
+}
+
+func (fw *FilesystemWatcher) shouldWatchDir(path string) bool {
+	if fw.maxDepth <= 0 {
+		return true
+	}
+	depth := fw.dirDepth(path)
+	return depth > 0 && depth <= fw.maxDepth
 }
