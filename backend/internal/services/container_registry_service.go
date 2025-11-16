@@ -37,7 +37,8 @@ func (s *ContainerRegistryService) syncToAllEnvironments(ctx context.Context) {
 	// Get all environments
 	var environments []models.Environment
 	if err := s.db.WithContext(ctx).Where("id != ?", "0").Where("enabled = ?", true).Find(&environments).Error; err != nil {
-		slog.WarnContext(ctx, "Failed to get environments for registry sync", slog.String("error", err.Error()))
+		slog.WarnContext(ctx, "Failed to get environments for registry sync",
+			slog.String("error", err.Error()))
 		return
 	}
 
