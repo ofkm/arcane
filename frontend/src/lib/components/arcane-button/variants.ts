@@ -6,6 +6,7 @@ import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
 import DownloadIcon from '@lucide/svelte/icons/download';
 import Trash2Icon from '@lucide/svelte/icons/trash-2';
 import RefreshCcwDotIcon from '@lucide/svelte/icons/refresh-ccw-dot';
+import RefreshCcwIcon from '@lucide/svelte/icons/refresh-ccw';
 import ScanSearchIcon from '@lucide/svelte/icons/scan-search';
 import FileTextIcon from '@lucide/svelte/icons/file-text';
 import EditIcon from '@lucide/svelte/icons/edit';
@@ -59,6 +60,7 @@ export type Action =
 	| 'remove'
 	| 'pull'
 	| 'redeploy'
+	| 'refresh'
 	| 'inspect'
 	| 'logs'
 	| 'edit'
@@ -119,6 +121,12 @@ export const actionConfigs: Record<Action, ActionConfig> = {
 		IconComponent: RefreshCcwDotIcon,
 		tone: 'outline-primary',
 		loadingLabel: m.common_action_redeploying()
+	},
+	refresh: {
+		defaultLabel: m.common_refresh(),
+		IconComponent: RefreshCcwIcon,
+		tone: 'outline-primary',
+		loadingLabel: m.common_refresh()
 	},
 	inspect: {
 		defaultLabel: m.common_inspect(),

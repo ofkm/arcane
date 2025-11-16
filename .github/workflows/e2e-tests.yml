@@ -5,18 +5,17 @@ on:
     branches: [main]
     paths-ignore:
       - "**.md"
-      - ".github/**"
   pull_request:
     branches: [main]
     paths-ignore:
       - "**.md"
-      - ".github/**"
 
 permissions:
   contents: read
   actions: read
   checks: write
   pull-requests: write
+  id-token: write
 
 concurrency:
   group: "${{ github.workflow }}-${{ (github.event_name == 'pull_request' && github.event.pull_request.number) || github.ref }}"
@@ -29,24 +28,28 @@ jobs:
     permissions:
       contents: read
       actions: write
-    runs-on: depot-ubuntu-latest
+      id-token: write
+    runs-on: depot-ubuntu-24.04-16
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Set up Depot CLI
+        uses: depot/setup-action@v1
 
-      - name: Build and export Arcane image
-        uses: docker/build-push-action@v6
+      - name: Build Arcane image for Playwright
+        uses: depot/build-push-action@v1
         with:
-          push: false
-          load: false
-          tags: arcane:playwright-tests
+          context: .
           file: docker/Dockerfile
-          build-args: BUILD_TAGS=playwright
-          outputs: type=docker,dest=/tmp/arcane-image.tar
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          load: true
+          tags: arcane:playwright-tests
+          build-args: |
+            BUILD_TAGS=playwright
+          provenance: true
+          sbom: true
+
+      - name: Export image to tarball
+        run: docker save arcane:playwright-tests -o /tmp/arcane-image.tar
 
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v5
@@ -60,7 +63,7 @@ jobs:
     permissions:
       contents: read
       actions: write
-    runs-on: depot-ubuntu-latest
+    runs-on: depot-ubuntu-24.04-16
     needs: build
     strategy:
       fail-fast: false
@@ -81,11 +84,14 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          run_install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 #v5.0.0
+        uses: actions/setup-node@v6
         with:
           node-version: 24
+          cache: pnpm
 
       - name: Cache Playwright Browsers
         uses: actions/cache@v4

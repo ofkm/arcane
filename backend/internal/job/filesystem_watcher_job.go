@@ -57,6 +57,7 @@ func (j *FilesystemWatcherJob) Start(ctx context.Context) error {
 	sw, err := utils.NewFilesystemWatcher(projectsDirectory, utils.WatcherOptions{
 		Debounce: 3 * time.Second, // Wait 3 seconds after last change before syncing
 		OnChange: j.handleFilesystemChange,
+		MaxDepth: 1,
 	})
 	if err != nil {
 		return err
@@ -73,6 +74,7 @@ func (j *FilesystemWatcherJob) Start(ctx context.Context) error {
 		tw, err := utils.NewFilesystemWatcher(templatesDir, utils.WatcherOptions{
 			Debounce: 3 * time.Second,
 			OnChange: j.handleTemplatesChange,
+			MaxDepth: 1,
 		})
 		if err != nil {
 			return err
