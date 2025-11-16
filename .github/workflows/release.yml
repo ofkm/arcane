@@ -112,7 +112,6 @@ jobs:
       - id: build
         uses: depot/build-push-action@v1
         with:
-          token: ${{ secrets.DEPOT_TOKEN }}
           context: .
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm64
@@ -122,8 +121,6 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             REVISION=${{ github.sha }}
-          secrets: |
-            "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
           sbom: true
           sbom-dir: sbom-output/${{ matrix.target }}
           provenance: true
