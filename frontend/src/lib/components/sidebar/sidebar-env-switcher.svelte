@@ -143,7 +143,7 @@
 									{/if}
 								</div>
 								<div class="flex flex-col">
-									<span>{environmentStore.selected?.name}</span>
+									<span>{env.name}</span>
 									<span class={cn('text-xs', isActive ? 'text-sidebar-accent-foreground/70' : 'text-muted-foreground')}>
 										{getConnectionString(env)}
 									</span>

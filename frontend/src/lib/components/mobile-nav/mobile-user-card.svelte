@@ -127,7 +127,7 @@
 								<Select.Content class="max-w-[280px] min-w-[160px]">
 									{#each environmentStore.available as env (env.id)}
 										<Select.Item value={env.id} disabled={!env.enabled} class="text-sm">
-											{environmentStore.selected?.name}
+											{env.name}
 										</Select.Item>
 									{/each}
 								</Select.Content>
