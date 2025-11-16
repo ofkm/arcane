@@ -14,6 +14,7 @@ export type Settings = {
 	autoUpdateInterval: number;
 	pollingEnabled: boolean;
 	pollingInterval: number;
+	environmentHealthInterval: number;
 	dockerPruneMode: 'all' | 'dangling';
 	maxImageUploadSize: number;
 	baseServerUrl: string;

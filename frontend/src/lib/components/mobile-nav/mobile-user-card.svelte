@@ -35,8 +35,7 @@
 
 	async function handleEnvSelect(envId: string) {
 		const env = environmentStore.available.find((e) => e.id === envId);
-		if (!env) return;
-
+		if (!env || !env.enabled) return;
 		try {
 			await environmentStore.setEnvironment(env);
 		} catch (error) {
@@ -45,16 +44,8 @@
 		}
 	}
 
-	function getEnvLabel(env: Environment): string {
-		if (env.isLocal) {
-			return 'Local Docker';
-		} else {
-			return env.name;
-		}
-	}
-
 	function getConnectionString(env: Environment): string {
-		if (env.isLocal) {
+		if (env.id === '0') {
 			return $settingsStore.dockerHost || 'unix:///var/run/docker.sock';
 		} else {
 			return env.apiUrl;
@@ -108,7 +99,7 @@
 					<div class="space-y-3">
 						<div class="flex items-start gap-3">
 							<div class="bg-primary/10 text-primary flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg">
-								{#if environmentStore.selected?.isLocal}
+								{#if environmentStore.selected?.id === '0'}
 									<ServerIcon class="size-4" />
 								{:else}
 									<RouterIcon class="size-4" />
@@ -119,7 +110,7 @@
 									{m.sidebar_environment_label()}
 								</div>
 								<div class="text-foreground text-sm font-medium">
-									{environmentStore.selected ? getEnvLabel(environmentStore.selected) : m.sidebar_no_environment()}
+									{environmentStore.selected ? environmentStore.selected.name : m.sidebar_no_environment()}
 								</div>
 								{#if environmentStore.selected}
 									<div class="text-muted-foreground/60 text-xs">
@@ -135,8 +126,8 @@
 								</Select.Trigger>
 								<Select.Content class="max-w-[280px] min-w-[160px]">
 									{#each environmentStore.available as env (env.id)}
-										<Select.Item value={env.id} class="text-sm">
-											{getEnvLabel(env)}
+										<Select.Item value={env.id} disabled={!env.enabled} class="text-sm">
+											{env.name}
 										</Select.Item>
 									{/each}
 								</Select.Content>

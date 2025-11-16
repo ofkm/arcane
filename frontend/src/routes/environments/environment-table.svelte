@@ -21,9 +21,11 @@
 	import { m } from '$lib/paraglide/messages';
 	import { environmentManagementService } from '$lib/services/env-mgmt-service';
 	import CloudIcon from '@lucide/svelte/icons/cloud';
+	import PowerIcon from '@lucide/svelte/icons/power';
 	import environmentUpgradeService from '$lib/services/api/environment-upgrade-service';
 	import UpgradeConfirmationDialog from '$lib/components/dialogs/upgrade-confirmation-dialog.svelte';
 	import { environmentStore } from '$lib/stores/environment.store.svelte';
+	import { capitalizeFirstLetter } from '$lib/utils/string.utils';
 
 	let {
 		environments = $bindable(),
@@ -35,7 +37,7 @@
 		requestOptions: SearchPaginationSortRequest;
 	} = $props();
 
-	let isLoading = $state({ removing: false, testing: false, upgrading: false });
+	let isLoading = $state({ removing: false, testing: false, upgrading: false, toggling: false });
 	let upgradingEnvironmentId = $state<string | null>(null);
 	let showUpgradeDialog = $state(false);
 	let selectedEnvironmentForUpgrade = $state<Environment | null>(null);
@@ -73,7 +75,7 @@
 						const msg = m.common_bulk_remove_success({ count: successCount, resource: m.environments_title() });
 						toast.success(msg);
 						environments = await environmentManagementService.getEnvironments(requestOptions);
-						await environmentStore.initialize(environments.data, true);
+						await environmentStore.initialize(environments.data);
 					}
 					if (failureCount > 0) {
 						const msg = m.common_bulk_remove_failed({ count: failureCount, resource: m.environments_title() });
@@ -103,7 +105,7 @@
 						onSuccess: async () => {
 							toast.success(m.common_delete_success({ resource: `${m.resource_environment()} "${hostname}"` }));
 							environments = await environmentManagementService.getEnvironments(requestOptions);
-							await environmentStore.initialize(environments.data, true);
+							await environmentStore.initialize(environments.data);
 						}
 					});
 					isLoading.removing = false;
@@ -119,10 +121,12 @@
 			result,
 			message: m.environments_test_connection_failed(),
 			setLoadingState: () => {},
-			onSuccess: (resp) => {
+			onSuccess: async (resp) => {
 				const status = (resp as { status: string; message?: string }).status;
 				if (status === 'online') toast.success(m.environments_test_connection_success());
 				else toast.error(m.environments_test_connection_error());
+				// Refresh to get updated status from backend
+				environments = await environmentManagementService.getEnvironments(requestOptions);
 			}
 		});
 		isLoading.testing = false;
@@ -160,6 +164,30 @@
 			upgradingEnvironmentId = null;
 			selectedEnvironmentForUpgrade = null;
 		}
+	}
+
+	async function handleToggleEnabled(environment: Environment) {
+		const newEnabled = !environment.enabled;
+		isLoading.toggling = true;
+
+		const result = await tryCatch(environmentManagementService.update(environment.id, { enabled: newEnabled }));
+
+		handleApiResultWithCallbacks({
+			result,
+			message: m.common_update_failed({ resource: m.resource_environment() }),
+			setLoadingState: () => {},
+			onSuccess: async () => {
+				toast.success(
+					m.common_update_success({
+						resource: `${m.resource_environment()} "${environment.name}"`
+					})
+				);
+				environments = await environmentManagementService.getEnvironments(requestOptions);
+				await environmentStore.initialize(environments.data);
+			}
+		});
+
+		isLoading.toggling = false;
 	}
 
 	const columns = [
@@ -210,23 +238,28 @@
 					: 'bg-red-500'}"
 			></div>
 		</div>
-		<div>
-			<div class="font-medium">{item.name}</div>
-			<div class="text-muted-foreground font-mono text-xs">{item.id}</div>
+		<div class="flex flex-col gap-0.5 leading-tight">
+			<button
+				class="text-foreground-primary h-auto min-h-0 cursor-pointer p-0 text-left text-sm leading-tight font-medium hover:underline"
+				onclick={() => goto(`/environments/${item.id}`)}
+			>
+				{item.name}
+			</button>
+			<div class="text-muted-foreground font-mono text-xs leading-tight">{item.apiUrl}</div>
 		</div>
 	</div>
 {/snippet}
 
 {#snippet StatusCell({ value }: { value: unknown })}
-	<StatusBadge text={String(value ?? m.common_offline())} variant={String(value) === 'online' ? 'green' : 'red'} />
+	<StatusBadge text={capitalizeFirstLetter(String(value)) || m.common_unknown()} variant={value === 'online' ? 'green' : 'red'} />
 {/snippet}
 
 {#snippet ApiCell({ value }: { value: unknown })}
-	<span class="text-muted-foreground font-mono text-sm">{String(value ?? '')}</span>
+	<span class="text-muted-foreground font-mono text-sm">{String(value)}</span>
 {/snippet}
 
 {#snippet EnabledCell({ value }: { value: unknown })}
-	<StatusBadge text={Boolean(value) ? 'Enabled' : 'Disabled'} variant={Boolean(value) ? 'green' : 'gray'} />
+	<StatusBadge text={value ? m.common_enabled() : m.common_disabled()} variant={value ? 'green' : 'red'} />
 {/snippet}
 
 {#snippet EnvironmentMobileCardSnippet({
@@ -254,6 +287,7 @@
 			}
 		]}
 		rowActions={RowActions}
+		onclick={(item: Environment) => goto(`/environments/${item.id}`)}
 	/>
 {/snippet}
 
@@ -269,33 +303,58 @@
 		</DropdownMenu.Trigger>
 		<DropdownMenu.Content align="end">
 			<DropdownMenu.Group>
-				<DropdownMenu.Item onclick={() => handleTest(item.id)} disabled={isLoading.testing}>
-					<TerminalIcon class="size-4" />
-					{m.environments_test_connection()}
+				<DropdownMenu.Item
+					onclick={async () => {
+						if (!item.enabled) {
+							toast.error(m.environments_cannot_switch_disabled());
+							return;
+						}
+						try {
+							await environmentStore.setEnvironment(item);
+							toast.success(m.environments_switched_to({ name: item.name }));
+						} catch (error) {
+							console.error('Failed to set environment:', error);
+						}
+					}}
+					disabled={!item.enabled || environmentStore.selected?.id === item.id}
+				>
+					<MonitorIcon class="size-4" />
+					{environmentStore.selected?.id === item.id ? m.environments_current_environment() : m.environments_use_environment()}
 				</DropdownMenu.Item>
+				<DropdownMenu.Separator />
 				<DropdownMenu.Item onclick={() => goto(`/environments/${item.id}`)}>
 					<EyeIcon class="size-4" />
 					{m.common_view_details()}
 				</DropdownMenu.Item>
-				{#if item.status === 'online'}
+				<DropdownMenu.Item onclick={() => handleTest(item.id)} disabled={isLoading.testing}>
+					<TerminalIcon class="size-4" />
+					{m.environments_test_connection()}
+				</DropdownMenu.Item>
+				{#if item.id !== '0'}
+					{#if item.status === 'online'}
+						<DropdownMenu.Separator />
+						<DropdownMenu.Item
+							onclick={() => handleUpgradeClick(item)}
+							disabled={isLoading.upgrading || upgradingEnvironmentId === item.id}
+						>
+							<DownloadIcon class="size-4" />
+							{upgradingEnvironmentId === item.id ? m.upgrade_in_progress() : m.upgrade_to_version({ version: 'Latest' })}
+						</DropdownMenu.Item>
+					{/if}
+					<DropdownMenu.Item onclick={() => handleToggleEnabled(item)} disabled={isLoading.toggling}>
+						<PowerIcon class="size-4" />
+						{item.enabled ? m.common_disable() : m.common_enable()}
+					</DropdownMenu.Item>
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item
-						onclick={() => handleUpgradeClick(item)}
-						disabled={isLoading.upgrading || upgradingEnvironmentId === item.id}
+						variant="destructive"
+						onclick={() => handleDeleteOne(item.id, item.name)}
+						disabled={isLoading.removing}
 					>
-						<DownloadIcon class="size-4" />
-						{upgradingEnvironmentId === item.id ? m.upgrade_in_progress() : m.upgrade_to_version({ version: 'Latest' })}
+						<Trash2Icon class="size-4" />
+						{m.common_delete()}
 					</DropdownMenu.Item>
 				{/if}
-				<DropdownMenu.Separator />
-				<DropdownMenu.Item
-					variant="destructive"
-					onclick={() => handleDeleteOne(item.id, item.name)}
-					disabled={isLoading.removing}
-				>
-					<Trash2Icon class="size-4" />
-					{m.common_delete()}
-				</DropdownMenu.Item>
 			</DropdownMenu.Group>
 		</DropdownMenu.Content>
 	</DropdownMenu.Root>

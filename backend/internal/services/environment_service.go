@@ -23,15 +23,53 @@ import (
 )
 
 type EnvironmentService struct {
-	db         *database.DB
-	httpClient *http.Client
+	db            *database.DB
+	httpClient    *http.Client
+	dockerService *DockerClientService
 }
 
-func NewEnvironmentService(db *database.DB, httpClient *http.Client) *EnvironmentService {
+func NewEnvironmentService(db *database.DB, httpClient *http.Client, dockerService *DockerClientService) *EnvironmentService {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	return &EnvironmentService{db: db, httpClient: httpClient}
+	return &EnvironmentService{db: db, httpClient: httpClient, dockerService: dockerService}
+}
+
+func (s *EnvironmentService) EnsureLocalEnvironment(ctx context.Context, appUrl string) error {
+	const localEnvID = "0"
+
+	var existingEnv models.Environment
+	err := s.db.WithContext(ctx).Where("id = ?", localEnvID).First(&existingEnv).Error
+
+	if err == nil {
+		// Local environment already exists
+		return nil
+	}
+
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return fmt.Errorf("failed to check for local environment: %w", err)
+	}
+
+	// Create the local environment
+	now := time.Now()
+	localEnv := &models.Environment{
+		BaseModel: models.BaseModel{
+			ID:        localEnvID,
+			CreatedAt: now,
+			UpdatedAt: &now,
+		},
+		Name:    "Local Docker",
+		ApiUrl:  appUrl,
+		Status:  string(models.EnvironmentStatusOnline),
+		Enabled: true,
+	}
+
+	if err := s.db.WithContext(ctx).Create(localEnv).Error; err != nil {
+		return fmt.Errorf("failed to create local environment: %w", err)
+	}
+
+	slog.InfoContext(ctx, "created local environment record", "id", localEnvID)
+	return nil
 }
 
 func (s *EnvironmentService) CreateEnvironment(ctx context.Context, environment *models.Environment) (*models.Environment, error) {
@@ -114,34 +152,74 @@ func (s *EnvironmentService) DeleteEnvironment(ctx context.Context, id string) e
 	return nil
 }
 
-func (s *EnvironmentService) TestConnection(ctx context.Context, id string) (string, error) {
+func (s *EnvironmentService) TestConnection(ctx context.Context, id string, customApiUrl *string) (string, error) {
 	environment, err := s.GetEnvironmentByID(ctx, id)
 	if err != nil {
 		return "error", err
 	}
 
+	// Special handling for local Docker environment (ID "0")
+	if id == "0" && customApiUrl == nil {
+		return s.testLocalDockerConnection(ctx, id)
+	}
+
+	apiUrl := environment.ApiUrl
+	if customApiUrl != nil && *customApiUrl != "" {
+		apiUrl = *customApiUrl
+	}
+
 	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	url := strings.TrimRight(environment.ApiUrl, "/") + "/api/health"
+	url := strings.TrimRight(apiUrl, "/") + "/api/health"
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
 	if err != nil {
-		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
+		if customApiUrl == nil {
+			_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
+		}
 		return "offline", fmt.Errorf("failed to create request: %w", err)
 	}
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
+		if customApiUrl == nil {
+			_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
+		}
 		return "offline", fmt.Errorf("connection failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusOK {
-		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOnline))
+		if customApiUrl == nil {
+			_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOnline))
+		}
 		return "online", nil
 	}
 
-	_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusError))
+	if customApiUrl == nil {
+		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusError))
+	}
 	return "error", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+}
+
+func (s *EnvironmentService) testLocalDockerConnection(ctx context.Context, id string) (string, error) {
+	// Test local Docker socket by pinging Docker
+	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	dockerClient, err := s.dockerService.CreateConnection(reqCtx)
+	if err != nil {
+		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
+		return "offline", fmt.Errorf("failed to connect to Docker: %w", err)
+	}
+	defer dockerClient.Close()
+
+	_, err = dockerClient.Ping(reqCtx)
+	if err != nil {
+		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
+		return "offline", fmt.Errorf("docker ping failed: %w", err)
+	}
+
+	_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOnline))
+	return "online", nil
 }
 
 func (s *EnvironmentService) updateEnvironmentStatusInternal(ctx context.Context, id, status string) error {

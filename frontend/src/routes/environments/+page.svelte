@@ -69,7 +69,7 @@
 						const msg = m.common_bulk_remove_success({ count: successCount, resource: m.environments_title() });
 						toast.success(msg);
 						await refresh();
-						await environmentStore.initialize(environments.data, true);
+						await environmentStore.initialize(environments.data);
 					}
 					if (failureCount > 0) {
 						const msg = m.common_bulk_remove_failed({ count: failureCount, resource: m.environments_title() });
@@ -85,7 +85,7 @@
 	async function onEnvironmentCreated() {
 		showEnvironmentSheet = false;
 		environments = await environmentManagementService.getEnvironments(requestOptions);
-		await environmentStore.initialize(environments.data, true);
+		await environmentStore.initialize(environments.data);
 		toast.success(m.common_create_success({ resource: m.resource_environment() }));
 		refresh();
 	}
