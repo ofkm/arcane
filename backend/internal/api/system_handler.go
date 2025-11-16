@@ -193,7 +193,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		if cgroupLimits.MemoryLimit > 0 && (memTotal == 0 || cgroupLimits.MemoryLimit < memTotal) {
 			memTotal = cgroupLimits.MemoryLimit
 		}
-		
+
 		// Use cgroup CPU count if available
 		if cgroupLimits.CPUCount > 0 && (cpuCount == 0 || cgroupLimits.CPUCount < cpuCount) {
 			cpuCount = cgroupLimits.CPUCount
@@ -427,18 +427,20 @@ func (h *SystemHandler) Stats(c *gin.Context) {
 			memTotal = memInfo.Total
 		}
 
-		// Check for cgroup limits (LXC, Docker, etc.)
 		if cgroupLimits, err := utils.DetectCgroupLimits(); err == nil {
 			// Use cgroup memory limits if available and smaller than host values
-			if cgroupLimits.MemoryLimit > 0 && (memTotal == 0 || uint64(cgroupLimits.MemoryLimit) < memTotal) {
-				memTotal = uint64(cgroupLimits.MemoryLimit)
+			if limit := cgroupLimits.MemoryLimit; limit > 0 {
+				limitUint := uint64(limit)
+				if memTotal == 0 || limitUint < memTotal {
+					memTotal = limitUint
+				}
 			}
-			
+
 			// Use actual cgroup memory usage if available
-			if cgroupLimits.MemoryUsage > 0 {
-				memUsed = uint64(cgroupLimits.MemoryUsage)
+			if usage := cgroupLimits.MemoryUsage; usage > 0 {
+				memUsed = uint64(usage)
 			}
-			
+
 			// Use cgroup CPU count if available
 			if cgroupLimits.CPUCount > 0 && (cpuCount == 0 || cgroupLimits.CPUCount < cpuCount) {
 				cpuCount = cgroupLimits.CPUCount
