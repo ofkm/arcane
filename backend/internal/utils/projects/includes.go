@@ -219,7 +219,7 @@ func WriteIncludeFile(projectDir, includePath, content string) error {
 	}
 
 	// Additional check: ensure 'dir' is inside the project directory
-	absProjectDir, err := filepath.Abs(projectDir)
+	absProjectDir, err = filepath.Abs(projectDir)
 	if err != nil {
 		return fmt.Errorf("invalid project directory: %w", err)
 	}
