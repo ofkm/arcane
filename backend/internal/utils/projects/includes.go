@@ -204,11 +204,12 @@ func WriteIncludeFile(projectDir, includePath, content string) error {
 	if err != nil {
 		return fmt.Errorf("invalid project directory: %w", err)
 	}
-	realProjectDir, err := filepath.EvalSymlinks(absProjectDir)
+	absProjectDir = filepath.Clean(absProjectDir)
+	absProjectDir, err = filepath.EvalSymlinks(absProjectDir)
 	if err != nil {
 		return fmt.Errorf("failed to resolve project directory symlinks: %w", err)
 	}
-	realProjectDir = filepath.Clean(realProjectDir)
+	absProjectDir = filepath.Clean(absProjectDir)
 
 	// Use the validated path for all operations
 	dir := filepath.Dir(validatedPath)
@@ -218,19 +219,20 @@ func WriteIncludeFile(projectDir, includePath, content string) error {
 		return fmt.Errorf("invalid include path: cannot create directory '%s'", dir)
 	}
 
-	// Additional check: ensure 'dir' is inside the project directory
-	absProjectDir, err = filepath.Abs(projectDir)
-	if err != nil {
-		return fmt.Errorf("invalid project directory: %w", err)
-	}
-	absProjectDir = filepath.Clean(absProjectDir)
+	// Additional check: ensure 'dir' (after resolving symlinks) is inside the project directory
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
 		return fmt.Errorf("invalid include directory: %w", err)
 	}
 	absDir = filepath.Clean(absDir)
+	realDir := absDir
+	if evaluatedDir, evalErr := filepath.EvalSymlinks(absDir); evalErr == nil {
+		realDir = filepath.Clean(evaluatedDir)
+	} else if !os.IsNotExist(evalErr) {
+		return fmt.Errorf("failed to resolve include directory symlinks: %w", evalErr)
+	}
 	projectPrefix := absProjectDir + string(filepath.Separator)
-	isWithinProject := strings.HasPrefix(absDir+string(filepath.Separator), projectPrefix)
+	isWithinProject := strings.HasPrefix(realDir+string(filepath.Separator), projectPrefix) || realDir == absProjectDir
 	if !isWithinProject {
 		return fmt.Errorf("write access denied: include directory is outside project directory")
 	}
