@@ -176,7 +176,8 @@ func (fw *FilesystemWatcher) addExistingDirectories(root string) error {
 			slog.Warn("Error walking directory",
 				"path", path,
 				"error", err)
-			return err
+			// Continue walking other directories instead of stopping
+			return nil
 		}
 
 		if info.IsDir() && path != root {

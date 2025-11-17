@@ -251,30 +251,47 @@ func (s *ProjectService) SyncProjectsFromFileSystem(ctx context.Context) error {
 	}
 	projectsDir = filepath.Clean(projectsDir)
 
-	entries, rerr := os.ReadDir(projectsDir)
-	if rerr != nil {
-		slog.WarnContext(ctx, "failed to read projects directory", "dir", projectsDir, "error", rerr)
-		return nil
-	}
-
 	seen := map[string]struct{}{}
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		dirName := e.Name()
-		dirPath := filepath.Join(projectsDir, dirName)
-
-		// Only consider folders that contain a compose file
-		if _, derr := projects.DetectComposeFile(dirPath); derr != nil {
-			continue
+	
+	// Walk the projects directory to find all compose projects
+	// Use filepath.Walk which handles nested directories
+	err = filepath.Walk(projectsDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			// Log but continue walking other directories
+			slog.WarnContext(ctx, "error accessing path during sync", "path", path, "error", err)
+			return nil
 		}
 
-		if uerr := s.upsertProjectForDir(ctx, dirName, dirPath); uerr != nil {
-			slog.WarnContext(ctx, "failed to sync project from folder", "dir", dirPath, "error", uerr)
-			continue
+		// Skip the root directory itself
+		if path == projectsDir {
+			return nil
 		}
-		seen[dirPath] = struct{}{}
+
+		// Only process directories
+		if !info.IsDir() {
+			return nil
+		}
+
+		// Check if this directory contains a compose file
+		if _, derr := projects.DetectComposeFile(path); derr != nil {
+			// No compose file, continue walking subdirectories
+			return nil
+		}
+
+		// Found a project directory with compose file
+		dirName := filepath.Base(path)
+		if uerr := s.upsertProjectForDir(ctx, dirName, path); uerr != nil {
+			slog.WarnContext(ctx, "failed to sync project from folder", "dir", path, "error", uerr)
+		} else {
+			seen[path] = struct{}{}
+		}
+
+		// Don't descend into project directories - they are leaf nodes
+		return filepath.SkipDir
+	})
+
+	if err != nil {
+		slog.WarnContext(ctx, "failed to walk projects directory", "dir", projectsDir, "error", err)
 	}
 
 	if cerr := s.cleanupDBProjects(ctx, seen); cerr != nil {
