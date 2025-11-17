@@ -108,8 +108,8 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 		token, err := h.environmentService.PairAgentWithBootstrap(c.Request.Context(), req.ApiUrl, *req.BootstrapToken)
 		if err != nil {
 			slog.ErrorContext(c.Request.Context(), "Failed to pair with agent",
-				slog.String("apiUrl", req.ApiUrl),
-				slog.String("error", err.Error()))
+				"apiUrl", req.ApiUrl,
+				"error", err.Error())
 
 			c.JSON(http.StatusBadGateway, gin.H{
 				"success": false,
@@ -137,13 +137,13 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 			ctx := context.Background()
 			if err := h.environmentService.SyncRegistriesToEnvironment(ctx, created.ID); err != nil {
 				slog.WarnContext(ctx, "Failed to sync registries to new environment",
-					slog.String("environmentID", created.ID),
-					slog.String("environmentName", created.Name),
-					slog.String("error", err.Error()))
+					"environmentID", created.ID,
+					"environmentName", created.Name,
+					"error", err.Error())
 			} else {
 				slog.InfoContext(ctx, "Successfully synced registries to new environment",
-					slog.String("environmentID", created.ID),
-					slog.String("environmentName", created.Name))
+					"environmentID", created.ID,
+					"environmentName", created.Name)
 			}
 		}()
 	}
@@ -206,9 +206,9 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 		return
 	}
 
-	updates := h.buildUpdateMap(&req, isLocalEnv)
+	updates := h.buildUpdateMapInternal(&req, isLocalEnv)
 
-	pairingSucceeded, err := h.handleEnvironmentPairing(c.Request.Context(), environmentID, &req, updates, isLocalEnv)
+	pairingSucceeded, err := h.handleEnvironmentPairingInternal(c.Request.Context(), environmentID, &req, updates, isLocalEnv)
 	if err != nil {
 		c.JSON(err.statusCode, gin.H{"success": false, "data": gin.H{"error": err.message}})
 		return
@@ -220,7 +220,7 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 		return
 	}
 
-	h.triggerPostUpdateTasks(environmentID, updated, pairingSucceeded, &req)
+	h.triggerPostUpdateTasksInternal(environmentID, updated, pairingSucceeded, &req)
 
 	out, mapErr := dto.MapOne[*models.Environment, dto.EnvironmentDto](updated)
 	if mapErr != nil {
@@ -231,8 +231,8 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": out})
 }
 
-func (h *EnvironmentHandler) buildUpdateMap(req *dto.UpdateEnvironmentDto, isLocalEnv bool) map[string]interface{} {
-	updates := map[string]interface{}{}
+func (h *EnvironmentHandler) buildUpdateMapInternal(req *dto.UpdateEnvironmentDto, isLocalEnv bool) map[string]any {
+	updates := map[string]any{}
 
 	// For local environment, only allow name
 	if !isLocalEnv {
@@ -256,7 +256,7 @@ type updateError struct {
 	message    string
 }
 
-func (h *EnvironmentHandler) handleEnvironmentPairing(ctx context.Context, environmentID string, req *dto.UpdateEnvironmentDto, updates map[string]interface{}, isLocalEnv bool) (bool, *updateError) {
+func (h *EnvironmentHandler) handleEnvironmentPairingInternal(ctx context.Context, environmentID string, req *dto.UpdateEnvironmentDto, updates map[string]any, isLocalEnv bool) (bool, *updateError) {
 	pairingSucceeded := false
 
 	// Local environment cannot be paired or have access token updated
@@ -294,7 +294,7 @@ func (h *EnvironmentHandler) handleEnvironmentPairing(ctx context.Context, envir
 	return pairingSucceeded, nil
 }
 
-func (h *EnvironmentHandler) triggerPostUpdateTasks(environmentID string, updated *models.Environment, pairingSucceeded bool, req *dto.UpdateEnvironmentDto) {
+func (h *EnvironmentHandler) triggerPostUpdateTasksInternal(environmentID string, updated *models.Environment, pairingSucceeded bool, req *dto.UpdateEnvironmentDto) {
 	// Trigger health check after update to verify new configuration
 	// This runs in background and doesn't block the response
 	if updated.Enabled {
@@ -315,13 +315,13 @@ func (h *EnvironmentHandler) triggerPostUpdateTasks(environmentID string, update
 			ctx := context.Background()
 			if err := h.environmentService.SyncRegistriesToEnvironment(ctx, environmentID); err != nil {
 				slog.WarnContext(ctx, "Failed to sync registries after environment update",
-					slog.String("environmentID", environmentID),
-					slog.String("environmentName", updated.Name),
-					slog.String("error", err.Error()))
+					"environmentID", environmentID,
+					"environmentName", updated.Name,
+					"error", err.Error())
 			} else {
 				slog.InfoContext(ctx, "Successfully synced registries after environment update",
-					slog.String("environmentID", environmentID),
-					slog.String("environmentName", updated.Name))
+					"environmentID", environmentID,
+					"environmentName", updated.Name)
 			}
 		}()
 	}

@@ -18,9 +18,7 @@ type ContainerRegistryService struct {
 }
 
 func NewContainerRegistryService(db *database.DB) *ContainerRegistryService {
-	return &ContainerRegistryService{
-		db: db,
-	}
+	return &ContainerRegistryService{db: db}
 }
 
 func (s *ContainerRegistryService) GetAllRegistries(ctx context.Context) ([]models.ContainerRegistry, error) {
@@ -151,7 +149,6 @@ func (s *ContainerRegistryService) DeleteRegistry(ctx context.Context, id string
 	if err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&models.ContainerRegistry{}).Error; err != nil {
 		return fmt.Errorf("failed to delete container registry: %w", err)
 	}
-
 	return nil
 }
 

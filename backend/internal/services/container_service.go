@@ -192,8 +192,8 @@ func (s *ContainerService) CreateContainer(ctx context.Context, config *containe
 		pullOptions, authErr := s.imageService.getPullOptionsWithAuth(ctx, config.Image, credentials)
 		if authErr != nil {
 			slog.WarnContext(ctx, "Failed to get registry authentication for container image; proceeding without auth",
-				slog.String("image", config.Image),
-				slog.String("error", authErr.Error()))
+				"image", config.Image,
+				"error", authErr.Error())
 			pullOptions = image.PullOptions{}
 		}
 
