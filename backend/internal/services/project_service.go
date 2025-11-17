@@ -304,7 +304,7 @@ func (s *ProjectService) SyncProjectsFromFileSystem(ctx context.Context) error {
 func (s *ProjectService) upsertProjectForDir(ctx context.Context, dirName, dirPath string) error {
 	var existing models.Project
 	err := s.db.WithContext(ctx).
-		Where("path = ? OR dir_name = ?", dirPath, dirName).
+		Where("path = ?", dirPath).
 		First(&existing).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -333,9 +333,6 @@ func (s *ProjectService) upsertProjectForDir(ctx context.Context, dirName, dirPa
 	}
 
 	updates := map[string]interface{}{}
-	if existing.Path != dirPath {
-		updates["path"] = dirPath
-	}
 	if existing.DirName == nil || *existing.DirName != dirName {
 		updates["dir_name"] = dirName
 	}
