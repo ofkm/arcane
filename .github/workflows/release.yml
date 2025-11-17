@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   binaries:
-    runs-on: depot-ubuntu-latest
+    runs-on: depot-ubuntu-24.04-16
 
     env:
       DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/arcane
@@ -66,7 +66,7 @@ jobs:
         run: gh release upload ${{ github.ref_name }} backend/.bin/*
 
   images:
-    runs-on: depot-ubuntu-latest
+    runs-on: depot-ubuntu-24.04-16
     strategy:
       fail-fast: false
       matrix:
@@ -112,7 +112,6 @@ jobs:
       - id: build
         uses: depot/build-push-action@v1
         with:
-          token: ${{ secrets.DEPOT_TOKEN }}
           context: .
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm64
@@ -122,8 +121,6 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             REVISION=${{ github.sha }}
-          secrets: |
-            "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
           sbom: true
           sbom-dir: sbom-output/${{ matrix.target }}
           provenance: true
@@ -140,7 +137,7 @@ jobs:
           name: SBOM-${{ matrix.target }}
 
   publish-release:
-    runs-on: depot-ubuntu-latest
+    runs-on: depot-ubuntu-24.04-16
     needs: [binaries, images]
     permissions:
       contents: write
@@ -157,12 +154,12 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Download manager SBOM and digest
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: SBOM-manager
           path: sbom-artifacts/manager
       - name: Download agent SBOM and digest
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: SBOM-agent
           path: sbom-artifacts/agent
