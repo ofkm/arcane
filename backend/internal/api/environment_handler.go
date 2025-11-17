@@ -53,7 +53,6 @@ func NewEnvironmentHandler(
 		apiGroup.POST("/:id/heartbeat", h.UpdateHeartbeat)
 		apiGroup.POST("/:id/agent/pair", h.PairAgent)
 		apiGroup.POST("/:id/sync-registries", h.SyncRegistries)
-		apiGroup.POST("/:id/select", h.SelectEnvironment)
 	}
 }
 
@@ -411,36 +410,5 @@ func (h *EnvironmentHandler) SyncRegistries(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    gin.H{"message": "Registries synced successfully"},
-	})
-}
-
-func (h *EnvironmentHandler) SelectEnvironment(c *gin.Context) {
-	environmentID := c.Param("id")
-
-	// Don't sync to local environment
-	if environmentID == LOCAL_DOCKER_ENVIRONMENT_ID {
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"data":    gin.H{"message": "Local environment selected"},
-		})
-		return
-	}
-
-	// Trigger sync in background
-	go func() {
-		ctx := context.Background()
-		if err := h.environmentService.SyncRegistriesToEnvironment(ctx, environmentID); err != nil {
-			slog.WarnContext(ctx, "Failed to sync registries on environment selection",
-				slog.String("environmentID", environmentID),
-				slog.String("error", err.Error()))
-		} else {
-			slog.InfoContext(ctx, "Successfully synced registries on environment selection",
-				slog.String("environmentID", environmentID))
-		}
-	}()
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    gin.H{"message": "Environment selected, syncing registries in background"},
 	})
 }

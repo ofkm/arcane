@@ -70,8 +70,5 @@ func initializeServices(ctx context.Context, db *database.DB, cfg *config.Config
 	svcs.Version = services.NewVersionService(httpClient, cfg.UpdateCheckDisabled, config.Version, config.Revision)
 	svcs.SystemUpgrade = services.NewSystemUpgradeService(svcs.Docker, svcs.Version, svcs.Event)
 
-	// Wire up environment service to registry service for live sync
-	svcs.ContainerRegistry.SetEnvironmentService(svcs.Environment)
-
 	return svcs, dockerClient, nil
 }

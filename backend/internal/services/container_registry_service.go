@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 
@@ -15,46 +14,12 @@ import (
 )
 
 type ContainerRegistryService struct {
-	db         *database.DB
-	envService *EnvironmentService
+	db *database.DB
 }
 
 func NewContainerRegistryService(db *database.DB) *ContainerRegistryService {
-	return &ContainerRegistryService{db: db}
-}
-
-// SetEnvironmentService sets the environment service for triggering syncs
-func (s *ContainerRegistryService) SetEnvironmentService(envService *EnvironmentService) {
-	s.envService = envService
-}
-
-// syncToAllEnvironments triggers a sync to all remote environments
-func (s *ContainerRegistryService) syncToAllEnvironments(ctx context.Context) {
-	if s.envService == nil {
-		return
-	}
-
-	// Get all environments
-	var environments []models.Environment
-	if err := s.db.WithContext(ctx).Where("id != ?", "0").Where("enabled = ?", true).Find(&environments).Error; err != nil {
-		slog.WarnContext(ctx, "Failed to get environments for registry sync",
-			slog.String("error", err.Error()))
-		return
-	}
-
-	// Sync to each environment in background
-	for _, env := range environments {
-		envID := env.ID
-		go func(parentCtx context.Context, id string) {
-			// Use context.WithoutCancel to create a context that won't be cancelled
-			// when the parent request context is cancelled, since this runs in background
-			bgCtx := context.WithoutCancel(parentCtx)
-			if err := s.envService.SyncRegistriesToEnvironment(bgCtx, id); err != nil {
-				slog.WarnContext(bgCtx, "Failed to sync registries after registry change",
-					slog.String("environmentID", id),
-					slog.String("error", err.Error()))
-			}
-		}(ctx, envID)
+	return &ContainerRegistryService{
+		db: db,
 	}
 }
 
@@ -139,8 +104,6 @@ func (s *ContainerRegistryService) CreateRegistry(ctx context.Context, req model
 		return nil, fmt.Errorf("failed to create registry: %w", err)
 	}
 
-	s.syncToAllEnvironments(ctx)
-
 	return registry, nil
 }
 
@@ -181,8 +144,6 @@ func (s *ContainerRegistryService) UpdateRegistry(ctx context.Context, id string
 		return nil, fmt.Errorf("failed to update registry: %w", err)
 	}
 
-	s.syncToAllEnvironments(ctx)
-
 	return registry, nil
 }
 
@@ -190,8 +151,6 @@ func (s *ContainerRegistryService) DeleteRegistry(ctx context.Context, id string
 	if err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&models.ContainerRegistry{}).Error; err != nil {
 		return fmt.Errorf("failed to delete container registry: %w", err)
 	}
-
-	s.syncToAllEnvironments(ctx)
 
 	return nil
 }
@@ -223,7 +182,7 @@ func (s *ContainerRegistryService) GetEnabledRegistries(ctx context.Context) ([]
 // SyncRegistries syncs registries from a manager to this agent instance
 // It creates, updates, or deletes registries to match the provided list
 func (s *ContainerRegistryService) SyncRegistries(ctx context.Context, syncItems []models.SyncRegistryItem) error {
-	existingMap, err := s.getExistingRegistriesMap(ctx)
+	existingMap, err := s.getExistingRegistriesMapInternal(ctx)
 	if err != nil {
 		return err
 	}
@@ -234,16 +193,16 @@ func (s *ContainerRegistryService) SyncRegistries(ctx context.Context, syncItems
 	for _, item := range syncItems {
 		syncedIDs[item.ID] = true
 
-		if err := s.processSyncItem(ctx, item, existingMap); err != nil {
+		if err := s.processSyncItemInternal(ctx, item, existingMap); err != nil {
 			return err
 		}
 	}
 
 	// Delete registries that are not in the sync list
-	return s.deleteUnsynced(ctx, existingMap, syncedIDs)
+	return s.deleteUnsyncedInternal(ctx, existingMap, syncedIDs)
 }
 
-func (s *ContainerRegistryService) getExistingRegistriesMap(ctx context.Context) (map[string]*models.ContainerRegistry, error) {
+func (s *ContainerRegistryService) getExistingRegistriesMapInternal(ctx context.Context) (map[string]*models.ContainerRegistry, error) {
 	var existingRegistries []models.ContainerRegistry
 	if err := s.db.WithContext(ctx).Find(&existingRegistries).Error; err != nil {
 		return nil, fmt.Errorf("failed to get existing registries: %w", err)
@@ -257,16 +216,16 @@ func (s *ContainerRegistryService) getExistingRegistriesMap(ctx context.Context)
 	return existingMap, nil
 }
 
-func (s *ContainerRegistryService) processSyncItem(ctx context.Context, item models.SyncRegistryItem, existingMap map[string]*models.ContainerRegistry) error {
+func (s *ContainerRegistryService) processSyncItemInternal(ctx context.Context, item models.SyncRegistryItem, existingMap map[string]*models.ContainerRegistry) error {
 	existing, exists := existingMap[item.ID]
 	if exists {
-		return s.updateExistingRegistry(ctx, item, existing)
+		return s.updateExistingRegistryInternal(ctx, item, existing)
 	}
-	return s.createNewRegistry(ctx, item)
+	return s.createNewRegistryInternal(ctx, item)
 }
 
-func (s *ContainerRegistryService) updateExistingRegistry(ctx context.Context, item models.SyncRegistryItem, existing *models.ContainerRegistry) error {
-	needsUpdate := s.checkRegistryNeedsUpdate(item, existing)
+func (s *ContainerRegistryService) updateExistingRegistryInternal(ctx context.Context, item models.SyncRegistryItem, existing *models.ContainerRegistry) error {
+	needsUpdate := s.checkRegistryNeedsUpdateInternal(item, existing)
 
 	if needsUpdate {
 		existing.UpdatedAt = time.Now()
@@ -278,7 +237,7 @@ func (s *ContainerRegistryService) updateExistingRegistry(ctx context.Context, i
 	return nil
 }
 
-func (s *ContainerRegistryService) checkRegistryNeedsUpdate(item models.SyncRegistryItem, existing *models.ContainerRegistry) bool {
+func (s *ContainerRegistryService) checkRegistryNeedsUpdateInternal(item models.SyncRegistryItem, existing *models.ContainerRegistry) bool {
 	needsUpdate := false
 
 	if existing.URL != item.URL {
@@ -320,7 +279,7 @@ func (s *ContainerRegistryService) checkRegistryNeedsUpdate(item models.SyncRegi
 	return needsUpdate
 }
 
-func (s *ContainerRegistryService) createNewRegistry(ctx context.Context, item models.SyncRegistryItem) error {
+func (s *ContainerRegistryService) createNewRegistryInternal(ctx context.Context, item models.SyncRegistryItem) error {
 	encryptedToken, err := utils.Encrypt(item.Token)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt token for new registry %s: %w", item.ID, err)
@@ -347,7 +306,7 @@ func (s *ContainerRegistryService) createNewRegistry(ctx context.Context, item m
 	return nil
 }
 
-func (s *ContainerRegistryService) deleteUnsynced(ctx context.Context, existingMap map[string]*models.ContainerRegistry, syncedIDs map[string]bool) error {
+func (s *ContainerRegistryService) deleteUnsyncedInternal(ctx context.Context, existingMap map[string]*models.ContainerRegistry, syncedIDs map[string]bool) error {
 	for id := range existingMap {
 		if !syncedIDs[id] {
 			if err := s.db.WithContext(ctx).Where("id = ?", id).Delete(&models.ContainerRegistry{}).Error; err != nil {
