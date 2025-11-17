@@ -252,7 +252,7 @@ func (s *ProjectService) SyncProjectsFromFileSystem(ctx context.Context) error {
 	projectsDir = filepath.Clean(projectsDir)
 
 	seen := map[string]struct{}{}
-	
+
 	// Walk the projects directory to find all compose projects
 	// Use filepath.Walk which handles nested directories
 	err = filepath.Walk(projectsDir, func(path string, info os.FileInfo, err error) error {
