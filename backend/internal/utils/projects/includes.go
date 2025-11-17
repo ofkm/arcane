@@ -199,6 +199,17 @@ func WriteIncludeFile(projectDir, includePath, content string) error {
 		return err
 	}
 
+	// Resolve project directory symlinks for comparison
+	absProjectDir, err := filepath.Abs(projectDir)
+	if err != nil {
+		return fmt.Errorf("invalid project directory: %w", err)
+	}
+	realProjectDir, err := filepath.EvalSymlinks(absProjectDir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve project directory symlinks: %w", err)
+	}
+	realProjectDir = filepath.Clean(realProjectDir)
+
 	// Use the validated path for all operations
 	dir := filepath.Dir(validatedPath)
 
