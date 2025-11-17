@@ -56,6 +56,8 @@ func LoadComposeProject(ctx context.Context, composeFile, projectName, projectsD
 	// Set PWD
 	if absWorkdir, absErr := filepath.Abs(workdir); absErr == nil {
 		fullEnvMap["PWD"] = absWorkdir
+	} else {
+		slog.WarnContext(ctx, "Failed to set PWD environment variable", "workdir", workdir, "error", absErr)
 	}
 
 	// Debug: Log all environment variables being passed to compose
