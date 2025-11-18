@@ -201,7 +201,7 @@ func (s *SystemService) StopAllContainers(ctx context.Context) (*dto.ContainerAc
 
 	for _, cont := range containers {
 		// Skip Arcane server container
-		if cont.Labels != nil && cont.Labels["com.ofkm.arcane.server"] == "true" {
+		if cont.Labels != nil && cont.Labels["com.getarcaneapp.arcane.server"] == "true" {
 			continue
 		}
 		if err := s.containerService.StopContainer(ctx, cont.ID, systemUser); err != nil {
