@@ -64,7 +64,7 @@ type Settings struct {
 
 	// Docker category
 	AutoUpdate         SettingVariable `key:"autoUpdate" meta:"label=Auto Update;type=boolean;keywords=auto,update,automatic,upgrade,refresh,restart,deploy;category=docker;description=Automatically update containers when new images are available" catmeta:"id=docker;title=Docker;icon=database;url=/settings/docker;description=Configure Docker settings, polling, and auto-updates"`
-	AutoUpdateInterval SettingVariable `key:"autoUpdateInterval" meta:"label=Auto Update Interval;type=number;keywords=auto,update,interval,frequency,schedule,automatic,timing;category=docker;description=Interval between automatic updates"`
+	AutoUpdateCron     SettingVariable `key:"autoUpdateCron" meta:"label=Auto Update Cron;type=text;keywords=cron,schedule,timing,automatic;category=docker;description=Cron schedule for automatic updates (leave empty for immediate updates upon detection)"`
 	PollingEnabled     SettingVariable `key:"pollingEnabled" meta:"label=Enable Polling;type=boolean;keywords=polling,check,monitor,watch,scan,detection,automatic;category=docker;description=Enable automatic checking for image updates"`
 	PollingInterval    SettingVariable `key:"pollingInterval" meta:"label=Polling Interval;type=number;keywords=interval,frequency,schedule,time,minutes,period,delay;category=docker;description=How often to check for image updates"`
 	PruneMode          SettingVariable `key:"dockerPruneMode" meta:"label=Docker Prune Action;type=select;keywords=prune,cleanup,clean,remove,delete,unused,dangling,space,disk;category=docker;description=Configure how unused Docker images are cleaned up"`

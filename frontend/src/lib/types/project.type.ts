@@ -43,10 +43,16 @@ export interface Project {
 	composeContent?: string;
 	envContent?: string;
 	includeFiles?: IncludeFile[];
+	settings: ProjectSettings;
 }
 
 export interface ProjectStatusCounts {
 	runningProjects: number;
 	stoppedProjects: number;
 	totalProjects: number;
+}
+
+export interface ProjectSettings {
+	autoUpdate: boolean | null;
+	autoUpdateCron: string | null;
 }

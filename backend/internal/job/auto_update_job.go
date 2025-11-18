@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/go-co-op/gocron/v2"
@@ -23,31 +24,44 @@ func NewAutoUpdateJob(scheduler *Scheduler, updaterService *services.UpdaterServ
 	}
 }
 
-func (j *AutoUpdateJob) Register(ctx context.Context) error {
+// isAutoUpdateEnabledInternal checks if auto-update is enabled based on settings
+func (j *AutoUpdateJob) isAutoUpdateEnabledInternal(ctx context.Context) bool {
 	autoUpdateEnabled := j.settingsService.GetBoolSetting(ctx, "autoUpdate", false)
 	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
-	autoUpdateInterval := j.settingsService.GetIntSetting(ctx, "autoUpdateInterval", 1440)
 
 	if !autoUpdateEnabled || !pollingEnabled {
-		slog.InfoContext(ctx, "auto-update disabled or polling disabled; job not registered",
+		slog.InfoContext(ctx, "auto-update disabled or polling disabled",
 			"autoUpdate", autoUpdateEnabled, "pollingEnabled", pollingEnabled)
+		return false
+	}
+	return true
+}
+
+// createJobDefinitionInternal creates a job definition based on the cron schedule setting
+func (j *AutoUpdateJob) createJobDefinitionInternal(ctx context.Context) (gocron.JobDefinition, string) {
+	autoUpdateCron := strings.TrimSpace(j.settingsService.GetStringSetting(ctx, "autoUpdateCron", ""))
+
+	if autoUpdateCron == "" {
+		// Immediate mode: check for updates frequently (every 5 minutes)
+		return gocron.DurationJob(5 * time.Minute), "immediate (every 5 minutes)"
+	}
+
+	// Cron-based scheduling
+	// Note: gocron.CronJob may panic on invalid cron, but we'll let the scheduler handle it
+	return gocron.CronJob(autoUpdateCron, false), autoUpdateCron
+}
+
+func (j *AutoUpdateJob) Register(ctx context.Context) error {
+	if !j.isAutoUpdateEnabledInternal(ctx) {
 		return nil
 	}
-
-	interval := time.Duration(autoUpdateInterval) * time.Minute
-	if interval < 5*time.Minute {
-		slog.WarnContext(ctx, "auto-update interval too low; using default",
-			"requested_minutes", autoUpdateInterval,
-			"effective_interval", "60m")
-		interval = 60 * time.Minute
-	}
-
-	slog.InfoContext(ctx, "registering auto-update job", "interval", interval.String())
 
 	// ensure single instance
 	j.scheduler.RemoveJobByName("auto-update")
 
-	jobDefinition := gocron.DurationJob(interval)
+	jobDefinition, scheduleDesc := j.createJobDefinitionInternal(ctx)
+	slog.InfoContext(ctx, "registering auto-update job", "schedule", scheduleDesc)
+
 	return j.scheduler.RegisterJob(
 		ctx,
 		"auto-update",
@@ -85,22 +99,23 @@ func (j *AutoUpdateJob) Execute(ctx context.Context) error {
 }
 
 func (j *AutoUpdateJob) Reschedule(ctx context.Context) error {
-	autoUpdateEnabled := j.settingsService.GetBoolSetting(ctx, "autoUpdate", false)
-	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
-	autoUpdateInterval := j.settingsService.GetIntSetting(ctx, "autoUpdateInterval", 1440)
-
-	if !autoUpdateEnabled || !pollingEnabled {
+	if !j.isAutoUpdateEnabledInternal(ctx) {
 		j.scheduler.RemoveJobByName("auto-update")
-		slog.InfoContext(ctx, "auto-update disabled or polling disabled; removed job if present",
-			"autoUpdate", autoUpdateEnabled, "pollingEnabled", pollingEnabled)
+		slog.InfoContext(ctx, "auto-update disabled; removed job if present")
 		return nil
 	}
 
-	interval := time.Duration(autoUpdateInterval) * time.Minute
-	if interval < 5*time.Minute {
-		interval = 60 * time.Minute
-	}
-	slog.InfoContext(ctx, "auto-update settings changed; rescheduling", "interval", interval.String())
+	// Remove existing job
+	j.scheduler.RemoveJobByName("auto-update")
 
-	return j.scheduler.RescheduleDurationJobByName(ctx, "auto-update", interval, j.Execute, false)
+	jobDefinition, scheduleDesc := j.createJobDefinitionInternal(ctx)
+	slog.InfoContext(ctx, "auto-update settings changed; rescheduling", "schedule", scheduleDesc)
+
+	return j.scheduler.RegisterJob(
+		ctx,
+		"auto-update",
+		jobDefinition,
+		j.Execute,
+		false,
+	)
 }

@@ -19,6 +19,8 @@
 	import BoxesIcon from '@lucide/svelte/icons/boxes';
 	import { SettingsPageLayout } from '$lib/layouts';
 	import { UseSettingsForm } from '$lib/hooks/use-settings-form.svelte';
+	import CronScheduleSelect from '$lib/components/cron-schedule-select.svelte';
+	import { cronExpressionSchema } from '$lib/utils/cron-validation';
 
 	let { data } = $props();
 	const currentSettings = $derived<Settings>($settingsStore || data.settings!);
@@ -28,7 +30,7 @@
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
-		autoUpdateInterval: z.number().int(),
+		autoUpdateCron: cronExpressionSchema,
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		maxImageUploadSize: z.number().int().min(50).max(5000),
 		defaultShell: z.string()
@@ -110,10 +112,10 @@
 			$formInputs.pollingEnabled.value !== currentSettings.pollingEnabled ||
 			$formInputs.pollingInterval.value !== currentSettings.pollingInterval ||
 			$formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
-			$formInputs.autoUpdateInterval.value != currentSettings.autoUpdateInterval ||
-			$formInputs.dockerPruneMode.value != currentSettings.dockerPruneMode ||
-			$formInputs.maxImageUploadSize.value != currentSettings.maxImageUploadSize ||
-			$formInputs.defaultShell.value != currentSettings.defaultShell
+			$formInputs.autoUpdateCron.value !== currentSettings.autoUpdateCron ||
+			$formInputs.dockerPruneMode.value !== currentSettings.dockerPruneMode ||
+			$formInputs.maxImageUploadSize.value !== currentSettings.maxImageUploadSize ||
+			$formInputs.defaultShell.value !== currentSettings.defaultShell
 	});
 
 	$effect(() => {
@@ -137,11 +139,16 @@
 		settingsForm.setLoading(true);
 
 		await settingsForm
-			.updateSettings(data)
+			.updateSettings({
+				...data,
+				autoUpdateCron: data.autoUpdateCron === null ? '' : data.autoUpdateCron
+			})
 			.then(() => toast.success(m.general_settings_saved()))
-			.catch((error) => {
+			.catch((error: any) => {
 				console.error('Failed to save Docker settings:', error);
-				toast.error('Failed to save Docker settings. Please try again.');
+				const errorMessage =
+					error?.response?.data?.error || error?.message || 'Failed to save Docker settings. Please try again.';
+				toast.error(errorMessage);
 			})
 			.finally(() => settingsForm.setLoading(false));
 	}
@@ -149,7 +156,7 @@
 		$formInputs.pollingEnabled.value = currentSettings.pollingEnabled;
 		$formInputs.pollingInterval.value = currentSettings.pollingInterval;
 		$formInputs.autoUpdate.value = currentSettings.autoUpdate;
-		$formInputs.autoUpdateInterval.value = currentSettings.autoUpdateInterval;
+		$formInputs.autoUpdateCron.value = currentSettings.autoUpdateCron;
 		$formInputs.dockerPruneMode.value = currentSettings.dockerPruneMode;
 		$formInputs.maxImageUploadSize.value = currentSettings.maxImageUploadSize;
 		$formInputs.defaultShell.value = currentSettings.defaultShell;
@@ -241,15 +248,8 @@
 								/>
 
 								{#if $formInputs.autoUpdate.value}
-									<div class="border-primary/20 border-l-2 pl-3">
-										<TextInputWithLabel
-											bind:value={$formInputs.autoUpdateInterval.value}
-											error={$formInputs.autoUpdateInterval.error}
-											label={m.docker_auto_update_interval_label()}
-											placeholder={m.docker_auto_update_interval_placeholder()}
-											helpText={m.docker_auto_update_interval_description()}
-											type="number"
-										/>
+									<div class="border-primary/20 space-y-3 border-l-2 pl-3">
+										<CronScheduleSelect bind:value={$formInputs.autoUpdateCron.value} error={$formInputs.autoUpdateCron.error} />
 									</div>
 								{/if}
 							</div>

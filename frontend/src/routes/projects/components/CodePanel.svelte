@@ -23,14 +23,14 @@
 </script>
 
 <Card.Root class="flex h-full flex-col">
-	<Card.Header icon={FileTextIcon} class="flex-shrink-0 items-center">
+	<Card.Header icon={FileTextIcon} class="shrink-0 items-center">
 		<Card.Title>
 			<h2>
 				{title}
 			</h2>
 		</Card.Title>
 	</Card.Header>
-	<Card.Content class="flex-grow p-0">
+	<Card.Content class="grow p-0">
 		<div class="h-full [&_.cm-content]:text-xs sm:[&_.cm-content]:text-sm">
 			<CodeEditor bind:value {language} {placeholder} />
 			{#if error}
