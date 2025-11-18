@@ -26,8 +26,6 @@ on:
 jobs:
   type-check:
     name: Run Svelte Check
-    # Don't run on dependabot branches
-    if: github.actor != 'dependabot[bot]'
     runs-on: depot-ubuntu-latest
     permissions:
       contents: read
@@ -42,9 +40,10 @@ jobs:
         uses: pnpm/action-setup@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 #v5.0.0
+        uses: actions/setup-node@v6
         with:
           node-version: 24
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm --filter arcane-frontend install --frozen-lockfile

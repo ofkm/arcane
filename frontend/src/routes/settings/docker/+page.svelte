@@ -48,6 +48,7 @@
 				}
 			),
 		dockerPruneMode: z.enum(['all', 'dangling']),
+		maxImageUploadSize: z.number().int().min(50).max(5000),
 		defaultShell: z.string()
 	});
 
@@ -129,6 +130,7 @@
 			$formInputs.autoUpdate.value !== currentSettings.autoUpdate ||
 			$formInputs.autoUpdateCron.value !== currentSettings.autoUpdateCron ||
 			$formInputs.dockerPruneMode.value !== currentSettings.dockerPruneMode ||
+			$formInputs.maxImageUploadSize.value !== currentSettings.maxImageUploadSize ||
 			$formInputs.defaultShell.value !== currentSettings.defaultShell
 	});
 
@@ -172,6 +174,7 @@
 		$formInputs.autoUpdate.value = currentSettings.autoUpdate;
 		$formInputs.autoUpdateCron.value = currentSettings.autoUpdateCron;
 		$formInputs.dockerPruneMode.value = currentSettings.dockerPruneMode;
+		$formInputs.maxImageUploadSize.value = currentSettings.maxImageUploadSize;
 		$formInputs.defaultShell.value = currentSettings.defaultShell;
 	}
 
@@ -278,17 +281,28 @@
 						</div>
 					</Card.Header>
 					<Card.Content class="px-3 py-4 sm:px-6">
-						<SelectWithLabel
-							id="dockerPruneMode"
-							name="pruneMode"
-							bind:value={$formInputs.dockerPruneMode.value}
-							error={$formInputs.dockerPruneMode.error}
-							label={m.docker_prune_action_label()}
-							description={pruneModeDescription}
-							placeholder={m.docker_prune_placeholder()}
-							options={pruneModeOptions}
-							onValueChange={(v) => (pruneMode = v as 'all' | 'dangling')}
-						/>
+						<div class="space-y-3">
+							<SelectWithLabel
+								id="dockerPruneMode"
+								name="pruneMode"
+								bind:value={$formInputs.dockerPruneMode.value}
+								error={$formInputs.dockerPruneMode.error}
+								label={m.docker_prune_action_label()}
+								description={pruneModeDescription}
+								placeholder={m.docker_prune_placeholder()}
+								options={pruneModeOptions}
+								onValueChange={(v) => (pruneMode = v as 'all' | 'dangling')}
+							/>
+
+							<TextInputWithLabel
+								bind:value={$formInputs.maxImageUploadSize.value}
+								error={$formInputs.maxImageUploadSize.error}
+								label={m.docker_max_upload_size_label()}
+								placeholder={m.docker_max_upload_size_placeholder()}
+								helpText={m.docker_max_upload_size_description()}
+								type="number"
+							/>
+						</div>
 					</Card.Content>
 				</Card.Root>
 

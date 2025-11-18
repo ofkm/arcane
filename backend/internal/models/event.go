@@ -19,6 +19,7 @@ const (
 	EventTypeContainerError   EventType = "container.error"
 
 	EventTypeImagePull   EventType = "image.pull"
+	EventTypeImageLoad   EventType = "image.load"
 	EventTypeImageDelete EventType = "image.delete"
 	EventTypeImageScan   EventType = "image.scan"
 	EventTypeImageError  EventType = "image.error"

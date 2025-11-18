@@ -60,7 +60,7 @@
 		{@render children()}
 	</Popover.Trigger>
 
-	<Popover.Content class={cn('bg-popover w-80 rounded-md border p-4 shadow-md', className)} {align} {sideOffset}>
+	<Popover.Content class={cn('bg-popover/20 w-80 backdrop-blur-md', className)} {align} {sideOffset}>
 		<div class="space-y-3">
 			{@render headerSection()}
 			{@render contentSection()}

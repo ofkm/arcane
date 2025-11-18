@@ -32,7 +32,7 @@
 
 	let { data } = $props();
 	let projectId = $derived(data.projectId);
-	let project = $derived(data.project);
+	let project = $state(data.project);
 	let editorState = $derived(data.editorState);
 
 	let isLoading = $state({
@@ -179,6 +179,10 @@
 	let prefs: PersistedState<ComposeUIPrefs> | null = null;
 
 	$effect(() => {
+		project = data.project;
+	});
+
+	$effect(() => {
 		if (!project?.id) return;
 		prefs = new PersistedState<ComposeUIPrefs>(`arcane.compose.ui:${project.id}`, defaultComposeUIPrefs, {
 			storage: 'session',
@@ -243,6 +247,17 @@
 			envOpen,
 			autoScroll: autoScrollStackLogs
 		};
+	}
+
+	async function refreshProjectDetails() {
+		if (!projectId) return;
+		handleApiResultWithCallbacks({
+			result: await tryCatch(projectService.getProject(projectId)),
+			message: m.common_refresh_failed({ resource: m.project() }),
+			onSuccess: (updatedProject) => {
+				project = updatedProject;
+			}
+		});
 	}
 </script>
 
@@ -326,6 +341,7 @@
 					bind:removeLoading={isLoading.removing}
 					bind:redeployLoading={isLoading.redeploying}
 					onActionComplete={() => invalidateAll()}
+					onRefresh={refreshProjectDetails}
 				/>
 			</div>
 		{/snippet}

@@ -98,14 +98,14 @@ func setupRouter(cfg *config.Config, appServices *Services) *gin.Engine {
 
 	api.NewHealthHandler(apiGroup)
 	api.NewContainerHandler(apiGroup, appServices.Docker, appServices.Container, appServices.Image, authMiddleware, cfg)
-	api.NewImageHandler(apiGroup, appServices.Docker, appServices.Image, appServices.ImageUpdate, authMiddleware)
+	api.NewImageHandler(apiGroup, appServices.Docker, appServices.Image, appServices.ImageUpdate, appServices.Settings, authMiddleware)
 	api.NewImageUpdateHandler(apiGroup, appServices.ImageUpdate, authMiddleware)
 	api.NewNetworkHandler(apiGroup, appServices.Docker, appServices.Network, authMiddleware)
 	api.NewProjectHandler(apiGroup, appServices.Project, authMiddleware, cfg)
 	api.NewSystemHandler(apiGroup, appServices.Docker, appServices.System, appServices.SystemUpgrade, authMiddleware, cfg)
 	api.NewUpdaterHandler(apiGroup, appServices.Updater, authMiddleware)
 	api.NewVolumeHandler(apiGroup, appServices.Docker, appServices.Volume, authMiddleware)
-	api.NewNotificationHandler(apiGroup, appServices.Notification, authMiddleware)
+	api.NewNotificationHandler(apiGroup, appServices.Notification, appServices.Apprise, authMiddleware)
 	api.NewSettingsHandler(apiGroup, appServices.Settings, appServices.SettingsSearch, authMiddleware)
 	api.NewCustomizeHandler(apiGroup, appServices.CustomizeSearch, authMiddleware)
 

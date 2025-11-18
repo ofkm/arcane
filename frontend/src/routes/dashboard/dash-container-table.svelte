@@ -24,10 +24,45 @@
 	} = $props();
 
 	let selectedIds = $state<string[]>([]);
+	let contentHeight = $state(0);
+
+	// Estimate row height: ~57px per row (including borders/padding), plus ~145px for header
+	const ROW_HEIGHT = 57;
+	const HEADER_HEIGHT = 145;
+	const FOOTER_HEIGHT = 48; // Reserve space for the "showing" footer overlay
+	const MIN_ROWS = 3;
+	const MAX_ROWS = 50;
 
 	let requestOptions = $state<SearchPaginationSortRequest>({
 		pagination: { page: 1, limit: 5 },
 		sort: { column: 'created', direction: 'desc' }
+	});
+
+	const shouldReserveFooter = $derived.by(() => {
+		const limit = requestOptions.pagination?.limit ?? containers.pagination?.itemsPerPage ?? MIN_ROWS;
+		const dataLength = containers.data?.length ?? 0;
+		const totalItems = containers.pagination?.totalItems ?? 0;
+		return dataLength >= limit && totalItems > limit;
+	});
+
+	const calculatedLimit = $derived.by(() => {
+		if (contentHeight <= 0) return 5;
+		let availableHeight = contentHeight - HEADER_HEIGHT;
+		if (shouldReserveFooter) {
+			availableHeight -= FOOTER_HEIGHT;
+		}
+		const rows = Math.floor(Math.max(0, availableHeight) / ROW_HEIGHT);
+		return Math.max(MIN_ROWS, Math.min(MAX_ROWS, rows));
+	});
+
+	let lastFetchedLimit = $state(5);
+
+	$effect(() => {
+		if (calculatedLimit !== lastFetchedLimit && requestOptions.pagination) {
+			lastFetchedLimit = calculatedLimit;
+			requestOptions.pagination.limit = calculatedLimit;
+			containerService.getContainers(requestOptions).then((result) => (containers = result));
+		}
 	});
 
 	const columns = [
@@ -86,40 +121,42 @@
 	/>
 {/snippet}
 
-<Card.Root class="flex h-full min-h-0 flex-col">
-	<Card.Header icon={BoxIcon} class="shrink-0">
-		<div class="flex flex-1 items-center justify-between">
-			<div class="flex flex-col space-y-1.5">
-				<Card.Title>
-					<h2>{m.containers_title()}</h2>
-				</Card.Title>
-				<Card.Description>{m.containers_recent()}</Card.Description>
+<div class="flex h-full min-h-0 flex-col" bind:clientHeight={contentHeight}>
+	<Card.Root class="flex h-full min-h-0 flex-col">
+		<Card.Header icon={BoxIcon} class="shrink-0">
+			<div class="flex flex-1 items-center justify-between">
+				<div class="flex flex-col space-y-1.5">
+					<Card.Title>
+						<h2>{m.containers_title()}</h2>
+					</Card.Title>
+					<Card.Description>{m.containers_recent()}</Card.Description>
+				</div>
+				<Button variant="ghost" size="sm" href="/containers" disabled={isLoading}>
+					{m.common_view_all()}
+					<ArrowRightIcon class="ml-2 size-4" />
+				</Button>
 			</div>
-			<Button variant="ghost" size="sm" href="/containers" disabled={isLoading}>
-				{m.common_view_all()}
-				<ArrowRightIcon class="ml-2 size-4" />
-			</Button>
-		</div>
-	</Card.Header>
-	<Card.Content class="relative flex min-h-0 flex-1 flex-col px-0">
-		<ArcaneTable
-			items={containers}
-			bind:requestOptions
-			bind:selectedIds
-			onRefresh={async (options) => (containers = await containerService.getContainers(options))}
-			withoutSearch={true}
-			withoutPagination={true}
-			selectionDisabled={true}
-			unstyled={true}
-			{columns}
-			mobileCard={DashContainerMobileCard}
-		/>
-		{#if containers.data.length > 5}
-			<div
-				class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 rounded-b-xl px-6 py-3 text-xs backdrop-blur-sm"
-			>
-				{m.containers_showing_of_total({ shown: 5, total: containers.pagination.totalItems })}
-			</div>
-		{/if}
-	</Card.Content>
-</Card.Root>
+		</Card.Header>
+		<Card.Content class="relative flex min-h-0 flex-1 flex-col px-0">
+			<ArcaneTable
+				items={containers}
+				bind:requestOptions
+				bind:selectedIds
+				onRefresh={async (options) => (containers = await containerService.getContainers(options))}
+				withoutSearch={true}
+				withoutPagination={true}
+				selectionDisabled={true}
+				unstyled={true}
+				{columns}
+				mobileCard={DashContainerMobileCard}
+			/>
+			{#if containers.data.length >= calculatedLimit && containers.pagination.totalItems > calculatedLimit}
+				<div
+					class="bg-muted/40 text-muted-foreground absolute right-0 bottom-0 left-0 rounded-b-xl px-6 py-3 text-xs backdrop-blur-sm"
+				>
+					{m.containers_showing_of_total({ shown: calculatedLimit, total: containers.pagination.totalItems })}
+				</div>
+			{/if}
+		</Card.Content>
+	</Card.Root>
+</div>

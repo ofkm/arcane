@@ -18,7 +18,7 @@ permissions:
 jobs:
   golangci-lint:
     name: Run Golangci-lint
-    runs-on: depot-ubuntu-latest
+    runs-on: depot-ubuntu-24.04-16
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -27,13 +27,12 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: backend/go.mod
-          cache-dependency-path: |
-            backend/go.sum
+          cache-dependency-path: backend/go.sum
 
       - name: Run Golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.4.0
+          version: v2.6.1
           args: --build-tags=exclude_frontend
           working-directory: backend
           only-new-issues: ${{ github.event_name == 'pull_request' }}

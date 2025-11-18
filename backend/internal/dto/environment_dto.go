@@ -22,11 +22,9 @@ type TestConnectionDto struct {
 }
 
 type EnvironmentDto struct {
-	ID        string  `json:"id"`
-	Name      string  `json:"name,omitempty"`
-	ApiUrl    string  `json:"apiUrl"`
-	Status    string  `json:"status"`
-	Enabled   bool    `json:"enabled"`
-	CreatedAt string  `json:"createdAt"`
-	UpdatedAt *string `json:"updatedAt,omitempty"`
+	ID      string `json:"id"`
+	Name    string `json:"name,omitempty"`
+	ApiUrl  string `json:"apiUrl"`
+	Status  string `json:"status"`
+	Enabled bool   `json:"enabled"`
 }

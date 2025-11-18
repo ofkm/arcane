@@ -193,3 +193,7 @@ func NewImagePruneReportDto(src image.PruneReport) ImagePruneReportDto {
 type MessageDto struct {
 	Message string `json:"message"`
 }
+
+type ImageLoadResultDto struct {
+	Stream string `json:"stream,omitempty"`
+}

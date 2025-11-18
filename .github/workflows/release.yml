@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   binaries:
-    runs-on: depot-ubuntu-latest
+    runs-on: depot-ubuntu-24.04-16
 
     env:
       DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/arcane
@@ -27,11 +27,14 @@ jobs:
 
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
+        with:
+          run_install: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 #v5.0.0
+        uses: actions/setup-node@v6
         with:
           node-version: 24
+          cache: pnpm
 
       - name: Install frontend deps
         run: pnpm -C frontend install --frozen-lockfile
@@ -62,10 +65,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload ${{ github.ref_name }} backend/.bin/*
 
-  manager-image:
-    runs-on: depot-ubuntu-latest
-    env:
-      DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/arcane
+  images:
+    runs-on: depot-ubuntu-24.04-16
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: manager
+            display: Arcane
+            dockerfile: docker/Dockerfile
+            image-suffix: arcane
+            sbom-dir: manager
+          - target: agent
+            display: Arcane Headless
+            dockerfile: docker/Dockerfile-agent
+            image-suffix: arcane-headless
+            sbom-dir: agent
     steps:
       - uses: actions/checkout@v5
         with: { fetch-depth: 1 }
@@ -73,27 +88,32 @@ jobs:
       - name: Set up Depot CLI
         uses: depot/setup-action@v1
 
-      - name: Lowercase image name
-        run: echo "DOCKER_IMAGE_NAME=${DOCKER_IMAGE_NAME,,}" >> "$GITHUB_ENV"
+      - name: Resolve image name
+        id: image-name
+        run: |
+          OWNER=${{ github.repository_owner }}
+          echo "value=ghcr.io/${OWNER,,}/${{ matrix.image-suffix }}" >> "$GITHUB_OUTPUT"
+
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_IMAGE_NAME }}
+          images: ${{ steps.image-name.outputs.value }}
           tags: |
             type=semver,pattern={{version}},prefix=v
             type=semver,pattern={{major}}.{{minor}},prefix=v
             type=semver,pattern={{major}},prefix=v
+
       - id: build
         uses: depot/build-push-action@v1
         with:
-          token: ${{ secrets.DEPOT_TOKEN }}
           context: .
-          file: docker/Dockerfile
+          file: ${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -101,59 +121,24 @@ jobs:
           build-args: |
             VERSION=${{ github.ref_name }}
             REVISION=${{ github.sha }}
-          secrets: |
-            "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
+          sbom: true
+          sbom-dir: sbom-output/${{ matrix.target }}
+          provenance: true
 
-  agent-image:
-    runs-on: depot-ubuntu-latest
-    env:
-      AGENT_IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/arcane-headless
-    steps:
-      - uses: actions/checkout@v5
-        with: { fetch-depth: 1 }
+      - name: Record digest
+        run: |
+          mkdir -p sbom-output/${{ matrix.target }}
+          echo "${{ steps.build.outputs.digest }}" > sbom-output/${{ matrix.target }}/digest.txt
 
-      - name: Set up Depot CLI
-        uses: depot/setup-action@v1
-
-      - name: Lowercase image name
-        run: echo "AGENT_IMAGE_NAME=${AGENT_IMAGE_NAME,,}" >> "$GITHUB_ENV"
-      - uses: docker/login-action@v3
+      - name: Upload SBOM artifact (${{ matrix.display }})
+        uses: actions/upload-artifact@v5
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.AGENT_IMAGE_NAME }}
-          tags: |
-            type=semver,pattern={{version}},prefix=v
-            type=semver,pattern={{major}}.{{minor}},prefix=v
-            type=semver,pattern={{major}},prefix=v
-      - id: build
-        uses: depot/build-push-action@v1
-        with:
-          token: ${{ secrets.DEPOT_TOKEN }}
-          project: np622krb2x
-          context: .
-          file: docker/Dockerfile-agent
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            VERSION=${{ github.ref_name }}
-            REVISION=${{ github.sha }}
-          secrets: |
-            "DEPOT_TOKEN=${{ secrets.DEPOT_TOKEN }}"
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
+          path: sbom-output/${{ matrix.target }}
+          name: SBOM-${{ matrix.target }}
 
   publish-release:
-    runs-on: depot-ubuntu-latest
-    needs: [binaries, manager-image, agent-image]
+    runs-on: depot-ubuntu-24.04-16
+    needs: [binaries, images]
     permissions:
       contents: write
       id-token: write
@@ -168,17 +153,32 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download manager SBOM and digest
+        uses: actions/download-artifact@v6
+        with:
+          name: SBOM-manager
+          path: sbom-artifacts/manager
+      - name: Download agent SBOM and digest
+        uses: actions/download-artifact@v6
+        with:
+          name: SBOM-agent
+          path: sbom-artifacts/agent
+      - name: Read digests
+        id: digests
+        run: |
+          echo "manager=$(cat sbom-artifacts/manager/digest.txt)" >> "$GITHUB_OUTPUT"
+          echo "agent=$(cat sbom-artifacts/agent/digest.txt)" >> "$GITHUB_OUTPUT"
       - name: Container image attestation (manager)
         uses: actions/attest-build-provenance@v3
         with:
           subject-name: ghcr.io/${{ github.repository_owner }}/arcane
-          subject-digest: ${{ needs.manager-image.outputs.digest }}
+          subject-digest: ${{ steps.digests.outputs.manager }}
           push-to-registry: true
       - name: Container image attestation (agent)
         uses: actions/attest-build-provenance@v3
         with:
           subject-name: ghcr.io/${{ github.repository_owner }}/arcane-headless
-          subject-digest: ${{ needs.agent-image.outputs.digest }}
+          subject-digest: ${{ steps.digests.outputs.agent }}
           push-to-registry: true
       - name: Publish release
         env:

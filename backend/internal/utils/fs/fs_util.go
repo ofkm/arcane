@@ -112,6 +112,7 @@ func CreateUniqueDir(projectsRoot, basePath, name string, perm os.FileMode) (pat
 				}
 				return "", "", fmt.Errorf("created directory is outside allowed projects root")
 			}
+
 			return candidate, folderName, nil
 		} else if !os.IsExist(mkErr) {
 			return "", "", mkErr

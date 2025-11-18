@@ -80,17 +80,19 @@
 	};
 
 	const resolvedMinWidth = minWidth as MinWidth;
-	const badgeClasses = cn(
-		// base
-		'inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full font-medium',
-		sizeStyles[size as Size],
-		// subtle border and translucency
-		'ring-1 ring-inset transition-colors',
-		// variant styles
-		variantStyles[variant as Variant],
-		// optional fixed width
-		minWidthClasses[resolvedMinWidth],
-		className
+	const badgeClasses = $derived(
+		cn(
+			// base
+			'inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full font-medium',
+			sizeStyles[size as Size],
+			// subtle border and translucency
+			'ring-1 ring-inset transition-colors',
+			// variant styles
+			variantStyles[variant as Variant],
+			// optional fixed width
+			minWidthClasses[resolvedMinWidth],
+			className
+		)
 	);
 </script>
 

@@ -23,6 +23,7 @@
 		redeploy?: boolean;
 		remove?: boolean;
 		validating?: boolean;
+		refresh?: boolean;
 	};
 
 	let {
@@ -36,7 +37,9 @@
 		stopLoading = $bindable(false),
 		restartLoading = $bindable(false),
 		removeLoading = $bindable(false),
-		redeployLoading = $bindable(false)
+		redeployLoading = $bindable(false),
+		refreshLoading = $bindable(false),
+		onRefresh
 	}: {
 		id: string;
 		name?: string;
@@ -49,6 +52,8 @@
 		restartLoading?: boolean;
 		removeLoading?: boolean;
 		redeployLoading?: boolean;
+		refreshLoading?: boolean;
+		onRefresh?: () => void | Promise<void>;
 	} = $props();
 
 	let isLoading = $state<LoadingStates>({
@@ -58,7 +63,8 @@
 		remove: false,
 		pull: false,
 		redeploy: false,
-		validating: false
+		validating: false,
+		refresh: false
 	});
 
 	function setLoading<K extends keyof LoadingStates>(key: K, value: boolean) {
@@ -70,6 +76,7 @@
 		if (key === 'restart') restartLoading = value;
 		if (key === 'remove') removeLoading = value;
 		if (key === 'redeploy') redeployLoading = value;
+		if (key === 'refresh') refreshLoading = value;
 	}
 
 	const uiLoading = $derived({
@@ -79,7 +86,8 @@
 		remove: !!(isLoading.remove || loading?.remove || removeLoading),
 		pulling: !!(isLoading.pull || loading?.pull),
 		redeploy: !!(isLoading.redeploy || loading?.redeploy || redeployLoading),
-		validating: !!(isLoading.validating || loading?.validating)
+		validating: !!(isLoading.validating || loading?.validating),
+		refresh: !!(isLoading.refresh || loading?.refresh || refreshLoading)
 	});
 
 	let pullPopoverOpen = $state(false);
@@ -126,6 +134,16 @@
 		}
 	}
 
+	async function handleRefresh() {
+		if (!onRefresh) return;
+		setLoading('refresh', true);
+		try {
+			await onRefresh();
+		} finally {
+			setLoading('refresh', false);
+		}
+	}
+
 	function isDownloadingLine(data: any): boolean {
 		const status = String(data?.status ?? '').toLowerCase();
 		const pd = data?.progressDetail;
@@ -159,7 +177,7 @@
 						handleApiResultWithCallbacks({
 							result: await tryCatch(
 								type === 'container'
-									? containerService.deleteContainer(id)
+									? containerService.deleteContainer(id, { volumes: removeVolumes })
 									: projectService.destroyProject(id, removeVolumes, removeFiles)
 							),
 							message: m.common_action_failed_with_type({
@@ -465,6 +483,10 @@
 				</ProgressPopover>
 			{/if}
 
+			{#if onRefresh}
+				<ArcaneButton action="refresh" onclick={() => handleRefresh()} loading={uiLoading.refresh} />
+			{/if}
+
 			<ArcaneButton
 				customLabel={type === 'project' ? m.compose_destroy() : m.common_remove()}
 				action="remove"
@@ -514,6 +536,12 @@
 						{#if type === 'project'}
 							<DropdownMenu.Item onclick={handleProjectPull} disabled={projectPulling || uiLoading.pulling}>
 								{m.images_pull()}
+							</DropdownMenu.Item>
+						{/if}
+
+						{#if onRefresh}
+							<DropdownMenu.Item onclick={handleRefresh} disabled={uiLoading.refresh}>
+								{m.common_refresh()}
 							</DropdownMenu.Item>
 						{/if}
 

@@ -28,6 +28,11 @@ func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices 
 		slog.ErrorContext(appCtx, "Failed to register image polling job", slog.Any("error", err))
 	}
 
+	environmentHealthJob := job.NewEnvironmentHealthJob(scheduler, appServices.Environment, appServices.Settings)
+	if err := environmentHealthJob.Register(appCtx); err != nil {
+		slog.ErrorContext(appCtx, "Failed to register environment health check job", slog.Any("error", err))
+	}
+
 	analyticsJob := job.NewAnalyticsJob(scheduler, appServices.Settings, nil, appConfig)
 	if err := analyticsJob.Register(appCtx); err != nil {
 		slog.ErrorContext(appCtx, "Failed to register analytics heartbeat job", slog.Any("error", err))
@@ -47,6 +52,9 @@ func registerJobs(appCtx context.Context, scheduler *job.Scheduler, appServices 
 		}
 		if err := autoUpdateJob.Reschedule(ctx); err != nil {
 			slog.WarnContext(ctx, "Failed to reschedule auto-update job", slog.Any("error", err))
+		}
+		if err := environmentHealthJob.Reschedule(ctx); err != nil {
+			slog.WarnContext(ctx, "Failed to reschedule environment-health job", slog.Any("error", err))
 		}
 	}
 	appServices.Settings.OnAutoUpdateSettingsChanged = func(ctx context.Context) {

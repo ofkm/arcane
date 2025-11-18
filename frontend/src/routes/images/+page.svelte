@@ -3,17 +3,18 @@
 	import { Spinner } from '$lib/components/ui/spinner/index.js';
 	import HardDriveIcon from '@lucide/svelte/icons/hard-drive';
 	import PackageIcon from '@lucide/svelte/icons/package';
+	import XIcon from '@lucide/svelte/icons/x';
 	import { toast } from 'svelte-sonner';
 	import ImagePullSheet from '$lib/components/sheets/image-pull-sheet.svelte';
 	import bytes from 'bytes';
 	import * as Dialog from '$lib/components/ui/dialog/index.js';
+	import { displaySize, FileDropZone, MEGABYTE, type FileDropZoneProps } from '$lib/components/ui/file-drop-zone';
 	import { handleApiResultWithCallbacks } from '$lib/utils/api.util';
 	import { tryCatch } from '$lib/utils/try-catch';
 	import ImageTable from './image-table.svelte';
 	import { m } from '$lib/paraglide/messages';
 	import { imageService } from '$lib/services/image-service';
 	import { environmentStore } from '$lib/stores/environment.store.svelte';
-	import type { Environment } from '$lib/types/environment.type';
 	import { ResourcePageLayout, type ActionButton, type StatCardConfig } from '$lib/layouts/index.js';
 
 	let { data } = $props();
@@ -23,13 +24,19 @@
 
 	let isLoading = $state({
 		pulling: false,
+		uploading: false,
 		refreshing: false,
 		pruning: false,
 		checking: false
 	});
 
 	let isPullDialogOpen = $state(false);
+	let isUploadDialogOpen = $state(false);
 	let isConfirmPruneDialogOpen = $state(false);
+	let uploadedFiles = $state<File[]>([]);
+
+	// Get max upload size from settings (default 500MB)
+	const maxUploadSizeMB = $derived(parseInt(String(data.settings?.maxImageUploadSize || '500'), 10));
 
 	async function handlePruneImages() {
 		isLoading.pruning = true;
@@ -44,6 +51,43 @@
 				isConfirmPruneDialogOpen = false;
 			}
 		});
+	}
+
+	const onUpload: FileDropZoneProps['onUpload'] = async (files) => {
+		uploadedFiles = [...uploadedFiles, ...files];
+	};
+
+	const onFileRejected: FileDropZoneProps['onFileRejected'] = async ({ reason, file }) => {
+		toast.error(`${file.name} failed to upload!`, { description: reason });
+	};
+
+	const removeFile = (index: number) => {
+		uploadedFiles = [...uploadedFiles.slice(0, index), ...uploadedFiles.slice(index + 1)];
+	};
+
+	async function handleUploadImages() {
+		if (uploadedFiles.length === 0) {
+			toast.error(m.images_upload_file_required());
+			return;
+		}
+
+		isLoading.uploading = true;
+
+		for (const file of uploadedFiles) {
+			handleApiResultWithCallbacks({
+				result: await tryCatch(imageService.uploadImage(file)),
+				message: m.images_upload_failed(),
+				setLoadingState: (value) => (isLoading.uploading = value),
+				onSuccess: async () => {
+					toast.success(m.images_upload_success());
+				}
+			});
+		}
+
+		images = await imageService.getImages(requestOptions);
+		uploadedFiles = [];
+		isUploadDialogOpen = false;
+		isLoading.uploading = false;
 	}
 
 	async function handleTriggerBulkUpdateCheck() {
@@ -110,6 +154,12 @@
 			onclick: () => (isPullDialogOpen = true)
 		},
 		{
+			id: 'upload',
+			action: 'create',
+			label: m.images_upload_image(),
+			onclick: () => (isUploadDialogOpen = true)
+		},
+		{
 			id: 'check-updates',
 			action: 'inspect',
 			label: m.images_check_updates(),
@@ -172,6 +222,68 @@
 			bind:open={isPullDialogOpen}
 			onPullFinished={async () => (images = await imageService.getImages(requestOptions))}
 		/>
+
+		<Dialog.Root bind:open={isUploadDialogOpen}>
+			<Dialog.Content class="max-w-2xl">
+				<Dialog.Header>
+					<Dialog.Title>{m.images_upload_image()}</Dialog.Title>
+					<Dialog.Description>
+						{m.images_upload_description()}
+					</Dialog.Description>
+				</Dialog.Header>
+				<div class="space-y-4 py-4">
+					<FileDropZone
+						{onUpload}
+						{onFileRejected}
+						maxFileSize={maxUploadSizeMB * MEGABYTE}
+						accept=".tar,.tar.gz,.tgz,.tar.xz"
+						maxFiles={10}
+						fileCount={uploadedFiles.length}
+						disabled={isLoading.uploading}
+					/>
+					{#if uploadedFiles.length > 0}
+						<div class="flex flex-col gap-2">
+							{#each uploadedFiles as file, i (file.name)}
+								<div class="border-border bg-muted/50 flex items-center justify-between gap-2 rounded-lg border p-3">
+									<div class="flex flex-col">
+										<span class="text-sm font-medium">{file.name}</span>
+										<span class="text-muted-foreground text-xs">{displaySize(file.size)}</span>
+									</div>
+									<Button variant="ghost" size="icon" onclick={() => removeFile(i)} disabled={isLoading.uploading}>
+										<XIcon class="size-4" />
+									</Button>
+								</div>
+							{/each}
+						</div>
+					{/if}
+
+					{#if isLoading.uploading}
+						<div class="text-muted-foreground flex items-center gap-2 text-sm">
+							<Spinner class="size-4" />
+							{m.images_uploading()}
+						</div>
+					{/if}
+				</div>
+				<div class="flex justify-end gap-3">
+					<Button
+						variant="outline"
+						onclick={() => {
+							isUploadDialogOpen = false;
+							uploadedFiles = [];
+						}}
+						disabled={isLoading.uploading}
+					>
+						{m.common_cancel()}
+					</Button>
+					<Button onclick={handleUploadImages} disabled={isLoading.uploading || uploadedFiles.length === 0}>
+						{#if isLoading.uploading}
+							<Spinner class="mr-2 size-4" />
+						{/if}
+						{m.images_upload_image()}
+					</Button>
+				</div>
+			</Dialog.Content>
+		</Dialog.Root>
 
 		<Dialog.Root bind:open={isConfirmPruneDialogOpen}>
 			<Dialog.Content>

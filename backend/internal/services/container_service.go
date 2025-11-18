@@ -129,6 +129,20 @@ func (s *ContainerService) DeleteContainer(ctx context.Context, containerID stri
 	}
 	defer dockerClient.Close()
 
+	// Get container mounts before deletion if we need to remove volumes
+	var volumesToRemove []string
+	if removeVolumes {
+		containerJSON, inspectErr := dockerClient.ContainerInspect(ctx, containerID)
+		if inspectErr == nil {
+			for _, mount := range containerJSON.Mounts {
+				// Only collect named volumes (not bind mounts or tmpfs)
+				if mount.Type == "volume" && mount.Name != "" {
+					volumesToRemove = append(volumesToRemove, mount.Name)
+				}
+			}
+		}
+	}
+
 	err = dockerClient.ContainerRemove(ctx, containerID, container.RemoveOptions{
 		Force:         force,
 		RemoveVolumes: removeVolumes,
@@ -137,6 +151,16 @@ func (s *ContainerService) DeleteContainer(ctx context.Context, containerID stri
 	if err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeContainerError, "container", containerID, "", user.ID, user.Username, "0", err, models.JSON{"action": "delete", "force": force, "removeVolumes": removeVolumes})
 		return fmt.Errorf("failed to delete container: %w", err)
+	}
+
+	// Remove named volumes if requested
+	if removeVolumes && len(volumesToRemove) > 0 {
+		for _, volumeName := range volumesToRemove {
+			if removeErr := dockerClient.VolumeRemove(ctx, volumeName, false); removeErr != nil {
+				// Log but don't fail if volume removal fails (might be in use by another container)
+				s.eventService.LogErrorEvent(ctx, models.EventTypeVolumeError, "volume", volumeName, "", user.ID, user.Username, "0", removeErr, models.JSON{"action": "delete", "container": containerID})
+			}
+		}
 	}
 
 	metadata := models.JSON{

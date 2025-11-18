@@ -24,14 +24,16 @@ import (
 )
 
 type NotificationService struct {
-	db     *database.DB
-	config *config.Config
+	db             *database.DB
+	config         *config.Config
+	appriseService *AppriseService
 }
 
 func NewNotificationService(db *database.DB, cfg *config.Config) *NotificationService {
 	return &NotificationService{
-		db:     db,
-		config: cfg,
+		db:             db,
+		config:         cfg,
+		appriseService: NewAppriseService(db, cfg),
 	}
 }
 
@@ -53,6 +55,11 @@ func (s *NotificationService) GetSettingsByProvider(ctx context.Context, provide
 
 func (s *NotificationService) CreateOrUpdateSettings(ctx context.Context, provider models.NotificationProvider, enabled bool, config models.JSON) (*models.NotificationSettings, error) {
 	var setting models.NotificationSettings
+
+	// Clear config if provider is disabled
+	if !enabled {
+		config = models.JSON{}
+	}
 
 	err := s.db.WithContext(ctx).Where("provider = ?", provider).First(&setting).Error
 	if err != nil {
@@ -83,6 +90,11 @@ func (s *NotificationService) DeleteSettings(ctx context.Context, provider model
 }
 
 func (s *NotificationService) SendImageUpdateNotification(ctx context.Context, imageRef string, updateInfo *dto.ImageUpdateResponse, eventType models.NotificationEventType) error {
+	// Send to Apprise if enabled (don't block on error)
+	if appriseErr := s.appriseService.SendImageUpdateNotification(ctx, imageRef, updateInfo); appriseErr != nil {
+		slog.WarnContext(ctx, "Failed to send Apprise notification", "error", appriseErr)
+	}
+
 	settings, err := s.GetAllSettings(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get notification settings: %w", err)
@@ -161,6 +173,11 @@ func (s *NotificationService) isEventEnabled(config models.JSON, eventType model
 }
 
 func (s *NotificationService) SendContainerUpdateNotification(ctx context.Context, containerName, imageRef, oldDigest, newDigest string) error {
+	// Send to Apprise if enabled (don't block on error)
+	if appriseErr := s.appriseService.SendContainerUpdateNotification(ctx, containerName, imageRef, oldDigest, newDigest); appriseErr != nil {
+		slog.WarnContext(ctx, "Failed to send Apprise notification", "error", appriseErr)
+	}
+
 	settings, err := s.GetAllSettings(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get notification settings: %w", err)
@@ -579,7 +596,7 @@ func (s *NotificationService) sendEmailContainerUpdateNotification(ctx context.C
 
 func (s *NotificationService) renderContainerUpdateEmailTemplate(containerName, imageRef, oldDigest, newDigest string) (string, string, error) {
 	data := map[string]interface{}{
-		"LogoURL":       "https://raw.githubusercontent.com/ofkm/arcane/main/backend/resources/images/logo-full.svg",
+		"LogoURL":       "https://raw.githubusercontent.com/getarcaneapp/arcane/main/backend/resources/images/logo-full.svg",
 		"AppURL":        s.config.AppUrl,
 		"ContainerName": containerName,
 		"ImageRef":      imageRef,
@@ -624,7 +641,7 @@ func (s *NotificationService) renderContainerUpdateEmailTemplate(containerName, 
 func (s *NotificationService) TestNotification(ctx context.Context, provider models.NotificationProvider, testType string) error {
 	setting, err := s.GetSettingsByProvider(ctx, provider)
 	if err != nil {
-		return fmt.Errorf("failed to get settings for provider %s: %w", provider, err)
+		return fmt.Errorf("please save your %s settings before testing", provider)
 	}
 
 	testUpdate := &dto.ImageUpdateResponse{
@@ -704,7 +721,7 @@ func (s *NotificationService) sendTestEmail(ctx context.Context, config models.J
 
 func (s *NotificationService) renderTestEmailTemplate() (string, string, error) {
 	data := map[string]interface{}{
-		"LogoURL": "https://raw.githubusercontent.com/ofkm/arcane/main/backend/resources/images/logo-full.svg",
+		"LogoURL": "https://raw.githubusercontent.com/getarcaneapp/arcane/main/backend/resources/images/logo-full.svg",
 		"AppURL":  s.config.AppUrl,
 	}
 
@@ -772,6 +789,11 @@ func (s *NotificationService) SendBatchImageUpdateNotification(ctx context.Conte
 
 	if len(updatesWithChanges) == 0 {
 		return nil
+	}
+
+	// Send to Apprise if enabled
+	if appriseErr := s.appriseService.SendBatchImageUpdateNotification(ctx, updatesWithChanges); appriseErr != nil {
+		slog.WarnContext(ctx, "Failed to send Apprise notification", "error", appriseErr)
 	}
 
 	settings, err := s.GetAllSettings(ctx)

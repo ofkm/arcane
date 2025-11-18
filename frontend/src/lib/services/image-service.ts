@@ -42,7 +42,7 @@ export class ImageService extends BaseAPIService {
 
 	async checkImageUpdateByID(imageId: string): Promise<ImageUpdateInfoDto> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		return this.handleResponse(this.api.get(`/environments/${envId}/image-updates/check/${imageId}`));
+		return this.handleResponse(this.api.post(`/environments/${envId}/image-updates/check/${imageId}`, {}));
 	}
 
 	async checkAllImages(): Promise<Record<string, ImageUpdateInfoDto>> {
@@ -53,6 +53,19 @@ export class ImageService extends BaseAPIService {
 	async runAutoUpdate(options?: AutoUpdateCheck): Promise<AutoUpdateResult> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
 		return this.handleResponse(this.api.post(`/environments/${envId}/updater/run`, options));
+	}
+
+	async uploadImage(file: File): Promise<any> {
+		const envId = await environmentStore.getCurrentEnvironmentId();
+		const formData = new FormData();
+		formData.append('file', file);
+		return this.handleResponse(
+			this.api.post(`/environments/${envId}/images/upload`, formData, {
+				headers: {
+					'Content-Type': 'multipart/form-data'
+				}
+			})
+		);
 	}
 }
 

@@ -18,7 +18,9 @@ type UpdateSettingsDto struct {
 	AutoUpdateCron             *string `json:"autoUpdateCron,omitempty"`
 	PollingEnabled             *string `json:"pollingEnabled,omitempty"`
 	PollingInterval            *string `json:"pollingInterval,omitempty"`
+	EnvironmentHealthInterval  *string `json:"environmentHealthInterval,omitempty"`
 	PruneMode                  *string `json:"dockerPruneMode,omitempty" binding:"omitempty,oneof=all dangling"`
+	MaxImageUploadSize         *string `json:"maxImageUploadSize,omitempty"`
 	BaseServerURL              *string `json:"baseServerUrl,omitempty"`
 	EnableGravatar             *string `json:"enableGravatar,omitempty"`
 	DefaultShell               *string `json:"defaultShell,omitempty"`
@@ -26,6 +28,7 @@ type UpdateSettingsDto struct {
 	AccentColor                *string `json:"accentColor,omitempty"`
 	AuthLocalEnabled           *string `json:"authLocalEnabled,omitempty"`
 	AuthOidcEnabled            *string `json:"authOidcEnabled,omitempty"`
+	AuthOidcMergeAccounts      *string `json:"authOidcMergeAccounts,omitempty"`
 	AuthSessionTimeout         *string `json:"authSessionTimeout,omitempty"`
 	AuthPasswordPolicy         *string `json:"authPasswordPolicy,omitempty"`
 	AuthOidcConfig             *string `json:"authOidcConfig,omitempty"`

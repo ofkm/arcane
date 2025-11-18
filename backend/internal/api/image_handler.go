@@ -1,10 +1,14 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/ofkm/arcane-backend/internal/dto"
@@ -17,10 +21,11 @@ type ImageHandler struct {
 	imageService       *services.ImageService
 	imageUpdateService *services.ImageUpdateService
 	dockerService      *services.DockerClientService
+	settingsService    *services.SettingsService
 }
 
-func NewImageHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, imageService *services.ImageService, imageUpdateService *services.ImageUpdateService, authMiddleware *middleware.AuthMiddleware) {
-	handler := &ImageHandler{dockerService: dockerService, imageService: imageService, imageUpdateService: imageUpdateService}
+func NewImageHandler(group *gin.RouterGroup, dockerService *services.DockerClientService, imageService *services.ImageService, imageUpdateService *services.ImageUpdateService, settingsService *services.SettingsService, authMiddleware *middleware.AuthMiddleware) {
+	handler := &ImageHandler{dockerService: dockerService, imageService: imageService, imageUpdateService: imageUpdateService, settingsService: settingsService}
 
 	apiGroup := group.Group("/environments/:id/images")
 	apiGroup.Use(authMiddleware.WithAdminNotRequired().Add())
@@ -31,6 +36,7 @@ func NewImageHandler(group *gin.RouterGroup, dockerService *services.DockerClien
 		apiGroup.DELETE("/:imageId", handler.Remove)
 		apiGroup.POST("/pull", handler.Pull)
 		apiGroup.POST("/prune", handler.Prune)
+		apiGroup.POST("/upload", handler.Upload)
 	}
 }
 
@@ -212,5 +218,83 @@ func (h *ImageHandler) GetImageUsageCounts(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    out,
+	})
+}
+
+func (h *ImageHandler) Upload(c *gin.Context) {
+	ctx := context.Background()
+
+	currentUser, ok := middleware.RequireAuthentication(c)
+	if !ok {
+		return
+	}
+
+	// Stream the uploaded file directly to the Docker daemon to avoid buffering large files in memory
+	mr, err := c.Request.MultipartReader()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    dto.MessageDto{Message: "Invalid multipart form: " + err.Error()},
+		})
+		return
+	}
+
+	var (
+		part     *multipart.Part
+		fileName string
+		found    bool
+	)
+
+	for {
+		p, err := mr.NextPart()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": dto.MessageDto{Message: "Failed to read upload: " + err.Error()}})
+			return
+		}
+		// Only consider file parts (have a filename)
+		if p.FileName() != "" {
+			part = p
+			fileName = p.FileName()
+			found = true
+			break
+		}
+		// Discard and continue non-file parts
+		_ = p.Close()
+	}
+
+	if !found || part == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": dto.MessageDto{Message: "No file uploaded"}})
+		return
+	}
+	defer part.Close()
+
+	maxSizeMB := h.settingsService.GetIntSetting(ctx, "maxImageUploadSize", 500)
+	maxSizeBytes := int64(maxSizeMB) * 1024 * 1024
+
+	// Validate that the file is a Docker image tar archive
+	// We allow .tar, .tar.gz, .tgz, .tar.xz
+	lowerName := strings.ToLower(fileName)
+	if !strings.HasSuffix(lowerName, ".tar") && !strings.HasSuffix(lowerName, ".tar.gz") && !strings.HasSuffix(lowerName, ".tgz") && !strings.HasSuffix(lowerName, ".tar.xz") {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "data": dto.MessageDto{Message: "Invalid file format. Only Docker image tar archives are allowed (.tar, .tar.gz, .tgz, .tar.xz)"}})
+		return
+	}
+
+	result, err := h.imageService.LoadImageFromReader(ctx, part, fileName, *currentUser, maxSizeBytes)
+	if err != nil {
+		// Check if it's a size limit error
+		if strings.Contains(err.Error(), "exceeds maximum allowed size") {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"success": false, "data": dto.MessageDto{Message: err.Error()}})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "data": dto.MessageDto{Message: "Failed to load image: " + err.Error()}})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    result,
 	})
 }

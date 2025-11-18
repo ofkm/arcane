@@ -14,7 +14,9 @@ export type Settings = {
 	autoUpdateCron: string | null;
 	pollingEnabled: boolean;
 	pollingInterval: number;
+	environmentHealthInterval: number;
 	dockerPruneMode: 'all' | 'dangling';
+	maxImageUploadSize: number;
 	baseServerUrl: string;
 	enableGravatar: boolean;
 	uiConfigDisabled: boolean;
@@ -24,6 +26,7 @@ export type Settings = {
 
 	authLocalEnabled: boolean;
 	authOidcEnabled: boolean;
+	authOidcMergeAccounts: boolean;
 	authSessionTimeout: number;
 	authPasswordPolicy: 'basic' | 'standard' | 'strong';
 	authOidcConfig: string;
@@ -66,4 +69,5 @@ export interface OidcConfig {
 export interface OidcStatusInfo {
 	envForced: boolean;
 	envConfigured: boolean;
+	mergeAccounts: boolean;
 }

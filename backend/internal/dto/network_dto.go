@@ -7,14 +7,15 @@ import (
 )
 
 type NetworkSummaryDto struct {
-	ID      string            `json:"id"`
-	Name    string            `json:"name"`
-	Driver  string            `json:"driver"`
-	Scope   string            `json:"scope"`
-	Created time.Time         `json:"created"`
-	Options map[string]string `json:"options"`
-	Labels  map[string]string `json:"labels"`
-	InUse   bool              `json:"inUse"`
+	ID        string            `json:"id"`
+	Name      string            `json:"name"`
+	Driver    string            `json:"driver"`
+	Scope     string            `json:"scope"`
+	Created   time.Time         `json:"created"`
+	Options   map[string]string `json:"options"`
+	Labels    map[string]string `json:"labels"`
+	InUse     bool              `json:"inUse"`
+	IsDefault bool              `json:"isDefault"`
 }
 
 type NetworkUsageCounts struct {

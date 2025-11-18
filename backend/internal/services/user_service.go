@@ -12,6 +12,7 @@ import (
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"crypto/subtle"
 
@@ -190,11 +191,68 @@ func (s *UserService) GetUserByOidcSubjectId(ctx context.Context, subjectId stri
 	return &user, nil
 }
 
+func (s *UserService) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
+	var user models.User
+	if err := s.db.WithContext(ctx).Where("email = ?", email).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user by email: %w", err)
+	}
+	return &user, nil
+}
+
 func (s *UserService) UpdateUser(ctx context.Context, user *models.User) (*models.User, error) {
 	if err := s.db.WithContext(ctx).Save(user).Error; err != nil {
 		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
 	return user, nil
+}
+
+// AttachOidcSubjectTransactional safely links an OIDC subject to the given user inside a DB transaction.
+// It uses a row lock (FOR UPDATE) to prevent concurrent merges from racing and validates that the
+// user isn't already linked to a different subject. The provided updateFn can mutate the user (e.g.,
+// roles, display name, tokens, last login) before persisting.
+func (s *UserService) AttachOidcSubjectTransactional(ctx context.Context, userID string, subject string, updateFn func(u *models.User)) (*models.User, error) {
+	var out *models.User
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		var u models.User
+		if err := tx.
+			Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ?", userID).
+			First(&u).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrUserNotFound
+			}
+			return fmt.Errorf("failed to load user for OIDC merge: %w", err)
+		}
+
+		// If already linked to a different subject, abort
+		if u.OidcSubjectId != nil && *u.OidcSubjectId != "" && *u.OidcSubjectId != subject {
+			return fmt.Errorf("user already linked to another OIDC subject")
+		}
+
+		// Link subject
+		u.OidcSubjectId = &subject
+
+		if updateFn != nil {
+			updateFn(&u)
+		}
+
+		if err := tx.Save(&u).Error; err != nil {
+			// Bubble up uniqueness violations with a clearer message
+			if strings.Contains(strings.ToLower(err.Error()), "unique") || strings.Contains(strings.ToLower(err.Error()), "duplicate key") {
+				return fmt.Errorf("oidc subject is already linked to another user: %w", err)
+			}
+			return fmt.Errorf("failed to persist OIDC merge: %w", err)
+		}
+		out = &u
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (s *UserService) CountUsers() (int64, error) {
