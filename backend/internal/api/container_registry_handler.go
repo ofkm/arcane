@@ -214,7 +214,7 @@ func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 }
 
 func (h *ContainerRegistryHandler) SyncRegistries(c *gin.Context) {
-	var req models.SyncRegistriesRequest
+	var req dto.SyncRegistriesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		apiErr := models.NewValidationError("Invalid request data", err)
 		c.JSON(apiErr.HTTPStatus(), gin.H{

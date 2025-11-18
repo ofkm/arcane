@@ -170,7 +170,7 @@ func (s *ContainerRegistryService) GetEnabledRegistries(ctx context.Context) ([]
 
 // SyncRegistries syncs registries from a manager to this agent instance
 // It creates, updates, or deletes registries to match the provided list
-func (s *ContainerRegistryService) SyncRegistries(ctx context.Context, syncItems []models.SyncRegistryItem) error {
+func (s *ContainerRegistryService) SyncRegistries(ctx context.Context, syncItems []dto.ContainerRegistrySyncDto) error {
 	existingMap, err := s.getExistingRegistriesMapInternal(ctx)
 	if err != nil {
 		return err
@@ -205,7 +205,7 @@ func (s *ContainerRegistryService) getExistingRegistriesMapInternal(ctx context.
 	return existingMap, nil
 }
 
-func (s *ContainerRegistryService) processSyncItemInternal(ctx context.Context, item models.SyncRegistryItem, existingMap map[string]*models.ContainerRegistry) error {
+func (s *ContainerRegistryService) processSyncItemInternal(ctx context.Context, item dto.ContainerRegistrySyncDto, existingMap map[string]*models.ContainerRegistry) error {
 	existing, exists := existingMap[item.ID]
 	if exists {
 		return s.updateExistingRegistryInternal(ctx, item, existing)
@@ -213,7 +213,7 @@ func (s *ContainerRegistryService) processSyncItemInternal(ctx context.Context, 
 	return s.createNewRegistryInternal(ctx, item)
 }
 
-func (s *ContainerRegistryService) updateExistingRegistryInternal(ctx context.Context, item models.SyncRegistryItem, existing *models.ContainerRegistry) error {
+func (s *ContainerRegistryService) updateExistingRegistryInternal(ctx context.Context, item dto.ContainerRegistrySyncDto, existing *models.ContainerRegistry) error {
 	needsUpdate := s.checkRegistryNeedsUpdateInternal(item, existing)
 
 	if needsUpdate {
@@ -226,7 +226,7 @@ func (s *ContainerRegistryService) updateExistingRegistryInternal(ctx context.Co
 	return nil
 }
 
-func (s *ContainerRegistryService) checkRegistryNeedsUpdateInternal(item models.SyncRegistryItem, existing *models.ContainerRegistry) bool {
+func (s *ContainerRegistryService) checkRegistryNeedsUpdateInternal(item dto.ContainerRegistrySyncDto, existing *models.ContainerRegistry) bool {
 	needsUpdate := utils.UpdateIfChanged(&existing.URL, item.URL)
 	needsUpdate = utils.UpdateIfChanged(&existing.Username, item.Username) || needsUpdate
 
@@ -243,7 +243,7 @@ func (s *ContainerRegistryService) checkRegistryNeedsUpdateInternal(item models.
 	return needsUpdate
 }
 
-func (s *ContainerRegistryService) createNewRegistryInternal(ctx context.Context, item models.SyncRegistryItem) error {
+func (s *ContainerRegistryService) createNewRegistryInternal(ctx context.Context, item dto.ContainerRegistrySyncDto) error {
 	encryptedToken, err := utils.Encrypt(item.Token)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt token for new registry %s: %w", item.ID, err)

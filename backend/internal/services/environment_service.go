@@ -466,7 +466,7 @@ func (s *EnvironmentService) SyncRegistriesToEnvironment(ctx context.Context, en
 		slog.Int("count", len(registries)))
 
 	// Prepare sync items with decrypted tokens
-	syncItems := make([]models.SyncRegistryItem, 0, len(registries))
+	syncItems := make([]dto.ContainerRegistrySyncDto, 0, len(registries))
 	for _, reg := range registries {
 		decryptedToken, err := utils.Decrypt(reg.Token)
 		if err != nil {
@@ -477,7 +477,7 @@ func (s *EnvironmentService) SyncRegistriesToEnvironment(ctx context.Context, en
 			continue
 		}
 
-		syncItems = append(syncItems, models.SyncRegistryItem{
+		syncItems = append(syncItems, dto.ContainerRegistrySyncDto{
 			ID:          reg.ID,
 			URL:         reg.URL,
 			Username:    reg.Username,
@@ -485,11 +485,13 @@ func (s *EnvironmentService) SyncRegistriesToEnvironment(ctx context.Context, en
 			Description: reg.Description,
 			Insecure:    reg.Insecure,
 			Enabled:     reg.Enabled,
+			CreatedAt:   reg.CreatedAt,
+			UpdatedAt:   reg.UpdatedAt,
 		})
 	}
 
 	// Prepare the sync request
-	syncReq := models.SyncRegistriesRequest{
+	syncReq := dto.SyncRegistriesRequest{
 		Registries: syncItems,
 	}
 
