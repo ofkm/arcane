@@ -20,6 +20,7 @@
 	import { SettingsPageLayout } from '$lib/layouts';
 	import { UseSettingsForm } from '$lib/hooks/use-settings-form.svelte';
 	import CronScheduleSelect from '$lib/components/cron-schedule-select.svelte';
+	import { cronExpressionSchema } from '$lib/utils/cron-validation';
 
 	let { data } = $props();
 	const currentSettings = $derived<Settings>($settingsStore || data.settings!);
@@ -29,24 +30,7 @@
 		pollingEnabled: z.boolean(),
 		pollingInterval: z.number().int().min(5).max(10080),
 		autoUpdate: z.boolean(),
-		autoUpdateCron: z
-			.string()
-			.nullable()
-			.default(null)
-			.refine(
-				(val) => {
-					if (!val || val.trim() === '') return true; // Empty is valid (immediate)
-
-					// Basic 5-part cron regex: minute hour day month weekday
-					const cronRegex =
-						/^(\*|[0-5]?\d|[0-5]?\d-[0-5]?\d|[0-5]?\d\/[0-5]?\d|\*\/[0-5]?\d|[0-5]?\d(,[0-5]?\d)+)\s+(\*|[01]?\d|2[0-3]|[01]?\d-[01]?\d|[01]?\d\/[01]?\d|\*\/[01]?\d|[01]?\d(,[01]?\d)+)\s+(\*|[1-9]|[12]\d|3[01]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[1-9]|1[0-2]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[0-6]|[0-6]-[0-6]|[0-6]\/[0-6]|\*\/[0-6]|[0-6](,[0-6])+)$/;
-
-					return cronRegex.test(val.trim());
-				},
-				{
-					message: 'Invalid cron expression format. Expected 5 fields: minute hour day month weekday'
-				}
-			),
+		autoUpdateCron: cronExpressionSchema,
 		dockerPruneMode: z.enum(['all', 'dangling']),
 		maxImageUploadSize: z.number().int().min(50).max(5000),
 		defaultShell: z.string()

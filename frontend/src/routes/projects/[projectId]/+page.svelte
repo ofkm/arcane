@@ -29,6 +29,7 @@
 	import ProjectsLogsPanel from '../components/ProjectLogsPanel.svelte';
 	import ProjectSettingsPanel from '../components/ProjectSettingsPanel.svelte';
 	import { projectService } from '$lib/services/project-service';
+	import { cronExpressionSchema } from '$lib/utils/cron-validation';
 
 	let { data } = $props();
 	let projectId = $derived(data.projectId);
@@ -52,10 +53,6 @@
 	let originalEnvContent = $state(data.editorState.originalEnvContent || '');
 	let originalSettings = $state(data.editorState.originalSettings || { autoUpdate: null, autoUpdateCron: null });
 
-	const normalizeEmptyValue = (val: string | null | undefined): string | null => {
-		return val === '' || val === null || val === undefined ? null : val;
-	};
-
 	const formSchema = z.object({
 		name: z
 			.string()
@@ -64,24 +61,7 @@
 		composeContent: z.string().min(1, 'Compose content is required'),
 		envContent: z.string().optional().default(''),
 		autoUpdate: z.boolean().nullable(),
-		autoUpdateCron: z
-			.string()
-			.nullable()
-			.default(null)
-			.refine(
-				(val) => {
-					if (!val || val.trim() === '') return true; // Empty is valid (immediate)
-
-					// Basic 5-part cron regex: minute hour day month weekday
-					const cronRegex =
-						/^(\*|[0-5]?\d|[0-5]?\d-[0-5]?\d|[0-5]?\d\/[0-5]?\d|\*\/[0-5]?\d|[0-5]?\d(,[0-5]?\d)+)\s+(\*|[01]?\d|2[0-3]|[01]?\d-[01]?\d|[01]?\d\/[01]?\d|\*\/[01]?\d|[01]?\d(,[01]?\d)+)\s+(\*|[1-9]|[12]\d|3[01]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[1-9]|1[0-2]|[1-9]-[1-9]|[1-9]\/[1-9]|\*\/[1-9]|[1-9](,[1-9])+)\s+(\*|[0-6]|[0-6]-[0-6]|[0-6]\/[0-6]|\*\/[0-6]|[0-6](,[0-6])+)$/;
-
-					return cronRegex.test(val.trim());
-				},
-				{
-					message: 'Invalid cron expression format. Expected 5 fields: minute hour day month weekday'
-				}
-			)
+		autoUpdateCron: cronExpressionSchema
 	});
 
 	let formData = $derived({
@@ -89,42 +69,17 @@
 		composeContent: editorState.composeContent,
 		envContent: editorState.envContent || '',
 		autoUpdate: project?.settings?.autoUpdate ?? null,
-		autoUpdateCron: normalizeEmptyValue(project?.settings?.autoUpdateCron ?? null)
+		autoUpdateCron: project?.settings?.autoUpdateCron ?? null
 	});
 
 	let { inputs, ...form } = $derived(createForm<typeof formSchema>(formSchema, formData));
-
-	// Sync settings with form inputs for two-way binding
-	// Initialize from project settings
-	let autoUpdate = $state<boolean | null>(null);
-	let autoUpdateCron = $state<string | null>(null);
-
-	// Initialize from project when available
-	$effect(() => {
-		if (project?.settings) {
-			autoUpdate = project.settings.autoUpdate ?? null;
-			autoUpdateCron = normalizeEmptyValue(project.settings.autoUpdateCron ?? null);
-		}
-	});
-
-	// Sync form inputs with state
-	$effect(() => {
-		autoUpdate = $inputs.autoUpdate.value;
-		autoUpdateCron = $inputs.autoUpdateCron.value;
-	});
-
-	// Sync state back to form inputs
-	$effect(() => {
-		$inputs.autoUpdate.value = autoUpdate;
-		$inputs.autoUpdateCron.value = autoUpdateCron;
-	});
 
 	let hasChanges = $derived(
 		$inputs.name.value !== originalName ||
 			$inputs.composeContent.value !== originalComposeContent ||
 			$inputs.envContent.value !== originalEnvContent ||
 			$inputs.autoUpdate.value !== originalSettings.autoUpdate ||
-			normalizeEmptyValue($inputs.autoUpdateCron.value) !== normalizeEmptyValue(originalSettings.autoUpdateCron)
+			$inputs.autoUpdateCron.value !== originalSettings.autoUpdateCron
 	);
 
 	let canEditName = $derived(!isLoading.saving && project?.status !== 'running' && project?.status !== 'partially running');
@@ -207,7 +162,7 @@
 			result: await tryCatch(
 				projectService.updateProject(projectId, name, composeContent, envContent, {
 					autoUpdate,
-					autoUpdateCron: normalizeEmptyValue(autoUpdateCron)
+					autoUpdateCron: autoUpdateCron
 				})
 			),
 			message: 'Failed to Save Project',
@@ -229,7 +184,7 @@
 		$inputs.composeContent.value = originalComposeContent;
 		$inputs.envContent.value = originalEnvContent;
 		$inputs.autoUpdate.value = originalSettings.autoUpdate;
-		$inputs.autoUpdateCron.value = normalizeEmptyValue(originalSettings.autoUpdateCron);
+		$inputs.autoUpdateCron.value = originalSettings.autoUpdateCron;
 	}
 
 	function saveNameIfChanged() {
@@ -386,7 +341,7 @@
 			</Tabs.Content>
 
 			<Tabs.Content value="settings" class="h-full">
-				<ProjectSettingsPanel bind:autoUpdate bind:autoUpdateCron />
+				<ProjectSettingsPanel bind:autoUpdate={$inputs.autoUpdate.value} bind:autoUpdateCron={$inputs.autoUpdateCron.value} />
 			</Tabs.Content>
 		{/snippet}
 	</TabbedPageLayout>

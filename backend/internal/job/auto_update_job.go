@@ -24,36 +24,42 @@ func NewAutoUpdateJob(scheduler *Scheduler, updaterService *services.UpdaterServ
 	}
 }
 
-func (j *AutoUpdateJob) Register(ctx context.Context) error {
+// isAutoUpdateEnabledInternal checks if auto-update is enabled based on settings
+func (j *AutoUpdateJob) isAutoUpdateEnabledInternal(ctx context.Context) bool {
 	autoUpdateEnabled := j.settingsService.GetBoolSetting(ctx, "autoUpdate", false)
 	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
 
 	if !autoUpdateEnabled || !pollingEnabled {
-		slog.InfoContext(ctx, "auto-update disabled or polling disabled; job not registered",
+		slog.InfoContext(ctx, "auto-update disabled or polling disabled",
 			"autoUpdate", autoUpdateEnabled, "pollingEnabled", pollingEnabled)
-		return nil
+		return false
+	}
+	return true
+}
+
+// createJobDefinitionInternal creates a job definition based on the cron schedule setting
+func (j *AutoUpdateJob) createJobDefinitionInternal(ctx context.Context) (gocron.JobDefinition, string) {
+	autoUpdateCron := strings.TrimSpace(j.settingsService.GetStringSetting(ctx, "autoUpdateCron", ""))
+
+	if autoUpdateCron == "" {
+		// Immediate mode: check for updates frequently (every 5 minutes)
+		return gocron.DurationJob(5 * time.Minute), "immediate (every 5 minutes)"
 	}
 
-	autoUpdateCron := j.settingsService.GetStringSetting(ctx, "autoUpdateCron", "")
-	autoUpdateCron = strings.TrimSpace(autoUpdateCron)
+	// Cron-based scheduling
+	// Note: gocron.CronJob may panic on invalid cron, but we'll let the scheduler handle it
+	return gocron.CronJob(autoUpdateCron, false), autoUpdateCron
+}
+
+func (j *AutoUpdateJob) Register(ctx context.Context) error {
+	if !j.isAutoUpdateEnabledInternal(ctx) {
+		return nil
+	}
 
 	// ensure single instance
 	j.scheduler.RemoveJobByName("auto-update")
 
-	var jobDefinition gocron.JobDefinition
-	var scheduleDesc string
-
-	if autoUpdateCron == "" {
-		// Immediate mode: check for updates frequently (every 5 minutes)
-		jobDefinition = gocron.DurationJob(5 * time.Minute)
-		scheduleDesc = "immediate (every 5 minutes)"
-	} else {
-		// Cron-based scheduling
-		// Note: gocron.CronJob may panic on invalid cron, but we'll let the scheduler handle it
-		jobDefinition = gocron.CronJob(autoUpdateCron, false)
-		scheduleDesc = autoUpdateCron
-	}
-
+	jobDefinition, scheduleDesc := j.createJobDefinitionInternal(ctx)
 	slog.InfoContext(ctx, "registering auto-update job", "schedule", scheduleDesc)
 
 	return j.scheduler.RegisterJob(
@@ -93,36 +99,16 @@ func (j *AutoUpdateJob) Execute(ctx context.Context) error {
 }
 
 func (j *AutoUpdateJob) Reschedule(ctx context.Context) error {
-	autoUpdateEnabled := j.settingsService.GetBoolSetting(ctx, "autoUpdate", false)
-	pollingEnabled := j.settingsService.GetBoolSetting(ctx, "pollingEnabled", true)
-
-	if !autoUpdateEnabled || !pollingEnabled {
+	if !j.isAutoUpdateEnabledInternal(ctx) {
 		j.scheduler.RemoveJobByName("auto-update")
-		slog.InfoContext(ctx, "auto-update disabled or polling disabled; removed job if present",
-			"autoUpdate", autoUpdateEnabled, "pollingEnabled", pollingEnabled)
+		slog.InfoContext(ctx, "auto-update disabled; removed job if present")
 		return nil
 	}
-
-	autoUpdateCron := j.settingsService.GetStringSetting(ctx, "autoUpdateCron", "")
-	autoUpdateCron = strings.TrimSpace(autoUpdateCron)
 
 	// Remove existing job
 	j.scheduler.RemoveJobByName("auto-update")
 
-	var jobDefinition gocron.JobDefinition
-	var scheduleDesc string
-
-	if autoUpdateCron == "" {
-		// Immediate mode: check for updates frequently (every 5 minutes)
-		jobDefinition = gocron.DurationJob(5 * time.Minute)
-		scheduleDesc = "immediate (every 5 minutes)"
-	} else {
-		// Cron-based scheduling
-		// Note: gocron.CronJob may panic on invalid cron, but we'll let the scheduler handle it
-		jobDefinition = gocron.CronJob(autoUpdateCron, false)
-		scheduleDesc = autoUpdateCron
-	}
-
+	jobDefinition, scheduleDesc := j.createJobDefinitionInternal(ctx)
 	slog.InfoContext(ctx, "auto-update settings changed; rescheduling", "schedule", scheduleDesc)
 
 	return j.scheduler.RegisterJob(

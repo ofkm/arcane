@@ -60,18 +60,22 @@
 		}
 	] as const;
 
-	let cronScheduleMode = $state<string | null>(
-		(() => {
-			const cron = value;
-			if (!cron || cron.trim() === '') return null; // Default to immediate
-			const found = cronScheduleOptions.find((o) => o.value === cron);
-			return found?.value ?? 'custom';
-		})()
-	);
+	let cronScheduleMode = $state<string | null>(null);
 
+	// Sync cronScheduleMode with value changes (including resets)
+	$effect(() => {
+		const cron = value;
+		if (!cron || cron.trim() === '') {
+			cronScheduleMode = null;
+		} else {
+			const found = cronScheduleOptions.find((o) => o.value === cron);
+			cronScheduleMode = found?.value ?? 'custom';
+		}
+	});
+
+	// Sync value with cronScheduleMode changes (user selections)
 	$effect(() => {
 		if (cronScheduleMode !== 'custom') {
-            // NOTE: Temporary workaround for save/reset state management
 			value = cronScheduleMode === null ? '' : cronScheduleMode;
 		}
 	});
