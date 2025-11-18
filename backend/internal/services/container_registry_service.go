@@ -112,29 +112,21 @@ func (s *ContainerRegistryService) UpdateRegistry(ctx context.Context, id string
 	}
 
 	// Update fields
-	if req.URL != nil {
-		registry.URL = *req.URL
-	}
-	if req.Username != nil {
-		registry.Username = *req.Username
-	}
+	utils.UpdateIfChanged(&registry.URL, req.URL)
+	utils.UpdateIfChanged(&registry.Username, req.Username)
+
 	if req.Token != nil && *req.Token != "" {
 		// Encrypt the new token
 		encryptedToken, err := utils.Encrypt(*req.Token)
 		if err != nil {
 			return nil, fmt.Errorf("failed to encrypt token: %w", err)
 		}
-		registry.Token = encryptedToken
+		utils.UpdateIfChanged(&registry.Token, encryptedToken)
 	}
-	if req.Description != nil {
-		registry.Description = req.Description
-	}
-	if req.Insecure != nil {
-		registry.Insecure = *req.Insecure
-	}
-	if req.Enabled != nil {
-		registry.Enabled = *req.Enabled
-	}
+
+	utils.UpdateIfChanged(&registry.Description, req.Description)
+	utils.UpdateIfChanged(&registry.Insecure, req.Insecure)
+	utils.UpdateIfChanged(&registry.Enabled, req.Enabled)
 
 	registry.UpdatedAt = time.Now()
 
@@ -235,43 +227,18 @@ func (s *ContainerRegistryService) updateExistingRegistryInternal(ctx context.Co
 }
 
 func (s *ContainerRegistryService) checkRegistryNeedsUpdateInternal(item models.SyncRegistryItem, existing *models.ContainerRegistry) bool {
-	needsUpdate := false
-
-	if existing.URL != item.URL {
-		existing.URL = item.URL
-		needsUpdate = true
-	}
-	if existing.Username != item.Username {
-		existing.Username = item.Username
-		needsUpdate = true
-	}
+	needsUpdate := utils.UpdateIfChanged(&existing.URL, item.URL)
+	needsUpdate = utils.UpdateIfChanged(&existing.Username, item.Username) || needsUpdate
 
 	// Always update token as it comes decrypted from manager
 	encryptedToken, err := utils.Encrypt(item.Token)
-	if err == nil && existing.Token != encryptedToken {
-		existing.Token = encryptedToken
-		needsUpdate = true
+	if err == nil {
+		needsUpdate = utils.UpdateIfChanged(&existing.Token, encryptedToken) || needsUpdate
 	}
 
-	descriptionChanged := false
-	if item.Description == nil || existing.Description == nil {
-		descriptionChanged = item.Description != existing.Description
-	} else {
-		descriptionChanged = *item.Description != *existing.Description
-	}
-	if descriptionChanged {
-		existing.Description = item.Description
-		needsUpdate = true
-	}
-
-	if existing.Insecure != item.Insecure {
-		existing.Insecure = item.Insecure
-		needsUpdate = true
-	}
-	if existing.Enabled != item.Enabled {
-		existing.Enabled = item.Enabled
-		needsUpdate = true
-	}
+	needsUpdate = utils.UpdateIfChanged(&existing.Description, item.Description) || needsUpdate
+	needsUpdate = utils.UpdateIfChanged(&existing.Insecure, item.Insecure) || needsUpdate
+	needsUpdate = utils.UpdateIfChanged(&existing.Enabled, item.Enabled) || needsUpdate
 
 	return needsUpdate
 }
