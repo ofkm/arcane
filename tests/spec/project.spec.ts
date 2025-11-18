@@ -270,10 +270,29 @@ test.describe('Project Detail Page', () => {
     await page.goto(`/projects/${firstProject.id || firstProject.name}`);
     await page.waitForLoadState('networkidle');
 
-    await page.getByRole('tab', { name: /Configuration|Config/i }).click();
+    const configTab = page.getByRole('tab', { name: /Configuration|Config/i });
+    await configTab.click();
 
-    await expect(page.getByRole('heading', { name: /Docker Compose File/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Environment.*\.env/i })).toBeVisible();
+    const projectFilesHeading = page.getByRole('heading', { name: /Project Files/i });
+    await expect(projectFilesHeading).toBeVisible();
+
+    const composeFileButton = page.getByRole('button', { name: 'compose.yaml' }).first();
+    const envFileButton = page.getByRole('button', { name: '.env' }).first();
+
+    await expect(composeFileButton).toBeVisible();
+    await expect(envFileButton).toBeVisible();
+
+    // Switching files should update the visible code panel title
+    await envFileButton.click();
+    await expect(page.getByRole('heading', { name: '.env' })).toBeVisible();
+
+    await composeFileButton.click();
+    await expect(page.getByRole('heading', { name: 'compose.yaml' })).toBeVisible();
+
+    const includesFolder = page.getByRole('button', { name: 'Includes' });
+    if (await includesFolder.count()) {
+      await expect(includesFolder.first()).toBeVisible();
+    }
   });
 
   test('should show logs tab for running projects', async ({ page }) => {
