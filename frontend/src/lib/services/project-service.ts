@@ -56,13 +56,12 @@ export class ProjectService extends BaseAPIService {
 		settings?: Partial<ProjectSettings>
 	): Promise<Project> {
 		const envId = await environmentStore.getCurrentEnvironmentId();
-		const payload: any = {};
-		
-		// Only include fields that are provided (not undefined)
-		if (name !== undefined) payload.name = name;
-		if (composeContent !== undefined) payload.composeContent = composeContent;
-		if (envContent !== undefined) payload.envContent = envContent;
-		if (settings !== undefined) payload.settings = settings;
+		const payload = {
+			name,
+			composeContent,
+			envContent,
+			settings
+		};
 		
 		return this.handleResponse(this.api.put(`/environments/${envId}/projects/${projectId}`, payload));
 	}
