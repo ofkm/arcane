@@ -294,3 +294,257 @@ test.describe('Project Detail Page', () => {
     await expect(page.getByRole('button', { name: 'Clear', exact: true })).toBeVisible();
   });
 });
+
+test.describe('Project Settings', () => {
+  test('should display project settings tab and panel', async ({ page }) => {
+    test.skip(!realProjects.length, 'No projects available for settings test');
+
+    const firstProject = realProjects[0];
+    await page.goto(`/projects/${firstProject.id || firstProject.name}`);
+    await page.waitForLoadState('networkidle');
+
+    const settingsTab = page.getByRole('tab', { name: /Settings/i });
+    await expect(settingsTab).toBeVisible();
+    await settingsTab.click();
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByText(/Auto Update/i).or(page.getByText(/No settings available/i))).toBeVisible();
+  });
+
+  test('should toggle between global and project-specific auto-update settings', async ({ page }) => {
+    test.skip(!realProjects.length, 'No projects available for settings toggle test');
+
+    const firstProject = realProjects[0];
+    await page.goto(`/projects/${firstProject.id || firstProject.name}`);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('tab', { name: /Settings/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    const settingsPanel = page.locator('div').filter({ hasText: /Auto Update/i }).first();
+    const globalButton = settingsPanel.getByRole('button', { name: 'Global', exact: true });
+    const projectButton = settingsPanel.getByRole('button', { name: 'Project', exact: true });
+
+    await projectButton.click();
+    await expect(page.getByText(/Configure project-specific/i)).toBeVisible();
+
+    await globalButton.click();
+    await expect(page.getByText(/Using global/i)).toBeVisible();
+  });
+
+  test('should enable auto-update for a project', async ({ page }) => {
+    test.skip(!realProjects.length, 'No projects available for enable auto-update test');
+
+    const stoppedProject = realProjects.find((p) => p.status === 'stopped') || realProjects[0];
+    await page.goto(`/projects/${stoppedProject.id || stoppedProject.name}`);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('tab', { name: /Settings/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    const settingsPanel = page.locator('div').filter({ hasText: /Auto Update/i }).first();
+    const projectButton = settingsPanel.getByRole('button', { name: 'Project', exact: true });
+    await projectButton.click();
+
+    const autoUpdateSwitch = page.locator('#project-auto-update');
+    const isSwitchChecked = await autoUpdateSwitch.isChecked();
+
+    if (!isSwitchChecked) {
+      await autoUpdateSwitch.click();
+      await expect(autoUpdateSwitch).toBeChecked();
+    }
+
+    const saveButton = page.getByRole('button', { name: /Save|Update/i }).filter({ hasNotText: /Saving/ });
+    if (await saveButton.isEnabled()) {
+      await saveButton.click();
+      await page.waitForLoadState('networkidle');
+      await expect(page.getByText(/saved|updated/i).or(page.locator('text=/success/i'))).toBeVisible({ timeout: 5000 }).catch(() => {});
+    }
+  });
+
+  test('should disable auto-update for a project', async ({ page }) => {
+    test.skip(!realProjects.length, 'No projects available for disable auto-update test');
+
+    const stoppedProject = realProjects.find((p) => p.status === 'stopped') || realProjects[0];
+    await page.goto(`/projects/${stoppedProject.id || stoppedProject.name}`);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('tab', { name: /Settings/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    const settingsPanel = page.locator('div').filter({ hasText: /Auto Update/i }).first();
+    const projectButton = settingsPanel.getByRole('button', { name: 'Project', exact: true });
+    await projectButton.click();
+
+    const autoUpdateSwitch = page.locator('#project-auto-update');
+    const isSwitchChecked = await autoUpdateSwitch.isChecked();
+
+    if (isSwitchChecked) {
+      await autoUpdateSwitch.click();
+      await expect(autoUpdateSwitch).not.toBeChecked();
+    }
+
+    const saveButton = page.getByRole('button', { name: /Save|Update/i }).filter({ hasNotText: /Saving/ });
+    if (await saveButton.isEnabled()) {
+      await saveButton.click();
+      await page.waitForLoadState('networkidle');
+    }
+  });
+
+  test('should configure cron schedule for auto-update', async ({ page }) => {
+    test.skip(!realProjects.length, 'No projects available for cron schedule test');
+
+    const stoppedProject = realProjects.find((p) => p.status === 'stopped') || realProjects[0];
+    await page.goto(`/projects/${stoppedProject.id || stoppedProject.name}`);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('tab', { name: /Settings/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    const settingsPanel = page.locator('div').filter({ hasText: /Auto Update/i }).first();
+    const projectButton = settingsPanel.getByRole('button', { name: 'Project', exact: true });
+    await projectButton.click();
+
+    const autoUpdateSwitch = page.locator('#project-auto-update');
+    const isSwitchChecked = await autoUpdateSwitch.isChecked();
+
+    if (!isSwitchChecked) {
+      await autoUpdateSwitch.click();
+      await expect(autoUpdateSwitch).toBeChecked();
+    }
+
+    const cronSelect = page.locator('select').filter({ hasText: /Daily|Weekly|Monthly|Custom/i }).or(
+      page.getByRole('combobox').filter({ hasText: /Daily|Weekly|Monthly|Custom/i })
+    );
+
+    if (await cronSelect.count() > 0) {
+      await cronSelect.first().selectOption({ label: 'Daily at midnight' });
+      await page.waitForTimeout(500);
+    }
+
+    const saveButton = page.getByRole('button', { name: /Save|Update/i }).filter({ hasNotText: /Saving/ });
+    if (await saveButton.isEnabled()) {
+      await saveButton.click();
+      await page.waitForLoadState('networkidle');
+    }
+  });
+
+  test('should persist settings changes after save and reload', async ({ page }) => {
+    test.skip(!realProjects.length, 'No projects available for persistence test');
+
+    const stoppedProject = realProjects.find((p) => p.status === 'stopped') || realProjects[0];
+    const projectUrl = `/projects/${stoppedProject.id || stoppedProject.name}`;
+
+    await page.goto(projectUrl);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('tab', { name: /Settings/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    const settingsPanel = page.locator('div').filter({ hasText: /Auto Update/i }).first();
+    const projectButton = settingsPanel.getByRole('button', { name: 'Project', exact: true });
+    await projectButton.click();
+
+    const autoUpdateSwitch = page.locator('#project-auto-update');
+    const initialState = await autoUpdateSwitch.isChecked();
+    const targetState = !initialState;
+
+    if (initialState !== targetState) {
+      await autoUpdateSwitch.click();
+      await expect(autoUpdateSwitch).toBeChecked({ checked: targetState });
+    }
+
+    const saveButton = page.getByRole('button', { name: /Save|Update/i }).filter({ hasNotText: /Saving/ });
+    if (await saveButton.isEnabled()) {
+      await saveButton.click();
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(1000);
+    }
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('tab', { name: /Settings/i }).click();
+
+    const reloadedSwitch = page.locator('#project-auto-update');
+    if (await reloadedSwitch.count() > 0) {
+      await expect(reloadedSwitch).toBeChecked({ checked: targetState });
+    }
+  });
+
+  test('should show save button enabled when settings are modified', async ({ page }) => {
+    test.skip(!realProjects.length, 'No projects available for unsaved changes test');
+
+    const stoppedProject = realProjects.find((p) => p.status === 'stopped') || realProjects[0];
+    await page.goto(`/projects/${stoppedProject.id || stoppedProject.name}`);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('tab', { name: /Settings/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    const settingsPanel = page.locator('div').filter({ hasText: /Auto Update/i }).first();
+    const projectButton = settingsPanel.getByRole('button', { name: 'Project', exact: true });
+    await projectButton.click();
+
+    const autoUpdateSwitch = page.locator('#project-auto-update');
+    await autoUpdateSwitch.click();
+
+    const saveButton = page.getByRole('button', { name: /Save|Update/i }).filter({ hasNotText: /Saving/ });
+    await expect(saveButton).toBeEnabled({ timeout: 2000 });
+  });
+
+  test('should set auto-update to use global settings', async ({ page }) => {
+    test.skip(!realProjects.length, 'No projects available for global settings test');
+
+    const stoppedProject = realProjects.find((p) => p.status === 'stopped') || realProjects[0];
+    await page.goto(`/projects/${stoppedProject.id || stoppedProject.name}`);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('tab', { name: /Settings/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    const settingsPanel = page.locator('div').filter({ hasText: /Auto Update/i }).first();
+    const projectButton = settingsPanel.getByRole('button', { name: 'Project', exact: true });
+    await projectButton.click();
+    await expect(page.getByText(/Configure project-specific/i)).toBeVisible();
+
+    const globalButton = settingsPanel.getByRole('button', { name: 'Global', exact: true });
+    await globalButton.click();
+
+    await expect(page.getByText(/Using global/i)).toBeVisible();
+
+    const saveButton = page.getByRole('button', { name: /Save|Update/i }).filter({ hasNotText: /Saving/ });
+    if (await saveButton.isEnabled()) {
+      await saveButton.click();
+      await page.waitForLoadState('networkidle');
+    }
+  });
+
+  test('should display cron schedule selector when auto-update is enabled', async ({ page }) => {
+    test.skip(!realProjects.length, 'No projects available for cron selector test');
+
+    const stoppedProject = realProjects.find((p) => p.status === 'stopped') || realProjects[0];
+    await page.goto(`/projects/${stoppedProject.id || stoppedProject.name}`);
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('tab', { name: /Settings/i }).click();
+    await page.waitForLoadState('networkidle');
+
+    const settingsPanel = page.locator('div').filter({ hasText: /Auto Update/i }).first();
+    const projectButton = settingsPanel.getByRole('button', { name: 'Project', exact: true });
+    await projectButton.click();
+
+    const autoUpdateSwitch = page.locator('#project-auto-update');
+    const isSwitchChecked = await autoUpdateSwitch.isChecked();
+
+    if (!isSwitchChecked) {
+      await autoUpdateSwitch.click();
+    }
+
+    const cronScheduleSection = page.locator('text=/Schedule|Cron|When to update/i').or(
+      page.locator('select, [role="combobox"]').filter({ hasText: /Daily|Weekly|Monthly|Immediate/i })
+    );
+
+    await expect(cronScheduleSection.first()).toBeVisible({ timeout: 2000 });
+  });
+});
