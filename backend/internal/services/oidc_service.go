@@ -110,7 +110,7 @@ func (s *OidcService) GenerateAuthURL(ctx context.Context, redirectTo string) (s
 		ClientID:     config.ClientID,
 		ClientSecret: config.ClientSecret,
 		Endpoint:     provider.Endpoint(),
-		RedirectURL:  s.config.GetOidcRedirectURI(),
+		RedirectURL:  s.GetOidcRedirectURL(),
 		Scopes:       scopes,
 	}
 
@@ -136,6 +136,11 @@ func (s *OidcService) GenerateAuthURL(ctx context.Context, redirectTo string) (s
 
 	slog.Debug("GenerateAuthURL: generated authorization URL", "issuer", config.IssuerURL, "scopes", scopes)
 	return authURL, encodedState, nil
+}
+
+func (s *OidcService) GetOidcRedirectURL() string {
+	baseUrl := strings.TrimSuffix(s.config.AppUrl, "/")
+	return baseUrl + "/auth/oidc/callback"
 }
 
 func (s *OidcService) getOrDiscoverProvider(ctx context.Context, issuer string) (*oidc.Provider, error) {
@@ -200,7 +205,7 @@ func (s *OidcService) exchangeToken(ctx context.Context, cfg *models.OidcConfig,
 		ClientID:     cfg.ClientID,
 		ClientSecret: cfg.ClientSecret,
 		Endpoint:     provider.Endpoint(),
-		RedirectURL:  s.config.GetOidcRedirectURI(),
+		RedirectURL:  s.GetOidcRedirectURL(),
 		Scopes:       scopes,
 	}
 
