@@ -1120,11 +1120,9 @@ func (s *ProjectService) mapProjectToDto(ctx context.Context, p models.Project, 
 		if count, err := s.countServicesFromCompose(ctx, p); err == nil && count > 0 {
 			resp.ServiceCount = count
 			// Update DB asynchronously
-			go func(pid string, c int) {
-				// Create a new context for the background update
-				bgCtx := context.Background()
-				s.db.WithContext(bgCtx).Model(&models.Project{}).Where("id = ?", pid).Update("service_count", c)
-			}(p.ID, count)
+			go func(ctx context.Context, pid string, c int) {
+				s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", pid).Update("service_count", c)
+			}(context.Background(), p.ID, count)
 		}
 	}
 
