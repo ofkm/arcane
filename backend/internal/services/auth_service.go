@@ -190,15 +190,11 @@ func (s *AuthService) Login(ctx context.Context, username, password string) (*mo
 	}
 
 	if s.userService.NeedsPasswordUpgrade(user.PasswordHash) {
-		// Run password upgrade in background
-		// Capture ID/Username by value to avoid race conditions with the returned 'user' pointer
-		userID := user.ID
-		username := user.Username
 		s.runInBackground(ctx, "upgrade_password_hash", func(ctx context.Context) error {
-			if err := s.userService.UpgradePasswordHash(ctx, userID, password); err != nil {
-				return fmt.Errorf("failed to upgrade password hash for user %s: %w", userID, err)
+			if err := s.userService.UpgradePasswordHash(ctx, user.ID, password); err != nil {
+				return fmt.Errorf("failed to upgrade password hash for user %s: %w", user.ID, err)
 			}
-			slog.InfoContext(ctx, "Successfully upgraded password hash from bcrypt to Argon2", "user", username)
+			slog.InfoContext(ctx, "Successfully upgraded password hash from bcrypt to Argon2", "user", user.Username)
 			return nil
 		})
 	}
