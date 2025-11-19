@@ -203,12 +203,12 @@ func (s *EnvironmentService) testLocalDockerConnection(ctx context.Context, id s
 	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	dockerClient, err := s.dockerService.CreateConnection(reqCtx)
+	dockerClient, err := s.dockerService.GetClient()
 	if err != nil {
 		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
 		return "offline", fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	defer dockerClient.Close()
+	
 
 	_, err = dockerClient.Ping(reqCtx)
 	if err != nil {

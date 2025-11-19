@@ -119,12 +119,11 @@ type SystemStats struct {
 func (h *SystemHandler) Health(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	dockerClient, err := h.dockerService.CreateConnection(ctx)
+	dockerClient, err := h.dockerService.GetClient()
 	if err != nil {
 		c.Status(http.StatusServiceUnavailable)
 		return
 	}
-	defer dockerClient.Close()
 
 	// Try to ping Docker to ensure it's responsive
 	_, err = dockerClient.Ping(ctx)
@@ -139,7 +138,7 @@ func (h *SystemHandler) Health(c *gin.Context) {
 func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	ctx := c.Request.Context()
 
-	dockerClient, err := h.dockerService.CreateConnection(ctx)
+	dockerClient, err := h.dockerService.GetClient()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -147,7 +146,6 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 		})
 		return
 	}
-	defer dockerClient.Close()
 
 	version, err := dockerClient.ServerVersion(ctx)
 	if err != nil {

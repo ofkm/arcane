@@ -276,11 +276,11 @@ func (s *SystemService) StopAllContainers(ctx context.Context) (*dto.ContainerAc
 }
 
 func (s *SystemService) pruneContainers(ctx context.Context, result *dto.PruneAllResult) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	dockerClient, err := s.dockerService.GetClient()
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	defer dockerClient.Close()
+	
 
 	filterArgs := filters.NewArgs()
 
@@ -297,11 +297,11 @@ func (s *SystemService) pruneContainers(ctx context.Context, result *dto.PruneAl
 func (s *SystemService) pruneImages(ctx context.Context, danglingOnly bool, result *dto.PruneAllResult) error {
 	slog.DebugContext(ctx, "Starting image pruning", slog.Bool("dangling_only", danglingOnly))
 
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	dockerClient, err := s.dockerService.GetClient()
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	defer dockerClient.Close()
+	
 
 	var filterArgs filters.Args
 
@@ -347,13 +347,13 @@ func (s *SystemService) pruneImages(ctx context.Context, danglingOnly bool, resu
 }
 
 func (s *SystemService) pruneBuildCache(ctx context.Context, result *dto.PruneAllResult, pruneAllCache bool) error {
-	dockerClient, err := s.dockerService.CreateConnection(ctx)
+	dockerClient, err := s.dockerService.GetClient()
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Errorf("build cache pruning failed (connection): %w", err).Error())
 		slog.ErrorContext(ctx, "Error connecting to Docker for build cache prune", slog.String("error", err.Error()))
 		return fmt.Errorf("failed to connect to Docker for build cache prune: %w", err)
 	}
-	defer dockerClient.Close()
+	
 
 	options := build.CachePruneOptions{
 		All: pruneAllCache,

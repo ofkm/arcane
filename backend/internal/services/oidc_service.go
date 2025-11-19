@@ -83,6 +83,22 @@ func (s *OidcService) ensureOpenIDScope(scopes []string) []string {
 	return scopes
 }
 
+func (s *OidcService) getOauth2Config(cfg *models.OidcConfig, provider *oidc.Provider) oauth2.Config {
+	scopes := strings.Fields(cfg.Scopes)
+	if len(scopes) == 0 {
+		scopes = []string{"email", "profile"}
+	}
+	scopes = s.ensureOpenIDScope(scopes)
+
+	return oauth2.Config{
+		ClientID:     cfg.ClientID,
+		ClientSecret: cfg.ClientSecret,
+		Endpoint:     provider.Endpoint(),
+		RedirectURL:  s.GetOidcRedirectURL(),
+		Scopes:       scopes,
+	}
+}
+
 func (s *OidcService) GenerateAuthURL(ctx context.Context, redirectTo string) (string, string, error) {
 	config, err := s.getEffectiveConfig(ctx)
 	if err != nil {
@@ -100,19 +116,7 @@ func (s *OidcService) GenerateAuthURL(ctx context.Context, redirectTo string) (s
 	nonce := utils.GenerateRandomString(32)
 	codeVerifier := utils.GenerateRandomString(128)
 
-	scopes := strings.Fields(config.Scopes)
-	if len(scopes) == 0 {
-		scopes = []string{"email", "profile"}
-	}
-	scopes = s.ensureOpenIDScope(scopes)
-
-	oauth2Config := oauth2.Config{
-		ClientID:     config.ClientID,
-		ClientSecret: config.ClientSecret,
-		Endpoint:     provider.Endpoint(),
-		RedirectURL:  s.GetOidcRedirectURL(),
-		Scopes:       scopes,
-	}
+	oauth2Config := s.getOauth2Config(config, provider)
 
 	authURL := oauth2Config.AuthCodeURL(state,
 		oauth2.SetAuthURLParam("nonce", nonce),
@@ -134,7 +138,7 @@ func (s *OidcService) GenerateAuthURL(ctx context.Context, redirectTo string) (s
 	}
 	encodedState := base64.URLEncoding.EncodeToString(stateJSON)
 
-	slog.Debug("GenerateAuthURL: generated authorization URL", "issuer", config.IssuerURL, "scopes", scopes)
+	slog.Debug("GenerateAuthURL: generated authorization URL", "issuer", config.IssuerURL, "scopes", oauth2Config.Scopes)
 	return authURL, encodedState, nil
 }
 
@@ -195,19 +199,7 @@ func (s *OidcService) getOrDiscoverProvider(ctx context.Context, issuer string) 
 }
 
 func (s *OidcService) exchangeToken(ctx context.Context, cfg *models.OidcConfig, provider *oidc.Provider, code string, verifier string) (*oauth2.Token, error) {
-	scopes := strings.Fields(cfg.Scopes)
-	if len(scopes) == 0 {
-		scopes = []string{"email", "profile"}
-	}
-	scopes = s.ensureOpenIDScope(scopes)
-
-	oauth2Config := oauth2.Config{
-		ClientID:     cfg.ClientID,
-		ClientSecret: cfg.ClientSecret,
-		Endpoint:     provider.Endpoint(),
-		RedirectURL:  s.GetOidcRedirectURL(),
-		Scopes:       scopes,
-	}
+	oauth2Config := s.getOauth2Config(cfg, provider)
 
 	providerCtx := oidc.ClientContext(ctx, s.httpClient)
 	token, err := oauth2Config.Exchange(providerCtx, code, oauth2.VerifierOption(verifier))

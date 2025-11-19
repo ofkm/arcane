@@ -158,9 +158,17 @@ func (s *SettingsService) loadDatabaseConfigFromEnv(ctx context.Context, db *dat
 	for i := range rt.NumField() {
 		field := rt.Field(i)
 
-		key, attrs, _ := strings.Cut(field.Tag.Get("key"), ",")
+		tagParts := strings.Split(field.Tag.Get("key"), ",")
+		key := tagParts[0]
+		isInternal := false
+		for _, attr := range tagParts[1:] {
+			if attr == "internal" {
+				isInternal = true
+				break
+			}
+		}
 
-		if attrs == "internal" {
+		if isInternal {
 			if val, ok := settingsMap[key]; ok {
 				rv.Field(i).FieldByName("Value").SetString(val)
 			}
