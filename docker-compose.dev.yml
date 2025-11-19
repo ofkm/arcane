@@ -5,8 +5,6 @@ services:
       context: .
       dockerfile: docker/Dockerfile.dev
       target: frontend-dev
-      args:
-        NODE_VERSION: "24"
     container_name: arcane-frontend-dev
     ports:
       - "3000:3000"
