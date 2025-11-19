@@ -1122,7 +1122,7 @@ func (s *ProjectService) mapProjectToDto(ctx context.Context, p models.Project, 
 			// Update DB asynchronously
 			go func(ctx context.Context, pid string, c int) {
 				s.db.WithContext(ctx).Model(&models.Project{}).Where("id = ?", pid).Update("service_count", c)
-			}(context.Background(), p.ID, count)
+			}(context.WithoutCancel(ctx), p.ID, count)
 		}
 	}
 
