@@ -22,6 +22,8 @@ import (
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
 	"github.com/ofkm/arcane-backend/internal/utils/pagination"
+	"golang.org/x/sync/errgroup"
+	"gorm.io/gorm"
 )
 
 type ImageService struct {
@@ -85,7 +87,11 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, u
 	}
 
 	if s.db != nil {
-		s.db.WithContext(ctx).Delete(&models.ImageUpdateRecord{}, "id = ?", id)
+		if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			return tx.Delete(&models.ImageUpdateRecord{}, "id = ?", id).Error
+		}); err != nil {
+			slog.WarnContext(ctx, "failed to delete image update record", "id", id, "error", err)
+		}
 	}
 
 	metadata := models.JSON{
@@ -94,7 +100,7 @@ func (s *ImageService) RemoveImage(ctx context.Context, id string, force bool, u
 		"force":   force,
 	}
 	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageDelete, id, imageName, user.ID, user.Username, "0", metadata); logErr != nil {
-		slog.Warn("could not log image deletion action", slog.Any("err", logErr), slog.String("image", imageName), slog.String("image_id", id))
+		slog.Warn("could not log image deletion action", "err", logErr, "image", imageName, "image_id", id)
 	}
 
 	return nil
@@ -108,24 +114,17 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	}
 	defer dockerClient.Close()
 
-	slog.DebugContext(ctx, "Attempting to pull image",
-		slog.String("image", imageName),
-		slog.Int("externalCredCount", len(externalCreds)))
+	slog.DebugContext(ctx, "Attempting to pull image", "image", imageName, "externalCredCount", len(externalCreds))
 
 	pullOptions, err := s.getPullOptionsWithAuth(ctx, imageName, externalCreds)
 	if err != nil {
-		slog.WarnContext(ctx, "Failed to get registry authentication for image; proceeding without auth",
-			slog.String("image", imageName),
-			slog.String("error", err.Error()))
+		slog.WarnContext(ctx, "Failed to get registry authentication for image; proceeding without auth", "image", imageName, "error", err.Error())
 		pullOptions = image.PullOptions{}
 	}
 
 	reader, err := dockerClient.ImagePull(ctx, imageName, pullOptions)
 	if err != nil {
-		slog.ErrorContext(ctx, "Docker ImagePull failed",
-			slog.String("image", imageName),
-			slog.Bool("hasAuth", pullOptions.RegistryAuth != ""),
-			slog.String("error", err.Error()))
+		slog.ErrorContext(ctx, "Docker ImagePull failed", "image", imageName, "hasAuth", pullOptions.RegistryAuth != "", "error", err.Error())
 		s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", "", imageName, user.ID, user.Username, "0", err, models.JSON{"action": "pull"})
 		return fmt.Errorf("failed to initiate image pull for %s: %w", imageName, err)
 	}
@@ -151,7 +150,7 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 	}
 	if scanErr := scanner.Err(); scanErr != nil {
 		if errors.Is(scanErr, context.Canceled) || strings.Contains(scanErr.Error(), "context canceled") {
-			slog.Debug("image pull stream canceled", slog.String("image", imageName), slog.Any("err", scanErr))
+			slog.Debug("image pull stream canceled", "image", imageName, "err", scanErr)
 			s.eventService.LogErrorEvent(ctx, models.EventTypeImageError, "image", "", imageName, user.ID, user.Username, "0", scanErr, models.JSON{"action": "pull", "step": "canceled"})
 			return fmt.Errorf("image pull stream canceled for %s: %w", imageName, scanErr)
 		}
@@ -159,14 +158,14 @@ func (s *ImageService) PullImage(ctx context.Context, imageName string, progress
 		return fmt.Errorf("error reading image pull stream for %s: %w", imageName, scanErr)
 	}
 
-	slog.Debug("image pull stream completed", slog.String("image", imageName))
+	slog.Debug("image pull stream completed", "image", imageName)
 
 	metadata := models.JSON{
 		"action":    "pull",
 		"imageName": imageName,
 	}
 	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImagePull, "", imageName, user.ID, user.Username, "0", metadata); logErr != nil {
-		slog.Warn("could not log image pull action", slog.Any("err", logErr), slog.String("image", imageName))
+		slog.Warn("could not log image pull action", "err", logErr, "image", imageName)
 	}
 
 	return nil
@@ -210,7 +209,7 @@ func (s *ImageService) LoadImageFromReader(ctx context.Context, reader io.Reader
 		"fileName": fileName,
 	}
 	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageLoad, "", fileName, user.ID, user.Username, "0", metadata); logErr != nil {
-		slog.Warn("could not log image load action", slog.Any("err", logErr), slog.String("file", fileName))
+		slog.Warn("could not log image load action", "err", logErr, "file", fileName)
 	}
 
 	return &result, nil
@@ -240,31 +239,21 @@ func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef stri
 
 	registryHost := s.extractRegistryHost(imageRef)
 
-	if len(externalCreds) > 0 {
-		for _, cred := range externalCreds {
-			if !cred.Enabled || cred.Username == "" || cred.Token == "" {
-				continue
+	// Check external credentials first
+	for _, cred := range externalCreds {
+		if !cred.Enabled || cred.Username == "" || cred.Token == "" {
+			continue
+		}
+
+		if s.isRegistryMatch(cred.URL, registryHost) {
+			authStr, err := s.createAuthHeader(cred.Username, cred.Token, s.normalizeRegistryURL(cred.URL))
+			if err != nil {
+				return pullOptions, fmt.Errorf("failed to create auth header: %w", err)
 			}
+			pullOptions.RegistryAuth = authStr
 
-			credHost := s.normalizeRegistryForComparison(cred.URL)
-			if credHost == s.normalizeRegistryForComparison(registryHost) {
-				authConfig := &registry.AuthConfig{
-					Username:      cred.Username,
-					Password:      cred.Token,
-					ServerAddress: s.normalizeRegistryURL(cred.URL),
-				}
-
-				authBytes, err := json.Marshal(authConfig)
-				if err != nil {
-					return pullOptions, fmt.Errorf("failed to marshal auth config: %w", err)
-				}
-
-				pullOptions.RegistryAuth = base64.StdEncoding.EncodeToString(authBytes)
-				slog.DebugContext(ctx, "Using external credentials for image pull",
-					slog.String("registry", credHost),
-					slog.String("username", cred.Username))
-				return pullOptions, nil
-			}
+			slog.DebugContext(ctx, "Using external credentials for image pull", "registry", registryHost, "username", cred.Username)
+			return pullOptions, nil
 		}
 	}
 
@@ -272,6 +261,7 @@ func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef stri
 		return pullOptions, nil
 	}
 
+	// Check database registries
 	registries, err := s.registryService.GetEnabledRegistries(ctx)
 	if err != nil {
 		return pullOptions, fmt.Errorf("failed to get registry credentials: %w", err)
@@ -284,26 +274,33 @@ func (s *ImageService) getPullOptionsWithAuth(ctx context.Context, imageRef stri
 				return pullOptions, fmt.Errorf("failed to decrypt token for registry %s: %w", reg.URL, err)
 			}
 
-			authConfig := &registry.AuthConfig{
-				Username:      reg.Username,
-				Password:      decryptedToken,
-				ServerAddress: s.normalizeRegistryURL(reg.URL),
-			}
-
-			authBytes, err := json.Marshal(authConfig)
+			authStr, err := s.createAuthHeader(reg.Username, decryptedToken, s.normalizeRegistryURL(reg.URL))
 			if err != nil {
-				return pullOptions, fmt.Errorf("failed to marshal auth config: %w", err)
+				return pullOptions, fmt.Errorf("failed to create auth header: %w", err)
 			}
+			pullOptions.RegistryAuth = authStr
 
-			pullOptions.RegistryAuth = base64.StdEncoding.EncodeToString(authBytes)
-			slog.DebugContext(ctx, "Using database credentials for image pull",
-				slog.String("registry", registryHost),
-				slog.String("username", reg.Username))
+			slog.DebugContext(ctx, "Using database credentials for image pull", "registry", registryHost, "username", reg.Username)
 			break
 		}
 	}
 
 	return pullOptions, nil
+}
+
+func (s *ImageService) createAuthHeader(username, password, serverAddress string) (string, error) {
+	authConfig := &registry.AuthConfig{
+		Username:      username,
+		Password:      password,
+		ServerAddress: serverAddress,
+	}
+
+	authBytes, err := json.Marshal(authConfig)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(authBytes), nil
 }
 
 func (s *ImageService) extractRegistryHost(imageRef string) string {
@@ -376,6 +373,26 @@ func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.P
 		return nil, fmt.Errorf("failed to prune images: %w", err)
 	}
 
+	// Clean up database records for deleted images
+	if s.db != nil && len(report.ImagesDeleted) > 0 {
+		var idsToDelete []string
+		for _, img := range report.ImagesDeleted {
+			if img.Deleted != "" {
+				idsToDelete = append(idsToDelete, img.Deleted)
+			} else if img.Untagged != "" {
+				idsToDelete = append(idsToDelete, img.Untagged)
+			}
+		}
+
+		if len(idsToDelete) > 0 {
+			if err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+				return tx.Where("id IN ?", idsToDelete).Delete(&models.ImageUpdateRecord{}).Error
+			}); err != nil {
+				slog.WarnContext(ctx, "failed to clean up image update records after prune", "error", err)
+			}
+		}
+	}
+
 	metadata := models.JSON{
 		"action":         "prune",
 		"dangling":       dangling,
@@ -383,7 +400,7 @@ func (s *ImageService) PruneImages(ctx context.Context, dangling bool) (*image.P
 		"spaceReclaimed": report.SpaceReclaimed,
 	}
 	if logErr := s.eventService.LogImageEvent(ctx, models.EventTypeImageDelete, "", "bulk_prune", systemUser.ID, systemUser.Username, "0", metadata); logErr != nil {
-		slog.Warn("could not log image prune action", slog.Any("err", logErr))
+		slog.Warn("could not log image prune action", "err", logErr)
 	}
 
 	return &report, nil
@@ -396,116 +413,52 @@ func (s *ImageService) ListImagesPaginated(ctx context.Context, params paginatio
 	}
 	defer dockerClient.Close()
 
-	dockerImages, err := dockerClient.ImageList(ctx, image.ListOptions{})
-	if err != nil {
-		return nil, pagination.Response{}, fmt.Errorf("failed to list Docker images: %w", err)
-	}
+	var (
+		dockerImages  []image.Summary
+		containers    []container.Summary
+		updateRecords []models.ImageUpdateRecord
+	)
 
-	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: true})
-	if err != nil {
-		return nil, pagination.Response{}, fmt.Errorf("failed to list containers: %w", err)
+	g, ctx := errgroup.WithContext(ctx)
+
+	// Fetch Docker images
+	g.Go(func() error {
+		var err error
+		dockerImages, err = dockerClient.ImageList(ctx, image.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to list Docker images: %w", err)
+		}
+		return nil
+	})
+
+	// Fetch containers to determine usage
+	g.Go(func() error {
+		var err error
+		containers, err = dockerClient.ContainerList(ctx, container.ListOptions{All: true})
+		if err != nil {
+			return fmt.Errorf("failed to list containers: %w", err)
+		}
+		return nil
+	})
+
+	// Fetch update records from DB
+	g.Go(func() error {
+		if s.db != nil {
+			return s.db.WithContext(ctx).Find(&updateRecords).Error
+		}
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, pagination.Response{}, err
 	}
 
 	inUseMap := buildInUseMap(containers)
-
-	var updateRecords []models.ImageUpdateRecord
-	if s.db != nil {
-		s.db.WithContext(ctx).Find(&updateRecords)
-	}
 	updateMap := buildUpdateMap(updateRecords)
 
 	items := mapDockerImagesToDTOs(dockerImages, inUseMap, updateMap)
 
-	config := pagination.Config[dto.ImageSummaryDto]{
-		SearchAccessors: []pagination.SearchAccessor[dto.ImageSummaryDto]{
-			func(i dto.ImageSummaryDto) (string, error) { return i.Repo, nil },
-			func(i dto.ImageSummaryDto) (string, error) { return i.Tag, nil },
-			func(i dto.ImageSummaryDto) (string, error) { return i.ID, nil },
-			func(i dto.ImageSummaryDto) (string, error) {
-				if len(i.RepoTags) > 0 {
-					return i.RepoTags[0], nil
-				}
-				return "", nil
-			},
-		},
-		SortBindings: []pagination.SortBinding[dto.ImageSummaryDto]{
-			{
-				Key: "repo",
-				Fn: func(a, b dto.ImageSummaryDto) int {
-					return strings.Compare(a.Repo, b.Repo)
-				},
-			},
-			{
-				Key: "tag",
-				Fn: func(a, b dto.ImageSummaryDto) int {
-					return strings.Compare(a.Tag, b.Tag)
-				},
-			},
-			{
-				Key: "size",
-				Fn: func(a, b dto.ImageSummaryDto) int {
-					if a.Size < b.Size {
-						return -1
-					}
-					if a.Size > b.Size {
-						return 1
-					}
-					return 0
-				},
-			},
-			{
-				Key: "created",
-				Fn: func(a, b dto.ImageSummaryDto) int {
-					if a.Created < b.Created {
-						return -1
-					}
-					if a.Created > b.Created {
-						return 1
-					}
-					return 0
-				},
-			},
-			{
-				Key: "inUse",
-				Fn: func(a, b dto.ImageSummaryDto) int {
-					if a.InUse == b.InUse {
-						return 0
-					}
-					if a.InUse {
-						return -1
-					}
-					return 1
-				},
-			},
-		},
-		FilterAccessors: []pagination.FilterAccessor[dto.ImageSummaryDto]{
-			{
-				Key: "inUse",
-				Fn: func(i dto.ImageSummaryDto, filterValue string) bool {
-					if filterValue == "true" {
-						return i.InUse
-					}
-					if filterValue == "false" {
-						return !i.InUse
-					}
-					return true
-				},
-			},
-			{
-				Key: "updates",
-				Fn: func(i dto.ImageSummaryDto, filterValue string) bool {
-					hasUpdate := i.UpdateInfo != nil && i.UpdateInfo.HasUpdate
-					if filterValue == "true" {
-						return hasUpdate
-					}
-					if filterValue == "false" {
-						return !hasUpdate
-					}
-					return true
-				},
-			},
-		},
-	}
+	config := s.getImagePaginationConfig()
 
 	result := pagination.SearchOrderAndPaginate(items, params, config)
 
@@ -673,4 +626,97 @@ func mapDockerImagesToDTOs(dockerImages []image.Summary, inUseMap map[string]boo
 		items = append(items, imageDto)
 	}
 	return items
+}
+
+func (s *ImageService) getImagePaginationConfig() pagination.Config[dto.ImageSummaryDto] {
+	return pagination.Config[dto.ImageSummaryDto]{
+		SearchAccessors: []pagination.SearchAccessor[dto.ImageSummaryDto]{
+			func(i dto.ImageSummaryDto) (string, error) { return i.Repo, nil },
+			func(i dto.ImageSummaryDto) (string, error) { return i.Tag, nil },
+			func(i dto.ImageSummaryDto) (string, error) { return i.ID, nil },
+			func(i dto.ImageSummaryDto) (string, error) {
+				if len(i.RepoTags) > 0 {
+					return i.RepoTags[0], nil
+				}
+				return "", nil
+			},
+		},
+		SortBindings: []pagination.SortBinding[dto.ImageSummaryDto]{
+			{
+				Key: "repo",
+				Fn: func(a, b dto.ImageSummaryDto) int {
+					return strings.Compare(a.Repo, b.Repo)
+				},
+			},
+			{
+				Key: "tag",
+				Fn: func(a, b dto.ImageSummaryDto) int {
+					return strings.Compare(a.Tag, b.Tag)
+				},
+			},
+			{
+				Key: "size",
+				Fn: func(a, b dto.ImageSummaryDto) int {
+					if a.Size < b.Size {
+						return -1
+					}
+					if a.Size > b.Size {
+						return 1
+					}
+					return 0
+				},
+			},
+			{
+				Key: "created",
+				Fn: func(a, b dto.ImageSummaryDto) int {
+					if a.Created < b.Created {
+						return -1
+					}
+					if a.Created > b.Created {
+						return 1
+					}
+					return 0
+				},
+			},
+			{
+				Key: "inUse",
+				Fn: func(a, b dto.ImageSummaryDto) int {
+					if a.InUse == b.InUse {
+						return 0
+					}
+					if a.InUse {
+						return -1
+					}
+					return 1
+				},
+			},
+		},
+		FilterAccessors: []pagination.FilterAccessor[dto.ImageSummaryDto]{
+			{
+				Key: "inUse",
+				Fn: func(i dto.ImageSummaryDto, filterValue string) bool {
+					if filterValue == "true" {
+						return i.InUse
+					}
+					if filterValue == "false" {
+						return !i.InUse
+					}
+					return true
+				},
+			},
+			{
+				Key: "updates",
+				Fn: func(i dto.ImageSummaryDto, filterValue string) bool {
+					hasUpdate := i.UpdateInfo != nil && i.UpdateInfo.HasUpdate
+					if filterValue == "true" {
+						return hasUpdate
+					}
+					if filterValue == "false" {
+						return !hasUpdate
+					}
+					return true
+				},
+			},
+		},
+	}
 }
