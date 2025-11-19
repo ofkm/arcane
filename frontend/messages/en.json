@@ -48,6 +48,7 @@
 	"common_save_changes": "Save Changes",
 	"common_remove_selected": "Remove Selected",
 	"common_registry_url_required": "Registry URL is required",
+	"sync_registries": "Sync Registries",
 	"common_update_available": "Update available",
 	"common_restart_policy": "Restart Policy",
 	"common_gateway": "Gateway",
