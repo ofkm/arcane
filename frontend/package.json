@@ -8,7 +8,7 @@
 		"node": ">=24"
 	},
 	"scripts": {
-		"dev": "vite dev --port 3000",
+		"dev": "vite dev --port 3000 --host",
 		"build": "vite build",
 		"preview": "vite preview --port 3000",
 		"prepare": "svelte-kit sync || echo ''",
@@ -65,7 +65,7 @@
 		"mode-watcher": "^1.1.0",
 		"paneforge": "^1.0.2",
 		"runed": "0.34.0",
-		"svelte": "^5.43.10",
+		"svelte": "^5.43.12",
 		"svelte-check": "^4.3.4",
 		"svelte-sonner": "^1.0.6",
 		"svelte-toolbelt": "^0.10.6",
