@@ -30,6 +30,8 @@ func DetectCgroupLimits() (*CgroupLimits, error) {
 		CPUCount:    -1,
 	}
 
+	// Check if we are in a cgroup environment
+	// We check this first to avoid returning host stats as cgroup stats
 	if !isInCgroup() {
 		return nil, fmt.Errorf("not running in a cgroup")
 	}
@@ -42,12 +44,19 @@ func DetectCgroupLimits() (*CgroupLimits, error) {
 }
 
 func isInCgroup() bool {
+	// Check for standard virtualization indicators
 	if info, err := host.Info(); err == nil {
 		if info.VirtualizationSystem != "" && strings.EqualFold(info.VirtualizationRole, "guest") {
 			return true
 		}
 	}
 
+	// Check for Docker specific file
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+
+	// Check if we have explicit limits set (which implies we are restricted)
 	return hasExplicitCgroupLimit()
 }
 
@@ -69,16 +78,15 @@ func hasExplicitCgroupLimit() bool {
 		return false
 	}
 
-	cgroupPath, err := getCgroupV1Path()
-	if err != nil || cgroupPath == "" {
-		return false
-	}
+	// For V1, we use the same logic as detectCgroupV1Limits to check for limits
+	cgroupPath, _ := getCgroupV1Path() // Ignore error, might be empty
 
-	memLimitPath := filepath.Join("/sys/fs/cgroup/memory", cgroupPath, "memory.limit_in_bytes")
-	if limit, err := readCgroupV1Int64(memLimitPath); err == nil && isFiniteLimit(limit) {
+	// Check memory limit
+	if limit, err := readCgroupV1WithFallback("memory", cgroupPath, "memory.limit_in_bytes"); err == nil && isFiniteLimit(limit) {
 		return true
 	}
 
+	// Check CPU quota
 	if quota, err := readCgroupV1CPUControllerInt64(cgroupPath, "cpu.cfs_quota_us"); err == nil && quota > 0 {
 		if period, err := readCgroupV1CPUControllerInt64(cgroupPath, "cpu.cfs_period_us"); err == nil && period > 0 {
 			return true
@@ -124,20 +132,15 @@ func detectCgroupV2Limits(limits *CgroupLimits) (*CgroupLimits, error) {
 }
 
 func detectCgroupV1Limits(limits *CgroupLimits) (*CgroupLimits, error) {
-	cgroupPath, err := getCgroupV1Path()
-	if err != nil {
-		return limits, err
-	}
+	cgroupPath, _ := getCgroupV1Path() // Ignore error, use empty path if failed
 
-	memoryLimitPath := filepath.Join("/sys/fs/cgroup/memory", cgroupPath, "memory.limit_in_bytes")
-	if memLimit, err := readCgroupV1Int64(memoryLimitPath); err == nil {
+	if memLimit, err := readCgroupV1WithFallback("memory", cgroupPath, "memory.limit_in_bytes"); err == nil {
 		if memLimit < unrestricted {
 			limits.MemoryLimit = memLimit
 		}
 	}
 
-	memoryUsagePath := filepath.Join("/sys/fs/cgroup/memory", cgroupPath, "memory.usage_in_bytes")
-	if memUsage, err := readCgroupV1Int64(memoryUsagePath); err == nil {
+	if memUsage, err := readCgroupV1WithFallback("memory", cgroupPath, "memory.usage_in_bytes"); err == nil {
 		limits.MemoryUsage = memUsage
 	}
 
@@ -177,11 +180,21 @@ func getCgroupV1Path() (string, error) {
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("error scanning cgroup file: %w", err)
+	return "", fmt.Errorf("cgroup path not found")
+}
+
+func readCgroupV1WithFallback(controller, cgroupPath, filename string) (int64, error) {
+	// Try with cgroup path first
+	if cgroupPath != "" {
+		path := filepath.Join("/sys/fs/cgroup", controller, cgroupPath, filename)
+		if val, err := readCgroupV1Int64(path); err == nil {
+			return val, nil
+		}
 	}
 
-	return "", fmt.Errorf("cgroup path not found")
+	// Fallback to root of controller
+	path := filepath.Join("/sys/fs/cgroup", controller, filename)
+	return readCgroupV1Int64(path)
 }
 
 func readCgroupV1Int64(path string) (int64, error) {
@@ -248,15 +261,15 @@ func isFiniteLimit(value int64) bool {
 }
 
 func readCgroupV1CPUControllerInt64(cgroupPath, filename string) (int64, error) {
-	controllerBases := []string{
-		"/sys/fs/cgroup/cpu,cpuacct",
-		"/sys/fs/cgroup/cpu",
-		"/sys/fs/cgroup/cpuacct",
+	controllers := []string{
+		"cpu,cpuacct",
+		"cpu",
+		"cpuacct",
 	}
 
 	var lastErr error
-	for _, base := range controllerBases {
-		value, err := readCgroupV1Int64(filepath.Join(base, cgroupPath, filename))
+	for _, controller := range controllers {
+		value, err := readCgroupV1WithFallback(controller, cgroupPath, filename)
 		if err == nil {
 			return value, nil
 		}
