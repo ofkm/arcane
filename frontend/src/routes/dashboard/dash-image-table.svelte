@@ -27,23 +27,34 @@
 	// Estimate row height: ~57px per row (including borders/padding), plus ~145px for header
 	const ROW_HEIGHT = 57;
 	const HEADER_HEIGHT = 145;
+	const FOOTER_HEIGHT = 48; // Reserve space for the "showing" footer overlay
 	const MIN_ROWS = 3;
 	const MAX_ROWS = 50;
-
-	const calculatedLimit = $derived.by(() => {
-		if (contentHeight <= 0) return 5;
-		const availableHeight = contentHeight - HEADER_HEIGHT;
-		const rows = Math.floor(availableHeight / ROW_HEIGHT);
-		return Math.max(MIN_ROWS, Math.min(MAX_ROWS, rows));
-	});
-
-	let selectedIds = $state<string[]>([]);
-	let lastFetchedLimit = $state(5);
 
 	let requestOptions = $state<SearchPaginationSortRequest>({
 		pagination: { page: 1, limit: 5 },
 		sort: { column: 'size', direction: 'desc' }
 	});
+
+	const shouldReserveFooter = $derived.by(() => {
+		const limit = requestOptions.pagination?.limit ?? images.pagination?.itemsPerPage ?? MIN_ROWS;
+		const dataLength = images.data?.length ?? 0;
+		const totalItems = images.pagination?.totalItems ?? 0;
+		return dataLength >= limit && totalItems > limit;
+	});
+
+	const calculatedLimit = $derived.by(() => {
+		if (contentHeight <= 0) return 5;
+		let availableHeight = contentHeight - HEADER_HEIGHT;
+		if (shouldReserveFooter) {
+			availableHeight -= FOOTER_HEIGHT;
+		}
+		const rows = Math.floor(Math.max(0, availableHeight) / ROW_HEIGHT);
+		return Math.max(MIN_ROWS, Math.min(MAX_ROWS, rows));
+	});
+
+	let selectedIds = $state<string[]>([]);
+	let lastFetchedLimit = $state(5);
 
 	$effect(() => {
 		if (calculatedLimit !== lastFetchedLimit && requestOptions.pagination) {

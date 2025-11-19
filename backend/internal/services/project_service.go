@@ -204,6 +204,27 @@ func (s *ProjectService) GetProjectDetails(ctx context.Context, projectID string
 
 	composeContent, envContent, _ := s.GetProjectContent(ctx, projectID)
 
+	// Parse include files from the compose file
+	var includeFiles []dto.IncludeFileDto
+	composeFile, detectErr := projects.DetectComposeFile(proj.Path)
+	if detectErr == nil {
+		includes, parseErr := projects.ParseIncludes(composeFile)
+		if parseErr == nil {
+			slog.InfoContext(ctx, "Parsed includes", "count", len(includes), "projectID", projectID)
+			for _, inc := range includes {
+				includeFiles = append(includeFiles, dto.IncludeFileDto{
+					Path:         inc.Path,
+					RelativePath: inc.RelativePath,
+					Content:      inc.Content,
+				})
+			}
+		} else {
+			slog.WarnContext(ctx, "Failed to parse includes", "error", parseErr, "projectID", projectID)
+		}
+	} else {
+		slog.WarnContext(ctx, "Failed to detect compose file", "error", detectErr, "projectID", projectID, "path", proj.Path)
+	}
+
 	services, serr := s.GetProjectServices(ctx, projectID)
 
 	var serviceCount, runningCount int
@@ -228,6 +249,7 @@ func (s *ProjectService) GetProjectDetails(ctx context.Context, projectID string
 	resp.UpdatedAt = proj.UpdatedAt.Format(time.RFC3339)
 	resp.ComposeContent = composeContent
 	resp.EnvContent = envContent
+	resp.IncludeFiles = includeFiles
 	resp.ServiceCount = serviceCount
 	resp.RunningCount = runningCount
 	resp.DirName = utils.DerefString(proj.DirName)
@@ -524,7 +546,7 @@ func (s *ProjectService) DeployProject(ctx context.Context, projectID string, us
 		return fmt.Errorf("failed to update project status to deploying: %w", err)
 	}
 
-	if perr := s.EnsureProjectImagesPresent(ctx, projectID, io.Discard); perr != nil {
+	if perr := s.EnsureProjectImagesPresent(ctx, projectID, io.Discard, nil); perr != nil {
 		slog.Warn("ensure images present failed (continuing to compose up)", "projectID", projectID, "error", perr)
 	}
 
@@ -682,7 +704,7 @@ func (s *ProjectService) RedeployProject(ctx context.Context, projectID string, 
 		return err
 	}
 
-	if err := s.PullProjectImages(ctx, projectID, io.Discard); err != nil {
+	if err := s.PullProjectImages(ctx, projectID, io.Discard, nil); err != nil {
 		slog.WarnContext(ctx, "failed to pull project images", "error", err)
 	}
 
@@ -694,7 +716,7 @@ func (s *ProjectService) RedeployProject(ctx context.Context, projectID string, 
 	return s.DeployProject(ctx, projectID, systemUser)
 }
 
-func (s *ProjectService) PullProjectImages(ctx context.Context, projectID string, progressWriter io.Writer) error {
+func (s *ProjectService) PullProjectImages(ctx context.Context, projectID string, progressWriter io.Writer, credentials []dto.ContainerRegistryCredential) error {
 	proj, err := s.GetProjectFromDatabaseByID(ctx, projectID)
 	if err != nil {
 		return err
@@ -723,7 +745,7 @@ func (s *ProjectService) PullProjectImages(ctx context.Context, projectID string
 	}
 
 	for img := range images {
-		if err := s.imageService.PullImage(ctx, img, progressWriter, systemUser, nil); err != nil {
+		if err := s.imageService.PullImage(ctx, img, progressWriter, systemUser, credentials); err != nil {
 			return fmt.Errorf("failed to pull image %s: %w", img, err)
 		}
 	}
@@ -732,7 +754,7 @@ func (s *ProjectService) PullProjectImages(ctx context.Context, projectID string
 
 // EnsureProjectImagesPresent checks all compose service images for the project and
 // only pulls images that are not already available locally.
-func (s *ProjectService) EnsureProjectImagesPresent(ctx context.Context, projectID string, progressWriter io.Writer) error {
+func (s *ProjectService) EnsureProjectImagesPresent(ctx context.Context, projectID string, progressWriter io.Writer, credentials []dto.ContainerRegistryCredential) error {
 	proj, err := s.GetProjectFromDatabaseByID(ctx, projectID)
 	if err != nil {
 		return err
@@ -770,7 +792,7 @@ func (s *ProjectService) EnsureProjectImagesPresent(ctx context.Context, project
 			slog.DebugContext(ctx, "image already present locally; skipping pull", "image", img)
 			continue
 		}
-		if err := s.imageService.PullImage(ctx, img, progressWriter, systemUser, nil); err != nil {
+		if err := s.imageService.PullImage(ctx, img, progressWriter, systemUser, credentials); err != nil {
 			return fmt.Errorf("failed to pull missing image %s: %w", img, err)
 		}
 	}
@@ -863,6 +885,20 @@ func (s *ProjectService) UpdateProject(ctx context.Context, projectID string, na
 
 	slog.InfoContext(ctx, "project updated", "projectID", proj.ID, "name", proj.Name)
 	return &proj, nil
+}
+
+func (s *ProjectService) UpdateProjectIncludeFile(ctx context.Context, projectID, relativePath, content string) error {
+	proj, err := s.GetProjectFromDatabaseByID(ctx, projectID)
+	if err != nil {
+		return err
+	}
+
+	if err := projects.WriteIncludeFile(proj.Path, relativePath, content); err != nil {
+		return fmt.Errorf("failed to update include file: %w", err)
+	}
+
+	slog.InfoContext(ctx, "project include file updated", "projectID", proj.ID, "file", relativePath)
+	return nil
 }
 
 func (s *ProjectService) StreamProjectLogs(ctx context.Context, projectID string, logsChan chan<- string, follow bool, tail, since string, timestamps bool) error {
