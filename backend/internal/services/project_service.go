@@ -14,7 +14,7 @@ import (
 
 	"github.com/compose-spec/compose-go/v2/loader"
 	"github.com/docker/compose/v2/pkg/api"
-	dockertypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/ofkm/arcane-backend/internal/database"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -409,7 +409,7 @@ func formatPorts(publishers []api.PortPublisher) []string {
 	return ports
 }
 
-func formatDockerPorts(ports []dockertypes.Port) []string {
+func formatDockerPorts(ports []container.Port) []string {
 	var res []string
 	for _, p := range ports {
 		if p.PublicPort == 0 {
@@ -494,7 +494,7 @@ func (s *ProjectService) GetProjectStatusCounts(ctx context.Context) (folderCoun
 	}
 
 	// 2. Group by project
-	containersByProject := make(map[string][]dockertypes.Container)
+	containersByProject := make(map[string][]container.Summary)
 	for _, c := range containers {
 		projName := c.Labels["com.docker.compose.project"]
 		if projName != "" {
@@ -517,12 +517,7 @@ func (s *ProjectService) GetProjectStatusCounts(ctx context.Context) (folderCoun
 
 		var status models.ProjectStatus
 		if len(services) == 0 {
-			if p.ServiceCount > 0 {
-				status = models.ProjectStatusStopped
-			} else {
-				// No services defined and no containers -> Stopped (or empty)
-				status = models.ProjectStatusStopped
-			}
+			status = models.ProjectStatusStopped
 		} else {
 			// We have containers, calculate status based on their state
 			// Note: calculateProjectStatus doesn't know about "missing" services (ServiceCount)
@@ -1039,7 +1034,7 @@ func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, pro
 	}
 
 	// 2. Group containers by project name
-	containersByProject := make(map[string][]dockertypes.Container)
+	containersByProject := make(map[string][]container.Summary)
 	for _, c := range containers {
 		projName := c.Labels["com.docker.compose.project"]
 		if projName != "" {
@@ -1050,90 +1045,91 @@ func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, pro
 	// 3. Map to DTOs
 	results := make([]dto.ProjectDetailsDto, len(projectsList))
 	for i, p := range projectsList {
-		var resp dto.ProjectDetailsDto
-		_ = dto.MapStruct(p, &resp)
-
-		resp.CreatedAt = p.CreatedAt.Format(time.RFC3339)
-		resp.UpdatedAt = p.UpdatedAt.Format(time.RFC3339)
-		resp.DirName = utils.DerefString(p.DirName)
-
-		// Find containers for this project
-		normName := normalizeComposeProjectName(p.Name)
-		projectContainers := containersByProject[normName]
-
-		var services []ProjectServiceInfo
-		runningCount := 0
-
-		for _, c := range projectContainers {
-			svcName := c.Labels["com.docker.compose.service"]
-			state := c.State // "running", "exited", etc.
-
-			// Parse health from Status string if possible
-			var health *string
-			statusLower := strings.ToLower(c.Status)
-			if strings.Contains(statusLower, "(healthy)") {
-				h := "healthy"
-				health = &h
-			} else if strings.Contains(statusLower, "(unhealthy)") {
-				h := "unhealthy"
-				health = &h
-			} else if strings.Contains(statusLower, "(starting)") {
-				h := "starting"
-				health = &h
-			}
-
-			containerName := ""
-			if len(c.Names) > 0 {
-				containerName = strings.TrimPrefix(c.Names[0], "/")
-			}
-
-			services = append(services, ProjectServiceInfo{
-				Name:          svcName,
-				Image:         c.Image,
-				Status:        state,
-				ContainerID:   c.ID,
-				ContainerName: containerName,
-				Ports:         formatDockerPorts(c.Ports),
-				Health:        health,
-			})
-
-			if state == "running" {
-				runningCount++
-			}
-		}
-
-		resp.Services = make([]any, len(services))
-		for k, s := range services {
-			resp.Services[k] = s
-		}
-
-		// Use DB service count as the source of truth for "Total Services"
-		// since we are not parsing the YAML here.
-		resp.ServiceCount = p.ServiceCount
-		resp.RunningCount = runningCount
-
-		// Calculate Status
-		if len(services) == 0 {
-			if p.ServiceCount > 0 {
-				resp.Status = string(models.ProjectStatusStopped)
-			} else {
-				// No services defined and no containers?
-				resp.Status = string(models.ProjectStatusStopped)
-			}
-		} else {
-			if runningCount >= p.ServiceCount && p.ServiceCount > 0 {
-				resp.Status = string(models.ProjectStatusRunning)
-			} else if runningCount > 0 {
-				resp.Status = string(models.ProjectStatusPartiallyRunning)
-			} else {
-				resp.Status = string(models.ProjectStatusStopped)
-			}
-		}
-
-		results[i] = resp
+		results[i] = s.mapProjectToDto(p, containersByProject)
 	}
 
 	return results
+}
+
+func (s *ProjectService) mapProjectToDto(p models.Project, containersByProject map[string][]container.Summary) dto.ProjectDetailsDto {
+	var resp dto.ProjectDetailsDto
+	_ = dto.MapStruct(p, &resp)
+
+	resp.CreatedAt = p.CreatedAt.Format(time.RFC3339)
+	resp.UpdatedAt = p.UpdatedAt.Format(time.RFC3339)
+	resp.DirName = utils.DerefString(p.DirName)
+
+	// Find containers for this project
+	normName := normalizeComposeProjectName(p.Name)
+	projectContainers := containersByProject[normName]
+
+	var services []ProjectServiceInfo
+	runningCount := 0
+
+	for _, c := range projectContainers {
+		svcName := c.Labels["com.docker.compose.service"]
+		state := c.State // "running", "exited", etc.
+
+		// Parse health from Status string if possible
+		var health *string
+		statusLower := strings.ToLower(c.Status)
+		switch {
+		case strings.Contains(statusLower, "(healthy)"):
+			h := "healthy"
+			health = &h
+		case strings.Contains(statusLower, "(unhealthy)"):
+			h := "unhealthy"
+			health = &h
+		case strings.Contains(statusLower, "(starting)"):
+			h := "starting"
+			health = &h
+		}
+
+		containerName := ""
+		if len(c.Names) > 0 {
+			containerName = strings.TrimPrefix(c.Names[0], "/")
+		}
+
+		services = append(services, ProjectServiceInfo{
+			Name:          svcName,
+			Image:         c.Image,
+			Status:        state,
+			ContainerID:   c.ID,
+			ContainerName: containerName,
+			Ports:         formatDockerPorts(c.Ports),
+			Health:        health,
+		})
+
+		if state == "running" {
+			runningCount++
+		}
+	}
+
+	resp.Services = make([]any, len(services))
+	for k, s := range services {
+		resp.Services[k] = s
+	}
+
+	// Use DB service count as the source of truth for "Total Services"
+	// since we are not parsing the YAML here.
+	resp.ServiceCount = p.ServiceCount
+	resp.RunningCount = runningCount
+
+	// Calculate Status
+	if len(services) == 0 {
+		resp.Status = string(models.ProjectStatusStopped)
+	} else {
+		switch {
+		case runningCount >= p.ServiceCount && p.ServiceCount > 0:
+			resp.Status = string(models.ProjectStatusRunning)
+		case runningCount > 0:
+			resp.Status = string(models.ProjectStatusPartiallyRunning)
+		default:
+			resp.Status = string(models.ProjectStatusStopped)
+		}
+	}
+
+	return resp
 }
 
 // End Table Functions

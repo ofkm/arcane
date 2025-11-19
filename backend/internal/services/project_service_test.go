@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	glsqlite "github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
@@ -49,7 +48,7 @@ func TestProjectService_GetProjectFromDatabaseByID(t *testing.T) {
 
 	// Test not found
 	_, err = svc.GetProjectFromDatabaseByID(ctx, "non-existent")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Contains(t, err.Error(), "project not found")
 }
 
@@ -191,7 +190,7 @@ func TestProjectService_IncrementStatusCounts(t *testing.T) {
 func TestProjectService_FormatDockerPorts(t *testing.T) {
 	tests := []struct {
 		name     string
-		input    []dockertypes.Port
+		input    []container.Port
 		expected []string
 	}{
 		{
@@ -203,7 +202,7 @@ func TestProjectService_FormatDockerPorts(t *testing.T) {
 		},
 		{
 			name: "private only",
-			input: []dockertypes.Port{
+			input: []container.Port{
 				{PrivatePort: 80, Type: "tcp"},
 			},
 			expected: []string{"80/tcp"},
