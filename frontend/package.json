@@ -8,7 +8,7 @@
 		"node": ">=24"
 	},
 	"scripts": {
-		"dev": "vite dev --port 3000",
+		"dev": "vite dev --port 3000 --host",
 		"build": "vite build",
 		"preview": "vite preview --port 3000",
 		"prepare": "svelte-kit sync || echo ''",
