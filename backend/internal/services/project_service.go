@@ -1045,13 +1045,13 @@ func (s *ProjectService) fetchProjectStatusConcurrently(ctx context.Context, pro
 	// 3. Map to DTOs
 	results := make([]dto.ProjectDetailsDto, len(projectsList))
 	for i, p := range projectsList {
-		results[i] = s.mapProjectToDto(p, containersByProject)
+		results[i] = s.mapProjectToDto(ctx, p, containersByProject)
 	}
 
 	return results
 }
 
-func (s *ProjectService) mapProjectToDto(p models.Project, containersByProject map[string][]container.Summary) dto.ProjectDetailsDto {
+func (s *ProjectService) mapProjectToDto(ctx context.Context, p models.Project, containersByProject map[string][]container.Summary) dto.ProjectDetailsDto {
 	var resp dto.ProjectDetailsDto
 	_ = dto.MapStruct(p, &resp)
 
@@ -1115,12 +1115,25 @@ func (s *ProjectService) mapProjectToDto(p models.Project, containersByProject m
 	resp.ServiceCount = p.ServiceCount
 	resp.RunningCount = runningCount
 
+	// Fix for missing service count (e.g. newly discovered projects)
+	if resp.ServiceCount == 0 {
+		if count, err := s.countServicesFromCompose(ctx, p); err == nil && count > 0 {
+			resp.ServiceCount = count
+			// Update DB asynchronously
+			go func(pid string, c int) {
+				// Create a new context for the background update
+				bgCtx := context.Background()
+				s.db.WithContext(bgCtx).Model(&models.Project{}).Where("id = ?", pid).Update("service_count", c)
+			}(p.ID, count)
+		}
+	}
+
 	// Calculate Status
 	if len(services) == 0 {
 		resp.Status = string(models.ProjectStatusStopped)
 	} else {
 		switch {
-		case runningCount >= p.ServiceCount && p.ServiceCount > 0:
+		case runningCount >= resp.ServiceCount && resp.ServiceCount > 0:
 			resp.Status = string(models.ProjectStatusRunning)
 		case runningCount > 0:
 			resp.Status = string(models.ProjectStatusPartiallyRunning)
@@ -1133,6 +1146,21 @@ func (s *ProjectService) mapProjectToDto(p models.Project, containersByProject m
 }
 
 // End Table Functions
+
+func (s *ProjectService) countServicesFromCompose(ctx context.Context, p models.Project) (int, error) {
+	projectsDirSetting := s.settingsService.GetStringSetting(ctx, "projectsDirectory", "data/projects")
+	projectsDirectory, err := fs.GetProjectsDirectory(ctx, strings.TrimSpace(projectsDirSetting))
+	if err != nil {
+		return 0, err
+	}
+
+	proj, _, err := projects.LoadComposeProjectFromDir(ctx, p.Path, normalizeComposeProjectName(p.Name), projectsDirectory)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(proj.Services), nil
+}
 
 func (s *ProjectService) calculateProjectStatus(services []ProjectServiceInfo) models.ProjectStatus {
 	if len(services) == 0 {
