@@ -143,33 +143,6 @@ func (s *UserService) CreateUser(ctx context.Context, user *models.User) (*model
 	return user, nil
 }
 
-func (s *UserService) CreateUserWithPassword(ctx context.Context, username, password, email, role string, displayName string) (*models.User, error) {
-	hashedPassword, err := s.hashPassword(password)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash password: %w", err)
-	}
-
-	user := &models.User{
-		Username:     username,
-		Email:        &email,
-		DisplayName:  &displayName,
-		PasswordHash: hashedPassword,
-		Roles:        models.StringSlice{role},
-	}
-
-	err = s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(user).Error; err != nil {
-			return fmt.Errorf("failed to create user: %w", err)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return user, nil
-}
-
 func (s *UserService) GetUserByUsername(ctx context.Context, username string) (*models.User, error) {
 	var user models.User
 	if err := s.db.WithContext(ctx).Where("username = ?", username).First(&user).Error; err != nil {
@@ -274,14 +247,6 @@ func (s *UserService) AttachOidcSubjectTransactional(ctx context.Context, userID
 		return nil, err
 	}
 	return out, nil
-}
-
-func (s *UserService) CountUsers(ctx context.Context) (int64, error) {
-	var count int64
-	if err := s.db.WithContext(ctx).Model(&models.User{}).Count(&count).Error; err != nil {
-		return 0, err
-	}
-	return count, nil
 }
 
 func (s *UserService) CreateDefaultAdmin(ctx context.Context) error {
