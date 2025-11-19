@@ -300,7 +300,6 @@ func (s *UpdaterService) pruneImageIDs(ctx context.Context, ids []string) error 
 	if err != nil {
 		return fmt.Errorf("docker connect: %w", err)
 	}
-	
 
 	for _, id := range ids {
 		if id == "" {
@@ -373,7 +372,6 @@ func (s *UpdaterService) updateContainer(ctx context.Context, cnt container.Summ
 	if err != nil {
 		return fmt.Errorf("docker connect: %w", err)
 	}
-	
 
 	name := s.getContainerName(cnt)
 	slog.DebugContext(ctx, "updateContainer: starting update", "containerId", cnt.ID, "containerName", name, "newRef", newRef)
@@ -529,7 +527,7 @@ func (s *UpdaterService) collectUsedImages(ctx context.Context) (map[string]stru
 
 	dcli, err := s.dockerService.GetClient()
 	if err == nil && dcli != nil {
-		
+
 		slog.DebugContext(ctx, "collectUsedImages: docker connection created")
 	} else {
 		slog.DebugContext(ctx, "collectUsedImages: docker connection not available, continuing without container list", "err", err)
@@ -663,7 +661,6 @@ func (s *UpdaterService) resolveLocalImageIDsForRef(ctx context.Context, ref str
 	if err != nil {
 		return nil, err
 	}
-	
 
 	ids := []string{}
 	if ii, err := dcli.ImageInspect(ctx, ref); err == nil && ii.ID != "" {
@@ -678,7 +675,6 @@ func (s *UpdaterService) restartContainersUsingOldIDs(ctx context.Context, oldID
 	if err != nil {
 		return nil, fmt.Errorf("docker connect: %w", err)
 	}
-	
 
 	list, err := dcli.ContainerList(ctx, container.ListOptions{All: false})
 	if err != nil {
@@ -883,7 +879,6 @@ func (s *UpdaterService) anyImageIDsStillInUse(ctx context.Context, ids []string
 	if err != nil {
 		return false, fmt.Errorf("docker connect: %w", err)
 	}
-	
 
 	list, err := dcli.ContainerList(ctx, container.ListOptions{All: false})
 	if err != nil {

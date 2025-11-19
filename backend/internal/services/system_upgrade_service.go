@@ -111,7 +111,6 @@ func (s *SystemUpgradeService) TriggerUpgradeViaCLI(ctx context.Context, user mo
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	// Create the upgrader container config
 	config := &containertypes.Config{
@@ -233,7 +232,6 @@ func (s *SystemUpgradeService) findArcaneContainer(ctx context.Context, containe
 	if err != nil {
 		return containertypes.InspectResponse{}, err
 	}
-	
 
 	// Try to inspect the container directly
 	container, err := dockerClient.ContainerInspect(ctx, containerId)

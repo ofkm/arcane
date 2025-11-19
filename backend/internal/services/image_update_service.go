@@ -323,7 +323,6 @@ func (s *ImageUpdateService) getImageRefByID(ctx context.Context, imageID string
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	imageID = strings.TrimPrefix(imageID, "sha256:")
 	inspectResponse, err := dockerClient.ImageInspect(ctx, imageID)
@@ -355,7 +354,6 @@ func (s *ImageUpdateService) getAllImageRefs(ctx context.Context, limit int) ([]
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	images, err := dockerClient.ImageList(ctx, image.ListOptions{})
 	if err != nil {
@@ -384,7 +382,6 @@ func (s *ImageUpdateService) getLocalImageDigestWithAll(ctx context.Context, ima
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	inspectResponse, err := dockerClient.ImageInspect(ctx, imageRef)
 	if err != nil {
@@ -589,7 +586,6 @@ func (s *ImageUpdateService) saveUpdateResultByID(ctx context.Context, imageID s
 		if err != nil {
 			return fmt.Errorf("failed to connect to Docker: %w", err)
 		}
-		
 
 		dockerImage, err := dockerClient.ImageInspect(ctx, imageID)
 		if err != nil {
@@ -608,7 +604,6 @@ func (s *ImageUpdateService) getImageIDByRef(ctx context.Context, imageRef strin
 	if err != nil {
 		return "", fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	inspectResponse, err := dockerClient.ImageInspect(ctx, imageRef)
 	if err != nil {
@@ -956,7 +951,6 @@ func (s *ImageUpdateService) CleanupOrphanedRecords(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	// Get all image IDs from Docker
 	dockerImages, err := dockerClient.ImageList(ctx, image.ListOptions{})

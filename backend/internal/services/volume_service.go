@@ -37,7 +37,6 @@ func (s *VolumeService) GetVolumeByName(ctx context.Context, name string) (*dto.
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	vol, err := dockerClient.VolumeInspect(ctx, name)
 	if err != nil {
@@ -84,7 +83,6 @@ func (s *VolumeService) CreateVolume(ctx context.Context, options volume.CreateO
 		s.eventService.LogErrorEvent(ctx, models.EventTypeVolumeError, "volume", "", options.Name, user.ID, user.Username, "0", err, models.JSON{"action": "create", "driver": options.Driver})
 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	created, err := dockerClient.VolumeCreate(ctx, options)
 	if err != nil {
@@ -121,7 +119,6 @@ func (s *VolumeService) DeleteVolume(ctx context.Context, name string, force boo
 		s.eventService.LogErrorEvent(ctx, models.EventTypeVolumeError, "volume", name, name, user.ID, user.Username, "0", err, models.JSON{"action": "delete", "force": force})
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	if err := dockerClient.VolumeRemove(ctx, name, force); err != nil {
 		s.eventService.LogErrorEvent(ctx, models.EventTypeVolumeError, "volume", name, name, user.ID, user.Username, "0", err, models.JSON{"action": "delete", "force": force})
@@ -150,7 +147,6 @@ func (s *VolumeService) PruneVolumesWithOptions(ctx context.Context, all bool) (
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	// Docker's VolumesPrune behavior (API v1.42+):
 	// - Without 'all' flag: Only removes anonymous (unnamed) volumes that are not in use
@@ -195,7 +191,6 @@ func (s *VolumeService) GetVolumeUsage(ctx context.Context, name string) (bool, 
 	if err != nil {
 		return false, nil, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	vol, err := dockerClient.VolumeInspect(ctx, name)
 	if err != nil {
@@ -374,7 +369,6 @@ func (s *VolumeService) ListVolumesPaginated(ctx context.Context, params paginat
 	if err != nil {
 		return nil, pagination.Response{}, dto.VolumeUsageCounts{}, fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	volListBody, err := dockerClient.VolumeList(ctx, volume.ListOptions{})
 	if err != nil {

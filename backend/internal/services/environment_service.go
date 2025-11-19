@@ -208,7 +208,6 @@ func (s *EnvironmentService) testLocalDockerConnection(ctx context.Context, id s
 		_ = s.updateEnvironmentStatusInternal(ctx, id, string(models.EnvironmentStatusOffline))
 		return "offline", fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	_, err = dockerClient.Ping(reqCtx)
 	if err != nil {

@@ -280,7 +280,6 @@ func (s *SystemService) pruneContainers(ctx context.Context, result *dto.PruneAl
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	filterArgs := filters.NewArgs()
 
@@ -301,7 +300,6 @@ func (s *SystemService) pruneImages(ctx context.Context, danglingOnly bool, resu
 	if err != nil {
 		return fmt.Errorf("failed to connect to Docker: %w", err)
 	}
-	
 
 	var filterArgs filters.Args
 
@@ -353,7 +351,6 @@ func (s *SystemService) pruneBuildCache(ctx context.Context, result *dto.PruneAl
 		slog.ErrorContext(ctx, "Error connecting to Docker for build cache prune", slog.String("error", err.Error()))
 		return fmt.Errorf("failed to connect to Docker for build cache prune: %w", err)
 	}
-	
 
 	options := build.CachePruneOptions{
 		All: pruneAllCache,
