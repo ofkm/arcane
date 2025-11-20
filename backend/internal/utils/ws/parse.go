@@ -27,13 +27,14 @@ func NormalizeContainerLine(raw string) (level string, msg string, timestamp str
 
 	level = "stdout"
 	// Check prefixes using slicing for performance
-	if strings.HasPrefix(line, "[STDERR] ") {
+	switch {
+	case strings.HasPrefix(line, "[STDERR] "):
 		level = "stderr"
 		line = line[9:]
-	} else if strings.HasPrefix(line, "stderr:") {
+	case strings.HasPrefix(line, "stderr:"):
 		level = "stderr"
 		line = line[7:]
-	} else if strings.HasPrefix(line, "stdout:") {
+	case strings.HasPrefix(line, "stdout:"):
 		level = "stdout"
 		line = line[7:]
 	}

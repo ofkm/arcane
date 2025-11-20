@@ -55,12 +55,12 @@ func (h *Hub) Run(ctx context.Context) {
 				go func() {
 					// Yield to allow other goroutines to run
 					runtime.Gosched()
-					
+
 					h.mu.RLock()
 					empty := len(h.clients) == 0
 					onEmpty := h.onEmpty
 					h.mu.RUnlock()
-					
+
 					if empty && onEmpty != nil {
 						onEmpty()
 					}
