@@ -1191,7 +1191,7 @@
 	"sidebar_select_one": "Selecteer een",
 	"sidebar_local_docker_socket": "unix:///var/run/docker.sock",
 	"sidebar_manage_environments": "Beheer Omgevingen",
-	"sidebar_version": "v{version}",
+	"sidebar_version": "{version}",
 	"sidebar_update_available": "Update beschikbaar",
 	"sidebar_update_available_tooltip": "Update beschikbaar: {version}",
 	"sidebar_management": "Beheer",
