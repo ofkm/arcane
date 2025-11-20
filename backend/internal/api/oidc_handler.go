@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils/cookie"
@@ -14,12 +13,11 @@ import (
 type OidcHandler struct {
 	authService *services.AuthService
 	oidcService *services.OidcService
-	appConfig   *config.Config
 }
 
-func NewOidcHandler(group *gin.RouterGroup, authService *services.AuthService, oidcService *services.OidcService, appConfig *config.Config) {
+func NewOidcHandler(group *gin.RouterGroup, authService *services.AuthService, oidcService *services.OidcService) {
 
-	handler := &OidcHandler{authService: authService, oidcService: oidcService, appConfig: appConfig}
+	handler := &OidcHandler{authService: authService, oidcService: oidcService}
 
 	apiGroup := group.Group("/oidc")
 	{
@@ -140,7 +138,7 @@ func (h *OidcHandler) GetOidcConfig(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"clientId":              config.ClientID,
-		"redirectUri":           h.appConfig.GetOidcRedirectURI(),
+		"redirectUri":           h.oidcService.GetOidcRedirectURL(),
 		"issuerUrl":             config.IssuerURL,
 		"authorizationEndpoint": config.AuthorizationEndpoint,
 		"tokenEndpoint":         config.TokenEndpoint,

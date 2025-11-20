@@ -54,7 +54,7 @@
 		"@types/bytes": "^3.1.5",
 		"@types/dockerode": "^3.3.46",
 		"@types/js-yaml": "^4.0.9",
-		"bits-ui": "^2.14.3",
+		"bits-ui": "^2.14.4",
 		"bytes": "^3.1.2",
 		"clsx": "^2.1.1",
 		"eslint": "^9.38.0",
