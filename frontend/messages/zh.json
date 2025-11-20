@@ -1191,7 +1191,7 @@
 	"sidebar_select_one": "请选择一个",
 	"sidebar_local_docker_socket": "unix:///var/run/docker.sock",
 	"sidebar_manage_environments": "管理环境",
-	"sidebar_version": "v{version}",
+	"sidebar_version": "{version}",
 	"sidebar_update_available": "有可用更新",
 	"sidebar_update_available_tooltip": "有可用更新：{version}",
 	"sidebar_management": "管理",
