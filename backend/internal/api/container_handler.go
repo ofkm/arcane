@@ -535,6 +535,7 @@ func (h *ContainerHandler) Create(c *gin.Context) {
 		networkingConfig,
 		req.Name,
 		*currentUser,
+		req.Credentials,
 	)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
