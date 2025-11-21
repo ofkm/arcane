@@ -168,7 +168,13 @@ func (h *TemplateHandler) GetTemplateContent(c *gin.Context) {
 }
 
 func (h *TemplateHandler) CreateTemplate(c *gin.Context) {
-	var req dto.CreateTemplateDto
+	var req struct {
+		Name        string `json:"name" binding:"required"`
+		Description string `json:"description"`
+		Content     string `json:"content" binding:"required"`
+		EnvContent  string `json:"envContent"`
+	}
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

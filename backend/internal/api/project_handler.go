@@ -108,14 +108,7 @@ func (h *ProjectHandler) DeployProject(c *gin.Context) {
 		return
 	}
 
-	var req dto.DeployProjectDto
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"data":    gin.H{"error": (&common.InvalidRequestFormatError{Err: err}).Error()},
-		})
-		return
-	}
+	user, _ := middleware.GetCurrentUser(c)
 	if err := h.projectService.DeployProject(c.Request.Context(), projectID, *user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
