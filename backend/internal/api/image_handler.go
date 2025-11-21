@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/common"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/services"
@@ -111,15 +112,13 @@ func (h *ImageHandler) Remove(c *gin.Context) {
 func (h *ImageHandler) Pull(c *gin.Context) {
 	ctx := c.Request.Context()
 	var req dto.ImagePullDto
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"data":    dto.MessageDto{Message: "Invalid request body: " + err.Error()},
+			"data":    gin.H{"error": (&common.InvalidRequestFormatError{Err: err}).Error()},
 		})
 		return
 	}
-
 	c.Writer.Header().Set("Content-Type", "application/x-json-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("Connection", "keep-alive")
@@ -160,6 +159,13 @@ func (h *ImageHandler) Prune(c *gin.Context) {
 				}
 			}
 		}
+	} else if c.Request.ContentLength > 0 {
+		// Only return error if body was provided but invalid
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    gin.H{"error": (&common.InvalidRequestFormatError{Err: err}).Error()},
+		})
+		return
 	}
 
 	slog.DebugContext(c.Request.Context(), "Image prune request", slog.Bool("dangling_only", dangling))

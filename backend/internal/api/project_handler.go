@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/ofkm/arcane-backend/internal/common"
 	"github.com/ofkm/arcane-backend/internal/config"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
@@ -107,7 +108,14 @@ func (h *ProjectHandler) DeployProject(c *gin.Context) {
 		return
 	}
 
-	user, _ := middleware.GetCurrentUser(c)
+	var req dto.DeployProjectDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    gin.H{"error": (&common.InvalidRequestFormatError{Err: err}).Error()},
+		})
+		return
+	}
 	if err := h.projectService.DeployProject(c.Request.Context(), projectID, *user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -143,7 +151,7 @@ func (h *ProjectHandler) DownProject(c *gin.Context) {
 func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	var req dto.CreateProjectDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.InvalidRequestFormatError{Err: err}).Error()})
 		return
 	}
 
@@ -221,10 +229,8 @@ func (h *ProjectHandler) DestroyProject(c *gin.Context) {
 
 	var req dto.DestroyProjectDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		req = dto.DestroyProjectDto{
-			RemoveFiles:   false,
-			RemoveVolumes: false,
-		}
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.InvalidRequestFormatError{Err: err}).Error()})
+		return
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
@@ -251,7 +257,8 @@ func (h *ProjectHandler) PullProjectImages(c *gin.Context) {
 
 	var req dto.ProjectImagePullDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		req = dto.ProjectImagePullDto{}
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.InvalidRequestFormatError{Err: err}).Error()})
+		return
 	}
 
 	c.Writer.Header().Set("Content-Type", "application/x-json-stream")
@@ -278,7 +285,7 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 
 	var req dto.UpdateProjectDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid request format"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.InvalidRequestFormatError{Err: err}).Error()})
 		return
 	}
 
@@ -308,7 +315,7 @@ func (h *ProjectHandler) UpdateProjectInclude(c *gin.Context) {
 
 	var req dto.UpdateProjectIncludeDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid request format"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.InvalidRequestFormatError{Err: err}).Error()})
 		return
 	}
 

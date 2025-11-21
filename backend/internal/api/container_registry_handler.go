@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/common"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/middleware"
 	"github.com/ofkm/arcane-backend/internal/models"
@@ -86,10 +87,9 @@ func (h *ContainerRegistryHandler) GetRegistry(c *gin.Context) {
 func (h *ContainerRegistryHandler) CreateRegistry(c *gin.Context) {
 	var req models.CreateContainerRegistryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		apiErr := models.NewValidationError("Invalid request data", err)
-		c.JSON(apiErr.HTTPStatus(), gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
+			"data":    gin.H{"error": (&common.InvalidRequestFormatError{Err: err}).Error()},
 		})
 		return
 	}
@@ -124,10 +124,9 @@ func (h *ContainerRegistryHandler) UpdateRegistry(c *gin.Context) {
 
 	var req models.UpdateContainerRegistryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		apiErr := models.NewValidationError("Invalid request data", err)
-		c.JSON(apiErr.HTTPStatus(), gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
+			"data":    gin.H{"error": (&common.InvalidRequestFormatError{Err: err}).Error()},
 		})
 		return
 	}
@@ -216,10 +215,9 @@ func (h *ContainerRegistryHandler) TestRegistry(c *gin.Context) {
 func (h *ContainerRegistryHandler) SyncRegistries(c *gin.Context) {
 	var req dto.SyncRegistriesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		apiErr := models.NewValidationError("Invalid request data", err)
-		c.JSON(apiErr.HTTPStatus(), gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"data":    gin.H{"error": apiErr.Message},
+			"data":    gin.H{"error": (&common.InvalidRequestFormatError{Err: err}).Error()},
 		})
 		return
 	}

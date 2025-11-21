@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ofkm/arcane-backend/internal/common"
 	"github.com/ofkm/arcane-backend/internal/dto"
 	"github.com/ofkm/arcane-backend/internal/services"
 	"github.com/ofkm/arcane-backend/internal/utils/cookie"
@@ -42,9 +43,11 @@ func (h *OidcHandler) GetOidcStatus(c *gin.Context) {
 
 func (h *OidcHandler) GetOidcAuthUrl(c *gin.Context) {
 	var req dto.OidcAuthUrlRequest
-
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid request format"})
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"data":    gin.H{"error": (&common.InvalidRequestFormatError{Err: err}).Error()},
+		})
 		return
 	}
 
@@ -78,7 +81,7 @@ func (h *OidcHandler) HandleOidcCallback(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": (&common.InvalidRequestFormatError{Err: err}).Error()})
 		return
 	}
 
