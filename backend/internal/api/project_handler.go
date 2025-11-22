@@ -82,7 +82,7 @@ func (h *ProjectHandler) ListProjects(c *gin.Context) {
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to list projects: " + err.Error(),
+			"error":   (&common.ProjectListError{Err: err}).Error(),
 		})
 		return
 	}
@@ -103,7 +103,7 @@ func (h *ProjectHandler) DeployProject(c *gin.Context) {
 	if projectID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Project ID is required",
+			"error":   (&common.ProjectIDRequiredError{}).Error(),
 		})
 		return
 	}
@@ -112,7 +112,7 @@ func (h *ProjectHandler) DeployProject(c *gin.Context) {
 	if err := h.projectService.DeployProject(c.Request.Context(), projectID, *user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   (&common.ProjectDeploymentError{Err: err}).Error(),
 		})
 		return
 	}
@@ -130,7 +130,7 @@ func (h *ProjectHandler) DownProject(c *gin.Context) {
 	if err := h.projectService.DownProject(c.Request.Context(), projectID, *user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   fmt.Sprintf("Failed to bring down project: %v", err),
+			"error":   (&common.ProjectDownError{Err: err}).Error(),
 		})
 		return
 	}
@@ -151,7 +151,7 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	user, _ := middleware.GetCurrentUser(c)
 	proj, err := h.projectService.CreateProject(c.Request.Context(), req.Name, req.ComposeContent, req.EnvContent, *user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": (&common.ProjectCreationError{Err: err}).Error()})
 		return
 	}
 
@@ -175,13 +175,13 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 func (h *ProjectHandler) GetProject(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.ProjectIDRequiredError{}).Error()})
 		return
 	}
 
 	details, err := h.projectService.GetProjectDetails(c.Request.Context(), projectID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "Project not found"})
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": (&common.ProjectDetailsError{Err: err}).Error()})
 		return
 	}
 
@@ -197,7 +197,7 @@ func (h *ProjectHandler) RedeployProject(c *gin.Context) {
 	if projectID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Project ID is required",
+			"error":   (&common.ProjectIDRequiredError{}).Error(),
 		})
 		return
 	}
@@ -206,7 +206,7 @@ func (h *ProjectHandler) RedeployProject(c *gin.Context) {
 	if err := h.projectService.RedeployProject(c.Request.Context(), projectID, *user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   err.Error(),
+			"error":   (&common.ProjectRedeploymentError{Err: err}).Error(),
 		})
 		return
 	}
@@ -230,7 +230,7 @@ func (h *ProjectHandler) DestroyProject(c *gin.Context) {
 	if err := h.projectService.DestroyProject(c.Request.Context(), projectID, req.RemoveFiles, req.RemoveVolumes, *user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   fmt.Sprintf("Failed to destroy project: %v", err),
+			"error":   (&common.ProjectDestroyError{Err: err}).Error(),
 		})
 		return
 	}
@@ -244,7 +244,7 @@ func (h *ProjectHandler) DestroyProject(c *gin.Context) {
 func (h *ProjectHandler) PullProjectImages(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.ProjectIDRequiredError{}).Error()})
 		return
 	}
 
@@ -272,7 +272,7 @@ func (h *ProjectHandler) PullProjectImages(c *gin.Context) {
 func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.ProjectIDRequiredError{}).Error()})
 		return
 	}
 
@@ -283,13 +283,13 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	}
 
 	if _, err := h.projectService.UpdateProject(c.Request.Context(), projectID, req.Name, req.ComposeContent, req.EnvContent); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.ProjectUpdateError{Err: err}).Error()})
 		return
 	}
 
 	details, err := h.projectService.GetProjectDetails(c.Request.Context(), projectID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to fetch updated project details"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": (&common.ProjectDetailsError{Err: err}).Error()})
 		return
 	}
 
@@ -302,7 +302,7 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 func (h *ProjectHandler) UpdateProjectInclude(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.ProjectIDRequiredError{}).Error()})
 		return
 	}
 
@@ -313,13 +313,13 @@ func (h *ProjectHandler) UpdateProjectInclude(c *gin.Context) {
 	}
 
 	if err := h.projectService.UpdateProjectIncludeFile(c.Request.Context(), projectID, req.RelativePath, req.Content); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.ProjectUpdateError{Err: err}).Error()})
 		return
 	}
 
 	details, err := h.projectService.GetProjectDetails(c.Request.Context(), projectID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "Failed to fetch updated project details"})
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": (&common.ProjectDetailsError{Err: err}).Error()})
 		return
 	}
 
@@ -332,13 +332,13 @@ func (h *ProjectHandler) UpdateProjectInclude(c *gin.Context) {
 func (h *ProjectHandler) RestartProject(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if projectID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.ProjectIDRequiredError{}).Error()})
 		return
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
 	if err := h.projectService.RestartProject(c.Request.Context(), projectID, *user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.ProjectRestartError{Err: err}).Error()})
 		return
 	}
 
@@ -414,7 +414,7 @@ func (h *ProjectHandler) getOrStartProjectLogHub(projectID, format string, batch
 func (h *ProjectHandler) GetProjectLogsWS(c *gin.Context) {
 	projectID := c.Param("projectId")
 	if strings.TrimSpace(projectID) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Project ID is required"})
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.ProjectIDRequiredError{}).Error()})
 		return
 	}
 
@@ -438,7 +438,7 @@ func (h *ProjectHandler) GetProjectStatusCounts(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Failed to get project counts: " + err.Error()},
+			"data":    gin.H{"error": (&common.ProjectStatusCountsError{Err: err}).Error()},
 		})
 		return
 	}

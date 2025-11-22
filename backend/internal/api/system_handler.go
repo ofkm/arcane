@@ -144,7 +144,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to connect to Docker: " + err.Error(),
+			"error":   (&common.DockerConnectionError{Err: err}).Error(),
 		})
 		return
 	}
@@ -154,7 +154,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to get Docker version: " + err.Error(),
+			"error":   (&common.DockerVersionError{Err: err}).Error(),
 		})
 		return
 	}
@@ -163,7 +163,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to get Docker info: " + err.Error(),
+			"error":   (&common.DockerInfoError{Err: err}).Error(),
 		})
 		return
 	}
@@ -172,7 +172,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to list containers: " + err.Error(),
+			"error":   (&common.DockerContainerListError{Err: err}).Error(),
 		})
 		return
 	}
@@ -181,7 +181,7 @@ func (h *SystemHandler) GetDockerInfo(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to list images: " + err.Error(),
+			"error":   (&common.DockerImageListError{Err: err}).Error(),
 		})
 		return
 	}
@@ -249,7 +249,7 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 			slog.String("client_ip", c.ClientIP()))
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Invalid request body: " + err.Error(),
+			"error":   (&common.InvalidRequestFormatError{Err: err}).Error(),
 		})
 		return
 	}
@@ -269,7 +269,7 @@ func (h *SystemHandler) PruneAll(c *gin.Context) {
 			slog.String("client_ip", c.ClientIP()))
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to prune resources: " + err.Error(),
+			"error":   (&common.SystemPruneError{Err: err}).Error(),
 		})
 		return
 	}
@@ -302,7 +302,7 @@ func (h *SystemHandler) StartAllContainers(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to start containers: " + err.Error(),
+			"error":   (&common.ContainerStartAllError{Err: err}).Error(),
 		})
 		return
 	}
@@ -319,7 +319,7 @@ func (h *SystemHandler) StartAllStoppedContainers(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to start stopped containers: " + err.Error(),
+			"error":   (&common.ContainerStartStoppedError{Err: err}).Error(),
 		})
 		return
 	}
@@ -358,7 +358,7 @@ func (h *SystemHandler) StopAllContainers(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to stop containers: " + err.Error(),
+			"error":   (&common.ContainerStopAllError{Err: err}).Error(),
 		})
 		return
 	}
@@ -545,7 +545,7 @@ func (h *SystemHandler) ConvertDockerRun(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"error":   "Failed to parse docker run command. Please check the syntax.",
+			"error":   (&common.DockerRunParseError{Err: err}).Error(),
 			"code":    "BAD_REQUEST",
 		})
 		return
@@ -555,7 +555,7 @@ func (h *SystemHandler) ConvertDockerRun(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"error":   "Failed to convert to Docker Compose format.",
+			"error":   (&common.DockerComposeConversionError{Err: err}).Error(),
 			"code":    "CONVERSION_ERROR",
 		})
 		return
@@ -578,7 +578,7 @@ func (h *SystemHandler) CheckUpgradeAvailable(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"canUpgrade": false,
 			"error":      true,
-			"message":    err.Error(),
+			"message":    (&common.UpgradeCheckError{Err: err}).Error(),
 		})
 		slog.Debug("System upgrade check failed", "error", err)
 		return
@@ -611,7 +611,7 @@ func (h *SystemHandler) TriggerUpgrade(c *gin.Context) {
 		}
 
 		c.JSON(statusCode, gin.H{
-			"error":   err.Error(),
+			"error":   (&common.UpgradeTriggerError{Err: err}).Error(),
 			"message": "Failed to initiate upgrade",
 		})
 		return

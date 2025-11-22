@@ -35,7 +35,7 @@ func (h *EventHandler) ListEvents(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Failed to list events: " + err.Error()},
+			"data":    gin.H{"error": (&common.EventListError{Err: err}).Error()},
 		})
 		return
 	}
@@ -52,7 +52,7 @@ func (h *EventHandler) GetEventsByEnvironment(c *gin.Context) {
 	if environmentID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Environment ID is required"},
+			"data":    gin.H{"error": (&common.EnvironmentIDRequiredError{}).Error()},
 		})
 		return
 	}
@@ -63,7 +63,7 @@ func (h *EventHandler) GetEventsByEnvironment(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Failed to list events: " + err.Error()},
+			"data":    gin.H{"error": (&common.EventListError{Err: err}).Error()},
 		})
 		return
 	}
@@ -89,7 +89,7 @@ func (h *EventHandler) CreateEvent(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Failed to create event: " + err.Error()},
+			"data":    gin.H{"error": (&common.EventCreationError{Err: err}).Error()},
 		})
 		return
 	}
@@ -105,7 +105,7 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	if eventID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Event ID is required"},
+			"data":    gin.H{"error": (&common.EventIDRequiredError{}).Error()},
 		})
 		return
 	}
@@ -113,7 +113,7 @@ func (h *EventHandler) DeleteEvent(c *gin.Context) {
 	if err := h.eventService.DeleteEvent(c.Request.Context(), eventID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Failed to delete event: " + err.Error()},
+			"data":    gin.H{"error": (&common.EventDeletionError{Err: err}).Error()},
 		})
 		return
 	}

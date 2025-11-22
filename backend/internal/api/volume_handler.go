@@ -44,7 +44,7 @@ func (h *VolumeHandler) List(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Failed to list volumes: " + err.Error()},
+			"data":    gin.H{"error": (&common.VolumeListError{Err: err}).Error()},
 		})
 		return
 	}
@@ -70,7 +70,7 @@ func (h *VolumeHandler) GetByName(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"success": false,
-			"data":    gin.H{"error": err.Error()},
+			"data":    gin.H{"error": (&common.VolumeNotFoundError{Err: err}).Error()},
 		})
 		return
 	}
@@ -107,7 +107,7 @@ func (h *VolumeHandler) Create(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": err.Error()},
+			"data":    gin.H{"error": (&common.VolumeCreationError{Err: err}).Error()},
 		})
 		return
 	}
@@ -130,7 +130,7 @@ func (h *VolumeHandler) Remove(c *gin.Context) {
 	if err := h.volumeService.DeleteVolume(c.Request.Context(), name, force, *currentUser); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": err.Error()},
+			"data":    gin.H{"error": (&common.VolumeDeletionError{Err: err}).Error()},
 		})
 		return
 	}
@@ -146,7 +146,7 @@ func (h *VolumeHandler) Prune(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": err.Error()},
+			"data":    gin.H{"error": (&common.VolumePruneError{Err: err}).Error()},
 		})
 		return
 	}
@@ -164,7 +164,7 @@ func (h *VolumeHandler) GetUsage(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": err.Error()},
+			"data":    gin.H{"error": (&common.VolumeUsageError{Err: err}).Error()},
 		})
 		return
 	}
@@ -183,7 +183,7 @@ func (h *VolumeHandler) GetVolumeUsageCounts(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"data":    gin.H{"error": "Failed to get container counts: " + err.Error()},
+			"data":    gin.H{"error": (&common.VolumeCountsError{Err: err}).Error()},
 		})
 		return
 	}

@@ -40,7 +40,7 @@ func (h *CustomizeHandler) Search(c *gin.Context) {
 	if strings.TrimSpace(req.Query) == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"data":    dto.MessageDto{Message: "Query parameter is required"},
+			"data":    gin.H{"error": (&common.QueryParameterRequiredError{}).Error()},
 		})
 		return
 	}
