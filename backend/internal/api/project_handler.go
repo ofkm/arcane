@@ -221,9 +221,11 @@ func (h *ProjectHandler) DestroyProject(c *gin.Context) {
 	projectID := c.Param("projectId")
 
 	var req dto.DestroyProjectDto
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.InvalidRequestFormatError{Err: err}).Error()})
-		return
+	if c.Request.ContentLength > 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.InvalidRequestFormatError{Err: err}).Error()})
+			return
+		}
 	}
 
 	user, _ := middleware.GetCurrentUser(c)
@@ -249,9 +251,11 @@ func (h *ProjectHandler) PullProjectImages(c *gin.Context) {
 	}
 
 	var req dto.ProjectImagePullDto
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.InvalidRequestFormatError{Err: err}).Error()})
-		return
+	if c.Request.ContentLength > 0 {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": (&common.InvalidRequestFormatError{Err: err}).Error()})
+			return
+		}
 	}
 
 	c.Writer.Header().Set("Content-Type", "application/x-json-stream")
